@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 82px;
+  }
+  
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #F5F8FF;
+    color: #0F1E38;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ---------- Flat Animated Icons ---------- */
+.ai {
+  width: 1.2em;
+  height: 1.2em;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.2em;
+  transition: transform 0.25s ease;
+}
+
+.ai .ping, .ai .hand, .ai .blink, .ai .twinkle, .ai .typing, .ai .slideX, .ai .wave, .ai .smoke,
+.ai .steam, .ai .flicker, .ai .toss, .ai .wiggle, .ai .bob, .ai .hit, .ai .fly {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ai .ping { animation: ai-ping 2.4s ease-out infinite; }
+.ai .ping.slow { animation-duration: 3.6s; }
+.ai .hand { animation: ai-spin 12s linear infinite; }
+.ai .blink { animation: ai-blink 2.8s ease-in-out infinite; }
+.ai .twinkle { animation: ai-blink 3.4s ease-in-out infinite; }
+.ai .typing { animation: ai-blink 1.4s ease-in-out infinite; }
+.ai .typing.t2 { animation-delay: 0.2s; }
+.ai .typing.t3 { animation-delay: 0.4s; }
+.ai .slideX { animation: ai-slideX 2.2s ease-in-out infinite; }
+.ai .fly { animation: ai-slideX 3s ease-in-out infinite; }
+.ai .wave { transform-origin: left center; animation: ai-wave 3s ease-in-out infinite; }
+.ai .smoke { animation: ai-smoke 3s ease-in-out infinite; }
+.ai .smoke.s2 { animation-delay: 1.5s; }
+.ai .steam { animation: ai-smoke 2.6s ease-in-out infinite; }
+.ai .steam.s2 { animation-delay: 1.3s; }
+.ai .flicker { animation: ai-flicker 4s linear infinite; }
+.ai .toss { animation: ai-toss 5s ease-in-out infinite; }
+.ai .wiggle { animation: ai-toss 3.6s ease-in-out infinite; }
+.ai .bob { animation: ai-bob 2.6s ease-in-out infinite; }
+.ai .hit { transform-origin: top center; animation: ai-hit 1.8s ease-in-out infinite; }
+.ai .hit.h2 { animation-delay: 0.9s; }
+
+@keyframes ai-ping { 0% { transform: scale(0.55); opacity: 0.9; } 75%, 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+@keyframes ai-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes ai-slideX { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
+@keyframes ai-wave { 0%, 100% { transform: skewY(0); } 50% { transform: skewY(5deg); } }
+@keyframes ai-smoke { 0% { transform: translateY(0); opacity: 0.9; } 100% { transform: translateY(-7px); opacity: 0; } }
+@keyframes ai-flicker { 0%, 100% { opacity: 1; } 92% { opacity: 1; } 93% { opacity: 0.4; } 94% { opacity: 1; } 96% { opacity: 0.6; } 97% { opacity: 1; } }
+@keyframes ai-toss { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes ai-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes ai-hit { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-14deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ai .ping, .ai .hand, .ai .blink, .ai .twinkle, .ai .typing, .ai .slideX, .ai .wave, .ai .smoke,
+  .ai .steam, .ai .flicker, .ai .toss, .ai .wiggle, .ai .bob, .ai .hit, .ai .fly {
+    animation: none !important;
+  }
+}
