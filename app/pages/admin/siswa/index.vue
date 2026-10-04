@@ -228,25 +228,28 @@
     />
 
     <!-- DELETE CONFIRMATION MODAL -->
-    <div v-if="studentsStore.deleteConfirmStudent.value" class="modal-ov" @click.self="studentsStore.cancelDelete">
-      <div class="modal" role="dialog" aria-modal="true" style="max-width:420px">
-        <div class="modal-h">
-          <h3>Hapus Data Siswa?</h3>
-          <button class="icon-btn" type="button" aria-label="Tutup" @click="studentsStore.cancelDelete">
-            <AdminIcon name="x" size="18" />
-          </button>
-        </div>
-        <div class="modal-b" style="padding:16px 20px">
-          <p style="font-size:14px;color:var(--muted);line-height:1.6">
-            Apakah kamu yakin ingin menghapus data siswa <b>{{ studentsStore.deleteConfirmStudent.value.name }}</b> (NISN: {{ studentsStore.deleteConfirmStudent.value.nisn }})?
-          </p>
-        </div>
-        <div class="modal-f" style="padding:14px 20px;display:flex;justify-content:flex-end;gap:10px">
-          <button class="btn btn-ghost btn-sm" type="button" @click="studentsStore.cancelDelete">Batal</button>
-          <button class="btn btn-danger btn-sm" type="button" @click="studentsStore.executeDelete">Hapus Siswa</button>
+    <Teleport to="body">
+      <div v-if="studentsStore.deleteConfirmStudent.value" class="modal-root-ov" @click.self="studentsStore.cancelDelete">
+        <div class="modal-backdrop" @click="studentsStore.cancelDelete"></div>
+        <div class="modal-card" role="dialog" aria-modal="true" style="max-width:440px">
+          <div class="modal-card-h">
+            <h3 style="font-size:17px;margin:0;font-weight:700;color:var(--navy-900)">Hapus Data Siswa?</h3>
+            <button class="icon-btn" type="button" aria-label="Tutup" @click="studentsStore.cancelDelete">
+              <AdminIcon name="x" size="18" />
+            </button>
+          </div>
+          <div class="modal-card-b" style="padding:18px 22px">
+            <p style="font-size:14px;color:var(--muted);line-height:1.6;margin:0">
+              Apakah kamu yakin ingin menghapus data siswa <b style="color:var(--ink)">{{ studentsStore.deleteConfirmStudent.value.name }}</b> (NISN: {{ studentsStore.deleteConfirmStudent.value.nisn }})?
+            </p>
+          </div>
+          <div class="modal-card-f" style="padding:14px 22px">
+            <button class="btn btn-ghost btn-sm" type="button" @click="studentsStore.cancelDelete">Batal</button>
+            <button class="btn btn-danger btn-sm" type="button" @click="studentsStore.executeDelete">Hapus Siswa</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </section>
 </template>
 
@@ -291,78 +294,23 @@ const handleExport = () => {
 </script>
 
 <style scoped>
-.card-kpi {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-}
-.kpi-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-.kpi-val {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--ink);
-  letter-spacing: -0.5px;
-  line-height: 1.1;
-  margin-bottom: 4px;
-}
-.kpi-sub {
-  font-size: 12px;
-  color: var(--muted);
-}
-.table-wrap {
-  overflow-x: auto;
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13.5px;
-}
-.data-table th {
-  background: #f8fafc;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  border-bottom: 1px solid var(--line);
-}
-.data-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-}
-.data-table tr:hover td {
-  background: #f8fafc;
-}
-.gender-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 12px;
-}
-.tag-l {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-.tag-p {
-  background: #fce7f3;
-  color: #be185d;
-}
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
+.card-kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); }
+.kpi-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+.kpi-val { font-size: 28px; font-weight: 800; color: var(--ink); letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 4px; }
+.kpi-sub { font-size: 12px; color: var(--muted); }
+.table-wrap { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.data-table th { background: #f8fafc; padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+.data-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.data-table tr:hover td { background: #f8fafc; }
+.gender-tag { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 8px; font-weight: 700; font-size: 12px; }
+.tag-l { background: #dbeafe; color: #1d4ed8; }
+.tag-p { background: #fce7f3; color: #be185d; }
+.font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.modal-root-ov { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(2, 8, 23, 0.68); backdrop-filter: blur(4px); z-index: 1; }
+.modal-card { position: relative; z-index: 2; width: 100%; background: #fff; border-radius: 18px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; overflow: hidden; margin: auto; }
+.modal-card-h { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.modal-card-b { padding: 20px 22px; }
+.modal-card-f { border-top: 1px solid var(--line); padding: 14px 22px; display: flex; justify-content: flex-end; gap: 10px; }
 </style>
