@@ -848,6 +848,223 @@ export const useAdminStudents = () => {
     selectedRfid.value = 'all'
   }
 
+  // Import modal state
+  const isImportModalOpen = ref<boolean>(false)
+
+  const openImportModal = () => {
+    isImportModalOpen.value = true
+  }
+
+  const closeImportModal = () => {
+    isImportModalOpen.value = false
+  }
+
+  const importStudents = (imported: StudentItem[], mode: 'append' | 'replace' = 'append') => {
+    if (mode === 'replace') {
+      students.value = [
+        ...students.value.filter(s => s.level !== grade.value),
+        ...imported
+      ]
+    } else {
+      students.value = [...imported, ...students.value]
+    }
+    closeImportModal()
+  }
+
+  const downloadTemplate = (targetGrade?: 'SMP' | 'SMK') => {
+    const lvl = targetGrade || grade.value
+    const headers = [
+      'NIS',
+      'NISN',
+      'NIK',
+      'NoKK',
+      'Nama',
+      'Gender',
+      'Jenjang',
+      'Kelas',
+      'Jurusan',
+      'TempatLahir',
+      'TanggalLahir',
+      'Agama',
+      'Alamat',
+      'RT',
+      'RW',
+      'Kelurahan',
+      'Kecamatan',
+      'Kota',
+      'JenisTinggal',
+      'Transportasi',
+      'NoHPSiswa',
+      'NamaAyah',
+      'NIKAyah',
+      'TahunLahirAyah',
+      'PendidikanAyah',
+      'PekerjaanAyah',
+      'PenghasilanAyah',
+      'NoHPAyah',
+      'NamaIbu',
+      'NIKIbu',
+      'TahunLahirIbu',
+      'PendidikanIbu',
+      'PekerjaanIbu',
+      'PenghasilanIbu',
+      'NoHPIbu',
+      'SekolahAsal',
+      'NoIjazah',
+      'AnakKe',
+      'JmlSaudara',
+      'TinggiBadan',
+      'BeratBadan',
+      'LingkarKepala',
+      'JarakKM',
+      'Hobi',
+      'CitaCita',
+      'Status',
+      'RFID_UID',
+      'Presensi',
+      'TahunAngkatan'
+    ].join(',')
+
+    const sampleRows = lvl === 'SMP'
+      ? [
+          `"2627001","0103402651","3216061004110001","3216061203090101","AHMAD FARID","L","SMP","VII-A (Putra)","","BEKASI","2013-05-12","Islam","Jl. Musholla Assalam","04","01","Bahagia","Kec. Babelan","Kab. Bekasi","Bersama orang tua","Jalan kaki","081299881122","H. SYAMSUL","3216061405780101","1978","S1","PNS","Rp5.000.001 – Rp10.000.000","082210823033","FATIMAH","3216064711820101","1982","SMA / sederajat","Ibu Rumah Tangga","Tidak Berpenghasilan","082210823033","SDIT ATTAQWA BABELAN","DN-01/D-SD/2026/001","1","3","152","45","53","1","Futsal","Ustadz / Guru","Aktif","E280-1170-0000-0301","100","2026"`,
+          `"2627002","0103402652","3216061808110002","3216061203090102","NURUL AZIZAH","P","SMP","VII-B (Putri)","","BEKASI","2013-08-20","Islam","Kp. Ujung Harapan RT 02/05","02","05","Bahagia","Kec. Babelan","Kab. Bekasi","Bersama orang tua","Sepeda","085799881133","H. ABDULLAH","3216061405750102","1975","S1","Wiraswasta","Rp3.000.001 – Rp5.000.000","081388889999","SITI AMINAH","3216064711790102","1979","SMA / sederajat","Pedagang","Rp1.000.001 – Rp3.000.000","081388889999","MI ATTAQWA 15","DN-01/D-MI/2026/002","2","2","148","40","52","2","Membaca","Dokter","Aktif","E280-1170-0000-0302","100","2026"`
+        ]
+      : [
+          `"26270120001","3109254001","3216020911100001","3216021203090001","ADITYA PRATAMA","L","SMK","X. TKJ 1","TKJ","BEKASI","2010-02-15","Islam","UJUNG HARAPAN RT. 006/ 015","06","15","Bahagia","Kec. Babelan","Kab. Bekasi","Bersama orang tua","Sepeda motor","081299887701","RIDWAN","3216021405800001","1980","SMA / sederajat","Karyawan Swasta","Rp3.000.001 – Rp5.000.000","082210823033","NURJANAH","3216024711820001","1982","SMA / sederajat","Tidak bekerja","Tidak Berpenghasilan","082210823033","SMP IT BINA CENDEKIA ASSALAM (BCA)","DN-01/D-SMP/2026/011","1","2","165","52","54","2","Coding","Network Engineer","Aktif","E280-1170-0000-0401","100","2026"`,
+          `"26270120002","3109254002","3216025305100002","3216021203090002","ANNISA RAHMAWATI","P","SMK","X. AK","AKL","BEKASI","2010-09-10","Islam","GREEN SWADAYA NO 12","08","04","Bahagia","Kec. Babelan","Kab. Bekasi","Bersama orang tua","Angkutan umum/bus/pete-pete","085811223344","BAMBANG","3216021111770002","1977","D3","Wiraswasta","Rp3.000.001 – Rp5.000.000","081345678901","SRI LESTARI","3216025908770002","1979","SMA / sederajat","Pedagang Kecil","Rp1.000.001 – Rp3.000.000","081345678901","SMP NEGERI 3 BABELAN","DN-01/D-SMP/2026/012","2","2","155","48","53","3","Menulis","Akuntan","Aktif","E280-1170-0000-0402","100","2026"`
+        ]
+
+    const csvContent = '\uFEFF' + headers + '\n' + sampleRows.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `template-import-siswa-${lvl.toLowerCase()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportStudentsCsv = (targetGrade?: 'SMP' | 'SMK') => {
+    const lvl = targetGrade || grade.value
+    const list = students.value.filter(s => s.level === lvl)
+
+    const headers = [
+      'ID',
+      'NIS',
+      'NISN',
+      'NIK',
+      'NoKK',
+      'Nama',
+      'Gender',
+      'Jenjang',
+      'Kelas',
+      'Jurusan',
+      'TempatLahir',
+      'TanggalLahir',
+      'Agama',
+      'Alamat',
+      'RT',
+      'RW',
+      'Kelurahan',
+      'Kecamatan',
+      'Kota',
+      'JenisTinggal',
+      'Transportasi',
+      'NoHPSiswa',
+      'NamaAyah',
+      'NIKAyah',
+      'TahunLahirAyah',
+      'PendidikanAyah',
+      'PekerjaanAyah',
+      'PenghasilanAyah',
+      'NoHPAyah',
+      'NamaIbu',
+      'NIKIbu',
+      'TahunLahirIbu',
+      'PendidikanIbu',
+      'PekerjaanIbu',
+      'PenghasilanIbu',
+      'NoHPIbu',
+      'SekolahAsal',
+      'NoIjazah',
+      'AnakKe',
+      'JmlSaudara',
+      'TinggiBadan',
+      'BeratBadan',
+      'LingkarKepala',
+      'JarakKM',
+      'Hobi',
+      'CitaCita',
+      'Status',
+      'RFID_UID',
+      'Presensi',
+      'TahunAngkatan'
+    ].join(',')
+
+    const rows = list.map(s => [
+      `"${s.id}"`,
+      `"${s.nis || ''}"`,
+      `"${s.nisn}"`,
+      `"${s.nik || ''}"`,
+      `"${s.noKk || ''}"`,
+      `"${s.name}"`,
+      `"${s.gender}"`,
+      `"${s.level}"`,
+      `"${s.className}"`,
+      `"${s.major || ''}"`,
+      `"${s.birthPlace || ''}"`,
+      `"${s.birthDate || ''}"`,
+      `"${s.religion || 'Islam'}"`,
+      `"${s.address || ''}"`,
+      `"${s.rt || ''}"`,
+      `"${s.rw || ''}"`,
+      `"${s.village || ''}"`,
+      `"${s.district || ''}"`,
+      `"${s.city || ''}"`,
+      `"${s.livingType || ''}"`,
+      `"${s.transportation || ''}"`,
+      `"${s.phone || ''}"`,
+      `"${s.fatherName || ''}"`,
+      `"${s.fatherNik || ''}"`,
+      `"${s.fatherBirthYear || ''}"`,
+      `"${s.fatherEducation || ''}"`,
+      `"${s.fatherJob || ''}"`,
+      `"${s.fatherIncome || ''}"`,
+      `"${s.fatherPhone || ''}"`,
+      `"${s.motherName || ''}"`,
+      `"${s.motherNik || ''}"`,
+      `"${s.motherBirthYear || ''}"`,
+      `"${s.motherEducation || ''}"`,
+      `"${s.motherJob || ''}"`,
+      `"${s.motherIncome || ''}"`,
+      `"${s.motherPhone || ''}"`,
+      `"${s.prevSchool || ''}"`,
+      `"${s.prevDiplomaNo || ''}"`,
+      `"${s.birthOrder || ''}"`,
+      `"${s.siblingsCount || ''}"`,
+      `"${s.height || ''}"`,
+      `"${s.weight || ''}"`,
+      `"${s.headCircumference || ''}"`,
+      `"${s.distanceKm || ''}"`,
+      `"${s.hobby || ''}"`,
+      `"${s.ambition || ''}"`,
+      `"${s.status}"`,
+      `"${s.rfidUid || ''}"`,
+      `"${s.attendancePct}"`,
+      `"${s.entryYear}"`
+    ].join(',')).join('\n')
+
+    const csvContent = '\uFEFF' + headers + '\n' + rows
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `data-induk-siswa-${lvl.toLowerCase()}-${Date.now()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return {
     grade,
     students,
@@ -863,6 +1080,7 @@ export const useAdminStudents = () => {
     selectedRfid,
     detailModalStudent,
     isFormModalOpen,
+    isImportModalOpen,
     formModalMode,
     formStudent,
     deleteConfirmStudent,
@@ -872,6 +1090,11 @@ export const useAdminStudents = () => {
     openAddModal,
     openEditModal,
     closeFormModal,
+    openImportModal,
+    closeImportModal,
+    importStudents,
+    downloadTemplate,
+    exportStudentsCsv,
     saveStudent,
     confirmDelete,
     cancelDelete,
