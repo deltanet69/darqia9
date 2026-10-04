@@ -31,6 +31,7 @@
       :grade="cbt.grade.value"
       :remaining-time="cbt.remainingTime.value"
       :is-saving="cbt.isSaving.value"
+      :is-timer-frozen="cbt.isTimerFrozen.value"
       :sections="cbt.sections"
       :questions="cbt.questions.value"
       :cur-question="cbt.curQuestion.value"

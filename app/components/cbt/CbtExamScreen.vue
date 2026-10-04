@@ -1,6 +1,11 @@
 <template>
   <section id="screen-exam" class="screen" :class="{ active: screen === 'exam' }">
     <div class="exam-sticky">
+      <div v-if="isTimerFrozen" style="background:#FEF3C7;border-bottom:1px solid #FCD34D;color:#92400E;padding:10px 20px;text-align:center;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Ujian sedang dibekukan sementara oleh pengawas. Timer ujian dijeda.</span>
+      </div>
+
       <div class="exam-top">
         <div class="inner">
           <div class="exam-brand">
@@ -185,6 +190,7 @@ defineProps<{
   grade: string
   remainingTime: number
   isSaving: boolean
+  isTimerFrozen: boolean
   sections: SectionItem[]
   questions: QuestionItem[]
   curQuestion: QuestionItem
