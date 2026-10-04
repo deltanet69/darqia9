@@ -132,7 +132,7 @@
             </label>
 
             <div class="cta-sticky">
-              <button class="btn btn-primary btn-go" :disabled="!agreeStart" @click="startExam"><span>Mulai Ujian</span>
+              <button type="button" class="btn btn-primary btn-go" :disabled="!agreeStart" @click="startExam"><span>Mulai Ujian</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20" fill="currentColor" stroke="none"/></svg>
               </button>
             </div>
@@ -265,7 +265,7 @@
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
                 <span>{{ qIdx + 1 }}/{{ totalQuestions }}</span>
               </button>
-              <button class="nav-btn next" id="btn-next" @click="qIdx === totalQuestions - 1 ? goReview() : goTo(qIdx + 1)">
+              <button type="button" class="nav-btn next" id="btn-next" @click="handleNextClick">
                 <span class="nb-t">{{ qIdx === totalQuestions - 1 ? 'Periksa & Kumpulkan' : 'Berikutnya' }}</span>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
               </button>
@@ -398,8 +398,8 @@
             </label>
 
             <div class="cta-sticky">
-              <button class="btn btn-ghost" style="margin-bottom:10px" @click="screen = 'exam'">Kembali ke Soal</button>
-              <button class="btn btn-primary btn-go" :disabled="!submitAgree" @click="attemptSubmit">Kumpulkan Jawaban</button>
+              <button type="button" class="btn btn-ghost" style="margin-bottom:10px" @click="screen = 'exam'">Kembali ke Soal</button>
+              <button type="button" class="btn btn-primary btn-go" :disabled="!submitAgree" @click="attemptSubmit">Kumpulkan Jawaban</button>
             </div>
           </div>
         </div>
@@ -450,22 +450,24 @@
     <div id="toast" :class="{ show: toastMsg !== '' }">{{ toastMsg }}</div>
 
     <!-- MODAL -->
-    <div id="modal-root" v-if="modal.show">
-      <div class="modal-back" @click="onModalBackClick">
-        <div class="modal">
-          <h3>{{ modal.title }}</h3>
-          <p v-html="modal.desc"></p>
-          <div v-if="modal.requiresPin" style="margin-bottom:20px">
-            <input type="password" v-model="modal.pin" class="inp" placeholder="Masukkan kata sandi pengawas" autocomplete="off" />
-            <div v-if="modal.pinError" style="color:var(--red);font-size:12px;margin-top:6px;font-weight:700">Kata sandi pengawas salah!</div>
-          </div>
-          <div class="mrow">
-            <button v-if="modal.cancelText" class="btn btn-ghost" @click="closeModal">{{ modal.cancelText }}</button>
-            <button v-if="!modal.fatal" class="btn" :class="modal.btnClass || 'btn-primary'" @click="handleModalOk">{{ modal.okText }}</button>
+    <Teleport to="body">
+      <div id="modal-root" v-if="modal.show" class="cbt-page cbt-modal-portal" :data-theme="store.grade">
+        <div class="modal-back" @click.self="onModalBackClick">
+          <div class="modal">
+            <h3>{{ modal.title }}</h3>
+            <p v-html="modal.desc"></p>
+            <div v-if="modal.requiresPin" style="margin-bottom:20px">
+              <input type="password" v-model="modal.pin" class="inp" placeholder="Masukkan kata sandi pengawas" autocomplete="off" />
+              <div v-if="modal.pinError" style="color:var(--red);font-size:12px;margin-top:6px;font-weight:700">Kata sandi pengawas salah!</div>
+            </div>
+            <div class="mrow">
+              <button type="button" v-if="modal.cancelText" class="btn btn-ghost" @click="closeModal">{{ modal.cancelText }}</button>
+              <button type="button" v-if="!modal.fatal" class="btn" :class="modal.btnClass || 'btn-primary'" @click="handleModalOk">{{ modal.okText }}</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -757,14 +759,19 @@ const doLogin = () => {
 }
 
 const startExam = () => {
-  openModal({
-    title: 'Mulai ujian sekarang?',
-    desc: 'Timer <b>90 menit</b> akan langsung berjalan dan soal akan ditampilkan. Pastikan koneksi internet stabil.',
-    okText: 'Mulai sekarang',
-    cancelText: 'Batal',
-    btnClass: 'btn-primary',
-    onOk: beginExam
-  })
+  if (!agreeStart.value) {
+    triggerToast('Centang persetujuan tata tertib terlebih dahulu.')
+    return
+  }
+  beginExam()
+}
+
+const handleNextClick = () => {
+  if (qIdx.value === totalQuestions - 1) {
+    goReview()
+  } else {
+    goTo(qIdx.value + 1)
+  }
 }
 
 const beginExam = () => {
@@ -918,37 +925,22 @@ const goToFromReview = (i: number) => {
 }
 
 const attemptSubmit = () => {
-  const unCount = totalQuestions - answeredCount.value
-  if (unCount > 0) {
-    openModal({
-      title: 'Belum bisa dikumpulkan',
-      desc: `Masih ada <b>${unCount} soal</b> yang belum dijawab. Pada mode produksi, tombol kumpulkan aktif setelah semua soal terjawab.`,
-      okText: 'Tetap kumpulkan (demo)',
-      cancelText: 'Batal',
-      btnClass: 'btn-danger',
-      onOk: () => doSubmit(false)
-    })
+  if (!submitAgree.value) {
+    triggerToast('Centang pernyataan yakin mengumpulkan terlebih dahulu.')
     return
   }
-  openModal({
-    title: 'Kumpulkan jawaban?',
-    desc: 'Pastikan semua jawaban sudah benar. Jawaban <b>tidak dapat diubah</b> setelah dikumpulkan.',
-    okText: 'Ya, kumpulkan',
-    cancelText: 'Batal',
-    btnClass: 'btn-primary',
-    onOk: () => doSubmit(false)
-  })
+  const unCount = totalQuestions - answeredCount.value
+  if (unCount > 0) {
+    triggerToast(`Jawaban berhasil dikumpulkan (mode demo: ${unCount} soal belum dijawab).`, 3500)
+  } else {
+    triggerToast('Jawaban berhasil dikumpulkan!', 3000)
+  }
+  doSubmit(false)
 }
 
 const autoSubmit = () => {
   stopTimer()
-  openModal({
-    title: 'Waktu habis!',
-    desc: 'Jawabanmu dikumpulkan otomatis oleh sistem.',
-    okText: 'Lihat Hasil',
-    btnClass: 'btn-primary',
-    onOk: () => doSubmit(true)
-  })
+  doSubmit(true)
 }
 
 const doSubmit = (auto: boolean) => {
