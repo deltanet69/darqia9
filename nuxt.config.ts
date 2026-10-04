@@ -11,3 +11,4 @@ export default defineNuxtConfig({
     redirect: false
   }
 })
+
