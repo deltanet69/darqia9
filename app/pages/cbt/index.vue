@@ -1,5 +1,5 @@
 <template>
-  <div class="cbt-page" :data-theme="store.grade">
+  <div class="cbt-page" :data-theme="grade.toLowerCase()">
     <!-- ==================== SCREEN 1 : LOGIN ==================== -->
     <section id="screen-login" class="screen" :class="{ active: screen === 'login' }">
       <div class="login-hero">
@@ -354,7 +354,7 @@
               <div class="rstats">
                 <button class="rstat" :class="{ on: revFilter === 'ok' }" @click="revFilter = 'ok'"><span class="dot g"></span><div><b>{{ answeredCount }}</b><span class="lbl">Terjawab</span></div></button>
                 <button class="rstat" :class="{ on: revFilter === 'un' }" @click="revFilter = 'un'"><span class="dot r"></span><div><b>{{ totalQuestions - answeredCount }}</b><span class="lbl">Belum</span></div></button>
-                <button class="rstat" :class="{ on: revFilter === 'fl' }" @click="revFilter = 'fl'"><span class="dot a"></span><div><b>{{ flags.size }}</b><span class="lbl">Ragu-ragu</span></div></button>
+                <button class="rstat" :class="{ on: revFilter === 'fl' }" @click="revFilter = 'fl'"><span class="dot a"></span><div><b>{{ flaggedCount }}</b><span class="lbl">Ragu-ragu</span></div></button>
               </div>
               <div class="rsecs">
                 <div v-for="s in sections" :key="s.id" class="rsec">
@@ -451,7 +451,7 @@
 
     <!-- MODAL -->
     <Teleport to="body">
-      <div id="modal-root" v-if="modal.show" class="cbt-page cbt-modal-portal" :data-theme="store.grade">
+      <div id="modal-root" v-if="modal.show" class="cbt-page cbt-modal-portal" :data-theme="grade.toLowerCase()">
         <div class="modal-back" @click.self="onModalBackClick">
           <div class="modal">
             <h3>{{ modal.title }}</h3>
@@ -474,15 +474,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAdminSystemStore } from '~/composables/useAdminSystemStore'
+import { useAdminGrade } from '~/composables/useAdminGrade'
 
 definePageMeta({ layout: 'default' })
 
 const router = useRouter()
-const store = useAdminSystemStore()
+const grade = useAdminGrade()
 
 const jenjangText = computed<string>(() => {
-  return store.grade === 'smp' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9'
+  return grade.value === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9'
 })
 
 /* ---------- INTERFACES ---------- */
@@ -706,6 +706,7 @@ const answeredCount = computed<number>(() => {
 })
 
 const isFlagged = (i: number): boolean => flags.has(i)
+const flaggedCount = computed<number>(() => flags.size)
 
 const sectionDoneCount = (secId: string): number => {
   return secRange(secId).filter(isAnswered).length
