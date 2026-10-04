@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FilteredQuestionItem, SectionItem } from '~/composables/useCbtExam'
+import type { FilteredQuestionItem, SectionItem, RevFilterType } from '~/composables/useCbtExam'
 
 defineProps<{
   screen: string
@@ -97,7 +97,7 @@ defineProps<{
   flaggedCount: number
   totalQuestions: number
   sections: SectionItem[]
-  revFilter: string
+  revFilter: RevFilterType | string
   filteredQuestions: FilteredQuestionItem[]
   revFilterTitle: string
   submitAgree: boolean
@@ -109,7 +109,7 @@ defineProps<{
 }>()
 
 defineEmits<{
-  (e: 'update:revFilter', val: string): void
+  (e: 'update:revFilter', val: RevFilterType): void
   (e: 'update:submitAgree', val: boolean): void
   (e: 'go-to-from-review', idx: number): void
   (e: 'back-to-exam'): void

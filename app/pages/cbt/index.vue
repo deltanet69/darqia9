@@ -1,5 +1,5 @@
 <template>
-  <div class="cbt-page" :data-theme="cbt.grade.value.toLowerCase()">
+  <div class="cbt-page" :data-theme="cbt.gradeTheme.value">
     <!-- SCREEN 1 : LOGIN -->
     <CbtLoginScreen
       :screen="cbt.screen.value"
@@ -21,7 +21,7 @@
       :agree-start="cbt.agreeStart.value"
       :sec-range="cbt.secRange"
       @toggle-acc="cbt.toggleAcc"
-      @update:agree-start="cbt.agreeStart.value = $event"
+      @update:agree-start="cbt.setAgreeStart"
       @start-exam="cbt.startExam"
     />
 
@@ -59,7 +59,7 @@
       @text-input="cbt.onTextAnswerInput"
       @go-to="cbt.goTo"
       @open-mobile-palette="cbt.openMobilePalette"
-      @update:show-mobile-palette="cbt.showMobilePalette.value = $event"
+      @update:show-mobile-palette="cbt.setShowMobilePalette"
       @next="cbt.handleNextClick"
       @go-review="cbt.goReview"
     />
@@ -82,10 +82,10 @@
       :fmt-time="cbt.fmtTime"
       :section-done-count="cbt.sectionDoneCount"
       :sec-range="cbt.secRange"
-      @update:rev-filter="cbt.revFilter.value = $event"
-      @update:submit-agree="cbt.submitAgree.value = $event"
+      @update:rev-filter="cbt.setRevFilter"
+      @update:submit-agree="cbt.setSubmitAgree"
       @go-to-from-review="cbt.goToFromReview"
-      @back-to-exam="cbt.screen.value = 'exam'"
+      @back-to-exam="cbt.goToExamScreen"
       @attempt-submit="cbt.attemptSubmit"
     />
 

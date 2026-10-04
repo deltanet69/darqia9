@@ -25,6 +25,8 @@ export interface QuestionItem {
   videoTitle?: string
 }
 
+export type RevFilterType = 'all' | 'un' | 'fl' | 'ok'
+
 export interface FilteredQuestionItem {
   index: number
   kind: string
@@ -55,6 +57,10 @@ export interface LoginForm {
 export const useCbtExam = () => {
   const router = useRouter()
   const grade = useAdminGrade()
+
+  const gradeTheme = computed<string>(() => {
+    return (grade.value || 'smk').toLowerCase()
+  })
 
   const jenjangText = computed<string>(() => {
     return grade.value === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9'
@@ -729,8 +735,29 @@ export const useCbtExam = () => {
     stopAudio()
   }
 
+  const setRevFilter = (val: RevFilterType | string): void => {
+    revFilter.value = (val as RevFilterType) || 'all'
+  }
+
+  const setSubmitAgree = (val: boolean): void => {
+    submitAgree.value = val
+  }
+
+  const setAgreeStart = (val: boolean): void => {
+    agreeStart.value = val
+  }
+
+  const setShowMobilePalette = (val: boolean): void => {
+    showMobilePalette.value = val
+  }
+
+  const goToExamScreen = (): void => {
+    screen.value = 'exam'
+  }
+
   return {
     grade,
+    gradeTheme,
     jenjangText,
     sections,
     questions,
@@ -799,6 +826,11 @@ export const useCbtExam = () => {
     autoSubmit,
     doSubmit,
     resetToHome,
+    setRevFilter,
+    setSubmitAgree,
+    setAgreeStart,
+    setShowMobilePalette,
+    goToExamScreen,
     registerListeners,
     unregisterListeners
   }
