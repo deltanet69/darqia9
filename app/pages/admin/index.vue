@@ -2,8 +2,11 @@
   <div>
     <div class="page-head">
       <div>
-        <h2>Selamat datang, <span class="grad-name">Administrator</span></h2>
-        <p>{{ currentDate }} &middot; Berikut ringkasan operasional sekolah hari ini.</p>
+        <h2>
+          Selamat datang, <span class="grad-name">Administrator</span>
+          <span :style="{ background: grade === 'SMP' ? '#16a34a' : '#2563eb', color: '#fff', fontSize: '12px', fontWeight: 700, borderRadius: '6px', padding: '3px 10px', marginLeft: '10px', verticalAlign: 'middle', letterSpacing: '0.3px' }">{{ grade }}</span>
+        </h2>
+        <p>{{ currentDate }} &middot; Data {{ activeData.schoolName }}</p>
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-ghost btn-sm" id="d-dl">
@@ -22,10 +25,10 @@
         <div class="k-top">
           <span class="k-ic"><AdminIcon name="users" size="22"/></span>
           <span class="k-delta">
-            <AdminIcon name="tup" size="14"/>+12 semester ini
+            <AdminIcon name="tup" size="14"/>{{ activeData.kpi.siswaBaru }}
           </span>
         </div>
-        <div class="k-val">580</div>
+        <div class="k-val">{{ activeData.kpi.totalSiswa }}</div>
         <div class="k-lbl">Total Siswa</div>
       </div>
       
@@ -33,9 +36,9 @@
         <span class="shine"></span>
         <div class="k-top">
           <span class="k-ic"><AdminIcon name="ucheck" size="22"/></span>
-          <span class="k-delta">6 tendik &middot; 28 guru</span>
+          <span class="k-delta">{{ activeData.kpi.guruTendik }}</span>
         </div>
-        <div class="k-val">34</div>
+        <div class="k-val">{{ activeData.kpi.totalGuru }}</div>
         <div class="k-lbl">Guru &amp; Tendik</div>
       </div>
       
@@ -44,10 +47,10 @@
         <div class="k-top">
           <span class="k-ic"><AdminIcon name="cal" size="22"/></span>
           <span class="k-delta">
-            <AdminIcon name="tdn" size="14"/>12 alpa &middot; 5 izin
+            <AdminIcon name="tdn" size="14"/>{{ activeData.kpi.absenDetail }}
           </span>
         </div>
-        <div class="k-val">96%</div>
+        <div class="k-val">{{ activeData.kpi.kehadiranSiswa }}</div>
         <div class="k-lbl">Kehadiran Hari Ini</div>
       </div>
       
@@ -56,10 +59,10 @@
         <div class="k-top">
           <span class="k-ic"><AdminIcon name="wallet" size="22"/></span>
           <span class="k-delta">
-            <AdminIcon name="tup" size="14"/>+8.2% vs bln lalu
+            <AdminIcon name="tup" size="14"/>{{ activeData.kpi.pemasukanDelta }}
           </span>
         </div>
-        <div class="k-val">Rp 24.5M</div>
+        <div class="k-val">{{ activeData.kpi.pemasukanBulan }}</div>
         <div class="k-lbl">Pemasukan Bulan Ini</div>
       </div>
     </div>
@@ -206,13 +209,20 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import { useAdminGrade } from '~/composables/useAdminGrade'
+import { useAdminData } from '~/composables/useAdminData'
 
 definePageMeta({
   layout: 'admin',
   name: 'admin-dashboard'
 })
+
+const grade = useAdminGrade()
+const adminData = useAdminData()
+
+const activeData = computed(() => adminData.getGradeData(grade.value))
 
 const currentDate = computed(() => {
   const d = new Date()
@@ -221,3 +231,4 @@ const currentDate = computed(() => {
   return `${days[d.getDay()]}, ${String(d.getDate()).padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`
 })
 </script>
+

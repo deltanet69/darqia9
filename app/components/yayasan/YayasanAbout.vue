@@ -58,7 +58,7 @@
       </div>
 
       <!-- Institutional Transparency Banner (Dark Navy Panel) -->
-      <div 
+      <!-- <div 
         class="text-white rounded-[24px] p-[28px] sm:p-[36px] shadow-[0_24px_60px_rgba(10,42,92,.20)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-[24px]"
         style="background: linear-gradient(135deg, #0A2A5C 0%, #0D3470 100%); background-color: #0A2A5C;"
       >
@@ -82,7 +82,7 @@
             Hubungi Yayasan
           </a>
         </div>
-      </div>
+      </div> -->
     </div>
   </section>
 </template>

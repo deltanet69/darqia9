@@ -1,0 +1,224 @@
+﻿
+> VIEWS.users=function(){const f=F.users;
+    const roles=["all",...Object.keys(DB.perms)];
+    let list=DB.users.filter(u=>(f.role==="all"||u.role===f.role)&&(!f.q||u.nama.toLowerCase().includes(f.q.toLowerCase
+())||u.username.includes(f.q.toLowerCase())));
+    const per=10,pages=Math.max(1,Math.ceil(list.length/per));f.page=Math.min(f.page,pages);
+    const rows=list.slice((f.page-1)*per,f.page*per);
+    const rCls={"Super Admin":"p-rose","Admin Akademik":"p-blue","Admin Keuangan":"p-green","Guru":"p-violet","Wali 
+Kelas":"p-cyan","Staff TU":"p-gray"};
+    $("#view").innerHTML=`
+    <div class="page-head"><div><h2>Manajemen User</h2><p>${DB.users.length} akun Â· 
+${DB.users.filter(u=>u.status==="Aktif").length} aktif</p></div>
+      <button class="btn btn-primary btn-sm" id="us-add">${ic("plus",16)} Tambah User</button></div>
+    <div class="card"><div class="card-b" style="padding-bottom:0"><div class="toolbar">
+      <div class="inp"><span class="ic">${ic("search",17)}</span><input id="us-q" placeholder="Cari nama / 
+usernameâ€¦" value="${esc(f.q)}"></div>
+      <select class="sel" id="us-role">${roles.map(r=>`<option value="${r}"${r===f.role?" 
+selected":""}>${r==="all"?"Semua Peran":r}</option>`).join("")}</select></div></div>
+      <div class="tbl-wrap"><table class="tbl rt"><thead><tr><th>Pengguna</th><th>Peran</th><th>Status</th><th>Login 
+Terakhir</th><th style="text-align:right">Aksi</th></tr></thead>
+      <tbody>${rows.map(u=>`<tr><td><div class="row-user">${ava(u.nama)}<div><div 
+class="t-name">${esc(u.nama)}</div><div class="t-sub">@${esc(u.username)}</div></div></div></td>
+        <td><span class="pill ${rCls[u.role]||"p-gray"}">${u.role}</span></td>
+        <td><label class="sw"><input type="checkbox" data-ust="${u.id}"${u.status==="Aktif"?" 
+checked":""}${u.id==="U1"?" disabled":""}><span class="tr"></span></label></td>
+        <td style="font-size:12.5px;color:var(--muted)">${esc(u.login)}</td>
+        <td style="text-align:right"><button class="btn btn-ghost btn-sm" 
+data-u="${u.id}">${ic("eye",15)}</button></td></tr>`).join("")}</tbody></table></div>
+      <div class="pager"><span>${list.length} pengguna</span><div class="pg-btns"><button id="pg-prev"${f.page<=1?" 
+disabled":""}>â€¹</button>${Array.from({length:pages},(_,i)=>`<button data-pg="${i+1}" 
+class="${i+1===f.page?"on":""}">${i+1}</button>`).join("")}<button id="pg-next"${f.page>=pages?" 
+disabled":""}>â€º</button></div></div></div>`;
+>   const rer=()=>VIEWS.users();
+    $("#us-q").oninput=e=>{f.q=e.target.value;f.page=1;clearTimeout(window._usq);window._usq=setTimeout(rer,350)};
+    $("#us-role").onchange=e=>{f.role=e.target.value;f.page=1;rer()};
+    $$("#view [data-pg]").forEach(b=>b.onclick=()=>{f.page=+b.dataset.pg;rer()});
+    const 
+pv=$("#pg-prev"),nx=$("#pg-next");if(pv)pv.onclick=()=>{f.page--;rer()};if(nx)nx.onclick=()=>{f.page++;rer()};
+    $$("#view [data-ust]").forEach(sw=>sw.onchange=()=>{const u=DB.users.find(x=>x.id===sw.dataset.ust);
+      u.status=sw.checked?"Aktif":"Nonaktif";toast(`Akun ${u.nama.split(" ")[0]} 
+${sw.checked?"diaktifkan":"dinonaktifkan"}`)});
+    $$("#view [data-u]").forEach(b=>b.onclick=()=>userModal(b.dataset.u));
+    $("#us-add").onclick=()=>{openModal("Tambah User",`
+      <div class="field"><label>Nama Lengkap</label><div class="inp"><input id="nu-n" placeholder="cth: Dewi 
+Lestari"></div></div>
+      <div class="field"><label>Username</label><div class="inp"><input id="nu-u" placeholder="cth: 
+dewi.lestari"></div></div>
+      <div class="field"><label>Peran</label><div class="inp"><select 
+id="nu-r">${Object.keys(DB.perms).filter(r=>r!=="Super 
+Admin").map(r=>`<option>${r}</option>`).join("")}</select></div></div>`,
+      `<button class="btn btn-ghost btn-sm" data-close>Batal</button><button class="btn btn-primary btn-sm" 
+id="nu-save">${ic("check",15)} Simpan</button>`);
+      $("#nu-save").onclick=()=>{const n=$("#nu-n").value.trim(),u=$("#nu-u").value.trim();
+        if(!n||!u){toast("Lengkapi nama & username","info");return}
+        DB.users.push({id:"U"+Date.now(),username:u,nama:n,role:$("#nu-r").value,status:"Aktif",login:"Belum pernah 
+login"});
+        closeModal();rer();toast(`Akun ${n.split(" ")[0]} dibuat`)}};
+    hydrateIcons($("#view"));
+  };
+  
+  /* ---------- RBAC ---------- */
+> VIEWS.rbac=function(){
+    const role=F.rbacRole,perms=DB.perms[role],locked=role==="Super Admin";
+    const totalOn=Object.values(perms).flatMap(p=>Object.values(p)).filter(Boolean).length;
+    $("#view").innerHTML=`
+    <div class="page-head"><div><h2>Hak Akses (RBAC)</h2><p>Atur izin Lihat Â· Tambah Â· Ubah Â· Hapus per 
+peran</p></div>
+      <button class="btn btn-ghost btn-sm" id="rb-role-add">${ic("plus",16)} Peran Baru</button></div>
+    ${F.rbacDirty?`<div class="card" style="margin-bottom:16px;border-color:#fbbf24;background:#fffbeb"><div 
+class="card-b" style="display:flex;align-items:center;gap:12px;padding:14px 18px">
+      <span style="color:var(--amber)">${ic("alert",20)}</span><b style="font-size:13.5px;flex:1">Ada perubahan belum 
+disimpan untuk peran <b>${role}</b></b>
+      <button class="btn btn-ghost btn-sm" id="rb-cancel">Batal</button><button class="btn btn-primary btn-sm" 
+id="rb-save">${ic("check",15)} Simpan Perubahan</button></div></div>`:""}
+    <div class="toolbar">${Object.keys(DB.perms).map(r=>`<button class="chip${r===role?" on":""}" 
+data-role="${r}">${r}</button>`).join("")}</div>
+    <div class="grid g21">
+      <div class="card"><div class="card-h"><div><h3>Matriks Izin â€” ${role}</h3><div class="sub">${locked?"Akses 
+penuh, tidak dapat diubah":totalOn+" dari "+(DB.modules.length*4)+" izin aktif"}</div></div></div>
+        <div class="tbl-wrap"><table class="tbl" 
+style="min-width:520px"><thead><tr><th>Modul</th>${DB.actions.map(a=>`<th 
+style="text-align:center">${a}</th>`).join("")}</tr></thead>
+        <tbody>${DB.modules.map(m=>`<tr><td class="t-name">${m}</td>${DB.actions.map(a=>`
+          <td style="text-align:center"><label class="sw" style="margin:0 auto"><input type="checkbox" data-m="${m}" 
+data-a="${a}"${perms[m][a]?" checked":""}${locked?" disabled":""}><span 
+class="tr"></span></label></td>`).join("")}</tr>`).join("")}</tbody></table></div></div>
+      <div>
+        <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>Ringkasan Peran</h3></div><div 
+class="card-b" style="padding-top:8px">
+          ${Object.keys(DB.perms).map(r=>{const 
+p=DB.perms[r],on=Object.values(p).flatMap(x=>Object.values(x)).filter(Boolean).length;
+            return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid 
+var(--line-2)">
+            <b style="font-size:13px;flex:1">${r}</b><span 
+style="font-size:12px;color:var(--muted)">${on}/${DB.modules.length*4}</span>
+            <div class="prog" style="width:90px"><i 
+style="width:${on/(DB.modules.length*4)*100}%"></i></div></div>`}).join("")}
+        </div></div>
+        <div class="card"><div class="card-b" style="font-size:13px;color:var(--muted);line-height:1.7">
+          <b style="color:var(--ink)">${ic("shield",15)} Cara kerja</b><br>
+          Setiap peran punya 4 jenis izin per modul. Perubahan hanya berlaku setelah tombol <b>Simpan</b> ditekan dan 
+tercatat di Log Aktivitas.</div></div>
+      </div>
+    </div>`;
+>   $$("#view [data-role]").forEach(b=>b.onclick=()=>{F.rbacRole=b.dataset.role;F.rbacDirty=false;VIEWS.rbac()});
+>   $$("#view [data-m]").forEach(sw=>sw.onchange=()=>{perms[sw.dataset.m][sw.dataset.a]=sw.checked?1:0;F.rbacDirty=true
+;VIEWS.rbac()});
+>   const sv=$("#rb-save");if(sv)sv.onclick=()=>{F.rbacDirty=false;DB.logs.unshift({waktu:new 
+Date(),nama:ME.nama,role:ME.role,aksi:"mengubah hak akses peran "+role,modul:"RBAC"});VIEWS.rbac();toast("Hak akses 
+"+role+" disimpan & tercatat di log")};
+>   const cc=$("#rb-cancel");if(cc)cc.onclick=()=>{F.rbacDirty=false;VIEWS.rbac()};
+    $("#rb-role-add").onclick=()=>toast("Form peran baru (demo)","info");
+    hydrateIcons($("#view"));
+  };
+  
+  /* ---------- LOG ---------- */
+> VIEWS.log=function(){const f=F.log;
+    const mods=["all",...new Set(DB.logs.map(l=>l.modul))];
+    const list=DB.logs.filter(l=>(f.modul==="all"||l.modul===f.modul)&&(!f.q||(l.nama+l.aksi).toLowerCase().includes(f.
+q.toLowerCase())));
+    const 
+mCls={Absensi:"p-blue",Keuangan:"p-green",Nilai:"p-violet",CBT:"p-amber",Pengguna:"p-rose",RBAC:"p-cyan","Konten 
+Web":"p-blue",Tabungan:"p-green",Kelas:"p-violet",Laporan:"p-gray"};
+    $("#view").innerHTML=`
+    <div class="page-head"><div><h2>Log Aktivitas</h2><p>Jejak audit â€” siapa melakukan apa, kapan</p></div>
+      <button class="btn btn-ghost btn-sm" id="lg-exp">${ic("dl",16)} Ekspor Log</button></div>
+    <div class="card"><div class="card-b" style="padding-bottom:0"><div class="toolbar">
+      <div class="inp"><span class="ic">${ic("search",17)}</span><input id="lg-q" placeholder="Cari user / aksiâ€¦" 
+value="${esc(f.q)}"></div>
+      <select class="sel" id="lg-m">${mods.map(m=>`<option value="${m}"${m===f.modul?" 
+selected":""}>${m==="all"?"Semua Modul":m}</option>`).join("")}</select>
+      <span style="font-size:13px;color:var(--muted);margin-left:auto">${list.length} aktivitas</span></div></div>
+      <div class="card-b" style="padding-top:6px">
+      ${list.slice(0,40).map(l=>`<div style="display:flex;gap:13px;padding:12px 0;border-bottom:1px solid 
+var(--line-2)">
+        ${ava(l.nama,38)}
+        <div style="flex:1;min-width:0"><div style="font-size:13.5px"><b>${esc(l.nama)}</b> <span 
+style="color:var(--muted)">${esc(l.aksi)}</span></div>
+        <div style="font-size:12px;color:var(--faint);margin-top:3px">${esc(l.role)} Â· ${timeAgo(l.waktu)} Â· 
+${l.waktu.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</div></div>
+        <span class="pill ${mCls[l.modul]||"p-gray"}" 
+style="align-self:flex-start">${esc(l.modul)}</span></div>`).join("")||`<div class="empty">Tidak ada aktivitas yang 
+cocok.</div>`}
+      </div></div>`;
+>   const rer=()=>VIEWS.log();
+    $("#lg-q").oninput=e=>{f.q=e.target.value;clearTimeout(window._lgq);window._lgq=setTimeout(rer,350)};
+    $("#lg-m").onchange=e=>{f.modul=e.target.value;rer()};
+    $("#lg-exp").onclick=()=>toast("Log aktivitas diekspor (CSV)","info");
+    hydrateIcons($("#view"));
+  };
+  
+  /* ---------- PROFILE ---------- */
+  VIEWS.profile=function(){
+    $("#view").innerHTML=`
+    <div class="page-head"><div><h2>Profil Saya</h2><p>Detail akun & preferensi</p></div></div>
+    <div class="grid g21">
+      <div>
+        <div class="card" style="margin-bottom:18px;overflow:hidden">
+          <div style="height:110px;background:linear-gradient(120deg,#0a1f44,#1d4ed8 60%,#3b82f6)"></div>
+          <div class="card-b" style="padding-top:0">
+            <div style="display:flex;align-items:flex-end;gap:14px;margin:-34px 0 14px">${ava(ME.nama,72)}
+              <div style="padding-bottom:6px"><b style="font-size:19px">${esc(ME.nama)}</b><div 
+style="font-size:13px;color:var(--muted)">@${esc(ME.username)} Â· <span class="pill p-rose" 
+style="margin-left:4px">${esc(ME.role)}</span></div></div></div>
+            <div class="grid g2" style="gap:10px;font-size:13.5px">
+              <div class="stat-mini"><span>NIP</span><b style="font-size:14px">${ME.nip}</b></div>
+              <div class="stat-mini"><span>Email</span><b style="font-size:14px">${esc(ME.email)}</b></div>
+              <div class="stat-mini"><span>No. HP</span><b style="font-size:14px">${esc(ME.hp)}</b></div>
+              <div class="stat-mini"><span>Alamat</span><b style="font-size:14px">${esc(ME.alamat)}</b></div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:10px"><button class="btn btn-primary btn-sm" 
+id="pf-edit">${ic("pencil",15)} Ubah Profil</button></div>
+          </div></div>
+        <div class="card"><div class="card-h"><h3>Statistik Akun</h3></div><div class="card-b">
+          <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+            <div class="stat-mini"><b>1.284</b><span>Total login</span></div>
+            <div class="stat-mini"><b>96</b><span>Aksi bulan ini</span></div>
+            <div class="stat-mini"><b>12</b><span>Laporan dibuat</span></div></div></div></div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:18px"><div class="card-h"><h3>Keamanan</h3><div class="sub">Terakhir 
+diubah 45 hari lalu</div></div>
+          <div class="card-b"><div class="field"><label>Kata sandi baru</label><div class="inp"><span 
+class="ic">${ic("lock",17)}</span><input type="password" id="pw1" placeholder="Minimal 8 karakter"></div></div>
+          <div class="field"><label>Konfirmasi kata sandi</label><div class="inp"><span 
+class="ic">${ic("lock",17)}</span><input type="password" id="pw2" placeholder="Ulangi kata sandi"></div></div>
+          <button class="btn btn-primary btn-sm" id="pw-save" style="width:100%">${ic("check",15)} Perbarui Kata 
+Sandi</button></div></div>
+        <div class="card"><div class="card-h"><h3>Preferensi Notifikasi</h3></div><div class="card-b" 
+style="padding-top:8px">
+          ${[["Absensi harian","Ringkasan kehadiran setiap pagi",1],["Transaksi keuangan","Notifikasi setiap transaksi 
+dicatat",1],["Ujian CBT","Jadwal & hasil ujian",1],["Pengumuman","Info dari modul konten web",0]].map((n,i)=>`
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-2)">
+            <div style="flex:1"><b style="font-size:13.5px">${n[0]}</b><div 
+style="font-size:12.5px;color:var(--muted)">${n[1]}</div></div>
+            <label class="sw"><input type="checkbox"${n[2]?" checked":""} data-pref="${i}"><span 
+class="tr"></span></label></div>`).join("")}
+        </div></div>
+      </div>
+    </div>`;
+    $("#pf-edit").onclick=()=>{openModal("Ubah Profil",`
+      <div class="field"><label>Nama Lengkap</label><div class="inp"><input id="ep-n" 
+value="${esc(ME.nama)}"></div></div>
+      <div class="field"><label>Email</label><div class="inp"><input id="ep-e" value="${esc(ME.email)}"></div></div>
+      <div class="field"><label>No. HP</label><div class="inp"><input id="ep-h" value="${esc(ME.hp)}"></div></div>`,
+      `<button class="btn btn-ghost btn-sm" data-close>Batal</button><button class="btn btn-primary btn-sm" 
+id="ep-save">${ic("check",15)} Simpan</button>`);
+      $("#ep-save").onclick=()=>{ME.nama=$("#ep-n").value.trim()||ME.nama;ME.email=$("#ep-e").value.trim();ME.hp=$("#ep
+-h").value.trim();
+        $("#sb-uname").textContent=ME.nama;$("#btn-avatar").textContent=ME.nama.split(" 
+").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+        closeModal();VIEWS.profile();toast("Profil diperbarui")}};
+    $("#pw-save").onclick=()=>{const a=$("#pw1").value,b=$("#pw2").value;
+      if(a.length<8){toast("Kata sandi minimal 8 karakter","info");return}
+      if(a!==b){toast("Konfirmasi tidak cocok","info");return}
+      $("#pw1").value=$("#pw2").value="";toast("Kata sandi diperbarui")};
+    $$("#view [data-pref]").forEach(sw=>sw.onchange=()=>toast("Preferensi disimpan","info"));
+    hydrateIcons($("#view"));
+  };
+  </script>
+  </body>
+  </html>
+
+
