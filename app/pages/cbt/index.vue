@@ -198,12 +198,12 @@
               <!-- Audio card -->
               <div v-if="curQuestion.type === 'audio'" class="audio-card" :class="{ playing: audioPlaying }">
                 <div class="audio-top">
-                  <button class="play-btn" @click="toggleAudio(curQuestion)" aria-label="Putar audio">
+                  <button type="button" class="play-btn" @click="toggleAudio(curQuestion)" aria-label="Putar audio">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 20 12 7 20"/></svg>
                   </button>
                   <div class="audio-meta">
-                    <div class="a1">{{ curQuestion.audioTitle }}</div>
-                    <div class="a2">{{ curQuestion.audioSub }}</div>
+                    <div class="a1">{{ curQuestion.audioTitle || '' }}</div>
+                    <div class="a2">{{ curQuestion.audioSub || '' }}</div>
                   </div>
                 </div>
                 <div class="eq"><i v-for="n in 28" :key="n"></i></div>
@@ -213,16 +213,16 @@
               <!-- Video card -->
               <div v-if="curQuestion.type === 'video'" class="video-ph">
                 <div class="video-thumb">
-                  <span class="dur">{{ curQuestion.videoDur }}</span>
-                  <button class="play-btn" @click="triggerToast('Mode demo: video ujian akan diputar di sini.')" aria-label="Putar video">
+                  <span class="dur">{{ curQuestion.videoDur || '00:00' }}</span>
+                  <button type="button" class="play-btn" @click="triggerToast('Mode demo: video ujian akan diputar di sini.')" aria-label="Putar video">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 20 12 7 20"/></svg>
                   </button>
-                  <p>{{ curQuestion.videoTitle }} &bull; mode demo</p>
+                  <p>{{ curQuestion.videoTitle || 'Video Ujian' }} &bull; mode demo</p>
                 </div>
               </div>
 
-              <div class="opts">
-                <button v-for="(op, oi) in curQuestion.options" :key="oi" class="opt" :class="{ sel: answers[qIdx] === String(oi) }" @click="selectOption(qIdx, oi)">
+              <div class="opts" v-if="curQuestion.options && curQuestion.options.length">
+                <button type="button" v-for="(op, oi) in (curQuestion.options || [])" :key="oi" class="opt" :class="{ sel: answers[qIdx] === String(oi) }" @click="selectOption(qIdx, oi)">
                   <span class="letter">{{ letters[oi] }}</span>
                   <span class="txt">{{ op }}</span>
                 </button>
@@ -235,8 +235,8 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
                 <span>Soal ini memiliki <b>lebih dari satu</b> jawaban benar. Ketuk semua pilihan yang menurutmu benar.</span>
               </div>
-              <div class="opts">
-                <button v-for="(op, oi) in curQuestion.options" :key="oi" class="opt multi" :class="{ sel: isOptionSelected(qIdx, oi) }" @click="selectOption(qIdx, oi)">
+              <div class="opts" v-if="curQuestion.options && curQuestion.options.length">
+                <button type="button" v-for="(op, oi) in (curQuestion.options || [])" :key="oi" class="opt multi" :class="{ sel: isOptionSelected(qIdx, oi) }" @click="selectOption(qIdx, oi)">
                   <span class="letter">{{ isOptionSelected(qIdx, oi) ? '✓' : letters[oi] }}</span>
                   <span class="txt">{{ op }}</span>
                 </button>
@@ -246,7 +246,7 @@
             <!-- Short text / Essay -->
             <template v-else-if="curQuestion.type === 'short' || curQuestion.type === 'essay'">
               <div class="ta-wrap">
-                <textarea class="ta" :class="{ tall: curQuestion.type === 'essay' }" v-model="answers[qIdx]" @input="onTextAnswerInput" :placeholder="curQuestion.placeholder"></textarea>
+                <textarea class="ta" :class="{ tall: curQuestion.type === 'essay' }" v-model="answers[qIdx]" @input="onTextAnswerInput" :placeholder="curQuestion.placeholder || 'Tulis jawabanmu di sini...'"></textarea>
                 <div class="ta-foot">
                   <span class="words"><b>{{ countWords(answers[qIdx]) }}</b> kata <template v-if="curQuestion.minWords">&bull; minimal {{ curQuestion.minWords }} kata</template></span>
                   <span>Jawaban tersimpan otomatis</span>
@@ -481,12 +481,63 @@ definePageMeta({ layout: 'default' })
 const router = useRouter()
 const store = useAdminSystemStore()
 
-const jenjangText = computed(() => {
+const jenjangText = computed<string>(() => {
   return store.grade === 'smp' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9'
 })
 
+/* ---------- INTERFACES ---------- */
+interface SectionItem {
+  id: string
+  title: string
+  short: string
+  tint: string
+  icon: string
+  desc: string
+}
+
+interface QuestionItem {
+  sec: string
+  type: string
+  text: string
+  options?: string[]
+  placeholder?: string
+  minWords?: number
+  audioTitle?: string
+  audioSub?: string
+  audioScript?: string
+  videoDur?: string
+  videoTitle?: string
+}
+
+interface FilteredQuestionItem {
+  index: number
+  kind: string
+  pillLabel: string
+  secTitle: string
+}
+
+interface ModalState {
+  show: boolean
+  title: string
+  desc: string
+  okText: string
+  cancelText: string
+  btnClass: string
+  onOk: (() => void) | null
+  requiresPin: boolean
+  pin: string
+  pinError: boolean
+  fatal: boolean
+}
+
+interface LoginForm {
+  nis: string
+  pass: string
+  kode: string
+}
+
 /* ---------- DATA ---------- */
-const sections = [
+const sections: SectionItem[] = [
   {
     id: 'pg',
     title: 'Pilihan Ganda',
@@ -521,7 +572,7 @@ const sections = [
   }
 ]
 
-const questions = [
+const questions: QuestionItem[] = [
   { sec:'pg', type:'single', text:'Perangkat yang berfungsi menghubungkan dua jaringan yang berbeda dan menentukan jalur terbaik untuk paket data adalah \u2026.', options:['Switch','Router','Hub','Repeater','Access point'] },
   { sec:'pg', type:'single', text:'Alamat IP 192.168.10.25 termasuk ke dalam IP kelas \u2026.', options:['A','B','C','D','E'] },
   { sec:'pg', type:'single', text:'Lapisan pada model OSI yang bertanggung jawab atas pengalamatan logis (IP addressing) adalah lapisan \u2026.', options:['Physical','Data Link','Network','Transport','Session'] },
@@ -546,45 +597,45 @@ const questions = [
   }
 ]
 
-const letters = ['A','B','C','D','E','F']
-const totalQuestions = questions.length
-const DURATION = 90 * 60 // 90 menit
+const letters: string[] = ['A','B','C','D','E','F']
+const totalQuestions: number = questions.length
+const DURATION: number = 90 * 60 // 90 menit
 const SAVE_KEY = 'cbt_attaqwa_demo_v1'
 
 /* ---------- STATE ---------- */
-const screen = ref('login') // login, confirm, exam, review, done
-const loginForm = reactive({ nis: '', pass: '', kode: '' })
-const openedAcc = ref('pg')
-const agreeStart = ref(false)
+const screen = ref<'login' | 'confirm' | 'exam' | 'review' | 'done' | string>('login')
+const loginForm = reactive<LoginForm>({ nis: '', pass: '', kode: '' })
+const openedAcc = ref<string>('pg')
+const agreeStart = ref<boolean>(false)
 
-const qIdx = ref(0)
-const answers = reactive<Record<number, any>>({})
-const flags = reactive(new Set<number>())
-const remainingTime = ref(DURATION)
+const qIdx = ref<number>(0)
+const answers = reactive<{ [key: number]: any }>({})
+const flags = reactive<Set<number>>(new Set<number>())
+const remainingTime = ref<number>(DURATION)
 let timerId: any = null
-const isSaving = ref(false)
-const showMobilePalette = ref(false)
-const audioPlaying = ref(false)
+const isSaving = ref<boolean>(false)
+const showMobilePalette = ref<boolean>(false)
+const audioPlaying = ref<boolean>(false)
 
-const revFilter = ref('all') // all, un, fl, ok
-const submitAgree = ref(false)
+const revFilter = ref<'all' | 'un' | 'fl' | 'ok' | string>('all')
+const submitAgree = ref<boolean>(false)
 
-const doneTime = ref('-')
-const doneDur = ref('-')
-const doneMsg = ref('Jawabanmu sudah tersimpan dan terkirim ke server. Terima kasih sudah mengerjakan dengan jujur.')
+const doneTime = ref<string>('-')
+const doneDur = ref<string>('-')
+const doneMsg = ref<string>('Jawabanmu sudah tersimpan dan terkirim ke server. Terima kasih sudah mengerjakan dengan jujur.')
 
 /* Modal & Toast */
-const toastMsg = ref('')
+const toastMsg = ref<string>('')
 let toastTimer: any = null
 
-const modal = reactive({
+const modal = reactive<ModalState>({
   show: false,
   title: '',
   desc: '',
   okText: 'OK',
   cancelText: '',
   btnClass: 'btn-primary',
-  onOk: null as (() => void) | null,
+  onOk: null,
   requiresPin: false,
   pin: '',
   pinError: false,
@@ -592,69 +643,89 @@ const modal = reactive({
 })
 
 /* Anti cheat */
-const violations = ref(0)
+const violations = ref<number>(0)
 const CHEAT_PIN = 'pengawas123'
 
-const curQuestion = computed(() => questions[qIdx.value])
+const defaultQuestion: QuestionItem = {
+  sec: 'pg',
+  type: 'single',
+  text: '',
+  options: []
+}
+
+const curQuestion = computed<QuestionItem>(() => {
+  return questions[qIdx.value] ?? questions[0] ?? defaultQuestion
+})
 
 /* ---------- HELPERS ---------- */
-const secRange = (secId: string) => questions.reduce((acc: number[], q, i) => q.sec === secId ? [...acc, i] : acc, [])
+const secRange = (secId: string): number[] => {
+  return questions.reduce((acc: number[], q: QuestionItem, i: number) => (q.sec === secId ? [...acc, i] : acc), [])
+}
 
-const typeLabel = (q: any) => {
-  return {
+const typeLabel = (q?: QuestionItem | null): string => {
+  if (!q) return ''
+  const map: Record<string, string> = {
     single: 'Pilihan Ganda',
     multiple: 'Pilihan Ganda \u2022 Multi',
     short: 'Jawaban Singkat',
     essay: 'Essay',
     audio: 'Interaktif \u2022 Audio',
     video: 'Interaktif \u2022 Video'
-  }[q.type] || ''
+  }
+  return map[q.type] || 'Soal'
 }
 
-const fmtTime = (sec: number) => {
+const fmtTime = (sec: number): string => {
   sec = Math.max(0, sec)
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60
   const mm = String(m).padStart(2, '0'), ss = String(s).padStart(2, '0')
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }
 
-const countWords = (s: any) => {
-  s = String(s || '').trim()
-  return s ? s.split(/\s+/).length : 0
+const countWords = (s: unknown): number => {
+  if (typeof s !== 'string') return 0
+  const trimmed = s.trim()
+  return trimmed ? trimmed.split(/\s+/).length : 0
 }
 
-const isAnswered = (i: number) => {
-  const q = questions[i], a = answers[i]
+const isAnswered = (i: number): boolean => {
+  const q = questions[i]
+  if (!q) return false
+  const a = answers[i]
   if (q.type === 'multiple') return Array.isArray(a) && a.length > 0
-  if (q.type === 'single') return typeof a === 'string' && a !== ''
+  if (q.type === 'single' || q.type === 'audio' || q.type === 'video') return typeof a === 'string' && a !== ''
   return typeof a === 'string' && a.trim().length > 0
 }
 
-const answeredCount = computed(() => {
+const answeredCount = computed<number>(() => {
   let n = 0
-  for (let i = 0; i < totalQuestions; i++) if (isAnswered(i)) n++
+  for (let i = 0; i < totalQuestions; i++) {
+    if (isAnswered(i)) n++
+  }
   return n
 })
 
-const isFlagged = (i: number) => flags.has(i)
+const isFlagged = (i: number): boolean => flags.has(i)
 
-const sectionDoneCount = (secId: string) => secRange(secId).filter(isAnswered).length
+const sectionDoneCount = (secId: string): number => {
+  return secRange(secId).filter(isAnswered).length
+}
 
-const isSectionDone = (secId: string) => {
+const isSectionDone = (secId: string): boolean => {
   const r = secRange(secId)
   return r.length > 0 && sectionDoneCount(secId) === r.length
 }
 
 /* Progress ring on review screen */
 const pringCircumference = (2 * Math.PI * 36).toFixed(1)
-const pringOffset = computed(() => {
+const pringOffset = computed<string>(() => {
   const C = 2 * Math.PI * 36
   return (C * (1 - answeredCount.value / totalQuestions)).toFixed(1)
 })
 
 /* Review filtered list */
-const filteredQuestions = computed(() => {
-  const list = []
+const filteredQuestions = computed<FilteredQuestionItem[]>(() => {
+  const list: FilteredQuestionItem[] = []
   for (let i = 0; i < totalQuestions; i++) {
     const ans = isAnswered(i)
     const flg = isFlagged(i)
@@ -667,7 +738,7 @@ const filteredQuestions = computed(() => {
     if (revFilter.value === 'fl' && kind !== 'fl') continue
     if (revFilter.value === 'ok' && kind !== 'ok') continue
 
-    const sec = sections.find(s => s.id === questions[i].sec)
+    const sec = sections.find(s => s.id === questions[i]?.sec)
     list.push({
       index: i,
       kind,
@@ -678,13 +749,13 @@ const filteredQuestions = computed(() => {
   return list
 })
 
-const revFilterTitle = computed(() => {
+const revFilterTitle = computed<string>(() => {
   const t: Record<string, string> = { all: 'Semua soal', un: 'Belum dijawab', fl: 'Ragu-ragu', ok: 'Terjawab' }
   return t[revFilter.value] || 'Semua soal'
 })
 
 /* ---------- ACTIONS ---------- */
-const triggerToast = (msg: string, ms = 2600) => {
+const triggerToast = (msg: string, ms = 2600): void => {
   toastMsg.value = msg
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { toastMsg.value = '' }, ms)
@@ -699,7 +770,7 @@ const openModal = (opts: {
   requiresPin?: boolean
   fatal?: boolean
   onOk?: () => void
-}) => {
+}): void => {
   modal.title = opts.title
   modal.desc = opts.desc
   modal.okText = opts.okText || 'OK'
@@ -713,17 +784,17 @@ const openModal = (opts: {
   modal.show = true
 }
 
-const closeModal = () => {
+const closeModal = (): void => {
   modal.show = false
 }
 
-const onModalBackClick = (e: MouseEvent) => {
+const onModalBackClick = (e: MouseEvent): void => {
   if ((e.target as HTMLElement).classList.contains('modal-back') && !modal.requiresPin && !modal.fatal) {
     closeModal()
   }
 }
 
-const handleModalOk = () => {
+const handleModalOk = (): void => {
   if (modal.requiresPin) {
     if (modal.pin === CHEAT_PIN) {
       modal.show = false
@@ -740,25 +811,25 @@ const handleModalOk = () => {
   }
 }
 
-const toggleAcc = (id: string) => {
+const toggleAcc = (id: string): void => {
   openedAcc.value = openedAcc.value === id ? '' : id
 }
 
-const fillDemo = () => {
+const fillDemo = (): void => {
   loginForm.nis = '2024001234'
   loginForm.pass = 'demo123'
   loginForm.kode = 'IF-1201'
   triggerToast('Data demo terisi. Ketuk "Masuk".')
 }
 
-const doLogin = () => {
+const doLogin = (): void => {
   if (!loginForm.nis) { triggerToast('Isi Nomor Peserta / NIS dulu.'); return }
   if (!loginForm.pass) { triggerToast('Isi kata sandi dulu.'); return }
   screen.value = 'confirm'
   window.scrollTo(0, 0)
 }
 
-const startExam = () => {
+const startExam = (): void => {
   if (!agreeStart.value) {
     triggerToast('Centang persetujuan tata tertib terlebih dahulu.')
     return
@@ -766,7 +837,7 @@ const startExam = () => {
   beginExam()
 }
 
-const handleNextClick = () => {
+const handleNextClick = (): void => {
   if (qIdx.value === totalQuestions - 1) {
     goReview()
   } else {
@@ -774,7 +845,7 @@ const handleNextClick = () => {
   }
 }
 
-const beginExam = () => {
+const beginExam = (): void => {
   restore()
   screen.value = 'exam'
   window.scrollTo(0, 0)
@@ -782,7 +853,7 @@ const beginExam = () => {
   triggerToast('Selamat mengerjakan! Jawaban tersimpan otomatis setiap 10 detik.', 3000)
 }
 
-const startTimer = () => {
+const startTimer = (): void => {
   stopTimer()
   timerId = setInterval(() => {
     remainingTime.value--
@@ -798,11 +869,11 @@ const startTimer = () => {
   }, 1000)
 }
 
-const stopTimer = () => {
+const stopTimer = (): void => {
   if (timerId) { clearInterval(timerId); timerId = null }
 }
 
-const persist = (silent = false) => {
+const persist = (silent = false): void => {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       answers,
@@ -817,7 +888,7 @@ const persist = (silent = false) => {
   if (!silent) triggerToast('Jawaban tersimpan otomatis.')
 }
 
-const restore = () => {
+const restore = (): boolean => {
   try {
     const raw = localStorage.getItem(SAVE_KEY)
     if (!raw) return false
@@ -836,7 +907,7 @@ const restore = () => {
   }
 }
 
-const goTo = (i: number) => {
+const goTo = (i: number): void => {
   if (i < 0 || i >= totalQuestions) return
   stopAudio()
   persist(true)
@@ -844,18 +915,19 @@ const goTo = (i: number) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const goToSection = (secId: string) => {
+const goToSection = (secId: string): void => {
   const r = secRange(secId)
   if (r.length) goTo(r[0])
 }
 
-const isOptionSelected = (i: number, oi: number) => {
+const isOptionSelected = (i: number, oi: number): boolean => {
   const a = answers[i]
   return Array.isArray(a) && a.includes(oi)
 }
 
-const selectOption = (i: number, oi: number) => {
+const selectOption = (i: number, oi: number): void => {
   const q = questions[i]
+  if (!q) return
   if (q.type === 'multiple') {
     let cur = Array.isArray(answers[i]) ? [...answers[i]] : []
     cur = cur.includes(oi) ? cur.filter(x => x !== oi) : [...cur, oi]
@@ -866,11 +938,11 @@ const selectOption = (i: number, oi: number) => {
   persist(true)
 }
 
-const onTextAnswerInput = () => {
+const onTextAnswerInput = (): void => {
   persist(true)
 }
 
-const toggleFlag = (i: number) => {
+const toggleFlag = (i: number): void => {
   if (flags.has(i)) {
     flags.delete(i)
     triggerToast('Tanda ragu-ragu dihapus.')
@@ -881,13 +953,13 @@ const toggleFlag = (i: number) => {
   persist(true)
 }
 
-const openMobilePalette = () => {
+const openMobilePalette = (): void => {
   showMobilePalette.value = true
 }
 
 /* Audio Speech */
-const toggleAudio = (q: any) => {
-  if (!('speechSynthesis' in window)) {
+const toggleAudio = (q: QuestionItem): void => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     triggerToast('Perangkat tidak mendukung pemutar audio demo.')
     return
   }
@@ -896,7 +968,7 @@ const toggleAudio = (q: any) => {
     return
   }
   stopAudio()
-  const u = new SpeechSynthesisUtterance(q.audioScript)
+  const u = new SpeechSynthesisUtterance(q.audioScript || '')
   u.lang = 'id-ID'
   u.rate = 0.95
   u.onend = u.onerror = () => { audioPlaying.value = false }
@@ -904,13 +976,17 @@ const toggleAudio = (q: any) => {
   speechSynthesis.speak(u)
 }
 
-const stopAudio = () => {
-  try { if ('speechSynthesis' in window) speechSynthesis.cancel() } catch (e) {}
+const stopAudio = (): void => {
+  try {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      speechSynthesis.cancel()
+    }
+  } catch (e) {}
   audioPlaying.value = false
 }
 
 /* Review & Submit */
-const goReview = () => {
+const goReview = (): void => {
   stopAudio()
   persist(true)
   submitAgree.value = false
@@ -919,12 +995,12 @@ const goReview = () => {
   window.scrollTo(0, 0)
 }
 
-const goToFromReview = (i: number) => {
+const goToFromReview = (i: number): void => {
   screen.value = 'exam'
   goTo(i)
 }
 
-const attemptSubmit = () => {
+const attemptSubmit = (): void => {
   if (!submitAgree.value) {
     triggerToast('Centang pernyataan yakin mengumpulkan terlebih dahulu.')
     return
@@ -938,12 +1014,12 @@ const attemptSubmit = () => {
   doSubmit(false)
 }
 
-const autoSubmit = () => {
+const autoSubmit = (): void => {
   stopTimer()
   doSubmit(true)
 }
 
-const doSubmit = (auto: boolean) => {
+const doSubmit = (auto: boolean): void => {
   stopTimer()
   stopAudio()
   try { localStorage.removeItem(SAVE_KEY) } catch (e) {}
@@ -962,20 +1038,20 @@ const doSubmit = (auto: boolean) => {
   window.scrollTo(0, 0)
 }
 
-const resetToHome = () => {
+const resetToHome = (): void => {
   try { localStorage.removeItem(SAVE_KEY) } catch (e) {}
   router.push('/')
 }
 
 /* Keyboard handler */
-const onKeydown = (e: KeyboardEvent) => {
+const onKeydown = (e: KeyboardEvent): void => {
   if (screen.value !== 'exam') return
   const tag = (e.target as HTMLElement)?.tagName?.toUpperCase() || ''
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
   if (e.key >= '1' && e.key <= '6') {
     const q = questions[qIdx.value]
-    if ((q.type === 'single' || q.type === 'multiple' || q.type === 'audio' || q.type === 'video') && q.options) {
+    if (q && (q.type === 'single' || q.type === 'multiple' || q.type === 'audio' || q.type === 'video') && q.options) {
       const oi = +e.key - 1
       if (oi < q.options.length) selectOption(qIdx.value, oi)
     }
@@ -991,7 +1067,7 @@ const onKeydown = (e: KeyboardEvent) => {
 }
 
 /* Anti cheat & leave protection */
-const onVisibilityChange = () => {
+const onVisibilityChange = (): void => {
   if (screen.value === 'exam' || screen.value === 'review') {
     if (document.visibilityState === 'hidden') {
       violations.value++
@@ -1000,7 +1076,7 @@ const onVisibilityChange = () => {
   }
 }
 
-const triggerCheatLock = () => {
+const triggerCheatLock = (): void => {
   if (violations.value >= 3) {
     openModal({
       title: 'Pelanggaran Fatal!',
@@ -1017,7 +1093,7 @@ const triggerCheatLock = () => {
   }
 }
 
-const onBeforeUnload = (e: BeforeUnloadEvent) => {
+const onBeforeUnload = (e: BeforeUnloadEvent): void => {
   if (screen.value === 'exam' || screen.value === 'review') {
     e.preventDefault()
     e.returnValue = ''
