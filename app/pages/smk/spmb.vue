@@ -74,9 +74,12 @@ const beasiswaList = [
   <div class="min-h-screen bg-[#F5F8FF] text-[#0F1E38] font-sans antialiased flex flex-col">
     <SmkHeader />
 
-    <main class="flex-1 pt-[72px] lg:pt-[116px]">
+    <main class="flex-1 pt-[104px] lg:pt-[112px]">
       <!-- Page Hero Header -->
-      <section class="bg-gradient-to-br from-[#0C2C61] via-[#0A2A5C] to-[#061A3E] text-white py-[48px] sm:py-[64px] border-b border-white/10 relative overflow-hidden">
+      <section 
+        class="text-white py-[48px] sm:py-[64px] border-b border-white/10 relative overflow-hidden"
+        style="background: radial-gradient(900px 480px at 85% -10%, rgba(43,124,216,0.45), transparent 60%), linear-gradient(135deg, #0C2C61 0%, #0A2A5C 60%, #061A3E 100%); background-color: #0A2A5C;"
+      >
         <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
         <div class="w-[min(1180px,100%-40px)] mx-auto relative z-10">
           <div class="flex items-center gap-[8px] text-[13px] font-semibold text-[#A9BDDD] mb-[12px]">
