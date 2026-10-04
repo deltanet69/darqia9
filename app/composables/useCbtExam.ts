@@ -508,7 +508,10 @@ export const useCbtExam = () => {
 
   const goToSection = (secId: string): void => {
     const r = secRange(secId)
-    if (r.length) goTo(r[0])
+    const target = r[0]
+    if (typeof target === 'number') {
+      goTo(target)
+    }
   }
 
   const isOptionSelected = (i: number, oi: number): boolean => {
