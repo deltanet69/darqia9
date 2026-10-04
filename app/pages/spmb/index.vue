@@ -62,10 +62,12 @@
             <div class="seg" :data-active="form.jenjang" role="radiogroup" aria-label="Pilih jenjang">
               <span class="seg-thumb" aria-hidden="true"></span>
               <button type="button" class="seg-btn" :class="{on: form.jenjang === 'smk'}" @click="form.jenjang = 'smk'" role="radio" :aria-checked="form.jenjang === 'smk'">
-                <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>SMK IT Attaqwa 9
+                <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+                <span>SMK IT Attaqwa 9</span>
               </button>
               <button type="button" class="seg-btn" :class="{on: form.jenjang === 'smp'}" @click="form.jenjang = 'smp'" role="radio" :aria-checked="form.jenjang === 'smp'">
-                <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-5 9 5"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>SMP IT Bina Cendekia Assalam
+                <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-5 9 5"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>
+                <span>SMP IT Bina Cendekia Assalam</span>
               </button>
             </div>
           </div>
