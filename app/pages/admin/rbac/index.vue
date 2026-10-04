@@ -3,14 +3,13 @@
     <div class="page-head">
       <div>
         <h2>Hak Akses (RBAC)</h2>
-        <p>Atur izin Lihat &middot; Tambah &middot; Ubah &middot; Hapus per peran</p>
+        <p>Atur izin Lihat &bull; Tambah &bull; Ubah &bull; Hapus per peran</p>
       </div>
-      <button class="btn btn-ghost btn-sm">
+      <button class="btn btn-ghost btn-sm" @click="addRole">
         <AdminIcon name="plus" size="16"/> Peran Baru
       </button>
     </div>
 
-    <!-- Dirty Warning -->
     <div v-if="isDirty" class="card" style="margin-bottom:16px;border-color:#fbbf24;background:#fffbeb">
       <div class="card-b" style="display:flex;align-items:center;gap:12px;padding:14px 18px">
         <span style="color:var(--amber)"><AdminIcon name="alert" size="20"/></span>
@@ -22,12 +21,12 @@
       </div>
     </div>
 
-    <div class="toolbar">
+    <div class="toolbar" style="margin-bottom: 20px;">
       <button 
         v-for="r in roles" 
         :key="r" 
         class="chip" 
-        :class="{ on: r === currentRole }"
+        :class="{ on: r === currentRole }" 
         @click="selectRole(r)"
       >
         {{ r }}
@@ -38,10 +37,10 @@
       <div class="card">
         <div class="card-h">
           <div>
-            <h3>Matriks Izin &mdash; {{ currentRole }}</h3>
+            <h3>Matriks Izin - {{ currentRole }}</h3>
             <div class="sub">
-              <span v-if="isLocked">Akses penuh, tidak dapat diubah</span>
-              <span v-else>{{ activePermsCount }} dari {{ totalPermsCount }} izin aktif</span>
+              <template v-if="isLocked">Akses penuh, tidak dapat diubah</template>
+              <template v-else>{{ totalOn }} dari {{ totalPerms }} izin aktif</template>
             </div>
           </div>
         </div>
@@ -50,15 +49,20 @@
             <thead>
               <tr>
                 <th>Modul</th>
-                <th v-for="a in actions" :key="a" style="text-align:center">{{ a }}</th>
+                <th v-for="a in store.actions" :key="a" style="text-align:center">{{ a }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="m in modules" :key="m">
+              <tr v-for="m in store.modules" :key="m">
                 <td class="t-name">{{ m }}</td>
-                <td v-for="a in actions" :key="a" style="text-align:center">
+                <td v-for="a in store.actions" :key="a" style="text-align:center">
                   <label class="sw" style="margin:0 auto">
-                    <input type="checkbox" v-model="draftPerms[m][a]" :disabled="isLocked" @change="markDirty">
+                    <input 
+                      type="checkbox" 
+                      :checked="!!currentPerms[m]?.[a]" 
+                      :disabled="isLocked"
+                      @change="e => handlePermChange(m, a, (e.target as HTMLInputElement).checked)"
+                    >
                     <span class="tr"></span>
                   </label>
                 </td>
@@ -69,23 +73,26 @@
       </div>
 
       <div>
-        <div class="card" style="margin-bottom:18px">
-          <div class="card-h"><h3>Ringkasan Peran</h3></div>
-          <div class="card-b" style="padding-top:8px">
-            <div v-for="r in roles" :key="r" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2)">
+        <div class="card" style="margin-bottom: 20px">
+          <div class="card-h"><div><h3>Ringkasan Akses</h3></div></div>
+          <div class="card-b" style="padding:0 20px">
+            <div 
+              v-for="r in roles" 
+              :key="r"
+              style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2)"
+            >
               <b style="font-size:13px;flex:1">{{ r }}</b>
-              <span style="font-size:12px;color:var(--muted)">{{ getPermCount(r) }}/{{ totalPermsCount }}</span>
+              <span style="font-size:12px;color:var(--muted)">{{ getRoleTotalOn(r) }}/{{ totalPerms }}</span>
               <div class="prog" style="width:90px">
-                <i :style="{ width: (getPermCount(r) / totalPermsCount * 100) + '%' }"></i>
+                <i :style="{ width: (getRoleTotalOn(r) / totalPerms * 100) + '%' }"></i>
               </div>
             </div>
           </div>
         </div>
+
         <div class="card">
           <div class="card-b" style="font-size:13px;color:var(--muted);line-height:1.7">
-            <b style="color:var(--ink)">
-              <AdminIcon name="shield" size="15" style="display:inline-block;vertical-align:-3px;margin-right:2px"/> Cara kerja
-            </b><br>
+            <b style="color:var(--ink)"><AdminIcon name="shield" size="15" style="margin-right:4px;vertical-align:-2px"/> Cara kerja</b><br>
             Setiap peran punya 4 jenis izin per modul. Perubahan hanya berlaku setelah tombol <b>Simpan</b> ditekan dan tercatat di Log Aktivitas.
           </div>
         </div>
@@ -95,97 +102,83 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
+import AdminIcon from '~/components/admin/AdminIcon.vue'
+import { useAdminSystemStore, type ActionPerms } from '~/composables/useAdminSystemStore'
 
-definePageMeta({
-  layout: 'admin',
-  name: 'admin-rbac'
-})
+definePageMeta({ layout: 'admin', name: 'admin-rbac' })
+useHead({ title: 'Hak Akses (RBAC) | Admin Portal' })
 
-const modules = ["Dashboard", "Absensi", "Kelas", "Nilai", "Keuangan", "Tabungan", "CBT", "Konten Web", "Pengguna", "RBAC", "Log"]
-const actions = ["Lihat", "Tambah", "Ubah", "Hapus"]
-const roles = ["Super Admin", "Admin Akademik", "Admin Keuangan", "Guru", "Wali Kelas", "Staff TU"]
+const store = useAdminSystemStore()
+const roles = Object.keys(store.perms.value)
 
-const dbPerms = ref<Record<string, Record<string, Record<string, boolean>>>>({
-  "Super Admin": {},
-  "Admin Akademik": {},
-  "Admin Keuangan": {},
-  "Guru": {},
-  "Wali Kelas": {},
-  "Staff TU": {}
-})
-
-// Initialize dummy permissions
-roles.forEach(r => {
-  modules.forEach(m => {
-    if (!dbPerms.value[r][m]) dbPerms.value[r][m] = {}
-    actions.forEach(a => {
-      dbPerms.value[r][m][a] = r === "Super Admin" ? true : Math.random() > 0.5
-    })
-  })
-})
-
-const currentRole = ref("Guru")
+const currentRole = ref(roles[0])
 const isDirty = ref(false)
-const draftPerms = ref<Record<string, Record<string, boolean>>>({})
 
-const clonePerms = (role: string) => {
-  const cloned: Record<string, Record<string, boolean>> = {}
-  modules.forEach(m => {
-    cloned[m] = { ...dbPerms.value[role][m] }
-  })
-  return cloned
+// We need a local working copy of perms for the dirty state logic
+const workingPerms = ref(JSON.parse(JSON.stringify(store.perms.value)))
+
+const currentPerms = computed(() => workingPerms.value[currentRole.value] || {})
+const isLocked = computed(() => currentRole.value === 'Super Admin')
+const totalPerms = computed(() => store.modules.length * 4)
+
+const totalOn = computed(() => {
+  let count = 0
+  const p = currentPerms.value
+  for (const mod in p) {
+    for (const act in p[mod]) {
+      if (p[mod][act]) count++
+    }
+  }
+  return count
+})
+
+const getRoleTotalOn = (r: string) => {
+  let count = 0
+  const p = store.perms.value[r] // get from truth
+  if (!p) return 0
+  for (const mod in p) {
+    for (const act in p[mod]) {
+      if (p[mod][act]) count++
+    }
+  }
+  return count
 }
-
-draftPerms.value = clonePerms(currentRole.value)
 
 const selectRole = (r: string) => {
-  if (isDirty.value && !confirm('Ada perubahan yang belum disimpan. Pindah peran?')) return
+  if (isDirty.value && !confirm('Ada perubahan belum disimpan. Pindah peran?')) return
   currentRole.value = r
   isDirty.value = false
-  draftPerms.value = clonePerms(r)
+  // Reset working copy when changing role
+  workingPerms.value[currentRole.value] = JSON.parse(JSON.stringify(store.perms.value[currentRole.value]))
 }
 
-const isLocked = computed(() => currentRole.value === "Super Admin")
-
-const markDirty = () => {
-  if (!isLocked.value) {
-    isDirty.value = true
+const handlePermChange = (m: string, a: string, checked: boolean) => {
+  if (isLocked.value) return
+  if (!workingPerms.value[currentRole.value][m]) {
+    workingPerms.value[currentRole.value][m] = { Lihat: 0, Tambah: 0, Ubah: 0, Hapus: 0 }
   }
-}
-
-const cancelChanges = () => {
-  draftPerms.value = clonePerms(currentRole.value)
-  isDirty.value = false
+  workingPerms.value[currentRole.value][m][a] = checked ? 1 : 0
+  isDirty.value = true
 }
 
 const saveChanges = () => {
-  dbPerms.value[currentRole.value] = clonePerms(currentRole.value)
+  // Sync working to real store
+  store.perms.value[currentRole.value] = JSON.parse(JSON.stringify(workingPerms.value[currentRole.value]))
+  isDirty.value = false
+  
+  // Log it
+  store.addLog("Administrator", "Super Admin", `mengubah hak akses peran ${currentRole.value}`, "RBAC")
+  alert(`Hak akses ${currentRole.value} disimpan & tercatat di log`)
+}
+
+const cancelChanges = () => {
+  // Revert working copy
+  workingPerms.value[currentRole.value] = JSON.parse(JSON.stringify(store.perms.value[currentRole.value]))
   isDirty.value = false
 }
 
-const totalPermsCount = modules.length * 4
-
-const activePermsCount = computed(() => {
-  let count = 0
-  modules.forEach(m => {
-    actions.forEach(a => {
-      if (draftPerms.value[m][a]) count++
-    })
-  })
-  return count
-})
-
-const getPermCount = (role: string) => {
-  if (role === currentRole.value && isDirty.value) {
-    return activePermsCount.value
-  }
-  let count = 0
-  modules.forEach(m => {
-    actions.forEach(a => {
-      if (dbPerms.value[role][m][a]) count++
-    })
-  })
-  return count
+const addRole = () => {
+  alert("Form peran baru (demo)")
 }
 </script>

@@ -3,9 +3,9 @@
     <div class="page-head">
       <div>
         <h2>Log Aktivitas</h2>
-        <p>Jejak audit &mdash; siapa melakukan apa, kapan</p>
+        <p>Jejak audit - siapa melakukan apa, kapan</p>
       </div>
-      <button class="btn btn-ghost btn-sm">
+      <button class="btn btn-ghost btn-sm" @click="exportLog">
         <AdminIcon name="dl" size="16"/> Ekspor Log
       </button>
     </div>
@@ -15,28 +15,40 @@
         <div class="toolbar">
           <div class="inp">
             <span class="ic"><AdminIcon name="search" size="17"/></span>
-            <input placeholder="Cari user / aksi..." v-model="searchQuery">
+            <input v-model="filterQ" placeholder="Cari user / aksi...">
           </div>
-          <select class="sel" v-model="moduleFilter">
+          <select class="sel" v-model="filterModul">
             <option value="all">Semua Modul</option>
-            <option v-for="m in modules" :key="m" :value="m">{{ m }}</option>
+            <option v-for="m in uniqueModules" :key="m" :value="m">{{ m }}</option>
           </select>
-          <span style="font-size:13px;color:var(--muted);margin-left:auto">{{ filteredLogs.length }} aktivitas</span>
+          <span style="font-size:13px;color:var(--muted);margin-left:auto">
+            {{ filteredLogs.length }} aktivitas
+          </span>
         </div>
       </div>
       
       <div class="card-b" style="padding-top:6px">
-        <div v-for="l in displayedLogs" :key="l.id" style="display:flex;gap:13px;padding:12px 0;border-bottom:1px solid var(--line-2)">
-          <div class="ava" style="width:38px;height:38px;font-size:13px;flex:none">{{ getInitials(l.nama) }}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13.5px"><b>{{ l.nama }}</b> <span style="color:var(--muted)">{{ l.aksi }}</span></div>
-            <div style="font-size:12px;color:var(--faint);margin-top:3px">{{ l.role }} &middot; {{ timeAgo(l.waktu) }} &middot; {{ l.timeStr }}</div>
+        <div v-if="filteredLogs.length === 0" class="empty">Tidak ada aktivitas yang cocok.</div>
+        <div 
+          v-else
+          v-for="(l, index) in filteredLogs.slice(0, 40)" 
+          :key="index"
+          style="display:flex;gap:13px;padding:12px 0;border-bottom:1px solid var(--line-2)"
+        >
+          <div class="avatar" :style="[getAvatarStyle(l.nama), { width: '38px', height: '38px', fontSize: '15px' }]">
+            {{ getInitials(l.nama) }}
           </div>
-          <span class="pill" :class="mCls[l.modul] || 'p-gray'" style="align-self:flex-start">{{ l.modul }}</span>
-        </div>
-
-        <div v-if="displayedLogs.length === 0" class="empty">
-          Tidak ada aktivitas yang cocok.
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px">
+              <b>{{ l.nama }}</b> <span style="color:var(--muted)">{{ l.aksi }}</span>
+            </div>
+            <div style="font-size:12px;color:var(--faint);margin-top:3px">
+              {{ l.role }} &bull; {{ timeAgo(l.waktu) }} &bull; {{ formatTime(l.waktu) }}
+            </div>
+          </div>
+          <span class="pill" :class="modulClass(l.modul)" style="align-self:flex-start">
+            {{ l.modul }}
+          </span>
         </div>
       </div>
     </div>
@@ -45,86 +57,82 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import AdminIcon from '~/components/admin/AdminIcon.vue'
+import { useAdminSystemStore } from '~/composables/useAdminSystemStore'
 
-definePageMeta({
-  layout: 'admin',
-  name: 'admin-log'
-})
+definePageMeta({ layout: 'admin', name: 'admin-log' })
+useHead({ title: 'Log Aktivitas | Admin Portal' })
 
-const mCls: Record<string, string> = {
-  "Absensi": "p-blue",
-  "Keuangan": "p-green",
-  "Nilai": "p-violet",
-  "CBT": "p-amber",
-  "Pengguna": "p-rose",
-  "RBAC": "p-cyan",
-  "Konten Web": "p-blue",
-  "Tabungan": "p-green",
-  "Kelas": "p-violet",
-  "Laporan": "p-gray"
-}
+const store = useAdminSystemStore()
 
-// Generate some dummy logs
-const dbLogs = ref(Array.from({ length: 45 }, (_, i) => {
-  const d = new Date()
-  d.setMinutes(d.getMinutes() - (i * 25))
-  
-  const modules = Object.keys(mCls)
-  const modul = modules[i % modules.length]
-  
-  const users = [
-    { nama: "Administrator", role: "Super Admin" },
-    { nama: "Ahmad Subarjo", role: "Guru" },
-    { nama: "Siti Khadijah", role: "Admin Keuangan" },
-    { nama: "Dewi Lestari", role: "Wali Kelas" }
-  ]
-  const u = users[i % users.length]
-  
-  return {
-    id: i,
-    nama: u.nama,
-    role: u.role,
-    aksi: i % 3 === 0 ? `memperbarui data di modul ${modul}` : i % 3 === 1 ? `menambahkan entri baru` : `menghapus data usang`,
-    modul: modul,
-    waktu: d,
-    timeStr: d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
-  }
-}))
+const filterQ = ref('')
+const filterModul = ref('all')
 
-const searchQuery = ref("")
-const moduleFilter = ref("all")
-
-const modules = computed(() => {
-  return [...new Set(dbLogs.value.map(l => l.modul))]
+const uniqueModules = computed(() => {
+  const mods = new Set(store.logs.value.map(l => l.modul))
+  return Array.from(mods).sort()
 })
 
 const filteredLogs = computed(() => {
-  return dbLogs.value.filter(l => 
-    (moduleFilter.value === "all" || l.modul === moduleFilter.value) &&
-    (!searchQuery.value || (l.nama + " " + l.aksi).toLowerCase().includes(searchQuery.value.toLowerCase()))
-  )
+  let list = store.logs.value
+  
+  if (filterModul.value !== 'all') {
+    list = list.filter(l => l.modul === filterModul.value)
+  }
+  
+  if (filterQ.value) {
+    const q = filterQ.value.toLowerCase()
+    list = list.filter(l => (l.nama + ' ' + l.aksi).toLowerCase().includes(q))
+  }
+  
+  return list
 })
 
-const displayedLogs = computed(() => {
-  return filteredLogs.value.slice(0, 40)
-})
-
-const getInitials = (name: string) => {
-  return name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()
+const modulClass = (modul: string) => {
+  const mCls: Record<string, string> = {
+    Absensi: "p-blue",
+    Keuangan: "p-green",
+    Nilai: "p-violet",
+    CBT: "p-amber",
+    Pengguna: "p-rose",
+    RBAC: "p-cyan",
+    "Konten Web": "p-blue",
+    Tabungan: "p-green",
+    Kelas: "p-violet",
+    Laporan: "p-gray"
+  }
+  return mCls[modul] || "p-gray"
 }
 
-const timeAgo = (date: Date) => {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
-  let interval = seconds / 31536000
-  if (interval > 1) return Math.floor(interval) + " tahun lalu"
-  interval = seconds / 2592000
-  if (interval > 1) return Math.floor(interval) + " bulan lalu"
-  interval = seconds / 86400
-  if (interval > 1) return Math.floor(interval) + " hari lalu"
-  interval = seconds / 3600
-  if (interval > 1) return Math.floor(interval) + " jam lalu"
-  interval = seconds / 60
-  if (interval > 1) return Math.floor(interval) + " menit lalu"
-  return "Baru saja"
+// Utils
+const H = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0; return h; }
+const getAvatarStyle = (nama: string) => {
+  const hue = Math.abs(H(nama)) % 360;
+  return { background: `hsl(${hue}, 65%, 90%)`, color: `hsl(${hue}, 70%, 35%)` }
+}
+const getInitials = (nama: string) => {
+  const parts = nama.split(' ')
+  return parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0][0].toUpperCase()
+}
+
+const timeAgo = (dateStr: string) => {
+  const d = new Date(dateStr)
+  const sec = Math.floor((new Date().getTime() - d.getTime()) / 1000)
+  if (sec < 60) return "Baru saja"
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min} mnt lalu`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr} jam lalu`
+  const dDay = Math.floor(hr / 24)
+  if (dDay === 1) return "Kemarin"
+  return `${dDay} hari lalu`
+}
+
+const formatTime = (dateStr: string) => {
+  return new Date(dateStr).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+}
+
+const exportLog = () => {
+  alert("Log aktivitas diekspor (CSV)")
 }
 </script>

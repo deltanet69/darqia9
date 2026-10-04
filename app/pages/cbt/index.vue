@@ -74,11 +74,11 @@
                 <div class="idcard-who">
                   <div class="idcard-kicker">Kartu Peserta Ujian</div>
                   <div class="nm">Ahmad Fauzi</div>
-                  <div class="meta">NIS {{ loginForm.nis || '2024001234' }} &bull; XII TKJ 1</div>
+                  <div class="meta">NIS {{ loginForm.nis || '2024001234' }} &bull; {{ grade === 'SMP' ? 'IX-A' : 'XII TKJ 1' }}</div>
                 </div>
               </div>
               <div class="idcard-foot">
-                <div><span>Token</span><b>ATQ-9X2K4M</b></div>
+                <div><span>Token</span><b>{{ grade === 'SMP' ? 'BCA-9X2K4M' : 'ATQ-9X2K4M' }}</b></div>
                 <div><span>Ruang</span><b>Online</b></div>
                 <div><span>Sesi</span><b>1</b></div>
               </div>
@@ -835,7 +835,14 @@ const startExam = (): void => {
     triggerToast('Centang persetujuan tata tertib terlebih dahulu.')
     return
   }
-  beginExam()
+  openModal({
+    title: 'Mulai ujian sekarang?',
+    desc: 'Timer <b>90 menit</b> akan langsung berjalan dan soal akan ditampilkan. Pastikan koneksi internet stabil.',
+    okText: 'Mulai sekarang',
+    cancelText: 'Batal',
+    btnClass: 'btn-primary',
+    onOk: () => beginExam()
+  })
 }
 
 const handleNextClick = (): void => {
@@ -1008,16 +1015,35 @@ const attemptSubmit = (): void => {
   }
   const unCount = totalQuestions - answeredCount.value
   if (unCount > 0) {
-    triggerToast(`Jawaban berhasil dikumpulkan (mode demo: ${unCount} soal belum dijawab).`, 3500)
-  } else {
-    triggerToast('Jawaban berhasil dikumpulkan!', 3000)
+    openModal({
+      title: 'Belum bisa dikumpulkan',
+      desc: `Masih ada <b>${unCount} soal</b> yang belum dijawab. Pada mode produksi, tombol kumpulkan aktif setelah semua soal terjawab.`,
+      okText: 'Tetap kumpulkan (demo)',
+      cancelText: 'Batal',
+      btnClass: 'btn-danger',
+      onOk: () => doSubmit(false)
+    })
+    return
   }
-  doSubmit(false)
+  openModal({
+    title: 'Kumpulkan jawaban?',
+    desc: 'Pastikan semua jawaban sudah benar. Jawaban <b>tidak dapat diubah</b> setelah dikumpulkan.',
+    okText: 'Ya, kumpulkan',
+    cancelText: 'Batal',
+    btnClass: 'btn-primary',
+    onOk: () => doSubmit(false)
+  })
 }
 
 const autoSubmit = (): void => {
   stopTimer()
-  doSubmit(true)
+  openModal({
+    title: 'Waktu habis!',
+    desc: 'Jawabanmu dikumpulkan otomatis oleh sistem.',
+    okText: 'Lihat Hasil',
+    btnClass: 'btn-primary',
+    onOk: () => doSubmit(true)
+  })
 }
 
 const doSubmit = (auto: boolean): void => {
