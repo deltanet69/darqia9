@@ -278,13 +278,13 @@ const onEditFromDetail = (s: StudentItem) => {
 
 const handleExport = () => {
   const list = studentsStore.filteredStudents.value
-  const headers = 'ID,NISN,NIK,Nama,Gender,Jenjang,Kelas,Jurusan,NoHP,NamaOrtu,NoWAOrtu,Status,RFID\n'
-  const rows = list.map(s => `"${s.id}","${s.nisn}","${s.nik}","${s.name}","${s.gender}","${s.level}","${s.className}","${s.major || '-'}","${s.phone || '-'}","${s.parentName || '-'}","${s.parentPhone || '-'}","${s.status}","${s.rfidUid || '-'}"`).join('\n')
+  const headers = 'ID,NIS,NISN,NIK,NoKK,Nama,Gender,Jenjang,Kelas,Jurusan,TempatLahir,TanggalLahir,Agama,Alamat,RT,RW,Kelurahan,Kecamatan,Kota,Transportasi,NoHPSiswa,NamaAyah,NIKAyah,TahunLahirAyah,PendidikanAyah,PekerjaanAyah,PenghasilanAyah,NoHPAyah,NamaIbu,NIKIbu,TahunLahirIbu,PendidikanIbu,PekerjaanIbu,PenghasilanIbu,NoHPIbu,SekolahAsal,NoIjazah,AnakKe,JmlSaudara,TinggiBadan,BeratBadan,JarakKM,Hobi,CitaCita,Status,RFID_UID\n'
+  const rows = list.map(s => `"${s.id}","${s.nis || ''}","${s.nisn}","${s.nik || ''}","${s.noKk || ''}","${s.name}","${s.gender}","${s.level}","${s.className}","${s.major || ''}","${s.birthPlace || ''}","${s.birthDate || ''}","${s.religion || ''}","${s.address || ''}","${s.rt || ''}","${s.rw || ''}","${s.village || ''}","${s.district || ''}","${s.city || ''}","${s.transportation || ''}","${s.phone || ''}","${s.fatherName || ''}","${s.fatherNik || ''}","${s.fatherBirthYear || ''}","${s.fatherEducation || ''}","${s.fatherJob || ''}","${s.fatherIncome || ''}","${s.fatherPhone || ''}","${s.motherName || ''}","${s.motherNik || ''}","${s.motherBirthYear || ''}","${s.motherEducation || ''}","${s.motherJob || ''}","${s.motherIncome || ''}","${s.motherPhone || ''}","${s.prevSchool || ''}","${s.prevDiplomaNo || ''}","${s.birthOrder || ''}","${s.siblingsCount || ''}","${s.height || ''}","${s.weight || ''}","${s.distanceKm || ''}","${s.hobby || ''}","${s.ambition || ''}","${s.status}","${s.rfidUid || ''}"`).join('\n')
   const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `data-siswa-${studentsStore.grade.value.toLowerCase()}-${Date.now()}.csv`
+  a.download = `data-induk-siswa-${studentsStore.grade.value.toLowerCase()}-${Date.now()}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
