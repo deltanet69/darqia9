@@ -92,14 +92,13 @@
 
           <!-- Action Buttons -->
           <div class="space-y-[12px] mb-[22px]">
-            <a 
-              href="https://s.id/home_smpitbca_smkita9" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            <NuxtLink 
+              to="/spmb" 
               class="w-full inline-flex items-center justify-between font-extrabold text-[15px] py-[14px] px-[22px] rounded-[13px] text-white bg-gradient-to-r from-[#1B5FD9] to-[#4C8DFF] shadow-md hover:shadow-lg transition-all"
             >
-              <span>Buka Portal PMB Bersama</span>
-            </a>
+              <span>Buka Formulir SPMB Online</span>
+              <svg class="ai w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </NuxtLink>
 
             <a 
               href="https://wa.me/6282210823033" 
