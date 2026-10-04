@@ -132,7 +132,7 @@
               <tr>
                 <th style="width:40px">No</th>
                 <th>Peserta Didik</th>
-                <th>NISN / NIK</th>
+                <th>ID Siswa & NISN</th>
                 <th>Kelas</th>
                 <th>Gender</th>
                 <th>Orang Tua & Kontak</th>
@@ -162,8 +162,8 @@
                   </div>
                 </td>
                 <td>
-                  <div style="font-family:ui-monospace,monospace;font-size:13px;font-weight:700">{{ s.nisn }}</div>
-                  <div style="font-size:11.5px;color:var(--muted)">NIK: {{ s.nik || '-' }}</div>
+                  <div class="font-mono" style="font-size:12.5px;font-weight:700;color:var(--navy-900)">{{ s.id }}</div>
+                  <div style="font-size:11.5px;color:var(--muted);font-family:ui-monospace,monospace">NISN: {{ s.nisn }}</div>
                 </td>
                 <td>
                   <span class="pill" :class="s.level === 'SMP' ? 'p-green' : 'p-blue'">{{ s.className }}</span>

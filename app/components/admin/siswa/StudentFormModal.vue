@@ -42,12 +42,16 @@
                   <input v-model="form.name" required class="inp-field" placeholder="cth: AHMAD FAUZI" />
                 </div>
                 <div class="field" style="margin-bottom:0">
-                  <label>NISN (10 Digit) <span style="color:var(--rose)">*</span></label>
-                  <input v-model="form.nisn" required maxlength="10" class="inp-field font-mono" placeholder="cth: 0078912345" />
+                  <label>ID Siswa (Billing / ID Pembayaran) <span style="color:var(--rose)">*</span></label>
+                  <input v-model="form.id" required class="inp-field font-mono" placeholder="cth: SMK-26270120117" />
                 </div>
                 <div class="field" style="margin-bottom:0">
-                  <label>NIS (Nomor Induk Siswa)</label>
-                  <input v-model="form.nis" class="inp-field font-mono" placeholder="cth: 26270120117" />
+                  <label>NIS (Nomor Induk Siswa) <span style="color:var(--rose)">*</span></label>
+                  <input v-model="form.nis" required class="inp-field font-mono" placeholder="cth: 26270120117" @input="handleNisInput" />
+                </div>
+                <div class="field" style="margin-bottom:0">
+                  <label>NISN (10 Digit) <span style="color:var(--rose)">*</span></label>
+                  <input v-model="form.nisn" required maxlength="10" class="inp-field font-mono" placeholder="cth: 0078912345" />
                 </div>
                 <div class="field" style="margin-bottom:0">
                   <label>NIK Siswa (16 Digit)</label>
@@ -364,9 +368,19 @@ watch(
   () => props.initialData,
   (val) => {
     Object.assign(form, val)
+    if (props.mode === 'add' && !form.id && form.nis) {
+      form.id = `${props.grade}-${form.nis}`
+    }
   },
   { immediate: true, deep: true }
 )
+
+const handleNisInput = () => {
+  if (props.mode === 'add' && form.nis) {
+    // Auto generate ID with pattern [GRADE]-[NIS]
+    form.id = `${props.grade}-${form.nis.trim()}`
+  }
+}
 
 const handleSubmit = () => {
   emit('save', { ...form })

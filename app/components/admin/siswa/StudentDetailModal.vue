@@ -20,7 +20,7 @@
                 <span v-if="student.hasRfid" class="pill p-blue font-mono" style="font-size:11px">RFID Ready</span>
               </div>
               <p style="font-size:12.5px;color:var(--muted);margin-top:2px">
-                NIS: <b>{{ student.nis || '-' }}</b> &bull; NISN: <b>{{ student.nisn }}</b> &bull; Kelas: <b>{{ student.className }}</b>
+                ID: <b class="font-mono" style="color:var(--blue-600)">{{ student.id }}</b> &bull; NIS: <b>{{ student.nis || '-' }}</b> &bull; NISN: <b>{{ student.nisn }}</b> &bull; Kelas: <b>{{ student.className }}</b>
                 <template v-if="student.major"> &bull; {{ student.major }}</template>
               </p>
             </div>
@@ -48,6 +48,10 @@
         <div class="modal-card-b">
           <!-- TAB 1: BIODATA & ALAMAT -->
           <div v-if="activeTab === 'pribadi'" class="grid g2" style="gap:16px">
+            <div class="detail-item">
+              <span class="d-label">ID Siswa (Billing / Tagihan Pembayaran)</span>
+              <b class="d-val font-mono" style="color:var(--blue-600);font-weight:800">{{ student.id }}</b>
+            </div>
             <div class="detail-item">
               <span class="d-label">Nama Lengkap</span>
               <b class="d-val">{{ student.name }}</b>
