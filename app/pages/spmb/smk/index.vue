@@ -1,392 +1,690 @@
 <template>
-  <div class="spmb-body" :class="{'modal-open': modalSuccess || modalTrack}">
+  <div class="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased flex flex-col justify-between">
     <!-- ======= HEADER SPMB SMK ======= -->
-    <header class="spmb-top" :class="{ scrolled: isScrolled }">
-      <div class="spmb-wrap">
-        <NuxtLink class="t-brand" to="/spmb" aria-label="Kembali ke portal SPMB">
-          <img src="/asset/logo.png" alt="Logo SMK IT Attaqwa 9">
-          <span>
-            <b>SPMB Online</b>
-            <small>SMK IT Attaqwa 9</small>
-          </span>
+    <header
+      class="sticky top-0 z-40 w-full transition-all duration-300 border-b"
+      :class="isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm border-slate-200/80 py-3.5' : 'bg-white border-transparent py-4'"
+    >
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between">
+        <NuxtLink to="/spmb" class="flex items-center gap-3 group" aria-label="Kembali ke portal SPMB">
+          <img src="/asset/logo.png" alt="Logo SMK IT Attaqwa 9" class="w-10 h-10 object-contain transition-transform duration-300 group-hover:scale-105">
+          <div>
+            <b class="block text-base font-extrabold text-slate-900 leading-tight">SPMB Online</b>
+            <small class="block text-xs font-semibold text-slate-500">SMK IT Attaqwa 9</small>
+          </div>
         </NuxtLink>
-        <div class="flex items-center gap-2">
-          <button class="btn btn-ghost btn-sm" @click="openTrackModal">Cek Status</button>
-          <NuxtLink class="btn btn-pri btn-sm" to="/">Beranda</NuxtLink>
+        <div class="flex items-center gap-2.5">
+          <button
+            class="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-xl transition-all duration-200"
+            @click="openTrackModal"
+          >
+            Cek Status
+          </button>
+          <NuxtLink
+            to="/"
+            class="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 rounded-xl transition-all duration-200"
+          >
+            Beranda
+          </NuxtLink>
         </div>
       </div>
     </header>
 
-    <!-- ======= HERO SPMB SMK ======= -->
-    <section class="spmb-hero">
-      <div class="grid"></div><div class="orb o1"></div><div class="orb o2"></div>
-      <div class="spmb-wrap">
-        <span class="hero-badge">Jenjang SMK • Tahun Ajaran 2027/2028</span>
-        <h1>SPMB <span class="hl">SMK IT Attaqwa 9</span></h1>
-        <p class="sub">
-          Formulir pendaftaran murid baru online resmi <b>SMK IT Attaqwa 9</b> — pilih jurusan impianmu, isi data secara lengkap, tuntaskan pembayaran, dan simpan ID pendaftaranmu.
-        </p>
-        <div class="hero-chips">
-          <span class="hchip">
-            <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5h.01M18 14.5h.01"/></svg>
-            Biaya pendaftaran Rp300.000
-          </span>
-          <span class="hchip">
-            <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
-            Online 24 Jam
-          </span>
-          <span class="hchip">
-            <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
-            Akreditasi A &amp; Terverifikasi
-          </span>
-        </div>
-      </div>
-    </section>
+    <main class="flex-1">
+      <!-- ======= HERO SPMB SMK ======= -->
+      <section class="relative overflow-hidden bg-gradient-to-b from-[#0F1E38] via-[#122748] to-[#0D192F] text-white py-14 sm:py-16">
+        <div class="absolute -top-24 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
-    <!-- ======= WIZARD SPMB SMK ======= -->
-    <section class="wizard-sec">
-      <div class="spmb-wrap">
-        <div class="wiz" ref="wizEl">
+        <div class="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 mb-4">
+            Jenjang SMK • Tahun Ajaran 2027/2028
+          </span>
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight mb-4">
+            SPMB <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-300">SMK IT Attaqwa 9</span>
+          </h1>
+          <p class="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed mb-6">
+            Formulir pendaftaran murid baru online resmi <strong class="text-white">SMK IT Attaqwa 9</strong> — pilih jurusan impianmu, isi data secara lengkap, tuntaskan pembayaran, dan simpan ID pendaftaranmu.
+          </p>
+
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 backdrop-blur-md border border-white/10 text-slate-200">
+              <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5h.01M18 14.5h.01"/></svg>
+              Biaya pendaftaran Rp300.000
+            </span>
+            <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 backdrop-blur-md border border-white/10 text-slate-200">
+              <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+              Online 24 Jam
+            </span>
+            <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 backdrop-blur-md border border-white/10 text-slate-200">
+              <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+              Akreditasi A &amp; Terverifikasi
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= WIZARD SPMB SMK ======= -->
+      <section class="py-10 sm:py-14 max-w-4xl mx-auto px-4 sm:px-6">
+        <div ref="wizEl" class="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-10 shadow-xl shadow-slate-200/50">
           <!-- Step Indicator -->
-          <ol class="steps">
-            <li :class="{ on: step === 1, done: step > 1 }">
-              <span class="st-n">
-                <svg v-if="step > 1" class="ai" style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
+          <ol class="grid grid-cols-3 gap-2 sm:gap-4 mb-8 pb-8 border-b border-slate-100">
+            <li class="flex items-center gap-2.5 sm:gap-3.5" :class="step === 1 ? 'text-blue-600' : step > 1 ? 'text-emerald-600' : 'text-slate-400'">
+              <span
+                class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 transition-all"
+                :class="step === 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-4 ring-blue-100' : step > 1 ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'"
+              >
+                <svg v-if="step > 1" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
                 <template v-else>1</template>
               </span>
-              <span class="st-t">Data Siswa &amp; Jurusan</span>
+              <span class="text-xs sm:text-sm font-bold truncate">Data Siswa</span>
             </li>
-            <li :class="{ on: step === 2, done: step > 2 }">
-              <span class="st-n">
-                <svg v-if="step > 2" class="ai" style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
+            <li class="flex items-center gap-2.5 sm:gap-3.5" :class="step === 2 ? 'text-blue-600' : step > 2 ? 'text-emerald-600' : 'text-slate-400'">
+              <span
+                class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 transition-all"
+                :class="step === 2 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-4 ring-blue-100' : step > 2 ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'"
+              >
+                <svg v-if="step > 2" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
                 <template v-else>2</template>
               </span>
-              <span class="st-t">Data Orang Tua</span>
+              <span class="text-xs sm:text-sm font-bold truncate">Data Orang Tua</span>
             </li>
-            <li :class="{ on: step === 3, done: step > 3 }">
-              <span class="st-n">
-                <svg v-if="step > 3" class="ai" style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
+            <li class="flex items-center gap-2.5 sm:gap-3.5" :class="step === 3 ? 'text-blue-600' : step > 3 ? 'text-emerald-600' : 'text-slate-400'">
+              <span
+                class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 transition-all"
+                :class="step === 3 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-4 ring-blue-100' : step > 3 ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'"
+              >
+                <svg v-if="step > 3" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
                 <template v-else>3</template>
               </span>
-              <span class="st-t">Pembayaran</span>
+              <span class="text-xs sm:text-sm font-bold truncate">Pembayaran</span>
             </li>
           </ol>
 
           <!-- Banner Keterangan Unit Sekolah -->
-          <div class="unit-banner smk">
-            <div class="unit-badge">
-              <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
-              <span>Unit: <b>SMK IT Attaqwa 9</b> (Lulusan SMP / MTs)</span>
-            </div>
+          <div class="mb-8 p-3.5 sm:p-4 rounded-2xl bg-indigo-50 border border-indigo-200/80 flex items-center gap-3 text-indigo-900 text-xs sm:text-sm font-semibold">
+            <svg class="w-5 h-5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+            <span>Unit Terpilih: <strong class="text-indigo-950 font-black">SMK IT Attaqwa 9</strong> (Khusus Lulusan SMP / MTs)</span>
           </div>
 
           <form @submit.prevent novalidate>
             <!-- STEP 1: DATA SISWA & JURUSAN -->
-            <fieldset class="fstep" :class="{ on: step === 1 }">
-              <h2>
-                <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>
-                Informasi Siswa Calon SMK &amp; Jurusan
-              </h2>
-              <p class="fdesc">Lengkapi data calon murid dan pilih konsentrasi keahlian yang diminati.</p>
+            <fieldset v-show="step === 1" class="space-y-6">
+              <div>
+                <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5 mb-1.5">
+                  <svg class="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>
+                  Informasi Siswa Calon SMK &amp; Jurusan
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500">Lengkapi data calon murid dan pilih konsentrasi keahlian yang diminati.</p>
+              </div>
               
-              <div class="f-grid">
+              <div class="space-y-5">
                 <!-- Pilihan Jurusan -->
-                <div class="fld full">
-                  <label>Pilihan Konsentrasi Keahlian / Jurusan <i>*</i></label>
-                  <div class="jurusan-grid">
-                    <label class="jurusan-card" :class="{ selected: form.jurusan === 'Teknik Komputer & Jaringan' }">
-                      <input type="radio" v-model="form.jurusan" value="Teknik Komputer & Jaringan">
-                      <div class="j-icon">
-                        <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                    Pilihan Konsentrasi Keahlian / Jurusan <span class="text-red-500">*</span>
+                  </label>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <label
+                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
+                      :class="form.jurusan === 'Teknik Komputer & Jaringan' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                    >
+                      <input type="radio" v-model="form.jurusan" value="Teknik Komputer & Jaringan" class="sr-only">
+                      <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                       </div>
-                      <div class="j-text">
-                        <b>TKJ</b>
-                        <small>Teknik Komputer &amp; Jaringan</small>
-                      </div>
+                      <b class="text-base font-extrabold text-slate-900 leading-tight">TKJ</b>
+                      <small class="text-xs text-slate-500 mt-1">Teknik Komputer &amp; Jaringan</small>
                     </label>
 
-                    <label class="jurusan-card" :class="{ selected: form.jurusan === 'Pengembangan Perangkat Lunak & Gim' }">
-                      <input type="radio" v-model="form.jurusan" value="Pengembangan Perangkat Lunak & Gim">
-                      <div class="j-icon">
-                        <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    <label
+                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
+                      :class="form.jurusan === 'Pengembangan Perangkat Lunak & Gim' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                    >
+                      <input type="radio" v-model="form.jurusan" value="Pengembangan Perangkat Lunak & Gim" class="sr-only">
+                      <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                       </div>
-                      <div class="j-text">
-                        <b>PPLG / RPL</b>
-                        <small>Pengembangan Perangkat Lunak</small>
-                      </div>
+                      <b class="text-base font-extrabold text-slate-900 leading-tight">PPLG / RPL</b>
+                      <small class="text-xs text-slate-500 mt-1">Rekayasa Perangkat Lunak</small>
                     </label>
 
-                    <label class="jurusan-card" :class="{ selected: form.jurusan === 'Desain Komunikasi Visual' }">
-                      <input type="radio" v-model="form.jurusan" value="Desain Komunikasi Visual">
-                      <div class="j-icon">
-                        <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="12 8 8 12 12 16 16 12 12 8"/></svg>
+                    <label
+                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
+                      :class="form.jurusan === 'Desain Komunikasi Visual' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                    >
+                      <input type="radio" v-model="form.jurusan" value="Desain Komunikasi Visual" class="sr-only">
+                      <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="12 8 8 12 12 16 16 12 12 8"/></svg>
                       </div>
-                      <div class="j-text">
-                        <b>DKV</b>
-                        <small>Desain Komunikasi Visual</small>
-                      </div>
+                      <b class="text-base font-extrabold text-slate-900 leading-tight">DKV</b>
+                      <small class="text-xs text-slate-500 mt-1">Desain Komunikasi Visual</small>
                     </label>
                   </div>
                 </div>
 
-                <div class="fld full" :class="{err: errs.s_nama}">
-                  <label>Nama lengkap siswa <i>*</i></label>
-                  <input v-model="form.s_nama" @input="clearErr('s_nama')" type="text" placeholder="cth: Muhammad Rizky Pratama" autocomplete="name">
-                  <span class="f-msg">Nama lengkap wajib diisi.</span>
+                <!-- Input Nama Lengkap -->
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Nama Lengkap Siswa <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    v-model="form.s_nama"
+                    @input="clearErr('s_nama')"
+                    type="text"
+                    placeholder="cth: Muhammad Rizky Pratama"
+                    autocomplete="name"
+                    class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                    :class="errs.s_nama ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                  >
+                  <span v-if="errs.s_nama" class="block text-xs font-semibold text-red-600 mt-1">Nama lengkap wajib diisi.</span>
                 </div>
-                <div class="fld" :class="{err: errs.s_nisn}">
-                  <label>NISN (Nomor Induk Siswa Nasional) <i>*</i></label>
-                  <input v-model="form.s_nisn" @input="clearErr('s_nisn'); numericOnly('s_nisn')" type="text" inputmode="numeric" maxlength="10" placeholder="10 digit NISN">
-                  <span class="f-msg">NISN harus 10 digit angka.</span>
-                </div>
-                <div class="fld" :class="{err: errs.s_jk}">
-                  <label>Jenis kelamin <i>*</i></label>
-                  <div class="pills">
-                    <label class="pill"><input type="radio" v-model="form.s_jk" value="Laki-laki" @change="clearErr('s_jk')"><span>Laki-laki</span></label>
-                    <label class="pill"><input type="radio" v-model="form.s_jk" value="Perempuan" @change="clearErr('s_jk')"><span>Perempuan</span></label>
+
+                <!-- NISN & Jenis Kelamin Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      NISN (Nomor Induk Siswa Nasional) <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="form.s_nisn"
+                      @input="clearErr('s_nisn'); numericOnly('s_nisn')"
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="10"
+                      placeholder="10 digit NISN"
+                      class="w-full px-4 py-3 text-sm font-mono bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.s_nisn ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                    <span v-if="errs.s_nisn" class="block text-xs font-semibold text-red-600 mt-1">NISN harus 10 digit angka.</span>
                   </div>
-                  <span class="f-msg">Pilih jenis kelamin.</span>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Jenis Kelamin <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2.5">
+                      <label
+                        class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 cursor-pointer font-bold text-xs sm:text-sm transition-all"
+                        :class="form.s_jk === 'Laki-laki' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                      >
+                        <input type="radio" v-model="form.s_jk" value="Laki-laki" @change="clearErr('s_jk')" class="sr-only">
+                        <span>Laki-laki</span>
+                      </label>
+                      <label
+                        class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 cursor-pointer font-bold text-xs sm:text-sm transition-all"
+                        :class="form.s_jk === 'Perempuan' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                      >
+                        <input type="radio" v-model="form.s_jk" value="Perempuan" @change="clearErr('s_jk')" class="sr-only">
+                        <span>Perempuan</span>
+                      </label>
+                    </div>
+                    <span v-if="errs.s_jk" class="block text-xs font-semibold text-red-600 mt-1">Pilih jenis kelamin.</span>
+                  </div>
                 </div>
-                <div class="fld" :class="{err: errs.s_tempat}">
-                  <label>Tempat lahir <i>*</i></label>
-                  <input v-model="form.s_tempat" @input="clearErr('s_tempat')" type="text" placeholder="cth: Bekasi">
-                  <span class="f-msg">Tempat lahir wajib diisi.</span>
+
+                <!-- Tempat & Tanggal Lahir Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Tempat Lahir <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="form.s_tempat"
+                      @input="clearErr('s_tempat')"
+                      type="text"
+                      placeholder="cth: Bekasi"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.s_tempat ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                    <span v-if="errs.s_tempat" class="block text-xs font-semibold text-red-600 mt-1">Tempat lahir wajib diisi.</span>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Tanggal Lahir <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="form.s_tgl"
+                      @input="clearErr('s_tgl')"
+                      type="date"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.s_tgl ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                    <span v-if="errs.s_tgl" class="block text-xs font-semibold text-red-600 mt-1">Tanggal lahir wajib diisi.</span>
+                  </div>
                 </div>
-                <div class="fld" :class="{err: errs.s_tgl}">
-                  <label>Tanggal lahir <i>*</i></label>
-                  <input v-model="form.s_tgl" @input="clearErr('s_tgl')" type="date">
-                  <span class="f-msg">Tanggal lahir wajib diisi.</span>
+
+                <!-- Kontak Siswa Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      No. HP Siswa / WhatsApp <span class="text-slate-400 font-normal">(Opsional)</span>
+                    </label>
+                    <input
+                      v-model="form.s_hp"
+                      @input="clearErr('s_hp'); phoneOnly('s_hp')"
+                      type="tel"
+                      inputmode="tel"
+                      placeholder="cth: 0812xxxxxxx"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                    >
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Email Siswa <span class="text-slate-400 font-normal">(Opsional)</span>
+                    </label>
+                    <input
+                      v-model="form.s_email"
+                      @input="clearErr('s_email')"
+                      type="email"
+                      inputmode="email"
+                      placeholder="cth: nama@email.com"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                    >
+                  </div>
                 </div>
-                <div class="fld" :class="{err: errs.s_hp}">
-                  <label>No. handphone siswa / WhatsApp</label>
-                  <input v-model="form.s_hp" @input="clearErr('s_hp'); phoneOnly('s_hp')" type="tel" inputmode="tel" placeholder="cth: 0812xxxxxxx">
-                  <span class="f-msg">Format nomor tidak valid.</span>
-                  <p class="f-hint">Opsional — boleh dikosongkan.</p>
+
+                <!-- Sekolah Asal -->
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Nama SMP / MTs Asal <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    v-model="form.s_sekolah"
+                    @input="clearErr('s_sekolah')"
+                    type="text"
+                    placeholder="cth: SMPN 1 Babelan / MTs Attaqwa 03"
+                    class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                    :class="errs.s_sekolah ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                  >
+                  <span v-if="errs.s_sekolah" class="block text-xs font-semibold text-red-600 mt-1">Nama SMP/MTs asal wajib diisi.</span>
                 </div>
-                <div class="fld" :class="{err: errs.s_email}">
-                  <label>Email siswa</label>
-                  <input v-model="form.s_email" @input="clearErr('s_email')" type="email" inputmode="email" placeholder="cth: nama@email.com">
-                  <span class="f-msg">Format email tidak valid.</span>
-                  <p class="f-hint">Opsional — boleh dikosongkan.</p>
-                </div>
-                <div class="fld full" :class="{err: errs.s_sekolah}">
-                  <label>Nama SMP / MTs asal <i>*</i></label>
-                  <input v-model="form.s_sekolah" @input="clearErr('s_sekolah')" type="text" placeholder="cth: SMPN 1 Babelan / MTs Attaqwa 03">
-                  <span class="f-msg">Nama SMP/MTs asal wajib diisi.</span>
-                </div>
-                <div class="fld full" :class="{err: errs.s_alsekolah}">
-                  <label>Alamat SMP / MTs asal <i>*</i></label>
-                  <textarea v-model="form.s_alsekolah" @input="clearErr('s_alsekolah')" placeholder="Jalan, kelurahan, kecamatan, kabupaten/kota"></textarea>
-                  <span class="f-msg">Alamat sekolah asal wajib diisi.</span>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Alamat SMP / MTs Asal <span class="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    v-model="form.s_alsekolah"
+                    @input="clearErr('s_alsekolah')"
+                    rows="3"
+                    placeholder="Jalan, kelurahan, kecamatan, kabupaten/kota"
+                    class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                    :class="errs.s_alsekolah ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                  ></textarea>
+                  <span v-if="errs.s_alsekolah" class="block text-xs font-semibold text-red-600 mt-1">Alamat sekolah asal wajib diisi.</span>
                 </div>
               </div>
             </fieldset>
 
             <!-- STEP 2: DATA ORANG TUA / WALI -->
-            <fieldset class="fstep" :class="{ on: step === 2 }">
-              <h2>
-                <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.4 4-5 6.5-5s5.3 1.6 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 15.2c2.3.3 4.3 1.7 5.5 4.3"/></svg>
-                Informasi Orang Tua / Wali
-              </h2>
-              <p class="fdesc">Data orang tua/wali untuk keperluan administrasi dan komunikasi resmi sekolah.</p>
-              <div class="f-grid">
-                <div class="fld" :class="{err: errs.o_nama}">
-                  <label>Nama lengkap orang tua / wali <i>*</i></label>
-                  <input v-model="form.o_nama" @input="clearErr('o_nama')" type="text" placeholder="Sesuai KTP/KK">
-                  <span class="f-msg">Nama wajib diisi.</span>
+            <fieldset v-show="step === 2" class="space-y-6">
+              <div>
+                <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5 mb-1.5">
+                  <svg class="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.4 4-5 6.5-5s5.3 1.6 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 15.2c2.3.3 4.3 1.7 5.5 4.3"/></svg>
+                  Informasi Orang Tua / Wali
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500">Data orang tua/wali untuk keperluan administrasi dan komunikasi resmi sekolah.</p>
+              </div>
+
+              <div class="space-y-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Nama Lengkap Orang Tua / Wali <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="form.o_nama"
+                      @input="clearErr('o_nama')"
+                      type="text"
+                      placeholder="Sesuai KTP/KK"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.o_nama ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                    <span v-if="errs.o_nama" class="block text-xs font-semibold text-red-600 mt-1">Nama wajib diisi.</span>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Hubungan dengan Siswa <span class="text-red-500">*</span>
+                    </label>
+                    <select
+                      v-model="form.o_hub"
+                      @change="clearErr('o_hub')"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.o_hub ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                      <option value="">— Pilih Hubungan —</option>
+                      <option>Ayah</option>
+                      <option>Ibu</option>
+                      <option>Wali</option>
+                    </select>
+                    <span v-if="errs.o_hub" class="block text-xs font-semibold text-red-600 mt-1">Pilih hubungan keluarga.</span>
+                  </div>
                 </div>
-                <div class="fld" :class="{err: errs.o_hub}">
-                  <label>Hubungan dengan siswa <i>*</i></label>
-                  <select v-model="form.o_hub" @change="clearErr('o_hub')">
-                    <option value="">— Pilih —</option>
-                    <option>Ayah</option>
-                    <option>Ibu</option>
-                    <option>Wali</option>
-                  </select>
-                  <span class="f-msg">Pilih hubungan.</span>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      NIK (Nomor Induk Kependudukan) <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="form.o_nik"
+                      @input="clearErr('o_nik'); numericOnly('o_nik')"
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="16"
+                      placeholder="16 digit NIK"
+                      class="w-full px-4 py-3 text-sm font-mono bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.o_nik ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                    <span v-if="errs.o_nik" class="block text-xs font-semibold text-red-600 mt-1">NIK harus 16 digit angka.</span>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      No. HP / WhatsApp Aktif <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="form.o_hp"
+                      @input="clearErr('o_hp'); phoneOnly('o_hp')"
+                      type="tel"
+                      inputmode="tel"
+                      placeholder="cth: 0812xxxxxxx"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.o_hp ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                    <span v-if="errs.o_hp" class="block text-xs font-semibold text-red-600 mt-1">Nomor HP/WA wajib diisi dengan benar.</span>
+                  </div>
                 </div>
-                <div class="fld" :class="{err: errs.o_nik}">
-                  <label>NIK (Nomor Induk Kependudukan) <i>*</i></label>
-                  <input v-model="form.o_nik" @input="clearErr('o_nik'); numericOnly('o_nik')" type="text" inputmode="numeric" maxlength="16" placeholder="16 digit NIK">
-                  <span class="f-msg">NIK harus 16 digit angka.</span>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Email Aktif Orang Tua <span class="text-slate-400 font-normal">(Opsional)</span>
+                  </label>
+                  <input
+                    v-model="form.o_email"
+                    @input="clearErr('o_email')"
+                    type="email"
+                    inputmode="email"
+                    placeholder="cth: orangtua@email.com"
+                    class="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                  >
                 </div>
-                <div class="fld" :class="{err: errs.o_hp}">
-                  <label>No. HP / WhatsApp aktif <i>*</i></label>
-                  <input v-model="form.o_hp" @input="clearErr('o_hp'); phoneOnly('o_hp')" type="tel" inputmode="tel" placeholder="cth: 0812xxxxxxx">
-                  <span class="f-msg">Nomor HP/WA wajib diisi dengan benar.</span>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Tempat Lahir Orang Tua <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="form.o_tempat"
+                      @input="clearErr('o_tempat')"
+                      type="text"
+                      placeholder="cth: Bekasi"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.o_tempat ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                    <span v-if="errs.o_tempat" class="block text-xs font-semibold text-red-600 mt-1">Tempat lahir wajib diisi.</span>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Tanggal Lahir Orang Tua <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="form.o_tgl"
+                      @input="clearErr('o_tgl')"
+                      type="date"
+                      class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                      :class="errs.o_tgl ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                    >
+                    <span v-if="errs.o_tgl" class="block text-xs font-semibold text-red-600 mt-1">Tanggal lahir wajib diisi.</span>
+                  </div>
                 </div>
-                <div class="fld" :class="{err: errs.o_email}">
-                  <label>Email aktif orang tua</label>
-                  <input v-model="form.o_email" @input="clearErr('o_email')" type="email" inputmode="email" placeholder="cth: orangtua@email.com">
-                  <span class="f-msg">Format email tidak valid.</span>
-                  <p class="f-hint">Opsional — untuk pengiriman informasi.</p>
-                </div>
-                <div class="fld" :class="{err: errs.o_tempat}">
-                  <label>Tempat lahir <i>*</i></label>
-                  <input v-model="form.o_tempat" @input="clearErr('o_tempat')" type="text" placeholder="cth: Bekasi">
-                  <span class="f-msg">Tempat lahir wajib diisi.</span>
-                </div>
-                <div class="fld" :class="{err: errs.o_tgl}">
-                  <label>Tanggal lahir <i>*</i></label>
-                  <input v-model="form.o_tgl" @input="clearErr('o_tgl')" type="date">
-                  <span class="f-msg">Tanggal lahir wajib diisi.</span>
-                </div>
-                <div class="fld full" :class="{err: errs.o_alamat}">
-                  <label>Alamat tempat tinggal <i>*</i></label>
-                  <textarea v-model="form.o_alamat" @input="clearErr('o_alamat')" placeholder="Jalan, RT/RW, kelurahan, kecamatan, kabupaten/kota, kode pos"></textarea>
-                  <span class="f-msg">Alamat tempat tinggal wajib diisi.</span>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Alamat Tempat Tinggal <span class="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    v-model="form.o_alamat"
+                    @input="clearErr('o_alamat')"
+                    rows="3"
+                    placeholder="Jalan, RT/RW, kelurahan, kecamatan, kabupaten/kota, kode pos"
+                    class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                    :class="errs.o_alamat ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'"
+                  ></textarea>
+                  <span v-if="errs.o_alamat" class="block text-xs font-semibold text-red-600 mt-1">Alamat tempat tinggal wajib diisi.</span>
                 </div>
               </div>
             </fieldset>
 
             <!-- STEP 3: PEMBAYARAN -->
-            <fieldset class="fstep" :class="{ on: step === 3 }">
-              <h2>
-                <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5h.01M18 14.5h.01"/></svg>
-                Pembayaran Pendaftaran SMK
-              </h2>
-              <p class="fdesc">Selesaikan pembayaran biaya formulir SPMB SMK IT Attaqwa 9, lalu unggah bukti pembayarannya.</p>
+            <fieldset v-show="step === 3" class="space-y-6">
+              <div>
+                <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5 mb-1.5">
+                  <svg class="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5h.01M18 14.5h.01"/></svg>
+                  Pembayaran Pendaftaran SMK
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500">Selesaikan pembayaran biaya formulir SPMB SMK IT Attaqwa 9, lalu unggah bukti pembayarannya.</p>
+              </div>
               
-              <div class="pay-box">
-                <div class="orb"></div>
-                <small>Total yang harus dibayar</small>
-                <div class="amt">Rp300.000<small>,-</small></div>
+              <!-- Total Box -->
+              <div class="bg-gradient-to-r from-[#0A2A5C] to-[#1D4ED8] rounded-2xl p-5 text-white shadow-lg flex items-center justify-between">
+                <div>
+                  <small class="text-xs uppercase tracking-wider text-blue-200 font-semibold block mb-0.5">Total Biaya Pendaftaran</small>
+                  <div class="text-2xl sm:text-3xl font-black tracking-tight font-mono">Rp300.000<span class="text-lg text-blue-200 font-normal">,-</span></div>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white backdrop-blur-sm">SMK IT Attaqwa 9</span>
               </div>
 
-              <div class="pay-methods">
-                <div class="pay-opt">
-                  <span class="pay-ic">
-                    <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 4l9 5.5"/><path d="M4.5 9.5V18M9.5 9.5V18M14.5 9.5V18M19.5 9.5V18M2.5 20.5h19"/></svg>
-                  </span>
+              <!-- Payment Methods -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/70 flex gap-3.5 items-start">
+                  <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 4l9 5.5"/><path d="M4.5 9.5V18M9.5 9.5V18M14.5 9.5V18M19.5 9.5V18M2.5 20.5h19"/></svg>
+                  </div>
                   <div>
-                    <b>Transfer Bank BSI</b>
-                    <p>Nomor rekening resmi akan diinformasikan panitia SPMB. Konfirmasi ke <b>021-88886776</b> setelah transfer.</p>
+                    <b class="block text-sm font-extrabold text-slate-900 mb-0.5">Transfer Bank BSI</b>
+                    <p class="text-xs text-slate-600 leading-relaxed">Nomor rekening resmi akan diinformasikan panitia SPMB. Konfirmasi ke <strong class="text-slate-800">021-88886776</strong>.</p>
                   </div>
                 </div>
-                <div class="pay-opt">
-                  <span class="pay-ic gold">
-                    <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M13.5 13.5h3v3h-3zM17.5 17.5h3v3h-3z"/></svg>
-                  </span>
+
+                <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/70 flex gap-3.5 items-start">
+                  <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M13.5 13.5h3v3h-3zM17.5 17.5h3v3h-3z"/></svg>
+                  </div>
                   <div>
-                    <b>QRIS</b>
-                    <p>Pindai kode QRIS resmi sekolah yang akan dibagikan oleh panitia SPMB.</p>
+                    <b class="block text-sm font-extrabold text-slate-900 mb-0.5">QRIS Terpadu</b>
+                    <p class="text-xs text-slate-600 leading-relaxed">Pindai kode QRIS resmi sekolah yang akan dibagikan oleh panitia SPMB saat pendaftaran.</p>
                   </div>
                 </div>
               </div>
 
-              <div class="fld" :class="{err: errs.bukti}">
-                <label>Upload bukti pembayaran <i>*</i></label>
-                <label class="up">
-                  <input type="file" accept="image/*,.pdf" @change="onFileChange">
-                  <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 10l5-5 5 5"/><path d="M4 20h16"/></svg>
-                  <b>Klik untuk memilih file bukti</b>
-                  <small>Foto/scan struk transfer (JPG, PNG, atau PDF) — maks. 5 MB</small>
+              <!-- Upload File -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Upload Bukti Pembayaran <span class="text-red-500">*</span>
                 </label>
-                <div class="up-preview" :class="{on: filePreview}">
-                  <img v-if="fileIsImg" :src="filePreview" alt="Pratinjau bukti">
-                  <div>
-                    <div class="up-name">{{ fileName }}</div>
-                    <div class="up-ok">&#10003; File siap diunggah</div>
+                <label
+                  class="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-200 text-center"
+                  :class="errs.bukti ? 'border-red-500 bg-red-50/30' : 'border-slate-300 hover:border-blue-500 hover:bg-blue-50/30 bg-slate-50'"
+                >
+                  <input type="file" accept="image/*,.pdf" @change="onFileChange" class="sr-only">
+                  <svg class="w-8 h-8 text-blue-600 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 10l5-5 5 5"/><path d="M4 20h16"/></svg>
+                  <b class="text-sm font-bold text-slate-800">Klik untuk memilih file bukti transfer</b>
+                  <small class="text-xs text-slate-500 mt-1">Foto/scan struk transfer (JPG, PNG, atau PDF) — maks. 5 MB</small>
+                </label>
+
+                <!-- Preview File -->
+                <div v-if="filePreview" class="mt-3.5 p-3.5 rounded-xl bg-blue-50 border border-blue-200 flex items-center gap-3">
+                  <img v-if="fileIsImg" :src="filePreview" alt="Pratinjau bukti" class="w-12 h-12 object-cover rounded-lg border border-blue-200">
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs font-bold text-slate-900 truncate">{{ fileName }}</div>
+                    <div class="text-xs text-emerald-600 font-semibold mt-0.5">&#10003; File siap diunggah</div>
                   </div>
                 </div>
-                <span class="f-msg">Bukti pembayaran wajib diunggah (maks. 5 MB).</span>
+                <span v-if="errs.bukti" class="block text-xs font-semibold text-red-600 mt-1.5">Bukti pembayaran wajib diunggah (maks. 5 MB).</span>
               </div>
 
-              <label class="agree" :class="{err: errs.agree}">
-                <input type="checkbox" v-model="form.agree" @change="clearErr('agree')">
-                <span>Saya menyatakan bahwa seluruh data yang diisi adalah benar dan bersedia mengikuti seluruh tahapan SPMB SMK IT Attaqwa 9 T.A 2027/2028. <b>*</b></span>
+              <!-- Checkbox Agreement -->
+              <label
+                class="flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all"
+                :class="errs.agree ? 'border-red-500 bg-red-50/30' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/70'"
+              >
+                <input type="checkbox" v-model="form.agree" @change="clearErr('agree')" class="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                <span class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                  Saya menyatakan bahwa seluruh data yang diisi adalah benar dan bersedia mengikuti seluruh tahapan SPMB SMK IT Attaqwa 9 T.A 2027/2028. <b class="text-red-500">*</b>
+                </span>
               </label>
             </fieldset>
 
             <!-- Navigation Buttons -->
-            <div class="wiz-nav">
-              <button type="button" class="btn btn-ghost btnBack" :class="{show: step > 1}" @click="prevStep">Kembali</button>
-              <button type="button" class="btn btn-pri" @click="nextStep">
+            <div class="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
+              <button
+                type="button"
+                class="px-5 py-3 rounded-xl font-bold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all duration-200"
+                :class="step > 1 ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'"
+                @click="prevStep"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                class="px-7 py-3.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/25 transition-all duration-200"
+                @click="nextStep"
+              >
                 {{ step === 3 ? 'Kirim Pendaftaran SMK' : 'Lanjut' }}
               </button>
             </div>
           </form>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
     <!-- ======= FOOTER ======= -->
-    <footer class="spmb-foot">
-      <div class="spmb-wrap">
+    <footer class="bg-white border-t border-slate-200 py-6 text-slate-600 text-xs sm:text-sm">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
         <span>&copy; 2026 SMK IT Attaqwa 9 — Babelan, Kab. Bekasi</span>
-        <span>Butuh bantuan? <a href="tel:02188886776">021-88886776</a></span>
+        <span>Butuh bantuan? <a href="tel:02188886776" class="font-bold text-blue-600 hover:underline">021-88886776</a></span>
       </div>
     </footer>
 
     <!-- ======= MODAL SUKSES ======= -->
-    <div class="spmb-modal" v-if="modalSuccess" role="dialog" aria-modal="true" aria-labelledby="msTitle">
-      <div class="m-scrim" @click="modalSuccess = false"></div>
-      <div class="m-card">
-        <button class="m-x" @click="modalSuccess = false" aria-label="Tutup">
-          <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    <div v-if="modalSuccess" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="msTitle">
+      <div class="fixed inset-0" @click="modalSuccess = false"></div>
+      <div class="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 z-10 max-h-[90vh] overflow-y-auto">
+        <button
+          class="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
+          @click="modalSuccess = false"
+          aria-label="Tutup"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
-        <div class="ok-ring">
-          <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
+
+        <div class="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
         </div>
-        <h2 id="msTitle">Pendaftaran SMK Berhasil!</h2>
-        <p class="m-sub">Data pendaftaran calon murid SMK IT Attaqwa 9 sudah kami terima. Panitia akan memverifikasi berkas dan pembayaran maksimal 1&times;24 jam.</p>
-        <div class="reg-id">
-          <small>ID Pendaftaran SMK</small>
-          <div class="rid">{{ submittedReg.id }}</div>
-          <div class="copy-row">
-            <button class="btn btn-ghost btn-sm" @click="copyId">
-              <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              <span>{{ copyText }}</span>
-            </button>
-          </div>
+
+        <h2 id="msTitle" class="text-xl sm:text-2xl font-black text-slate-900 text-center tracking-tight mb-2">
+          Pendaftaran SMK Berhasil!
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-600 text-center mb-6">
+          Data pendaftaran calon murid SMK IT Attaqwa 9 sudah kami terima. Panitia akan memverifikasi berkas dan pembayaran maksimal 1&times;24 jam.
+        </p>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center mb-5">
+          <small class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">ID Pendaftaran SMK</small>
+          <div class="text-xl font-black text-blue-950 tracking-wider font-mono mb-2">{{ submittedReg.id }}</div>
+          <button
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-blue-300 text-blue-700 hover:bg-blue-100 text-xs font-bold transition-all shadow-sm"
+            @click="copyId"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>{{ copyText }}</span>
+          </button>
         </div>
-        <dl class="det-grid">
-          <div><dt>Jenjang</dt><dd>{{ submittedReg.jenjang }}</dd></div>
-          <div v-if="submittedReg.jurusan"><dt>Jurusan Pilihan</dt><dd class="font-bold text-blue-600">{{ submittedReg.jurusan }}</dd></div>
-          <div><dt>Nama siswa</dt><dd>{{ submittedReg.s_nama }}</dd></div>
-          <div><dt>NISN</dt><dd>{{ submittedReg.s_nisn }}</dd></div>
-          <div><dt>SMP / MTs Asal</dt><dd>{{ submittedReg.s_sekolah }}</dd></div>
-          <div><dt>Orang tua</dt><dd>{{ submittedReg.o_nama }} ({{ submittedReg.o_hub }})</dd></div>
-          <div><dt>No. WhatsApp</dt><dd>{{ submittedReg.o_hp }}</dd></div>
+
+        <dl class="grid grid-cols-2 gap-2.5 text-xs mb-5">
+          <div class="bg-slate-50 p-2.5 rounded-xl"><dt class="text-slate-500 font-medium">Jenjang</dt><dd class="font-bold text-slate-800 mt-0.5">{{ submittedReg.jenjang }}</dd></div>
+          <div v-if="submittedReg.jurusan" class="bg-slate-50 p-2.5 rounded-xl"><dt class="text-slate-500 font-medium">Jurusan</dt><dd class="font-bold text-blue-600 mt-0.5">{{ submittedReg.jurusan }}</dd></div>
+          <div class="bg-slate-50 p-2.5 rounded-xl"><dt class="text-slate-500 font-medium">Nama Siswa</dt><dd class="font-bold text-slate-800 mt-0.5">{{ submittedReg.s_nama }}</dd></div>
+          <div class="bg-slate-50 p-2.5 rounded-xl"><dt class="text-slate-500 font-medium">NISN</dt><dd class="font-bold text-slate-800 mt-0.5">{{ submittedReg.s_nisn }}</dd></div>
+          <div class="bg-slate-50 p-2.5 rounded-xl col-span-2"><dt class="text-slate-500 font-medium">SMP / MTs Asal</dt><dd class="font-bold text-slate-800 mt-0.5">{{ submittedReg.s_sekolah }}</dd></div>
+          <div class="bg-slate-50 p-2.5 rounded-xl"><dt class="text-slate-500 font-medium">Orang Tua</dt><dd class="font-bold text-slate-800 mt-0.5">{{ submittedReg.o_nama }} ({{ submittedReg.o_hub }})</dd></div>
+          <div class="bg-slate-50 p-2.5 rounded-xl"><dt class="text-slate-500 font-medium">No. WhatsApp</dt><dd class="font-bold text-slate-800 mt-0.5">{{ submittedReg.o_hp }}</dd></div>
         </dl>
-        <div class="m-note">
-          <b>Simpan ID pendaftaranmu!</b> Gunakan ID tersebut pada menu <b>Cek Status</b> untuk memantau proses verifikasi berkas dan jadwal tes pemetaan kejuruan.
+
+        <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs leading-relaxed mb-6">
+          <strong>Simpan ID pendaftaranmu!</strong> Gunakan ID tersebut pada menu <strong>Cek Status</strong> untuk memantau proses verifikasi berkas dan jadwal tes pemetaan kejuruan.
         </div>
-        <div class="m-actions">
-          <button class="btn btn-pri" @click="modalSuccess = false">Selesai</button>
-        </div>
+
+        <button
+          class="w-full py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 transition-all"
+          @click="modalSuccess = false"
+        >
+          Selesai
+        </button>
       </div>
     </div>
 
     <!-- ======= MODAL CEK STATUS ======= -->
-    <div class="spmb-modal" v-if="modalTrack" role="dialog" aria-modal="true" aria-labelledby="mtTitle">
-      <div class="m-scrim" @click="modalTrack = false"></div>
-      <div class="m-card">
-        <button class="m-x" @click="modalTrack = false" aria-label="Tutup">
-          <svg class="ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    <div v-if="modalTrack" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="mtTitle">
+      <div class="fixed inset-0" @click="modalTrack = false"></div>
+      <div class="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 z-10">
+        <button
+          class="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
+          @click="modalTrack = false"
+          aria-label="Tutup"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
-        <h2 id="mtTitle">Cek Status Pendaftaran SMK</h2>
-        <p class="m-sub">Masukkan ID pendaftaranmu untuk melihat progres verifikasi data.</p>
-        <div class="fld" style="margin-bottom:14px">
-          <label>ID Pendaftaran (cth: SPMB27-SMK-XXXXXX)</label>
-          <input v-model="trackQuery" @keydown.enter="doTrack" type="text" placeholder="SPMB27-SMK-XXXXXX" style="text-transform:uppercase">
+
+        <h2 id="mtTitle" class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-2">
+          Cek Status Pendaftaran SMK
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-600 mb-6">
+          Masukkan ID pendaftaranmu untuk melihat progres verifikasi data.
+        </p>
+
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">ID Pendaftaran (cth: SPMB27-SMK-XXXXXX)</label>
+          <input
+            v-model="trackQuery"
+            @keydown.enter="doTrack"
+            type="text"
+            placeholder="SPMB27-SMK-XXXXXX"
+            class="w-full px-4 py-3 text-sm font-semibold uppercase bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+          >
         </div>
-        <div class="m-actions" style="margin-bottom:6px">
-          <button class="btn btn-pri" @click="doTrack">Lacak Sekarang</button>
+
+        <div class="mb-4">
+          <button
+            class="w-full py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 transition-all"
+            @click="doTrack"
+          >
+            Lacak Sekarang
+          </button>
         </div>
-        <div class="notfound" v-if="trackNotFound">ID tidak ditemukan di perangkat ini. Pastikan ID sudah benar atau hubungi panitia SPMB.</div>
+
+        <div v-if="trackNotFound" class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm font-medium">
+          ID tidak ditemukan di perangkat ini. Pastikan ID sudah benar atau hubungi panitia SPMB.
+        </div>
         
-        <div v-if="trackResult" style="margin-top:16px">
-          <div class="reg-id" style="margin-bottom:16px">
-            <small>ID Pendaftaran</small>
-            <div class="rid">{{ trackResult.id }}</div>
+        <div v-if="trackResult" class="mt-6 pt-6 border-t border-slate-100">
+          <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center mb-4">
+            <small class="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">ID Pendaftaran</small>
+            <div class="text-lg font-black text-blue-950 tracking-wider font-mono">{{ trackResult.id }}</div>
           </div>
-          <dl class="det-grid">
-            <div><dt>Nama siswa</dt><dd>{{ trackResult.s_nama }}</dd></div>
-            <div><dt>Jenjang</dt><dd>{{ trackResult.jenjang }}</dd></div>
-            <div v-if="trackResult.jurusan"><dt>Jurusan</dt><dd class="font-bold text-blue-600">{{ trackResult.jurusan }}</dd></div>
-            <div><dt>SMP / MTs Asal</dt><dd>{{ trackResult.s_sekolah }}</dd></div>
-            <div><dt>Status</dt><dd class="font-bold text-blue-600">{{ trackResult.status }}</dd></div>
+          <dl class="grid grid-cols-2 gap-3 text-xs sm:text-sm">
+            <div class="bg-slate-50 p-3 rounded-xl"><dt class="text-slate-500 font-medium">Nama Siswa</dt><dd class="font-bold text-slate-800 mt-0.5">{{ trackResult.s_nama }}</dd></div>
+            <div class="bg-slate-50 p-3 rounded-xl"><dt class="text-slate-500 font-medium">Jenjang</dt><dd class="font-bold text-slate-800 mt-0.5">{{ trackResult.jenjang }}</dd></div>
+            <div v-if="trackResult.jurusan" class="bg-slate-50 p-3 rounded-xl col-span-2"><dt class="text-slate-500 font-medium">Jurusan</dt><dd class="font-bold text-blue-600 mt-0.5">{{ trackResult.jurusan }}</dd></div>
+            <div class="bg-slate-50 p-3 rounded-xl"><dt class="text-slate-500 font-medium">SMP / MTs Asal</dt><dd class="font-bold text-slate-800 mt-0.5">{{ trackResult.s_sekolah }}</dd></div>
+            <div class="bg-slate-50 p-3 rounded-xl"><dt class="text-slate-500 font-medium">Status</dt><dd class="font-bold text-blue-600 mt-0.5">{{ trackResult.status }}</dd></div>
           </dl>
         </div>
       </div>
@@ -444,103 +742,3 @@ const {
   doTrack
 } = useSpmbForm('smk')
 </script>
-
-<style scoped src="~/assets/css/spmb.css"></style>
-<style scoped>
-.unit-banner {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 24px;
-}
-.unit-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: #EFF6FF;
-  border: 1.5px solid #BFDBFE;
-  color: #1E40AF;
-  padding: 10px 18px;
-  border-radius: 9999px;
-  font-size: 13.5px;
-  font-weight: 600;
-}
-.unit-badge .ai {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: #2563EB;
-}
-
-.jurusan-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 4px;
-}
-@media (max-width: 640px) {
-  .jurusan-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.jurusan-card {
-  position: relative;
-  border: 1.5px solid #E2E8F0;
-  background: #F8FAFC;
-  border-radius: 14px;
-  padding: 14px 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all 0.2s ease;
-}
-.jurusan-card:hover {
-  border-color: #93C5FD;
-  background: #EFF6FF;
-}
-.jurusan-card.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.15);
-}
-.jurusan-card input {
-  position: absolute;
-  opacity: 0;
-  inset: 0;
-}
-.j-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #DBEAFE;
-  color: #1D4ED8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.jurusan-card.selected .j-icon {
-  background: #2563EB;
-  color: #ffffff;
-}
-.j-icon .ai {
-  width: 20px;
-  height: 20px;
-}
-.j-text b {
-  display: block;
-  font-size: 14px;
-  color: #0F172A;
-  margin-bottom: 2px;
-}
-.j-text small {
-  display: block;
-  font-size: 11.5px;
-  color: #64748B;
-  line-height: 1.3;
-}
-.jurusan-card.selected .j-text b {
-  color: #1E40AF;
-}
-</style>

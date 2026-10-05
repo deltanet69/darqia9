@@ -1,144 +1,3 @@
-<template>
-  <Teleport to="body">
-    <div v-if="isOpen" class="modal-root-ov" @click.self="$emit('close')">
-      <div class="modal-backdrop" @click="$emit('close')"></div>
-      <div class="modal-card" role="dialog" aria-modal="true">
-        <!-- HEADER -->
-        <div class="modal-card-h">
-          <div>
-            <h3 style="font-size:18px;margin:0 0 3px;font-weight:700;color:var(--navy-900)">
-              Import Data Siswa (CSV)
-            </h3>
-            <p style="font-size:12.5px;color:var(--muted);margin:0">
-              Unggah file CSV data induk siswa untuk jenjang <b>{{ grade === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9' }}</b>.
-            </p>
-          </div>
-          <button class="icon-btn" type="button" aria-label="Tutup" @click="$emit('close')">
-            <AdminIcon name="x" size="18" />
-          </button>
-        </div>
-
-        <!-- BODY -->
-        <div class="modal-card-b">
-          <!-- STEP 1: UPLOAD & TEMPLATE -->
-          <div style="background:#f8fafc;border:1.5px dashed var(--line);border-radius:14px;padding:22px;text-align:center">
-            <div style="width:48px;height:48px;border-radius:12px;background:var(--blue-50);color:var(--blue-600);display:grid;place-items:center;margin:0 auto 12px">
-              <AdminIcon name="dl" size="22" />
-            </div>
-            <h4 style="font-size:15px;margin:0 0 6px;color:var(--ink)">Pilih File CSV Data Siswa</h4>
-            <p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">
-              Gunakan file format CSV (UTF-8). Pastikan kolom sesuai dengan format resmi Dapodik.
-            </p>
-            <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
-              <label class="btn btn-primary btn-sm" style="cursor:pointer">
-                <AdminIcon name="plus" size="15" /> Pilih File CSV
-                <input type="file" accept=".csv,text/csv" style="display:none" @change="handleFileChange" />
-              </label>
-              <button class="btn btn-ghost btn-sm" type="button" @click="handleDownloadTemplate">
-                <AdminIcon name="dl" size="15" /> Unduh Template CSV
-              </button>
-            </div>
-          </div>
-
-          <!-- FILE INFO & PREVIEW -->
-          <div v-if="fileName" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="pill p-blue" style="font-size:11px">File Terpilih</span>
-                <b style="font-size:13px">{{ fileName }}</b>
-              </div>
-              <div style="font-size:12px;color:var(--muted)">
-                Total: <b>{{ parsedRows.length }}</b> baris data
-              </div>
-            </div>
-
-            <!-- SUMMARY STATS -->
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
-              <div class="stat-box">
-                <span class="s-label">Total Terbaca</span>
-                <b class="s-val" style="color:var(--blue-600)">{{ parsedRows.length }}</b>
-              </div>
-              <div class="stat-box">
-                <span class="s-label">Data Valid</span>
-                <b class="s-val" style="color:var(--green)">{{ validRows.length }}</b>
-              </div>
-              <div class="stat-box">
-                <span class="s-label">Data Kurang Lengkap</span>
-                <b class="s-val" :style="{ color: invalidCount > 0 ? 'var(--rose)' : 'var(--muted)' }">{{ invalidCount }}</b>
-              </div>
-            </div>
-
-            <!-- MODE IMPORT OPTION -->
-            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line-2)">
-              <label style="font-size:12.5px;font-weight:700;color:var(--navy-900);display:block;margin-bottom:6px">Metode Pemasukan Data:</label>
-              <div style="display:flex;gap:16px">
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                  <input type="radio" v-model="importMode" value="append" />
-                  <span><b>Gabungkan (Append)</b> &mdash; Tambah ke data yang ada</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                  <input type="radio" v-model="importMode" value="replace" />
-                  <span style="color:var(--rose)"><b>Gantikan (Replace)</b> &mdash; Timpa data siswa jenjang ini</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- MINI PREVIEW TABLE -->
-            <div v-if="validRows.length > 0" style="margin-top:12px">
-              <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">
-                Pratinjau Data (5 Siswa Pertama):
-              </div>
-              <div style="max-height:160px;overflow-y:auto;border:1px solid var(--line);border-radius:8px">
-                <table style="width:100%;border-collapse:collapse;font-size:12px">
-                  <thead style="background:#f8fafc;border-bottom:1px solid var(--line);position:sticky;top:0">
-                    <tr>
-                      <th style="padding:6px 10px;text-align:left">No</th>
-                      <th style="padding:6px 10px;text-align:left">NISN</th>
-                      <th style="padding:6px 10px;text-align:left">Nama Lengkap</th>
-                      <th style="padding:6px 10px;text-align:left">Kelas</th>
-                      <th style="padding:6px 10px;text-align:left">L/P</th>
-                      <th style="padding:6px 10px;text-align:left">Orang Tua</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(r, i) in validRows.slice(0, 5)" :key="i" style="border-bottom:1px solid var(--line-2)">
-                      <td style="padding:6px 10px;color:var(--muted)">{{ i + 1 }}</td>
-                      <td style="padding:6px 10px;font-family:monospace;font-weight:600">{{ r.nisn }}</td>
-                      <td style="padding:6px 10px;font-weight:600">{{ r.name }}</td>
-                      <td style="padding:6px 10px">{{ r.className }}</td>
-                      <td style="padding:6px 10px">{{ r.gender }}</td>
-                      <td style="padding:6px 10px">{{ r.fatherName || r.motherName || '-' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- ERROR NOTICE -->
-          <div v-if="errorMessage" style="background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:12px;display:flex;align-items:center;gap:8px;color:#be123c;font-size:13px">
-            <AdminIcon name="x" size="16" />
-            <span>{{ errorMessage }}</span>
-          </div>
-        </div>
-
-        <!-- FOOTER -->
-        <div class="modal-card-f">
-          <button class="btn btn-ghost btn-sm" type="button" @click="$emit('close')">Batal</button>
-          <button
-            class="btn btn-primary btn-sm"
-            type="button"
-            :disabled="validRows.length === 0"
-            @click="handleApplyImport"
-          >
-            <AdminIcon name="plus" size="15" /> Import {{ validRows.length }} Data Siswa
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
-</template>
-
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
@@ -195,12 +54,10 @@ const handleDownloadTemplate = () => {
 
 // Simple robust CSV line parser handling quotes
 const parseCSV = (text: string) => {
-  // Remove BOM if present
   let cleanText = text.replace(/^\uFEFF/, '').trim()
   const lines = cleanText.split(/\r\n|\n|\r/)
   if (lines.length < 2) return []
 
-  // Parse header
   const parseLine = (line: string): string[] => {
     const result: string[] = []
     let current = ''
@@ -260,12 +117,10 @@ const handleFileChange = (e: Event) => {
         return
       }
 
-      // Convert and validate rows
       const valid: StudentItem[] = []
       let invalids = 0
 
       rawRows.forEach((r, idx) => {
-        // Name is required
         const name = r['nama'] || r['nama lengkap'] || r['name'] || r['nama siswa'] || ''
         const nisn = r['nisn'] || r['no nisn'] || String(Date.now()).slice(-10)
         const nis = r['nis'] || r['nomor induk'] || ''
@@ -352,16 +207,143 @@ const handleApplyImport = () => {
 }
 </script>
 
-<style scoped>
-.modal-root-ov { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 24px 16px; overflow: hidden; }
-.modal-backdrop { position: fixed; inset: 0; background: rgba(2, 8, 23, 0.68); backdrop-filter: blur(4px); z-index: 1; animation: fadeIn 0.2s ease; }
-.modal-card { position: relative; z-index: 2; width: 100%; max-width: 720px; max-height: calc(100vh - 48px); background: #ffffff; border-radius: 18px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; overflow: hidden; animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1); margin: auto; }
-.modal-card-h { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); background: #fff; flex-shrink: 0; }
-.modal-card-b { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
-.modal-card-f { border-top: 1px solid var(--line); padding: 14px 22px; display: flex; justify-content: flex-end; gap: 10px; background: #fff; flex-shrink: 0; }
-.stat-box { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; text-align: center; }
-.s-label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
-.s-val { font-size: 18px; font-weight: 800; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes modalPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-</style>
+<template>
+  <Teleport to="body">
+    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="$emit('close')" />
+      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden z-10" role="dialog" aria-modal="true">
+        <!-- HEADER -->
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">
+              Import Data Siswa (CSV)
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Unggah file CSV data induk siswa untuk jenjang <b>{{ grade === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9' }}</b>.
+            </p>
+          </div>
+          <button class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition" type="button" aria-label="Tutup" @click="$emit('close')">
+            <AdminIcon name="x" size="18" />
+          </button>
+        </div>
+
+        <!-- BODY -->
+        <div class="p-5 overflow-y-auto flex-1 min-h-0 space-y-4">
+          <!-- STEP 1: UPLOAD & TEMPLATE -->
+          <div class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+              <AdminIcon name="dl" size="22" />
+            </div>
+            <h4 class="text-sm font-bold text-slate-900 mb-1">Pilih File CSV Data Siswa</h4>
+            <p class="text-xs text-slate-400 max-w-md mx-auto mb-4">
+              Gunakan file format CSV (UTF-8). Pastikan kolom sesuai dengan format resmi Dapodik.
+            </p>
+            <div class="flex items-center justify-center gap-2.5 flex-wrap">
+              <label class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition cursor-pointer">
+                <AdminIcon name="plus" size="14" /> Pilih File CSV
+                <input type="file" accept=".csv,text/csv" class="hidden" @change="handleFileChange" />
+              </label>
+              <button class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition" type="button" @click="handleDownloadTemplate">
+                <AdminIcon name="dl" size="14" /> Unduh Template CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- FILE INFO & PREVIEW -->
+          <div v-if="fileName" class="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">File Terpilih</span>
+                <b class="text-xs sm:text-sm font-bold text-slate-900">{{ fileName }}</b>
+              </div>
+              <div class="text-xs text-slate-400">
+                Total: <b class="text-slate-800">{{ parsedRows.length }}</b> baris data
+              </div>
+            </div>
+
+            <!-- SUMMARY STATS -->
+            <div class="grid grid-cols-3 gap-2">
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
+                <span class="block text-[11px] text-slate-400 mb-0.5">Total Terbaca</span>
+                <b class="text-base font-bold text-blue-600">{{ parsedRows.length }}</b>
+              </div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
+                <span class="block text-[11px] text-slate-400 mb-0.5">Data Valid</span>
+                <b class="text-base font-bold text-emerald-600">{{ validRows.length }}</b>
+              </div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
+                <span class="block text-[11px] text-slate-400 mb-0.5">Data Kurang Lengkap</span>
+                <b class="text-base font-bold" :class="invalidCount > 0 ? 'text-rose-600' : 'text-slate-400'">{{ invalidCount }}</b>
+              </div>
+            </div>
+
+            <!-- MODE IMPORT OPTION -->
+            <div class="pt-3 border-t border-slate-100">
+              <label class="block text-xs font-bold text-slate-900 mb-2">Metode Pemasukan Data:</label>
+              <div class="flex flex-wrap gap-4 text-xs">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input v-model="importMode" type="radio" value="append" class="text-blue-600" />
+                  <span class="text-slate-700"><b class="font-bold text-slate-900">Gabungkan (Append)</b> &mdash; Tambah ke data yang ada</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input v-model="importMode" type="radio" value="replace" class="text-rose-600" />
+                  <span class="text-rose-600"><b class="font-bold">Gantikan (Replace)</b> &mdash; Timpa data siswa jenjang ini</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- MINI PREVIEW TABLE -->
+            <div v-if="validRows.length > 0" class="pt-2">
+              <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Pratinjau Data (5 Siswa Pertama):
+              </div>
+              <div class="overflow-x-auto max-h-40 border border-slate-200 rounded-xl">
+                <table class="w-full text-left text-xs text-slate-700">
+                  <thead class="bg-slate-50/90 text-[11px] font-semibold text-slate-500 border-b border-slate-200 sticky top-0">
+                    <tr>
+                      <th class="px-3 py-2">No</th>
+                      <th class="px-3 py-2">NISN</th>
+                      <th class="px-3 py-2">Nama Lengkap</th>
+                      <th class="px-3 py-2">Kelas</th>
+                      <th class="px-3 py-2">L/P</th>
+                      <th class="px-3 py-2">Orang Tua</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr v-for="(r, i) in validRows.slice(0, 5)" :key="i" class="hover:bg-slate-50">
+                      <td class="px-3 py-2 text-slate-400">{{ i + 1 }}</td>
+                      <td class="px-3 py-2 font-mono font-semibold">{{ r.nisn }}</td>
+                      <td class="px-3 py-2 font-semibold text-slate-900">{{ r.name }}</td>
+                      <td class="px-3 py-2">{{ r.className }}</td>
+                      <td class="px-3 py-2">{{ r.gender }}</td>
+                      <td class="px-3 py-2 text-slate-600">{{ r.fatherName || r.motherName || '-' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ERROR NOTICE -->
+          <div v-if="errorMessage" class="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center gap-2 text-rose-700 text-xs">
+            <AdminIcon name="x" size="16" />
+            <span>{{ errorMessage }}</span>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-white">
+          <button class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition" type="button" @click="$emit('close')">Batal</button>
+          <button
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            :disabled="validRows.length === 0"
+            @click="handleApplyImport"
+          >
+            <AdminIcon name="plus" size="14" /> Import {{ validRows.length }} Data Siswa
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+</template>

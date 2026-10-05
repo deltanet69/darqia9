@@ -1,5 +1,5 @@
 <template>
-  <div class="cbt-page" :data-theme="cbt.gradeTheme.value">
+  <div class="min-h-screen bg-[#F1F5F9] text-slate-900 font-sans antialiased">
     <!-- SCREEN 1 : LOGIN -->
     <CbtLoginScreen
       :screen="cbt.screen.value"
@@ -102,7 +102,12 @@
     />
 
     <!-- TOAST NOTIFICATION -->
-    <div id="toast" :class="{ show: cbt.toastMsg.value !== '' }">{{ cbt.toastMsg.value }}</div>
+    <div
+      v-if="cbt.toastMsg.value !== ''"
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs sm:text-sm shadow-2xl border border-slate-700 animate-fadeIn"
+    >
+      {{ cbt.toastMsg.value }}
+    </div>
 
     <!-- MODAL POPUP & ANTI-CHEAT -->
     <CbtCheatModal
@@ -129,6 +134,13 @@ definePageMeta({
   layout: 'exam'
 })
 
+useHead({
+  title: 'CBT Online — Ujian Terstandar Komputer Yayasan Darqia Attaqwa',
+  meta: [
+    { name: 'description', content: 'Aplikasi CBT Ujian Online mandiri SMP IT Bina Cendekia Assalam dan SMK IT Attaqwa 9.' }
+  ]
+})
+
 const cbt = useCbtExam()
 
 onMounted(() => {
@@ -139,5 +151,3 @@ onUnmounted(() => {
   cbt.unregisterListeners()
 })
 </script>
-
-<style src="~/assets/css/cbt.css"></style>

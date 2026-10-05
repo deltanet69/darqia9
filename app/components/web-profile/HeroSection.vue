@@ -132,10 +132,3 @@
     </div>
   </section>
 </template>
-
-<style scoped>
-@keyframes aiFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-7px); }
-}
-</style>

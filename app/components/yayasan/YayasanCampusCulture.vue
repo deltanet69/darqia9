@@ -7,16 +7,16 @@
           <span class="w-[7px] h-[7px] rounded-full bg-[#1B5FD9]"></span>
           Kultur Pesantren Modern
         </div>
-        <h2 class="text-[clamp(26px,4.6vw,40px)] font-extrabold text-[#0F1E38] tracking-[-0.5px] leading-[1.2] mb-[12px]">
+        <h2 class="gsap-rv text-[clamp(26px,4.6vw,40px)] font-extrabold text-[#0F1E38] tracking-[-0.5px] leading-[1.2] mb-[12px]">
           Pembiasaan Harian <span class="bg-gradient-to-r from-[#1B5FD9] to-[#4C8DFF] bg-clip-text text-transparent">Santri di Kampus</span>
         </h2>
-        <p class="text-[#5A6B8C] text-[clamp(15px,2.4vw,17.5px)] leading-[1.6]">
+        <p class="gsap-rv text-[#5A6B8C] text-[clamp(15px,2.4vw,17.5px)] leading-[1.6]">
           Pendidikan karakter tidak sekadar teori di dalam kelas, melainkan pembiasaan terstruktur dari pagi hingga kepulangan santri.
         </p>
       </div>
 
       <!-- Campus Culture Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[20px]">
+      <div class="gsap-rv grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[20px]">
         <!-- Item 1: Apel Pagi -->
         <div class="bg-[#F5F8FF] border border-[#E3EAF7] rounded-[20px] p-[26px] hover:border-[#1B5FD9] hover:bg-white hover:shadow-[0_20px_50px_rgba(10,42,92,.08)] transition-all duration-250">
           <div class="flex items-center justify-between mb-[14px]">
@@ -26,7 +26,7 @@
           <h3 class="text-[18px] font-extrabold text-[#0F1E38] mb-[8px]">
             Apel Komando Semangat Pagi
           </h3>
-          <p class="text-[#5A6B8C] text-[14px] leading-[1.6]">
+          <p class="gsap-rv text-[#5A6B8C] text-[14px] leading-[1.6]">
             Membentuk kedisiplinan, kesiapan mental, dan semangat belajar sejak awal hari melalui baris-berbaris dan evaluasi ketertiban.
           </p>
         </div>
@@ -40,7 +40,7 @@
           <h3 class="text-[18px] font-extrabold text-[#0F1E38] mb-[8px]">
             Sima’an Al-Qur’an Rutin
           </h3>
-          <p class="text-[#5A6B8C] text-[14px] leading-[1.6]">
+          <p class="gsap-rv text-[#5A6B8C] text-[14px] leading-[1.6]">
             Pembacaan bersama surat-surat pilihan: Al-Waqi’ah (Selasa–Rabu), Al-Mulk (Kamis), dan Surat Yasin pada hari Jumat pagi.
           </p>
         </div>
@@ -54,7 +54,7 @@
           <h3 class="text-[18px] font-extrabold text-[#0F1E38] mb-[8px]">
             Tawasul bil Fatihah
           </h3>
-          <p class="text-[#5A6B8C] text-[14px] leading-[1.6]">
+          <p class="gsap-rv text-[#5A6B8C] text-[14px] leading-[1.6]">
             Menghidupkan doa dan sambung sanad keilmuan kepada para pendiri dan guru besar sesuai tradisi mulia Perguruan Attaqwa.
           </p>
         </div>
@@ -68,7 +68,7 @@
           <h3 class="text-[18px] font-extrabold text-[#0F1E38] mb-[8px]">
             Kedisiplinan &amp; Kerapihan
           </h3>
-          <p class="text-[#5A6B8C] text-[14px] leading-[1.6]">
+          <p class="gsap-rv text-[#5A6B8C] text-[14px] leading-[1.6]">
             Standar penampilan santri yang rapi, tertata, serta etika kesopanan tinggi dalam interaksi antar-siswa dan dengan dewan guru.
           </p>
         </div>
@@ -82,7 +82,7 @@
           <h3 class="text-[18px] font-extrabold text-[#0F1E38] mb-[8px]">
             Program Edukasi &amp; Kesehatan Terpadu
           </h3>
-          <p class="text-[#5A6B8C] text-[14px] leading-[1.6]">
+          <p class="gsap-rv text-[#5A6B8C] text-[14px] leading-[1.6]">
             Kolaborasi aktif bersama mitra seperti Astra Syariah untuk penguatan literasi keuangan syariah dan UPTD Puskesmas Bahagia untuk pemeliharaan berkala kesehatan jasmani seluruh peserta didik.
           </p>
         </div>

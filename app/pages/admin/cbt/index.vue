@@ -3,6 +3,9 @@ import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminModal from '~/components/admin/AdminModal.vue'
 import AdminToast from '~/components/admin/AdminToast.vue'
+import AdminSparkline from '~/components/admin/AdminSparkline.vue'
+import AdminLineChart from '~/components/admin/AdminLineChart.vue'
+import AdminBarChart from '~/components/admin/AdminBarChart.vue'
 
 definePageMeta({ layout: 'admin' })
 
@@ -70,8 +73,10 @@ const studentNames = ['Ahmad Fauzan', 'Siti Aisyah', 'Muhammad Rizky', 'Nabila Z
 const students: Student[] = exams.value.flatMap((exam, examIndex) => studentNames.slice(0, 8).map((name, index) => ({ id: `${exam.id}-S${index + 1}`, nis: String(2026001 + examIndex * 10 + index), name, classroom: exam.classroom })))
 
 const tabs = [
-  { id: 'summary', label: 'Ringkasan', icon: 'grid' }, { id: 'exams', label: 'Daftar Ujian', icon: 'monitor' },
-  { id: 'bank', label: 'Bank Soal', icon: 'bank' }, { id: 'results', label: 'Hasil per Siswa', icon: 'user' },
+  { id: 'summary', label: 'Ringkasan', icon: 'grid' },
+  { id: 'exams', label: 'Daftar Ujian', icon: 'monitor' },
+  { id: 'bank', label: 'Bank Soal', icon: 'bank' },
+  { id: 'results', label: 'Hasil per Siswa', icon: 'user' },
   { id: 'insight', label: 'Insight', icon: 'spark' }
 ] as const
 const examStatusOptions: Array<'all' | ExamStatus> = ['all', 'Berlangsung', 'Terjadwal', 'Selesai']
@@ -115,9 +120,22 @@ const basisDataEssay = computed(() => bank.value.find(item => item.code === 'BD-
 
 const showToast = (value: string, kind: 'ok' | 'info' = 'ok') => { message.value = value; messageKind.value = kind; if (toastTimer) clearTimeout(toastTimer); toastTimer = setTimeout(() => { message.value = '' }, 2800) }
 const initials = (value: string) => value.split(' ').slice(0, 2).map(item => item[0]).join('')
-const statusClass = (status: ExamStatus) => ({ Berlangsung: 'p-violet', Terjadwal: 'p-amber', Selesai: 'p-green' })[status]
-const typeClass = (type: QuestionType) => ({ PG: 'p-blue', 'PG Kompleks': 'p-violet', Isian: 'p-cyan', Esai: 'p-amber' })[type]
-const difficultyClass = (value: Difficulty) => ({ Mudah: 'p-green', Sedang: 'p-amber', Sukar: 'p-rose' })[value]
+const statusClass = (status: ExamStatus) => ({
+  Berlangsung: 'bg-violet-50 text-violet-700 border border-violet-200',
+  Terjadwal: 'bg-amber-50 text-amber-700 border border-amber-200',
+  Selesai: 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+})[status]
+const typeClass = (type: QuestionType) => ({
+  PG: 'bg-blue-50 text-blue-700 border border-blue-200',
+  'PG Kompleks': 'bg-purple-50 text-purple-700 border border-purple-200',
+  Isian: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
+  Esai: 'bg-amber-50 text-amber-700 border border-amber-200'
+})[type]
+const difficultyClass = (value: Difficulty) => ({
+  Mudah: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  Sedang: 'bg-amber-50 text-amber-700 border border-amber-200',
+  Sukar: 'bg-rose-50 text-rose-700 border border-rose-200'
+})[value]
 const correctPercent = (question: Question) => 31 + ((Number(question.id.slice(1)) * 17) % 65)
 const questionsForExam = (exam: Exam) => bank.value.filter(item => item.subject === exam.subject).slice(0, 8)
 const examStudents = (exam: Exam) => students.filter(item => item.classroom === exam.classroom).slice(0, 8)
@@ -137,69 +155,925 @@ const exportExam = () => { const exam = selectedExam.value; if (!exam) return; c
 const saveEssay = (question: Question) => { const value = Math.max(0, Math.min(10, Math.round(essayScores[question.id] ?? 0))); essayScores[question.id] = value; showToast(`Nilai esai tersimpan: ${value}/10.`) }
 const openResultDetail = (exam: Exam) => { const student = activeResultStudent.value; if (student) openExam(exam.id, students.find(item => item.classroom === exam.classroom && item.nis === student.nis)?.id ?? examStudents(exam)[0]?.id ?? null) }
 
+// Charts data computed
+const scoreTrendSeries = computed(() => [
+  { name: 'Rata-rata', color: '#2563eb', values: completedExams.value.map(e => e.average) }
+])
+const scoreTrendLabels = computed(() => completedExams.value.map(e => e.subject.slice(0, 10)))
+
+const scoreDistDatasets = computed(() => [
+  { name: 'Siswa', color: '#8b5cf6', values: [5, 9, 18, 27, 15] }
+])
+
 onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
 </script>
 
 <template>
-  <section>
+  <section class="space-y-6 animate-fadeUp">
+    <!-- VIEW: DETAIL SISWA -->
     <template v-if="selectedExam && selectedStudent">
-      <div class="page-head"><div><button class="btn btn-ghost btn-sm back-button" type="button" @click="resetDetail">‹ Detail Ujian</button><h2>Penilaian Siswa</h2><p>{{ selectedExam.name }} · {{ selectedExam.subject }} · Kelas {{ selectedExam.classroom }}</p></div></div>
-      <article class="card student-summary"><div class="card-b"><div class="student-summary-row"><span class="avatar student-avatar">{{ initials(selectedStudent.name) }}</span><div class="student-main"><b>{{ selectedStudent.name }}</b><span>NIS {{ selectedStudent.nis }} · Kelas {{ selectedExam.classroom }}</span><small>Dikumpulkan: 30 Sep 2026, 09:17 · Durasi: 76 mnt</small></div><div class="score-badge">{{ scoreFor(selectedExam, selectedStudent) ?? '—' }}</div><span class="pill" :class="(scoreFor(selectedExam, selectedStudent) ?? 0) >= selectedExam.kkm ? 'p-green' : 'p-rose'">{{ (scoreFor(selectedExam, selectedStudent) ?? 0) >= selectedExam.kkm ? 'Lulus KKM' : 'Belum Lulus' }}</span></div></div></article>
-      <div class="grid g4 detail-stats"><div class="stat-mini"><b>5<span>/7</span></b><span>Jawaban Objektif Benar</span></div><div class="stat-mini"><b>50<span>/70</span></b><span>Skor Objektif</span></div><div class="stat-mini"><b>{{ Object.keys(essayScores).length }}<span>/1</span></b><span>Esai Dinilai</span></div><div class="stat-mini"><b>{{ 50 + Object.values(essayScores).reduce((a, b) => a + b, 0) }}<span>/80</span></b><span>Total Skor</span></div></div>
-      <article class="card"><div class="card-h"><h3>Rincian Jawaban</h3><span class="muted-caption">{{ questionsForExam(selectedExam).length }} soal · simpan untuk menilai esai</span></div><div class="card-b answer-list"><div v-for="(question, index) in questionsForExam(selectedExam)" :key="question.id" class="ans-row"><span class="ans-no" :class="question.type === 'Esai' && essayScores[question.id] === undefined ? 'ans-wait' : index % 3 ? 'ans-ok' : 'ans-bad'">{{ index + 1 }}</span><div class="answer-body"><div class="answer-question">{{ question.text }}</div><div class="answer-tags"><span class="pill" :class="typeClass(question.type)">{{ question.type }}</span><span class="pill" :class="difficultyClass(question.difficulty)">{{ question.difficulty }}</span><span class="pill p-gray">bobot {{ question.type === 'Esai' ? 10 : 10 }}</span></div><div class="ans-grid"><div class="answer-box"><small>JAWABAN SISWA</small><span>{{ question.type === 'Esai' ? 'Jawaban uraian siswa tersimpan pada sistem.' : index % 3 ? question.key : 'Jawaban lain' }}</span></div><div class="answer-box key"><small>KUNCI / PEDOMAN</small><span>{{ question.key }}</span></div></div><div v-if="question.type === 'Esai' && essayScores[question.id] === undefined" class="essay-grade"><div class="inp"><input v-model.number="essayScores[question.id]" type="number" min="0" max="10" placeholder="0–10" /></div><button class="btn btn-primary btn-sm" type="button" @click="saveEssay(question)"><AdminIcon name="check" size="15" /> Simpan Nilai Esai</button></div><div v-else class="answer-score">Skor: <b>{{ question.type === 'Esai' ? essayScores[question.id] : index % 3 ? 10 : 0 }}</b> / 10</div></div></div></div></article>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
+        <div>
+          <button class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-600 mb-2 transition cursor-pointer" type="button" @click="resetDetail">
+            ‹ Detail Ujian
+          </button>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">Penilaian Siswa</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">{{ selectedExam.name }} &bull; {{ selectedExam.subject }} &bull; Kelas {{ selectedExam.classroom }}</p>
+        </div>
+      </div>
+
+      <!-- Ringkasan Siswa Card -->
+      <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300">
+        <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+          <span class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xl flex items-center justify-center shrink-0 shadow-md">
+            {{ initials(selectedStudent.name) }}
+          </span>
+          <div class="flex-1 min-w-[180px]">
+            <b class="block text-lg font-bold text-slate-900">{{ selectedStudent.name }}</b>
+            <span class="block text-xs sm:text-sm text-slate-500 font-medium">NIS {{ selectedStudent.nis }} &bull; Kelas {{ selectedExam.classroom }}</span>
+            <small class="block text-xs text-slate-400 mt-1 font-mono">Dikumpulkan: 30 Sep 2026, 09:17 &bull; Durasi: 76 mnt &bull; Peringkat: #2</small>
+          </div>
+          <div class="w-20 h-20 rounded-full border-8 border-blue-600 flex items-center justify-center font-black text-2xl text-slate-900 shrink-0 font-mono shadow-inner">
+            {{ scoreFor(selectedExam, selectedStudent) ?? '—' }}
+          </div>
+          <span class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-extrabold shrink-0 shadow-sm" :class="(scoreFor(selectedExam, selectedStudent) ?? 0) >= selectedExam.kkm ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+            {{ (scoreFor(selectedExam, selectedStudent) ?? 0) >= selectedExam.kkm ? 'Lulus KKM' : 'Belum Lulus' }}
+          </span>
+        </div>
+      </article>
+
+      <!-- Stat Mini Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-xl font-bold text-slate-900 font-mono">5<span class="text-sm font-medium text-slate-400">/7</span></b>
+          <span class="block text-xs text-slate-500 mt-1">Jawaban Objektif Benar</span>
+        </div>
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-xl font-bold text-slate-900 font-mono">50<span class="text-sm font-medium text-slate-400">/70</span></b>
+          <span class="block text-xs text-slate-500 mt-1">Skor Objektif</span>
+        </div>
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-xl font-bold text-slate-900 font-mono">{{ Object.keys(essayScores).length }}<span class="text-sm font-medium text-slate-400">/1</span></b>
+          <span class="block text-xs text-slate-500 mt-1">Esai Dinilai</span>
+        </div>
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-xl font-bold text-slate-900 font-mono">{{ 50 + Object.values(essayScores).reduce((a, b) => a + b, 0) }}<span class="text-sm font-medium text-slate-400">/80</span></b>
+          <span class="block text-xs text-slate-500 mt-1">Total Skor</span>
+        </div>
+      </div>
+
+      <!-- Rincian Jawaban Card -->
+      <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+            Rincian Jawaban
+          </h3>
+          <span class="text-xs text-slate-400 font-medium">{{ questionsForExam(selectedExam).length }} soal &bull; simpan untuk menilai esai</span>
+        </div>
+        <div class="p-6 space-y-5">
+          <div v-for="(question, index) in questionsForExam(selectedExam)" :key="question.id" class="flex gap-4 items-start pt-5 first:pt-0 border-t border-slate-100 first:border-0">
+            <span class="w-8 h-8 rounded-xl text-xs font-extrabold flex items-center justify-center shrink-0 shadow-sm" :class="question.type === 'Esai' && essayScores[question.id] === undefined ? 'bg-amber-100 text-amber-800' : index % 3 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">
+              {{ index + 1 }}
+            </span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold text-slate-900 leading-relaxed">{{ question.text }}</div>
+              <div class="flex flex-wrap gap-2 my-2.5">
+                <span class="px-2.5 py-1 rounded-full text-[10.5px] font-bold" :class="typeClass(question.type)">{{ question.type }}</span>
+                <span class="px-2.5 py-1 rounded-full text-[10.5px] font-bold" :class="difficultyClass(question.difficulty)">{{ question.difficulty }}</span>
+                <span class="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600">bobot 10</span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+                  <small class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">JAWABAN SISWA</small>
+                  <span class="text-xs sm:text-sm text-slate-800 leading-relaxed">{{ question.type === 'Esai' ? 'Jawaban uraian siswa tersimpan pada sistem CBT.' : index % 3 ? question.key : 'Jawaban lain' }}</span>
+                </div>
+                <div class="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-3.5">
+                  <small class="block text-[10px] font-bold text-emerald-700 tracking-wider mb-1">KUNCI / PEDOMAN</small>
+                  <span class="text-xs sm:text-sm text-slate-800 leading-relaxed">{{ question.key }}</span>
+                </div>
+              </div>
+              <div v-if="question.type === 'Esai' && essayScores[question.id] === undefined" class="mt-3.5 flex flex-wrap gap-2 items-center">
+                <input v-model.number="essayScores[question.id]" type="number" min="0" max="10" placeholder="0–10" class="w-24 px-3 py-2 text-xs bg-white border-2 border-slate-200 rounded-xl focus:border-blue-600 outline-none font-mono" />
+                <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition hover:scale-105 active:scale-95" type="button" @click="saveEssay(question)">
+                  <AdminIcon name="check" size="14" /> Simpan Nilai Esai
+                </button>
+              </div>
+              <div v-else class="mt-3 text-xs text-slate-600">
+                Skor: <b class="font-bold text-slate-900 font-mono">{{ question.type === 'Esai' ? essayScores[question.id] : index % 3 ? 10 : 0 }}</b> / 10
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
     </template>
 
+    <!-- VIEW: DETAIL UJIAN -->
     <template v-else-if="selectedExam">
-      <div class="page-head"><div><button class="btn btn-ghost btn-sm back-button" type="button" @click="resetDetail">‹ Daftar Ujian</button><h2 class="detail-title">{{ selectedExam.name }} <span class="pill" :class="statusClass(selectedExam.status)"><span class="pdot" :class="{ live: selectedExam.status === 'Berlangsung' }" />{{ selectedExam.status }}</span></h2><p>{{ selectedExam.subject }} · Kelas {{ selectedExam.classroom }} · {{ selectedExam.date }}</p></div><div class="head-actions"><button v-if="selectedExam.status === 'Terjadwal'" class="btn btn-primary btn-sm" type="button" @click="setExamStatus('Berlangsung')"><AdminIcon name="check" size="15" /> Mulai Sekarang</button><button v-if="selectedExam.status === 'Berlangsung'" class="btn btn-primary btn-sm" type="button" @click="setExamStatus('Selesai')"><AdminIcon name="lock" size="15" /> Akhiri & Kunci</button><button class="btn btn-ghost btn-sm" type="button" @click="exportExam"><AdminIcon name="dl" size="15" /> Ekspor</button></div></div>
-      <div class="grid g4 detail-stats"><div v-for="item in [['Mata Pelajaran', selectedExam.subject], ['Kelas', selectedExam.classroom], ['Tanggal', selectedExam.date], ['Durasi', `${selectedExam.duration} menit`], ['KKM', selectedExam.kkm], ['Jumlah Soal', `${questionsForExam(selectedExam).length} soal`], ['Token', selectedExam.token], ['Status', selectedExam.status]]" :key="String(item[0])" class="stat-mini"><b class="detail-value">{{ item[1] }}</b><span>{{ item[0] }}</span></div></div>
-      <div class="grid g4 detail-stats"><div class="stat-mini"><b>{{ selectedExam.participants }}</b><span>Peserta</span></div><div class="stat-mini"><b>{{ selectedExam.collected }}<span>/{{ selectedExam.participants }}</span></b><span>Sudah Kumpul · {{ selectedExam.doing }} kerjakan</span></div><div class="stat-mini"><b>{{ selectedExam.average || '—' }}</b><span>Rata-rata Nilai</span></div><div class="stat-mini"><b>{{ selectedExam.status === 'Selesai' ? '96 / 62' : '—' }}</b><span>Tertinggi / Terendah</span></div></div>
-      <div class="grid g2 detail-panels"><article class="card"><div class="card-h"><h3>Distribusi Nilai</h3><span class="muted-caption">78% lulus KKM</span></div><div class="card-b"><div class="distribution-bars"><div v-for="(value, label) in { '&lt;60': 3, '60–69': 6, '70–79': 12, '80–89': 14, '90–100': 5 }" :key="label"><i :style="{ height: `${Number(value) * 8}px` }" /><span v-html="label" /></div></div></div></article><article class="card"><div class="card-h"><h3>Status Peserta</h3></div><div class="card-b"><div class="status-donut" :style="{ '--done': `${selectedExam.collected / Math.max(1, selectedExam.participants) * 360}deg` }"><span>{{ Math.round(selectedExam.collected / Math.max(1, selectedExam.participants) * 100) }}%</span></div><div class="legend"><span><i style="background:#16a34a" />Sudah kumpul ({{ selectedExam.collected }})</span><span><i style="background:#8b5cf6" />Mengerjakan ({{ selectedExam.doing }})</span><span><i style="background:#cbd5e1" />Belum mulai ({{ Math.max(0, selectedExam.participants - selectedExam.collected - selectedExam.doing) }})</span></div></div></article></div>
-      <article class="card analysis-card"><div class="card-h"><h3>Analisis per Soal</h3><span class="muted-caption">diurut dari tersulit</span></div><div class="card-b compact-list"><div v-for="(question, index) in questionsForExam(selectedExam).slice().sort((a, b) => correctPercent(a) - correctPercent(b))" :key="question.id" class="analysis-row"><div><span class="ans-no" :class="correctPercent(question) < 45 ? 'ans-bad' : correctPercent(question) < 65 ? 'ans-wait' : 'ans-ok'">{{ index + 1 }}</span><b>{{ question.text }}</b><span class="pill" :class="typeClass(question.type)">{{ question.type }}</span><strong>{{ correctPercent(question) }}%</strong></div><div class="prog"><i :style="{ width: `${correctPercent(question)}%` }" /></div></div></div></article>
-      <article class="card"><div class="card-h"><h3>Hasil Peserta</h3></div><div class="tbl-wrap"><table class="tbl rt"><thead><tr><th>Nama</th><th>NIS</th><th>Status</th><th style="text-align:right">Nilai</th><th>KKM</th><th style="text-align:right">Aksi</th></tr></thead><tbody><tr v-for="(student, index) in examStudents(selectedExam)" :key="student.id"><td data-l="Nama"><div class="row-user"><span class="avatar">{{ initials(student.name) }}</span><b class="t-name">{{ student.name }}</b></div></td><td data-l="NIS">{{ student.nis }}</td><td data-l="Status"><span class="pill" :class="studentStatus(selectedExam, index) === 'Sudah' ? 'p-green' : studentStatus(selectedExam, index) === 'Mengerjakan' ? 'p-violet' : 'p-gray'">{{ studentStatus(selectedExam, index) }}</span></td><td data-l="Nilai" style="text-align:right"><b>{{ scoreFor(selectedExam, student) ?? '—' }}</b></td><td data-l="KKM"><span v-if="scoreFor(selectedExam, student) !== null" class="pill" :class="(scoreFor(selectedExam, student) ?? 0) >= selectedExam.kkm ? 'p-green' : 'p-rose'">{{ (scoreFor(selectedExam, student) ?? 0) >= selectedExam.kkm ? 'Lulus' : 'Remedial' }}</span><span v-else>—</span></td><td data-l="Aksi" class="tbl-act" style="text-align:right"><button v-if="scoreFor(selectedExam, student) !== null" class="btn btn-ghost btn-sm" type="button" @click="selectedStudentId = student.id"><AdminIcon name="eye" size="15" /> Nilai</button></td></tr></tbody></table></div><div class="pager"><span>{{ examStudents(selectedExam).length }} data peserta ditampilkan</span></div></article>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
+        <div>
+          <button class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-600 mb-2 transition cursor-pointer" type="button" @click="resetDetail">
+            ‹ Daftar Ujian
+          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ selectedExam.name }}</h2>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold" :class="statusClass(selectedExam.status)">
+              <span class="w-2 h-2 rounded-full" :class="selectedExam.status === 'Berlangsung' ? 'bg-violet-600 animate-ping' : selectedExam.status === 'Terjadwal' ? 'bg-amber-500' : 'bg-emerald-500'" />
+              {{ selectedExam.status }}
+            </span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1 font-medium">{{ selectedExam.subject }} &bull; Kelas {{ selectedExam.classroom }} &bull; {{ selectedExam.date }}</p>
+        </div>
+        <div class="flex flex-wrap gap-2.5">
+          <button v-if="selectedExam.status === 'Terjadwal'" class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition hover:scale-105 active:scale-95" type="button" @click="setExamStatus('Berlangsung')">
+            <AdminIcon name="check" size="15" /> Mulai Sekarang
+          </button>
+          <button v-if="selectedExam.status === 'Berlangsung'" class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition hover:scale-105 active:scale-95" type="button" @click="setExamStatus('Selesai')">
+            <AdminIcon name="lock" size="15" /> Akhiri &amp; Kunci
+          </button>
+          <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-sm transition hover:scale-105 active:scale-95" type="button" @click="exportExam">
+            <AdminIcon name="dl" size="15" /> Ekspor
+          </button>
+        </div>
+      </div>
+
+      <!-- Info Ujian Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div v-for="item in [['Mata Pelajaran', selectedExam.subject], ['Kelas', selectedExam.classroom], ['Tanggal', selectedExam.date], ['Durasi', `${selectedExam.duration} menit`], ['KKM', selectedExam.kkm], ['Jumlah Soal', `${questionsForExam(selectedExam).length} soal`], ['Token', selectedExam.token], ['Status', selectedExam.status]]" :key="String(item[0])" class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-sm sm:text-base font-bold text-slate-900 truncate font-mono">{{ item[1] }}</b>
+          <span class="block text-xs text-slate-400 mt-0.5">{{ item[0] }}</span>
+        </div>
+      </div>
+
+      <!-- Stat Ujian Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-2xl font-black text-slate-900 font-mono">{{ selectedExam.participants }}</b>
+          <span class="block text-xs text-slate-400 mt-1">Peserta</span>
+        </div>
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-2xl font-black text-slate-900 font-mono">{{ selectedExam.collected }}<span class="text-sm font-medium text-slate-400">/{{ selectedExam.participants }}</span></b>
+          <span class="block text-xs text-slate-400 mt-1">Sudah Kumpul &bull; {{ selectedExam.doing }} kerjakan</span>
+        </div>
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-2xl font-black text-slate-900 font-mono">{{ selectedExam.average || '—' }}</b>
+          <span class="block text-xs text-slate-400 mt-1">Rata-rata Nilai</span>
+        </div>
+        <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <b class="block text-2xl font-black text-slate-900 font-mono">{{ selectedExam.status === 'Selesai' ? '96 / 62' : '—' }}</b>
+          <span class="block text-xs text-slate-400 mt-1">Tertinggi / Terendah</span>
+        </div>
+      </div>
+
+      <!-- Analisis per Soal Card -->
+      <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+            Analisis per Soal
+          </h3>
+          <span class="text-xs text-slate-400 font-medium">Diurut dari tingkat kesulitan tertinggi</span>
+        </div>
+        <div class="p-6 space-y-4">
+          <div v-for="(question, index) in questionsForExam(selectedExam).slice().sort((a, b) => correctPercent(a) - correctPercent(b))" :key="question.id" class="pt-4 first:pt-0 border-t border-slate-100 first:border-0">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span class="w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center shrink-0" :class="correctPercent(question) < 45 ? 'bg-rose-100 text-rose-700' : correctPercent(question) < 65 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'">
+                {{ index + 1 }}
+              </span>
+              <b class="text-xs sm:text-sm font-medium text-slate-800 flex-1 min-w-[140px] truncate">{{ question.text }}</b>
+              <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold" :class="typeClass(question.type)">{{ question.type }}</span>
+              <strong class="text-xs font-bold text-rose-600 font-mono">{{ correctPercent(question) }}%</strong>
+            </div>
+            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+              <i class="block h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500" :style="{ width: `${correctPercent(question)}%` }" />
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Tabel Hasil Peserta Card -->
+      <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
+            Hasil Peserta
+          </h3>
+          <span class="text-xs text-slate-400 font-medium">{{ examStudents(selectedExam).length }} data peserta</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-700">
+            <thead class="bg-slate-50/80 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200/80">
+              <tr>
+                <th class="px-5 py-3.5">Nama Siswa</th>
+                <th class="px-5 py-3.5">NIS</th>
+                <th class="px-5 py-3.5">Status</th>
+                <th class="px-5 py-3.5 text-right">Nilai</th>
+                <th class="px-5 py-3.5">KKM</th>
+                <th class="px-5 py-3.5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="(student, index) in examStudents(selectedExam)" :key="student.id" class="hover:bg-blue-50/50 transition">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-sm">
+                      {{ initials(student.name) }}
+                    </span>
+                    <b class="font-bold text-slate-900">{{ student.name }}</b>
+                  </div>
+                </td>
+                <td class="px-5 py-3.5 text-slate-500 font-mono">{{ student.nis }}</td>
+                <td class="px-5 py-3.5">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold" :class="studentStatus(selectedExam, index) === 'Sudah' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : studentStatus(selectedExam, index) === 'Mengerjakan' ? 'bg-violet-50 text-violet-700 border border-violet-200' : 'bg-slate-100 text-slate-600'">
+                    {{ studentStatus(selectedExam, index) }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5 text-right font-mono font-bold text-slate-900 text-sm">{{ scoreFor(selectedExam, student) ?? '—' }}</td>
+                <td class="px-5 py-3.5">
+                  <span v-if="scoreFor(selectedExam, student) !== null" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold" :class="(scoreFor(selectedExam, student) ?? 0) >= selectedExam.kkm ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                    {{ (scoreFor(selectedExam, student) ?? 0) >= selectedExam.kkm ? 'Lulus' : 'Remedial' }}
+                  </span>
+                  <span v-else class="text-slate-400">—</span>
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                  <button v-if="scoreFor(selectedExam, student) !== null" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition hover:scale-105 active:scale-95" type="button" @click="selectedStudentId = student.id">
+                    <AdminIcon name="eye" size="14" /> Nilai
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
     </template>
 
+    <!-- VIEW UTAMA: TABS -->
     <template v-else>
-      <div class="page-head"><div><h2>Manajemen CBT</h2><p>Ujian digital end-to-end: jadwal, pelaksanaan, bank soal & penilaian</p></div><button class="btn btn-primary btn-sm" type="button" @click="openAddExam"><AdminIcon name="plus" size="16" /> Buat Ujian</button></div>
-      <div class="cbt-tabs" role="tablist" aria-label="Menu Manajemen CBT"><button v-for="tab in tabs" :key="tab.id" class="chip cbt-tab" :class="{ on: activeTab === tab.id }" type="button" @click="activeTab = tab.id"><AdminIcon :name="tab.icon" size="15" /> {{ tab.label }}</button></div>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <span>Manajemen CBT</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1 font-medium">Ujian digital end-to-end: jadwal, pelaksanaan, bank soal &amp; penilaian</p>
+        </div>
+        <button class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer" type="button" @click="openAddExam">
+          <AdminIcon name="plus" size="16" /> Buat Ujian
+        </button>
+      </div>
 
+      <!-- Tab Buttons -->
+      <div class="flex flex-wrap gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit" role="tablist">
+        <button v-for="tab in tabs" :key="tab.id" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer" :class="activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'" type="button" @click="activeTab = tab.id">
+          <AdminIcon :name="tab.icon" size="16" /> {{ tab.label }}
+        </button>
+      </div>
+
+      <!-- TAB 1: RINGKASAN -->
       <template v-if="activeTab === 'summary'">
-        <div class="grid g4 cbt-kpis"><button class="kpi k-blue" type="button" @click="activeTab = 'exams'"><span class="shine" /><div class="k-top"><span class="k-ic"><AdminIcon name="layers" /></span><span class="k-delta">{{ completedExams.length }} selesai</span></div><div class="k-val">{{ exams.length }}</div><div class="k-lbl">Total Ujian</div></button><button class="kpi k-violet" type="button" @click="activeTab = 'exams'"><span class="shine" /><div class="k-top"><span class="k-ic"><AdminIcon name="monitor" /></span><span class="k-delta">pantau live</span></div><div class="k-val">{{ liveExams.length }}</div><div class="k-lbl">Sedang Berlangsung</div></button><button class="kpi k-green" type="button" @click="activeTab = 'results'"><span class="shine" /><div class="k-top"><span class="k-ic"><AdminIcon name="users" /></span><span class="k-delta">{{ exams.length }} ujian</span></div><div class="k-val">{{ exams.reduce((sum, item) => sum + item.participants, 0) }}</div><div class="k-lbl">Total Peserta</div></button><button class="kpi k-amber" type="button" @click="activeTab = 'insight'"><span class="shine" /><div class="k-top"><span class="k-ic"><AdminIcon name="grad" /></span><span class="k-delta">KKM 75</span></div><div class="k-val">{{ averageCompleted.toFixed(1) }}</div><div class="k-lbl">Rata-rata Nilai</div></button></div>
-        <article class="card live-card"><div class="card-h"><h3>Pantau Live — Ujian Berlangsung</h3><span class="pill p-violet"><span class="pdot live" />LIVE</span></div><div class="card-b compact-list"><div v-for="exam in liveExams" :key="exam.id" class="live-row"><div><b>{{ exam.name }}</b><span>{{ exam.subject }} · Kelas {{ exam.classroom }} · <strong>{{ exam.collected }}/{{ exam.participants }}</strong> kumpul · {{ exam.doing }} mengerjakan</span></div><button class="btn btn-ghost btn-sm" type="button" @click="openExam(exam.id)"><AdminIcon name="eye" size="15" /> Pantau</button><div class="prog live"><i :style="{ width: `${exam.collected / exam.participants * 100}%` }" /></div></div></div></article>
-        <div class="grid g2 summary-charts"><article class="card"><div class="card-h"><h3>Tren Rata-rata Nilai</h3><span class="muted-caption">ujian selesai</span></div><div class="card-b"><div class="trend-chart"><div v-for="exam in completedExams" :key="exam.id"><i :style="{ height: `${exam.average * 1.55}px` }" /><span>{{ exam.subject }}</span><b>{{ exam.average }}</b></div></div></div></article><article class="card"><div class="card-h"><h3>Distribusi Nilai</h3><span class="muted-caption">seluruh ujian selesai</span></div><div class="card-b"><div class="distribution-bars"><div v-for="(value, label) in { '&lt;60': 5, '60–69': 9, '70–79': 18, '80–89': 27, '90–100': 15 }" :key="label"><i :style="{ height: `${Number(value) * 5}px` }" /><span v-html="label" /></div></div></div></article></div>
-        <article class="card"><div class="card-h"><h3>Perlu Perhatian</h3><span class="pill p-amber">3 item</span></div><div class="card-b compact-list"><div class="attention-row"><span class="attention-icon amber"><AdminIcon name="cal" size="17" /></span><div><b>Try Out Ujian Sekolah dimulai 2 Okt 2026</b><span>44 peserta · Kelas IX-A · token MTK102</span></div><button class="btn btn-ghost btn-sm" type="button" @click="openExam('E3')">Tinjau</button></div><div class="attention-row"><span class="attention-icon rose"><AdminIcon name="alert" size="17" /></span><div><b>BD-004 · hanya {{ basisDataEssay ? correctPercent(basisDataEssay) : 0 }}% jawaban benar</b><span>Ujian Basis Data — butuh pembahasan ulang di kelas XI RPL 1</span></div><button class="btn btn-ghost btn-sm" type="button" @click="openExam('E6')">Tinjau</button></div><div class="attention-row"><span class="attention-icon violet"><AdminIcon name="file" size="17" /></span><div><b>Jawaban esai menunggu dinilai</b><span>Beri nilai langsung dari halaman penilaian siswa.</span></div></div></div></article>
+        <!-- KPI Metrics Grid with Sweep Shine, Radial Geometry, and Sparklines -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <!-- KPI 1: Total Ujian (Blue) -->
+          <div
+            class="group relative overflow-hidden rounded-3xl p-5 text-white bg-gradient-to-br from-[#1E40AF] via-[#2563EB] to-[#60A5FA] shadow-[0_14px_30px_-14px_rgba(30,64,175,0.45)] hover:shadow-[0_22px_42px_-14px_rgba(30,64,175,0.55)] hover:-translate-y-1.5 hover:scale-[1.01] transition-all duration-300 cursor-pointer animate-riseIn before:content-[''] before:absolute before:w-[210px] before:h-[210px] before:rounded-full before:pointer-events-none before:bg-[radial-gradient(circle,rgba(255,255,255,0.25),transparent_70%)] before:-top-[85px] before:-right-[60px] after:content-[''] after:absolute after:w-[120px] after:h-[120px] after:rounded-full after:pointer-events-none after:border-[24px] after:border-white/10 after:-bottom-[60px] after:-left-[40px]"
+            @click="activeTab = 'exams'"
+          >
+            <span class="absolute top-0 bottom-0 w-[70px] -left-[90px] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 pointer-events-none group-hover:left-[135%]" />
+            
+            <div class="flex items-center justify-between mb-3 relative z-10">
+              <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
+                <AdminIcon name="layers" size="22" />
+              </span>
+              <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+                <span>{{ completedExams.length }} selesai</span>
+              </span>
+            </div>
+            <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ exams.length }}</div>
+            <div class="text-xs font-semibold text-blue-100 relative z-10">Total Jadwal Ujian</div>
+            
+            <div class="absolute right-3.5 bottom-2.5 z-10 pointer-events-none">
+              <AdminSparkline :values="[2, 3, 4, 5, 5, 6]" color="rgba(255,255,255,0.95)" :width="110" :height="36" />
+            </div>
+          </div>
+
+          <!-- KPI 2: Sedang Berlangsung (Violet) -->
+          <div
+            class="group relative overflow-hidden rounded-3xl p-5 text-white bg-gradient-to-br from-[#5B21B6] via-[#7C3AED] to-[#A78BFA] shadow-[0_14px_30px_-14px_rgba(91,33,182,0.45)] hover:shadow-[0_22px_42px_-14px_rgba(91,33,182,0.55)] hover:-translate-y-1.5 hover:scale-[1.01] transition-all duration-300 cursor-pointer animate-riseIn [animation-delay:70ms] before:content-[''] before:absolute before:w-[210px] before:h-[210px] before:rounded-full before:pointer-events-none before:bg-[radial-gradient(circle,rgba(255,255,255,0.25),transparent_70%)] before:-top-[85px] before:-right-[60px] after:content-[''] after:absolute after:w-[120px] after:h-[120px] after:rounded-full after:pointer-events-none after:border-[24px] after:border-white/10 after:-bottom-[60px] after:-left-[40px]"
+            @click="activeTab = 'exams'"
+          >
+            <span class="absolute top-0 bottom-0 w-[70px] -left-[90px] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 pointer-events-none group-hover:left-[135%]" />
+
+            <div class="flex items-center justify-between mb-3 relative z-10">
+              <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
+                <AdminIcon name="monitor" size="22" />
+              </span>
+              <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+                <span>pantau live</span>
+              </span>
+            </div>
+            <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ liveExams.length }}</div>
+            <div class="text-xs font-semibold text-purple-100 relative z-10">Sedang Berlangsung</div>
+            
+            <div class="absolute right-3.5 bottom-2.5 z-10 pointer-events-none">
+              <AdminSparkline :values="[0, 1, 1, 2, 2, 2]" color="rgba(255,255,255,0.95)" :width="110" :height="36" />
+            </div>
+          </div>
+
+          <!-- KPI 3: Total Peserta (Green) -->
+          <div
+            class="group relative overflow-hidden rounded-3xl p-5 text-white bg-gradient-to-br from-[#065F46] via-[#059669] to-[#34D399] shadow-[0_14px_30px_-14px_rgba(6,95,70,0.45)] hover:shadow-[0_22px_42px_-14px_rgba(6,95,70,0.55)] hover:-translate-y-1.5 hover:scale-[1.01] transition-all duration-300 cursor-pointer animate-riseIn [animation-delay:140ms] before:content-[''] before:absolute before:w-[210px] before:h-[210px] before:rounded-full before:pointer-events-none before:bg-[radial-gradient(circle,rgba(255,255,255,0.25),transparent_70%)] before:-top-[85px] before:-right-[60px] after:content-[''] after:absolute after:w-[120px] after:h-[120px] after:rounded-full after:pointer-events-none after:border-[24px] after:border-white/10 after:-bottom-[60px] after:-left-[40px]"
+            @click="activeTab = 'results'"
+          >
+            <span class="absolute top-0 bottom-0 w-[70px] -left-[90px] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 pointer-events-none group-hover:left-[135%]" />
+
+            <div class="flex items-center justify-between mb-3 relative z-10">
+              <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
+                <AdminIcon name="users" size="22" />
+              </span>
+              <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+                <span>{{ exams.length }} ujian</span>
+              </span>
+            </div>
+            <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ exams.reduce((sum, item) => sum + item.participants, 0) }}</div>
+            <div class="text-xs font-semibold text-emerald-100 relative z-10">Total Peserta Terdaftar</div>
+            
+            <div class="absolute right-3.5 bottom-2.5 z-10 pointer-events-none">
+              <AdminSparkline :values="[80, 120, 160, 200, 246]" color="rgba(255,255,255,0.95)" :width="110" :height="36" />
+            </div>
+          </div>
+
+          <!-- KPI 4: Rata-rata Nilai (Amber) -->
+          <div
+            class="group relative overflow-hidden rounded-3xl p-5 text-white bg-gradient-to-br from-[#92400E] via-[#D97706] to-[#FBBF24] shadow-[0_14px_30px_-14px_rgba(146,64,14,0.45)] hover:shadow-[0_22px_42px_-14px_rgba(146,64,14,0.55)] hover:-translate-y-1.5 hover:scale-[1.01] transition-all duration-300 cursor-pointer animate-riseIn [animation-delay:210ms] before:content-[''] before:absolute before:w-[210px] before:h-[210px] before:rounded-full before:pointer-events-none before:bg-[radial-gradient(circle,rgba(255,255,255,0.25),transparent_70%)] before:-top-[85px] before:-right-[60px] after:content-[''] after:absolute after:w-[120px] after:h-[120px] after:rounded-full after:pointer-events-none after:border-[24px] after:border-white/10 after:-bottom-[60px] after:-left-[40px]"
+            @click="activeTab = 'insight'"
+          >
+            <span class="absolute top-0 bottom-0 w-[70px] -left-[90px] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 pointer-events-none group-hover:left-[135%]" />
+
+            <div class="flex items-center justify-between mb-3 relative z-10">
+              <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
+                <AdminIcon name="grad" size="22" />
+              </span>
+              <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+                <span>KKM 75</span>
+              </span>
+            </div>
+            <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ averageCompleted.toFixed(1) }}</div>
+            <div class="text-xs font-semibold text-amber-100 relative z-10">Rata-rata Nilai Ujian</div>
+            
+            <div class="absolute right-3.5 bottom-2.5 z-10 pointer-events-none">
+              <AdminSparkline :values="[76, 78, 80, 81.5, 80.6]" color="rgba(255,255,255,0.95)" :width="110" :height="36" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Pantau Live Card -->
+        <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300">
+          <div class="pb-4 border-b border-slate-100 flex items-center justify-between mb-4">
+            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-purple-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(168,85,247,0.4)]">
+              Pantau Live — Ujian Berlangsung
+            </h3>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+              <span class="w-2 h-2 rounded-full bg-purple-600 animate-ping" /> LIVE
+            </span>
+          </div>
+          <div class="space-y-4">
+            <div v-for="exam in liveExams" :key="exam.id" class="pt-4 first:pt-0 border-t border-slate-100 first:border-0 space-y-2.5">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <b class="text-sm font-bold text-slate-900">{{ exam.name }}</b>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    {{ exam.subject }} &bull; Kelas {{ exam.classroom }} &bull; <strong class="text-slate-800">{{ exam.collected }}/{{ exam.participants }}</strong> kumpul &bull; <span class="text-purple-600 font-bold">{{ exam.doing }} mengerjakan</span>
+                  </p>
+                </div>
+                <button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl w-fit transition hover:scale-105 active:scale-95 cursor-pointer shadow-sm" type="button" @click="openExam(exam.id)">
+                  <AdminIcon name="eye" size="14" /> Pantau
+                </button>
+              </div>
+              <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                <i class="block h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full transition-all duration-700" :style="{ width: `${exam.collected / exam.participants * 100}%` }" />
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Charts Grid (SVG Interactive) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-2">
+              <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+                Tren Rata-rata Nilai
+              </h3>
+              <span class="text-xs text-slate-400 font-medium">Ujian selesai</span>
+            </div>
+            <div class="py-2">
+              <AdminLineChart
+                :labels="scoreTrendLabels"
+                :series="scoreTrendSeries"
+              />
+            </div>
+          </article>
+
+          <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-2">
+              <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-purple-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(168,85,247,0.4)]">
+                Distribusi Nilai Siswa
+              </h3>
+              <span class="text-xs text-slate-400 font-medium">Seluruh ujian selesai</span>
+            </div>
+            <div class="py-2">
+              <AdminBarChart
+                :labels="['<60', '60–69', '70–79', '80–89', '90–100']"
+                :datasets="scoreDistDatasets"
+              />
+            </div>
+          </article>
+        </div>
+
+        <!-- Perlu Perhatian Card -->
+        <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden">
+          <div class="pb-4 border-b border-slate-100 flex items-center justify-between mb-2">
+            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-amber-500 before:to-orange-600 before:shadow-[0_2px_8px_rgba(245,158,11,0.4)]">
+              Perlu Perhatian
+            </h3>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">3 item</span>
+          </div>
+          <div class="divide-y divide-slate-100 space-y-3">
+            <div class="flex flex-wrap sm:flex-nowrap gap-3 items-start pt-3">
+              <span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <AdminIcon name="cal" size="17" />
+              </span>
+              <div class="flex-1 min-w-0">
+                <b class="block text-sm font-bold text-slate-900">Try Out Ujian Sekolah dimulai 2 Okt 2026</b>
+                <span class="block text-xs text-slate-500 mt-0.5">44 peserta &bull; Kelas IX-A &bull; token MTK102</span>
+              </div>
+              <button class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition hover:scale-105 active:scale-95" type="button" @click="openExam('E3')">
+                Tinjau
+              </button>
+            </div>
+            <div class="flex flex-wrap sm:flex-nowrap gap-3 items-start pt-3">
+              <span class="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <AdminIcon name="alert" size="17" />
+              </span>
+              <div class="flex-1 min-w-0">
+                <b class="block text-sm font-bold text-slate-900">BD-004 &bull; hanya {{ basisDataEssay ? correctPercent(basisDataEssay) : 0 }}% jawaban benar</b>
+                <span class="block text-xs text-slate-500 mt-0.5">Ujian Basis Data — butuh pembahasan ulang di kelas XI RPL 1</span>
+              </div>
+              <button class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition hover:scale-105 active:scale-95" type="button" @click="openExam('E6')">
+                Tinjau
+              </button>
+            </div>
+            <div class="flex flex-wrap sm:flex-nowrap gap-3 items-start pt-3">
+              <span class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <AdminIcon name="file" size="17" />
+              </span>
+              <div class="flex-1 min-w-0">
+                <b class="block text-sm font-bold text-slate-900">Jawaban esai menunggu dinilai</b>
+                <span class="block text-xs text-slate-500 mt-0.5">Beri nilai langsung dari halaman penilaian siswa.</span>
+              </div>
+            </div>
+          </div>
+        </article>
       </template>
 
+      <!-- TAB 2: DAFTAR UJIAN -->
       <template v-else-if="activeTab === 'exams'">
-        <article class="card filter-card"><div class="card-b"><div class="toolbar"><label class="inp"><span class="ic"><AdminIcon name="search" size="17" /></span><input v-model.trim="query" placeholder="Cari ujian / mapel…" /></label><select v-model="classFilter" class="sel" aria-label="Filter kelas"><option value="all">Semua Kelas</option><option v-for="item in classOptions" :key="item" :value="item">Kelas {{ item }}</option></select><div class="filter-chips"><button v-for="item in examStatusOptions" :key="item" class="chip" :class="{ on: statusFilter === item }" type="button" @click="statusFilter = item">{{ item === 'all' ? 'Semua' : item }}</button></div><span class="count-label">{{ filteredExams.length }} ujian</span></div></div></article>
-        <div class="grid g3 exam-grid"><article v-for="exam in filteredExams" :key="exam.id" class="card exam-card"><div class="card-b"><div class="exam-meta"><span class="pill" :class="statusClass(exam.status)"><span class="pdot" :class="{ live: exam.status === 'Berlangsung' }" />{{ exam.status }}</span><span>{{ exam.duration }} mnt · KKM {{ exam.kkm }}</span></div><b class="exam-name">{{ exam.name }}</b><p>{{ exam.subject }} · Kelas {{ exam.classroom }}<br><AdminIcon name="cal" size="13" /> {{ exam.date }} · Token <code>{{ exam.token }}</code></p><div class="grid exam-stats"><div class="stat-mini"><b>{{ exam.participants }}</b><span>Peserta</span></div><div class="stat-mini"><b>{{ exam.status === 'Selesai' ? exam.average.toFixed(1) : exam.status === 'Berlangsung' ? `${Math.round(exam.collected / exam.participants * 100)}%` : '—' }}</b><span>{{ exam.status === 'Selesai' ? 'Rata-rata' : 'Terkumpul' }}</span></div></div><div v-if="exam.status === 'Berlangsung'" class="prog live exam-progress"><i :style="{ width: `${exam.collected / exam.participants * 100}%` }" /></div><button class="btn btn-sm exam-button" :class="exam.status === 'Berlangsung' ? 'btn-primary' : 'btn-ghost'" type="button" @click="openExam(exam.id)"><AdminIcon name="eye" size="15" /> {{ exam.status === 'Terjadwal' ? 'Detail & Mulai' : 'Lihat Detail' }}</button></div></article><div v-if="!filteredExams.length" class="empty">Tidak ada ujian yang cocok.</div></div>
+        <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-5 shadow-sm">
+          <div class="flex flex-wrap items-center gap-3">
+            <label class="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl flex-1 min-w-[200px] focus-within:border-blue-500 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all">
+              <AdminIcon name="search" size="16" class="text-slate-400" />
+              <input v-model.trim="query" placeholder="Cari ujian / mapel…" class="bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none w-full" />
+            </label>
+            <select v-model="classFilter" class="px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:border-blue-500" aria-label="Filter kelas">
+              <option value="all">Semua Kelas</option>
+              <option v-for="item in classOptions" :key="item" :value="item">Kelas {{ item }}</option>
+            </select>
+            <div class="flex flex-wrap gap-1.5">
+              <button v-for="item in examStatusOptions" :key="item" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer" :class="statusFilter === item ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" type="button" @click="statusFilter = item">
+                {{ item === 'all' ? 'Semua' : item }}
+              </button>
+            </div>
+            <span class="text-xs text-slate-400 ml-auto font-medium">{{ filteredExams.length }} ujian</span>
+          </div>
+        </article>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <article v-for="exam in filteredExams" :key="exam.id" class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold" :class="statusClass(exam.status)">
+                  <span class="w-1.5 h-1.5 rounded-full" :class="exam.status === 'Berlangsung' ? 'bg-purple-600 animate-ping' : exam.status === 'Terjadwal' ? 'bg-amber-500' : 'bg-emerald-500'" />
+                  {{ exam.status }}
+                </span>
+                <span class="text-xs text-slate-400 font-medium">{{ exam.duration }} mnt &bull; KKM {{ exam.kkm }}</span>
+              </div>
+              <b class="block text-base font-bold text-slate-900">{{ exam.name }}</b>
+              <p class="text-xs text-slate-500 mt-1 mb-4 leading-relaxed font-medium">
+                {{ exam.subject }} &bull; Kelas {{ exam.classroom }}<br>
+                <AdminIcon name="cal" size="13" class="inline align-middle text-slate-400" /> {{ exam.date }} &bull; Token <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-blue-700 font-bold">{{ exam.token }}</code>
+              </p>
+              <div class="grid grid-cols-2 gap-2.5 bg-slate-50 border border-slate-100 rounded-2xl p-3.5 mb-4">
+                <div>
+                  <b class="block text-base font-bold text-slate-900 font-mono">{{ exam.participants }}</b>
+                  <span class="block text-[11px] text-slate-400">Peserta</span>
+                </div>
+                <div>
+                  <b class="block text-base font-bold text-slate-900 font-mono">{{ exam.status === 'Selesai' ? exam.average.toFixed(1) : exam.status === 'Berlangsung' ? `${Math.round(exam.collected / exam.participants * 100)}%` : '—' }}</b>
+                  <span class="block text-[11px] text-slate-400">{{ exam.status === 'Selesai' ? 'Rata-rata' : 'Terkumpul' }}</span>
+                </div>
+              </div>
+              <div v-if="exam.status === 'Berlangsung'" class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4 shadow-inner">
+                <i class="block h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full" :style="{ width: `${exam.collected / exam.participants * 100}%` }" />
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-sm" :class="exam.status === 'Berlangsung' ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/25' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" type="button" @click="openExam(exam.id)">
+              <AdminIcon name="eye" size="14" /> {{ exam.status === 'Terjadwal' ? 'Detail & Mulai' : 'Lihat Detail' }}
+            </button>
+          </article>
+          <div v-if="!filteredExams.length" class="col-span-full py-16 text-center text-sm text-slate-400 bg-white rounded-3xl border border-slate-200/80">
+            Tidak ada ujian yang cocok dengan kriteria pencarian.
+          </div>
+        </div>
       </template>
 
+      <!-- TAB 3: BANK SOAL -->
       <template v-else-if="activeTab === 'bank'">
-        <div class="grid g4 bank-stats"><div class="stat-mini"><b>{{ bank.length }}</b><span>Total Soal</span></div><div class="stat-mini"><b>{{ bank.filter(item => item.type === 'PG' || item.type === 'PG Kompleks').length }}</b><span>Pilihan Ganda</span></div><div class="stat-mini"><b>{{ bank.filter(item => item.type === 'Esai').length }}</b><span>Esai</span></div><div class="stat-mini"><b>{{ subjectOptions.length }}</b><span>Mata Pelajaran</span></div></div>
-        <article class="card"><div class="card-b bank-toolbar"><div class="toolbar"><label class="inp"><span class="ic"><AdminIcon name="search" size="17" /></span><input v-model.trim="bankQuery" placeholder="Cari soal / kode / kunci…" /></label><select v-model="subjectFilter" class="sel"><option value="all">Semua Mapel</option><option v-for="item in subjectOptions" :key="item">{{ item }}</option></select><select v-model="typeFilter" class="sel"><option value="all">Semua Tipe</option><option>PG</option><option>PG Kompleks</option><option>Isian</option><option>Esai</option></select><select v-model="difficultyFilter" class="sel"><option value="all">Semua Level</option><option>Mudah</option><option>Sedang</option><option>Sukar</option></select><button class="btn btn-primary btn-sm add-question" type="button" @click="openAddQuestion"><AdminIcon name="plus" size="15" /> Tambah</button></div></div><div class="tbl-wrap"><table class="tbl rt"><thead><tr><th>Kode</th><th>Soal</th><th>Tipe</th><th>Kesulitan</th><th style="text-align:right">Dipakai</th><th style="text-align:right">Aksi</th></tr></thead><tbody><tr v-for="item in filteredQuestions" :key="item.id"><td data-l="Kode"><b>{{ item.code }}</b></td><td data-l="Soal" class="question-cell">{{ item.text.length > 90 ? `${item.text.slice(0, 90)}…` : item.text }}<div class="t-sub">{{ item.subject }}</div></td><td data-l="Tipe"><span class="pill" :class="typeClass(item.type)">{{ item.type }}</span></td><td data-l="Kesulitan"><span class="pill" :class="difficultyClass(item.difficulty)">{{ item.difficulty }}</span></td><td data-l="Dipakai" style="text-align:right">{{ item.used }}×</td><td data-l="Aksi" class="tbl-act question-actions"><button class="btn btn-ghost btn-sm" type="button" aria-label="Preview soal" @click="openQuestionPreview(item)"><AdminIcon name="eye" size="15" /></button><button class="btn btn-ghost btn-sm delete-question" type="button" aria-label="Hapus soal" @click="deleteQuestion(item)"><AdminIcon name="trash" size="14" /></button></td></tr><tr v-if="!filteredQuestions.length"><td colspan="6"><div class="empty">Tidak ada soal.</div></td></tr></tbody></table></div><div class="pager"><span>{{ filteredQuestions.length }} soal</span></div></article>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+            <b class="block text-2xl font-black text-slate-900 font-mono">{{ bank.length }}</b>
+            <span class="block text-xs text-slate-400 mt-1">Total Soal</span>
+          </div>
+          <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+            <b class="block text-2xl font-black text-slate-900 font-mono">{{ bank.filter(item => item.type === 'PG' || item.type === 'PG Kompleks').length }}</b>
+            <span class="block text-xs text-slate-400 mt-1">Pilihan Ganda</span>
+          </div>
+          <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+            <b class="block text-2xl font-black text-slate-900 font-mono">{{ bank.filter(item => item.type === 'Esai').length }}</b>
+            <span class="block text-xs text-slate-400 mt-1">Esai</span>
+          </div>
+          <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+            <b class="block text-2xl font-black text-slate-900 font-mono">{{ subjectOptions.length }}</b>
+            <span class="block text-xs text-slate-400 mt-1">Mata Pelajaran</span>
+          </div>
+        </div>
+
+        <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden">
+          <div class="p-5 border-b border-slate-100 flex flex-wrap items-center gap-3">
+            <label class="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl flex-1 min-w-[200px] focus-within:border-blue-500 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(59,130,246,0.1)] transition-all">
+              <AdminIcon name="search" size="16" class="text-slate-400" />
+              <input v-model.trim="bankQuery" placeholder="Cari soal / kode / kunci…" class="bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none w-full" />
+            </label>
+            <select v-model="subjectFilter" class="px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:border-blue-500">
+              <option value="all">Semua Mapel</option>
+              <option v-for="item in subjectOptions" :key="item">{{ item }}</option>
+            </select>
+            <select v-model="typeFilter" class="px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:border-blue-500">
+              <option value="all">Semua Tipe</option>
+              <option>PG</option>
+              <option>PG Kompleks</option>
+              <option>Isian</option>
+              <option>Esai</option>
+            </select>
+            <select v-model="difficultyFilter" class="px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:border-blue-500">
+              <option value="all">Semua Level</option>
+              <option>Mudah</option>
+              <option>Sedang</option>
+              <option>Sukar</option>
+            </select>
+            <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition ml-auto hover:scale-105 active:scale-95" type="button" @click="openAddQuestion">
+              <AdminIcon name="plus" size="14" /> Tambah Soal
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50/80 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200/80">
+                <tr>
+                  <th class="px-5 py-3.5">Kode</th>
+                  <th class="px-5 py-3.5">Soal</th>
+                  <th class="px-5 py-3.5">Tipe</th>
+                  <th class="px-5 py-3.5">Kesulitan</th>
+                  <th class="px-5 py-3.5 text-right">Dipakai</th>
+                  <th class="px-5 py-3.5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr v-for="item in filteredQuestions" :key="item.id" class="hover:bg-blue-50/50 transition">
+                  <td class="px-5 py-3.5 font-mono font-bold text-slate-900 text-xs">{{ item.code }}</td>
+                  <td class="px-5 py-3.5 max-w-sm">
+                    <div class="text-slate-800 font-medium line-clamp-2 text-xs sm:text-sm">{{ item.text }}</div>
+                    <div class="text-xs text-slate-400 mt-0.5">{{ item.subject }}</div>
+                  </td>
+                  <td class="px-5 py-3.5">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold" :class="typeClass(item.type)">{{ item.type }}</span>
+                  </td>
+                  <td class="px-5 py-3.5">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold" :class="difficultyClass(item.difficulty)">{{ item.difficulty }}</span>
+                  </td>
+                  <td class="px-5 py-3.5 text-right font-bold text-slate-700 font-mono">{{ item.used }}×</td>
+                  <td class="px-5 py-3.5 text-right">
+                    <div class="flex items-center justify-end gap-1.5">
+                      <button class="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition" type="button" aria-label="Preview soal" @click="openQuestionPreview(item)">
+                        <AdminIcon name="eye" size="15" />
+                      </button>
+                      <button class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition" type="button" aria-label="Hapus soal" @click="deleteQuestion(item)">
+                        <AdminIcon name="trash" size="14" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="!filteredQuestions.length">
+                  <td colspan="6" class="py-16 text-center text-xs text-slate-400 font-semibold">Tidak ada soal yang cocok dengan filter.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="px-6 py-3.5 border-t border-slate-100 text-xs text-slate-500">
+            Menampilkan <b>{{ filteredQuestions.length }}</b> soal di bank soal
+          </div>
+        </article>
       </template>
 
+      <!-- TAB 4: HASIL PER SISWA -->
       <template v-else-if="activeTab === 'results'">
-        <article class="card result-profile"><div class="card-b"><div class="result-profile-row"><span class="avatar student-avatar">{{ initials(activeResultStudent?.name ?? 'Siswa') }}</span><div class="student-main"><b>{{ activeResultStudent?.name }}</b><span>NIS {{ activeResultStudent?.nis }} · Kelas {{ resultClass }}</span></div><div class="stat-mini"><b>{{ resultExams.length ? '82.5' : '—' }}</b><span>Rata-rata Nilai</span></div><div class="stat-mini"><b>{{ resultExams.length }}</b><span>Ujian</span></div></div><div class="toolbar result-selectors"><select v-model="resultClass" class="sel" @change="chooseResultClass"><option v-for="item in classOptions" :key="item">{{ item }}</option></select><select v-model="resultStudent" class="sel student-select"><option v-for="item in resultStudents" :key="item.id" :value="item.id">{{ item.name }}</option></select></div></div></article>
-        <article class="card"><div class="card-h"><h3>Riwayat Ujian</h3><span class="muted-caption">per mata pelajaran</span></div><div class="tbl-wrap"><table class="tbl rt"><thead><tr><th>Ujian</th><th>Mapel</th><th>Tanggal</th><th>Status</th><th style="text-align:right">Nilai</th><th>KKM</th><th style="text-align:right">Aksi</th></tr></thead><tbody><tr v-for="exam in resultExams" :key="exam.id"><td data-l="Ujian" class="t-name">{{ exam.name }}</td><td data-l="Mapel">{{ exam.subject }}</td><td data-l="Tanggal">{{ exam.date }}</td><td data-l="Status"><span class="pill" :class="statusClass(exam.status)">{{ exam.status }}</span></td><td data-l="Nilai" style="text-align:right"><b>{{ activeResultStudent ? scoreFor(exam, activeResultStudent) ?? '—' : '—' }}</b></td><td data-l="KKM"><span v-if="activeResultStudent && scoreFor(exam, activeResultStudent) !== null" class="pill" :class="(scoreFor(exam, activeResultStudent) ?? 0) >= exam.kkm ? 'p-green' : 'p-rose'">{{ (scoreFor(exam, activeResultStudent) ?? 0) >= exam.kkm ? 'Lulus' : 'Remedial' }}</span><span v-else>—</span></td><td data-l="Aksi" class="tbl-act" style="text-align:right"><button v-if="activeResultStudent && scoreFor(exam, activeResultStudent) !== null" class="btn btn-ghost btn-sm" type="button" @click="openResultDetail(exam)"><AdminIcon name="eye" size="15" /> Detail</button></td></tr><tr v-if="!resultExams.length"><td colspan="7"><div class="empty">Belum ada ujian untuk kelas ini.</div></td></tr></tbody></table></div></article>
+        <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 space-y-4">
+          <div class="flex flex-wrap items-center gap-4">
+            <span class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md">
+              {{ initials(activeResultStudent?.name ?? 'Siswa') }}
+            </span>
+            <div class="flex-1 min-w-[180px]">
+              <b class="block text-base font-bold text-slate-900">{{ activeResultStudent?.name }}</b>
+              <span class="block text-xs sm:text-sm text-slate-500">NIS {{ activeResultStudent?.nis }} &bull; Kelas {{ resultClass }}</span>
+            </div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-2xl px-5 py-3">
+              <b class="block text-xl font-bold text-slate-900 font-mono">{{ resultExams.length ? '82.5' : '—' }}</b>
+              <span class="block text-[11px] text-slate-400">Rata-rata Nilai</span>
+            </div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-2xl px-5 py-3">
+              <b class="block text-xl font-bold text-slate-900 font-mono">{{ resultExams.length }}</b>
+              <span class="block text-[11px] text-slate-400">Ujian</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-3 pt-3 border-t border-slate-100">
+            <select v-model="resultClass" class="px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:border-blue-500 font-medium" @change="chooseResultClass">
+              <option v-for="item in classOptions" :key="item">{{ item }}</option>
+            </select>
+            <select v-model="resultStudent" class="px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:border-blue-500 min-w-[200px] font-medium">
+              <option v-for="item in resultStudents" :key="item.id" :value="item.id">{{ item.name }}</option>
+            </select>
+          </div>
+        </article>
+
+        <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden">
+          <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+              Riwayat Ujian
+            </h3>
+            <span class="text-xs text-slate-400 font-medium">per mata pelajaran</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50/80 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200/80">
+                <tr>
+                  <th class="px-5 py-3.5">Ujian</th>
+                  <th class="px-5 py-3.5">Mapel</th>
+                  <th class="px-5 py-3.5">Tanggal</th>
+                  <th class="px-5 py-3.5">Status</th>
+                  <th class="px-5 py-3.5 text-right">Nilai</th>
+                  <th class="px-5 py-3.5">KKM</th>
+                  <th class="px-5 py-3.5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr v-for="exam in resultExams" :key="exam.id" class="hover:bg-blue-50/50 transition">
+                  <td class="px-5 py-3.5 font-bold text-slate-900">{{ exam.name }}</td>
+                  <td class="px-5 py-3.5 text-slate-600">{{ exam.subject }}</td>
+                  <td class="px-5 py-3.5 text-slate-500 font-mono">{{ exam.date }}</td>
+                  <td class="px-5 py-3.5">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold" :class="statusClass(exam.status)">{{ exam.status }}</span>
+                  </td>
+                  <td class="px-5 py-3.5 text-right font-mono font-bold text-slate-900 text-sm">{{ activeResultStudent ? scoreFor(exam, activeResultStudent) ?? '—' : '—' }}</td>
+                  <td class="px-5 py-3.5">
+                    <span v-if="activeResultStudent && scoreFor(exam, activeResultStudent) !== null" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold" :class="(scoreFor(exam, activeResultStudent) ?? 0) >= exam.kkm ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                      {{ (scoreFor(exam, activeResultStudent) ?? 0) >= exam.kkm ? 'Lulus' : 'Remedial' }}
+                    </span>
+                    <span v-else class="text-slate-400">—</span>
+                  </td>
+                  <td class="px-5 py-3.5 text-right">
+                    <button v-if="activeResultStudent && scoreFor(exam, activeResultStudent) !== null" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition hover:scale-105 active:scale-95 cursor-pointer shadow-sm" type="button" @click="openResultDetail(exam)">
+                      <AdminIcon name="eye" size="14" /> Detail
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="!resultExams.length">
+                  <td colspan="7" class="py-16 text-center text-xs text-slate-400 font-semibold">Belum ada ujian untuk kelas ini.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
       </template>
 
+      <!-- TAB 5: INSIGHT -->
       <template v-else>
-        <div class="grid g2 insight-grid"><article class="card"><div class="card-h"><h3>Soal Tersulit</h3><span class="muted-caption">% benar terendah</span></div><div class="card-b compact-list"><div v-for="item in hardestQuestions" :key="item.id" class="hard-row"><div><b>{{ item.code }} <span>· {{ item.subject }}</span></b><strong>{{ correctPercent(item) }}%</strong></div><div class="prog"><i :style="{ width: `${correctPercent(item)}%` }" /></div></div></div></article><article class="card"><div class="card-h"><h3>Rata-rata per Kelas</h3><span class="muted-caption">ujian selesai</span></div><div class="card-b"><div class="horizontal-bars"><div v-for="exam in completedExams" :key="exam.id"><span>{{ exam.classroom }}</span><div class="prog"><i :style="{ width: `${exam.average}%` }" /></div><b>{{ exam.average }}</b></div></div></div></article></div>
-        <article class="card insight-trend"><div class="card-h"><h3>Tren Rata-rata Nilai</h3><span class="muted-caption">kronologis</span></div><div class="card-b"><div class="trend-chart"><div v-for="exam in completedExams" :key="exam.id"><i :style="{ height: `${exam.average * 1.55}px` }" /><span>{{ exam.subject }}</span><b>{{ exam.average }}</b></div></div></div></article>
-        <article class="card"><div class="card-h"><h3>Rekomendasi Otomatis</h3><span class="pill p-blue">3 item</span></div><div class="card-b compact-list"><div class="attention-row"><span class="attention-icon rose"><AdminIcon name="alert" size="17" /></span><div><b>{{ hardestQuestions[0]?.code }} · hanya {{ hardestQuestions[0] ? correctPercent(hardestQuestions[0]) : 0 }}% jawaban benar</b><span>Pertimbangkan pembahasan ulang atau revisi soal.</span></div></div><div class="attention-row"><span class="attention-icon amber"><AdminIcon name="file" size="17" /></span><div><b>Jawaban esai menunggu dinilai</b><span>Beri nilai langsung dari halaman penilaian siswa.</span></div></div><div class="attention-row"><span class="attention-icon violet"><AdminIcon name="users" size="17" /></span><div><b>UTS Informatika: {{ Math.round(exams[0].collected / exams[0].participants * 100) }}% mengumpulkan</b><span>Kelas X RPL 1 — pantau siswa yang belum mengumpulkan.</span></div><button class="btn btn-ghost btn-sm" type="button" @click="openExam('E1')">Tinjau</button></div></div></article>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-rose-500 before:to-red-600 before:shadow-[0_2px_8px_rgba(244,63,94,0.4)]">
+                Soal Tersulit
+              </h3>
+              <span class="text-xs text-slate-400 font-medium">% benar terendah</span>
+            </div>
+            <div class="p-6 space-y-4">
+              <div v-for="item in hardestQuestions" :key="item.id" class="pt-3.5 first:pt-0 border-t border-slate-100 first:border-0">
+                <div class="flex items-center justify-between mb-1.5 text-xs">
+                  <b class="font-bold text-slate-800">{{ item.code }} <span class="font-normal text-slate-400">&bull; {{ item.subject }}</span></b>
+                  <strong class="font-mono font-bold text-rose-600">{{ correctPercent(item) }}%</strong>
+                </div>
+                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <i class="block h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full" :style="{ width: `${correctPercent(item)}%` }" />
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+              <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+                Rata-rata per Kelas
+              </h3>
+              <span class="text-xs text-slate-400 font-medium">Ujian selesai</span>
+            </div>
+            <div class="space-y-3.5">
+              <div v-for="exam in completedExams" :key="exam.id" class="grid grid-cols-[90px_1fr_50px] items-center gap-3 text-xs">
+                <span class="text-slate-700 font-bold truncate">{{ exam.classroom }}</span>
+                <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                  <i class="block h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full" :style="{ width: `${exam.average}%` }" />
+                </div>
+                <b class="text-right font-mono font-bold text-slate-900">{{ exam.average }}</b>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden">
+          <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
+              Rekomendasi Otomatis
+            </h3>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">3 item</span>
+          </div>
+          <div class="p-6 space-y-4">
+            <div class="flex flex-wrap sm:flex-nowrap gap-3.5 items-start">
+              <span class="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <AdminIcon name="alert" size="17" />
+              </span>
+              <div class="flex-1 min-w-0">
+                <b class="block text-sm font-bold text-slate-900">{{ hardestQuestions[0]?.code }} &bull; hanya {{ hardestQuestions[0] ? correctPercent(hardestQuestions[0]) : 0 }}% jawaban benar</b>
+                <span class="block text-xs text-slate-500 mt-0.5">Pertimbangkan pembahasan ulang di kelas atau revisi butir soal.</span>
+              </div>
+            </div>
+            <div class="flex flex-wrap sm:flex-nowrap gap-3.5 items-start pt-4 border-t border-slate-100">
+              <span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <AdminIcon name="file" size="17" />
+              </span>
+              <div class="flex-1 min-w-0">
+                <b class="block text-sm font-bold text-slate-900">Jawaban esai menunggu dinilai</b>
+                <span class="block text-xs text-slate-500 mt-0.5">Beri nilai langsung dari halaman penilaian siswa untuk menyelesaikan rekapitulasi.</span>
+              </div>
+            </div>
+            <div class="flex flex-wrap sm:flex-nowrap gap-3.5 items-start pt-4 border-t border-slate-100">
+              <span class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <AdminIcon name="users" size="17" />
+              </span>
+              <div class="flex-1 min-w-0">
+                <b class="block text-sm font-bold text-slate-900">UTS Informatika: {{ Math.round(exams[0].collected / exams[0].participants * 100) }}% mengumpulkan</b>
+                <span class="block text-xs text-slate-500 mt-0.5">Kelas X RPL 1 — pantau siswa yang belum mengumpulkan via wali kelas.</span>
+              </div>
+              <button class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition hover:scale-105 active:scale-95 cursor-pointer shadow-sm" type="button" @click="openExam('E1')">
+                Tinjau
+              </button>
+            </div>
+          </div>
+        </article>
       </template>
     </template>
 
-    <AdminModal :open="examModalOpen" title="Buat Ujian Baru" @close="examModalOpen = false"><div class="field"><label for="exam-name">Nama Ujian</label><div class="inp"><input id="exam-name" v-model="examForm.name" placeholder="cth: UTS Informatika" /></div></div><div class="form-grid"><div class="field"><label for="exam-subject">Mata Pelajaran</label><div class="inp"><select id="exam-subject" v-model="examForm.subject"><option v-for="item in subjectOptions" :key="item">{{ item }}</option></select></div></div><div class="field"><label for="exam-class">Kelas</label><div class="inp"><select id="exam-class" v-model="examForm.classroom"><option v-for="item in classOptions" :key="item">{{ item }}</option></select></div></div><div class="field"><label for="exam-date">Tanggal</label><div class="inp"><input id="exam-date" v-model="examForm.date" /></div></div><div class="field"><label for="exam-duration">Durasi (menit)</label><div class="inp"><input id="exam-duration" v-model.number="examForm.duration" type="number" min="1" /></div></div><div class="field"><label for="exam-kkm">KKM</label><div class="inp"><input id="exam-kkm" v-model.number="examForm.kkm" type="number" min="1" max="100" /></div></div><div class="field"><label>Jumlah Soal</label><div class="inp"><select disabled><option>8</option></select></div></div></div><p class="modal-note">Soal diambil otomatis dari bank soal sesuai mata pelajaran · token dibuat otomatis.</p><template #footer><button class="btn btn-ghost btn-sm" type="button" @click="examModalOpen = false">Batal</button><button class="btn btn-primary btn-sm" type="button" @click="saveExam"><AdminIcon name="check" size="15" /> Jadwalkan Ujian</button></template></AdminModal>
+    <!-- Modal Buat Ujian Baru -->
+    <AdminModal :open="examModalOpen" title="Buat Ujian Baru" @close="examModalOpen = false">
+      <div class="space-y-4">
+        <div>
+          <label for="exam-name" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Nama Ujian</label>
+          <input id="exam-name" v-model="examForm.name" placeholder="cth: UTS Informatika" class="w-full px-4 py-3 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.12)] outline-none transition" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="exam-subject" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Mata Pelajaran</label>
+            <select id="exam-subject" v-model="examForm.subject" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none">
+              <option v-for="item in subjectOptions" :key="item">{{ item }}</option>
+            </select>
+          </div>
+          <div>
+            <label for="exam-class" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Kelas</label>
+            <select id="exam-class" v-model="examForm.classroom" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none">
+              <option v-for="item in classOptions" :key="item">{{ item }}</option>
+            </select>
+          </div>
+          <div>
+            <label for="exam-date" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Tanggal</label>
+            <input id="exam-date" v-model="examForm.date" class="w-full px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none font-mono" />
+          </div>
+          <div>
+            <label for="exam-duration" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Durasi (menit)</label>
+            <input id="exam-duration" v-model.number="examForm.duration" type="number" min="1" class="w-full px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none font-mono" />
+          </div>
+          <div>
+            <label for="exam-kkm" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">KKM</label>
+            <input id="exam-kkm" v-model.number="examForm.kkm" type="number" min="1" max="100" class="w-full px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Jumlah Soal</label>
+            <select disabled class="w-full px-3.5 py-2.5 text-xs bg-slate-100 border-2 border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
+              <option>8 soal</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400">Soal diambil otomatis dari bank soal sesuai mata pelajaran &bull; Token dibuat otomatis.</p>
+      </div>
+      <template #footer>
+        <button class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition" type="button" @click="examModalOpen = false">Batal</button>
+        <button class="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition hover:scale-105 active:scale-95" type="button" @click="saveExam">
+          <AdminIcon name="check" size="14" /> Jadwalkan Ujian
+        </button>
+      </template>
+    </AdminModal>
 
-    <AdminModal :open="questionModal === 'add'" title="Tambah Soal ke Bank" @close="questionModal = 'closed'"><div class="form-grid"><div class="field"><label for="question-subject">Mata Pelajaran</label><div class="inp"><select id="question-subject" v-model="questionForm.subject"><option v-for="item in subjectOptions" :key="item">{{ item }}</option></select></div></div><div class="field"><label for="question-type">Tipe</label><div class="inp"><select id="question-type" v-model="questionForm.type"><option>PG</option><option>PG Kompleks</option><option>Isian</option><option>Esai</option></select></div></div><div class="field"><label for="question-difficulty">Kesulitan</label><div class="inp"><select id="question-difficulty" v-model="questionForm.difficulty"><option>Mudah</option><option>Sedang</option><option>Sukar</option></select></div></div><div class="field"><label for="question-code">Kode</label><div class="inp"><input id="question-code" v-model="questionForm.code" placeholder="cth: INF-009" /></div></div></div><div class="field"><label for="question-text">Teks Soal</label><div class="inp"><textarea id="question-text" v-model="questionForm.text" rows="3" placeholder="Tulis soal…" /></div></div><div class="field"><label for="question-key">Kunci Jawaban</label><div class="inp"><input id="question-key" v-model="questionForm.key" placeholder="Kunci jawaban…" /></div></div><template #footer><button class="btn btn-ghost btn-sm" type="button" @click="questionModal = 'closed'">Batal</button><button class="btn btn-primary btn-sm" type="button" @click="saveQuestion"><AdminIcon name="check" size="15" /> Simpan</button></template></AdminModal>
+    <!-- Modal Tambah Soal ke Bank -->
+    <AdminModal :open="questionModal === 'add'" title="Tambah Soal ke Bank" @close="questionModal = 'closed'">
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="question-subject" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Mata Pelajaran</label>
+            <select id="question-subject" v-model="questionForm.subject" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none">
+              <option v-for="item in subjectOptions" :key="item">{{ item }}</option>
+            </select>
+          </div>
+          <div>
+            <label for="question-type" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Tipe</label>
+            <select id="question-type" v-model="questionForm.type" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none">
+              <option>PG</option>
+              <option>PG Kompleks</option>
+              <option>Isian</option>
+              <option>Esai</option>
+            </select>
+          </div>
+          <div>
+            <label for="question-difficulty" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Kesulitan</label>
+            <select id="question-difficulty" v-model="questionForm.difficulty" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none">
+              <option>Mudah</option>
+              <option>Sedang</option>
+              <option>Sukar</option>
+            </select>
+          </div>
+          <div>
+            <label for="question-code" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Kode Soal</label>
+            <input id="question-code" v-model="questionForm.code" placeholder="cth: INF-009" class="w-full px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none font-mono" />
+          </div>
+        </div>
+        <div>
+          <label for="question-text" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Teks Soal</label>
+          <textarea id="question-text" v-model="questionForm.text" rows="3" placeholder="Tulis butir soal…" class="w-full px-4 py-3 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none" />
+        </div>
+        <div>
+          <label for="question-key" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Kunci Jawaban</label>
+          <input id="question-key" v-model="questionForm.key" placeholder="Kunci jawaban / pedoman penskoran…" class="w-full px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 outline-none" />
+        </div>
+      </div>
+      <template #footer>
+        <button class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition" type="button" @click="questionModal = 'closed'">Batal</button>
+        <button class="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition hover:scale-105 active:scale-95" type="button" @click="saveQuestion">
+          <AdminIcon name="check" size="14" /> Simpan Soal
+        </button>
+      </template>
+    </AdminModal>
 
-    <AdminModal :open="questionModal === 'preview'" :title="`Preview Soal — ${previewQuestion?.code ?? ''}`" @close="questionModal = 'closed'"><template v-if="previewQuestion"><div class="preview-tags"><span class="pill" :class="typeClass(previewQuestion.type)">{{ previewQuestion.type }}</span><span class="pill" :class="difficultyClass(previewQuestion.difficulty)">{{ previewQuestion.difficulty }}</span><span class="pill p-gray">{{ previewQuestion.subject }}</span><span class="pill p-blue">dipakai {{ previewQuestion.used }}×</span></div><p class="preview-text">{{ previewQuestion.text }}</p><div v-if="revealKey" class="preview-key"><b>Kunci:</b> {{ previewQuestion.key }}</div></template><template #footer><button class="btn btn-ghost btn-sm" type="button" @click="questionModal = 'closed'">Tutup</button><button class="btn btn-primary btn-sm" type="button" @click="revealKey = !revealKey">{{ revealKey ? 'Sembunyikan Kunci' : 'Lihat Kunci' }}</button></template></AdminModal>
+    <!-- Modal Preview Soal -->
+    <AdminModal :open="questionModal === 'preview'" :title="`Preview Soal — ${previewQuestion?.code ?? ''}`" @close="questionModal = 'closed'">
+      <template v-if="previewQuestion">
+        <div class="flex flex-wrap gap-2 mb-4">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="typeClass(previewQuestion.type)">{{ previewQuestion.type }}</span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="difficultyClass(previewQuestion.difficulty)">{{ previewQuestion.difficulty }}</span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">{{ previewQuestion.subject }}</span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">dipakai {{ previewQuestion.used }}×</span>
+        </div>
+        <p class="text-sm sm:text-base font-semibold text-slate-900 leading-relaxed mb-4">{{ previewQuestion.text }}</p>
+        <div v-if="revealKey" class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs sm:text-sm text-slate-800 leading-relaxed">
+          <b class="text-emerald-700">Kunci Jawaban:</b> {{ previewQuestion.key }}
+        </div>
+      </template>
+      <template #footer>
+        <button class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition" type="button" @click="questionModal = 'closed'">Tutup</button>
+        <button class="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition hover:scale-105 active:scale-95" type="button" @click="revealKey = !revealKey">
+          {{ revealKey ? 'Sembunyikan Kunci' : 'Lihat Kunci' }}
+        </button>
+      </template>
+    </AdminModal>
+
     <AdminToast :message="message" :kind="messageKind" />
   </section>
 </template>
-
-<style scoped>
-.cbt-tab{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.cbt-kpis,.live-card,.summary-charts,.bank-stats,.result-profile,.detail-stats,.detail-panels,.analysis-card,.insight-grid,.insight-trend{margin-bottom:18px}.cbt-kpis .kpi{text-align:left;border:0}.compact-list{padding-top:6px}.live-row{position:relative;padding:13px 0 21px;border-top:1px solid var(--line-2);display:grid;grid-template-columns:1fr auto;gap:8px 12px}.live-row:first-child,.attention-row:first-child,.analysis-row:first-child{border-top:0}.live-row>div:first-child{min-width:0}.live-row b,.live-row span{display:block}.live-row span{font-size:12px;color:var(--muted);margin-top:3px}.live-row .prog{grid-column:1/-1}.muted-caption{font-size:12px;color:var(--faint)}.trend-chart,.distribution-bars{height:190px;display:flex;align-items:flex-end;justify-content:center;gap:22px;border-bottom:1px solid var(--line);padding:8px 8px 0}.trend-chart>div,.distribution-bars>div{height:100%;flex:1;max-width:72px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;font-size:11px;color:var(--muted);text-align:center}.trend-chart i,.distribution-bars i{width:34px;min-height:4px;border-radius:7px 7px 2px 2px;background:linear-gradient(#60a5fa,#2563eb)}.distribution-bars i{background:linear-gradient(#a78bfa,#7c3aed)}.trend-chart b{font-size:12px;color:var(--ink)}.attention-row{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line-2)}.attention-icon{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center}.attention-icon.amber{background:#fef3c7;color:#b45309}.attention-icon.rose{background:#fee2e2;color:#b91c1c}.attention-icon.violet{background:#ede9fe;color:#7c3aed}.attention-row>div{flex:1;min-width:0}.attention-row b,.attention-row span{display:block}.attention-row b{font-size:13.5px}.attention-row span{font-size:12.5px;color:var(--muted);margin-top:2px}.filter-card{margin-bottom:18px}.filter-card .card-b{padding-bottom:6px}.filter-chips{display:flex;gap:6px;flex-wrap:wrap}.count-label{font-size:13px;color:var(--muted);margin-left:auto}.exam-card{margin:0}.exam-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.exam-meta>span:last-child{font-size:12px;color:var(--faint)}.exam-name{font-size:16px}.exam-card p{font-size:13px;color:var(--muted);margin:6px 0 14px;line-height:1.65}.exam-card p svg{display:inline;vertical-align:-2px}.exam-card code{letter-spacing:1px}.exam-stats{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.exam-progress{margin-bottom:14px}.exam-button{width:100%}.bank-toolbar{padding-bottom:0}.add-question{margin-left:auto}.question-cell{max-width:340px}.question-actions{display:flex;justify-content:flex-end;gap:5px;white-space:nowrap}.delete-question{color:var(--rose)}.result-profile-row,.student-summary-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.student-avatar{width:52px;height:52px}.student-main{flex:1;min-width:160px}.student-main b,.student-main span,.student-main small{display:block}.student-main b{font-size:16px}.student-main span,.student-main small{font-size:13px;color:var(--muted)}.student-main small{font-size:12px;margin-top:4px}.result-selectors{margin-top:14px;margin-bottom:0}.student-select{min-width:200px}.back-button{margin-bottom:8px}.detail-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.head-actions{display:flex;gap:8px;flex-wrap:wrap}.detail-value{font-size:14px!important}.stat-mini b span{font-size:13px;font-weight:500;color:var(--faint);display:inline}.status-donut{--done:240deg;width:150px;height:150px;margin:0 auto;border-radius:50%;background:conic-gradient(#16a34a 0 var(--done),#cbd5e1 var(--done) 360deg);display:grid;place-items:center;position:relative}.status-donut::after{content:"";position:absolute;inset:22px;background:#fff;border-radius:50%}.status-donut span{position:relative;z-index:1;font-size:24px;font-weight:700}.analysis-row{padding:11px 0;border-top:1px solid var(--line-2)}.analysis-row>div:first-child{display:flex;gap:8px;align-items:center;margin-bottom:7px;flex-wrap:wrap}.analysis-row b{font-size:13px;flex:1;min-width:140px}.analysis-row strong{font-size:13px;color:var(--rose)}.analysis-row .ans-no{width:26px;height:26px;font-size:12px}.student-summary{margin-bottom:18px}.score-badge{width:84px;height:84px;border-radius:50%;border:8px solid var(--blue-500);display:grid;place-items:center;font-size:21px;font-weight:700}.answer-list{padding-top:0}.answer-body{flex:1;min-width:0}.answer-question{font-size:13.5px;font-weight:600;margin-bottom:6px;line-height:1.5}.answer-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}.answer-box{background:#f8fafc;border:1px solid var(--line-2);border-radius:10px;padding:10px 12px}.answer-box.key{background:#f0fdf4;border-color:#bbf7d0}.answer-box small,.answer-box span{display:block}.answer-box small{font-size:10.5px;font-weight:700;color:var(--muted);letter-spacing:.4px;margin-bottom:4px}.answer-box.key small{color:#15803d}.answer-box span{font-size:13px;line-height:1.55}.essay-grade{margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.essay-grade .inp{max-width:140px}.answer-score{margin-top:9px;font-size:13px}.hard-row{padding:10px 0;border-top:1px solid var(--line-2)}.hard-row:first-child{border-top:0}.hard-row>div:first-child{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}.hard-row b{font-size:13px}.hard-row b span{font-weight:500;color:var(--muted)}.hard-row strong{font-size:13px;color:var(--rose)}.hard-row .prog i{background:linear-gradient(90deg,#f87171,#dc2626)}.horizontal-bars>div{display:grid;grid-template-columns:80px 1fr 38px;gap:10px;align-items:center;margin:14px 0;font-size:12px}.horizontal-bars b{text-align:right}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.modal-note{font-size:12.5px;color:var(--muted)}.preview-tags{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}.preview-text{font-size:15px;font-weight:600;line-height:1.65;margin-bottom:14px}.preview-key{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;font-size:13px;line-height:1.6}.preview-key b{color:#15803d}@media(max-width:640px){.count-label{width:100%;margin-left:0}.filter-card .inp,.bank-toolbar .inp{width:100%}.add-question{margin-left:0}.form-grid{grid-template-columns:1fr}.attention-row{flex-wrap:wrap}.attention-row button{margin-left:46px}.trend-chart,.distribution-bars{gap:7px}.trend-chart i,.distribution-bars i{width:24px}.result-profile-row .stat-mini{flex:1}.student-summary-row{align-items:flex-start}.score-badge{width:70px;height:70px}.detail-stats{grid-template-columns:1fr 1fr}}
-</style>

@@ -1,7 +1,7 @@
 <template>
   <footer class="text-white pt-[56px] pb-[32px] border-t border-white/10" style="background-color: #071D40;">
     <div class="w-[min(1180px,100%-40px)] mx-auto">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr] gap-[36px] pb-[40px] border-b border-white/10">
+      <div class="gsap-rv grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr] gap-[36px] pb-[40px] border-b border-white/10">
         <!-- Col 1: Identity & Legal -->
         <div>
           <div class="flex items-center gap-[12px] mb-[16px]">
@@ -9,7 +9,7 @@
             <img src="/asset/logosmp.png" alt="Logo Yayasan" class="w-[44px] h-[50px] object-contain">
             
           </div>
-          <p class="text-[#C9D9F5] text-[15px] leading-[1.65] max-w-[440px] mb-[18px]">
+          <p class="gsap-rv text-[#C9D9F5] text-[15px] leading-[1.65] max-w-[440px] mb-[18px]">
             Lembaga pendidikan Islam terpadu yang menaungi <b>SMP IT Bina Cendekia Assalam</b> dan <b>SMK IT Attaqwa 9</b> dengan komitmen keunggulan iman-takwa dan sains-teknologi.
           </p>
           <div class="inline-block bg-white/10 border border-white/15 rounded-[10px] p-[10px_14px] text-[12px] text-[#C9D9F5]">
@@ -56,7 +56,7 @@
               Telepon: <a href="tel:02188886776" class="text-white font-semibold hover:underline">021-8888 6776</a><br>
               Email: <a href="mailto:yayasandarqia@gmail.com" class="text-white hover:underline">yayasandarqia@gmail.com</a>
             </p>
-            <p class="text-[12.5px] text-[#C9D9F5]/80 pt-[4px]">
+            <p class="gsap-rv text-[12.5px] text-[#C9D9F5]/80 pt-[4px]">
               Senin–Kamis: 07.30–14.00 WIB · Sabtu: 07.30–12.00 WIB
             </p>
           </div>
@@ -66,7 +66,7 @@
       <!-- Copyright & Bottom Credit -->
       <div class="pt-[22px] flex flex-col sm:flex-row items-center justify-between gap-[12px] text-[12.5px] text-[#C9D9F5]/70">
         <p>© {{ new Date().getFullYear() }} Yayasan Darqia Attaqwa. Bagian dari Perguruan Attaqwa di Babelan, Bekasi.</p>
-        <p class="text-[#FDE68A] font-semibold">“Unggul dalam IMTAQ, Terdepan dalam IPTEK”</p>
+        <p class="gsap-rv text-[#FDE68A] font-semibold">“Unggul dalam IMTAQ, Terdepan dalam IPTEK”</p>
       </div>
     </div>
   </footer>

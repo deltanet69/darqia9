@@ -162,14 +162,3 @@ const ekskulList = [
   { name: 'Pencak Silat', icon: 'i-medal' }
 ]
 </script>
-
-<style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.35s ease-out forwards;
-}
-</style>

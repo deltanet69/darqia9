@@ -1,57 +1,65 @@
 <template>
-  <section class="hero">
-    <div>
-      <div class="eyebrow">
-        <span class="livedot"></span>ABSENSI SISWA &nbsp;·&nbsp; GEDUNG B · LANTAI 2
+  <section class="flex flex-col lg:flex-row items-center justify-between gap-3 bg-[#0B152C] border border-[#1D2C4E] rounded-2xl px-4 py-4 sm:px-5 sm:py-6 shadow-xl shrink-0">
+    <!-- Level & Location -->
+    <div class="text-center lg:text-left">
+      <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold tracking-wider bg-blue-500/10 border border-blue-400/20 text-blue-400 mb-0.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+        <span>ABSENSI SISWA &bull; GEDUNG B &bull; LANTAI 2</span>
       </div>
-      <h1>Kelas <span>{{ levelNum }}</span></h1>
-      <div class="floorsub">
-        {{ classes.length }} KELAS · {{ classes.join(' / ') }}
+      <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none my-0.5">
+        Kelas <span class="text-blue-400">{{ levelNum }}</span>
+      </h1>
+      <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+        {{ classes.length }} KELAS &bull; {{ classes.join(' / ') }}
       </div>
     </div>
 
-    <div class="hero-stats">
-      <div class="ringwrap">
-        <svg width="92" height="92" viewBox="0 0 92 92">
-          <defs>
-            <linearGradient id="gr" x1="0" y1="0" x2="92" y2="92">
-              <stop stop-color="#2E9BFF" />
-              <stop offset="1" stop-color="#34D399" />
-            </linearGradient>
-          </defs>
-          <circle cx="46" cy="46" r="39" fill="none" stroke="#1a2745" stroke-width="9" />
+    <!-- Stats Row with Attendance Ring -->
+    <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:gap-6">
+      <!-- Attendance Progress Ring -->
+      <div class="relative w-17 h-17 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+        <svg class="w-full h-full -rotate-90" viewBox="0 0 92 92">
+          <circle cx="46" cy="46" r="39" class="text-[#1a2745]" stroke-width="9" stroke="currentColor" fill="none" />
           <circle
-            class="ring-fg"
             cx="46"
             cy="46"
             r="39"
-            fill="none"
+            class="text-blue-400 transition-all duration-700 ease-out"
             stroke-width="9"
             stroke-dasharray="245"
             :stroke-dashoffset="245 * (1 - (stats.pct || 0) / 100)"
+            stroke-linecap="round"
+            stroke="currentColor"
+            fill="none"
           />
         </svg>
-        <div class="ring-t">
-          <b>{{ stats.pct }}%</b>
-          <small>HADIR</small>
+        <div class="absolute text-center">
+          <b class="block text-sm sm:text-base font-black text-white leading-none">{{ stats.pct }}%</b>
+          <small class="text-[8px] font-extrabold text-blue-300 tracking-wider leading-none">HADIR</small>
         </div>
       </div>
 
-      <div class="stat">
-        <div class="stat-n ok">{{ stats.tepat }}</div>
-        <div class="stat-l">Tepat waktu</div>
-      </div>
-      <div class="stat">
-        <div class="stat-n late">{{ stats.terlambat }}</div>
-        <div class="stat-l">Terlambat</div>
-      </div>
-      <div class="stat">
-        <div class="stat-n absent">{{ stats.alpa }}</div>
-        <div class="stat-l">Alpa</div>
-      </div>
-      <div class="stat">
-        <div class="stat-n">{{ stats.total }}</div>
-        <div class="stat-l">Total siswa</div>
+      <!-- Stat Cards -->
+      <div class="grid grid-cols-4 gap-2 sm:gap-2.5">
+        <div class="bg-[#0A1730] border border-[#1D2C4E] rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-center min-w-[70px] sm:min-w-[80px]">
+          <div class="text-lg sm:text-xl font-black text-emerald-400 font-mono leading-tight">{{ stats.tepat }}</div>
+          <div class="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">Tepat waktu</div>
+        </div>
+
+        <div class="bg-[#0A1730] border border-[#1D2C4E] rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-center min-w-[70px] sm:min-w-[80px]">
+          <div class="text-lg sm:text-xl font-black text-amber-400 font-mono leading-tight">{{ stats.terlambat }}</div>
+          <div class="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">Terlambat</div>
+        </div>
+
+        <div class="bg-[#0A1730] border border-[#1D2C4E] rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-center min-w-[70px] sm:min-w-[80px]">
+          <div class="text-lg sm:text-xl font-black text-rose-400 font-mono leading-tight">{{ stats.alpa }}</div>
+          <div class="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">Alpa</div>
+        </div>
+
+        <div class="bg-[#0A1730] border border-[#1D2C4E] rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-center min-w-[70px] sm:min-w-[80px]">
+          <div class="text-lg sm:text-xl font-black text-white font-mono leading-tight">{{ stats.total }}</div>
+          <div class="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">Total siswa</div>
+        </div>
       </div>
     </div>
   </section>
@@ -71,145 +79,3 @@ defineProps<{
   }
 }>()
 </script>
-
-<style scoped>
-.hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  background: #0B152C;
-  border: 1px solid #1D2C4E;
-  border-radius: 18px;
-  padding: 12px 26px;
-}
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .22em;
-  color: #2E9BFF;
-}
-.livedot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #34D399;
-  animation: pulse 1.8s infinite;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55); }
-  70% { box-shadow: 0 0 0 9px rgba(52,211,153,0); }
-  100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
-}
-.hero h1 {
-  font-size: 42px;
-  font-weight: 900;
-  margin: 2px 0;
-}
-.hero h1 span {
-  color: #2E9BFF;
-}
-.floorsub {
-  font-size: 12.5px;
-  color: #93A4C4;
-  font-weight: 600;
-  letter-spacing: .06em;
-}
-.hero-stats {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-}
-.ringwrap {
-  position: relative;
-  width: 92px;
-  height: 92px;
-  flex: none;
-}
-.ringwrap svg {
-  transform: rotate(-90deg);
-}
-.ring-fg {
-  stroke: url(#gr);
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.8s cubic-bezier(.22,1,.36,1);
-}
-.ring-t {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.ring-t b {
-  font-size: 21px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-.ring-t small {
-  font-size: 8.5px;
-  color: #93A4C4;
-  font-weight: 800;
-  letter-spacing: .16em;
-}
-.stat {
-  text-align: center;
-  min-width: 88px;
-  position: relative;
-  padding-left: 28px;
-}
-.stat:first-of-type {
-  padding-left: 0;
-}
-.stat + .stat::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 1px;
-  background: #1D2C4E;
-}
-.stat-n {
-  font-size: 33px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.stat-l {
-  font-size: 10.5px;
-  color: #93A4C4;
-  font-weight: 700;
-  letter-spacing: .08em;
-  margin-top: 6px;
-  text-transform: uppercase;
-}
-.ok { color: #34D399; }
-.late { color: #FB923C; }
-.absent { color: #F87171; }
-
-@media(max-width:900px){
-  .hero { flex-direction: column; align-items: stretch; gap: 14px; padding: 14px 16px; }
-  .hero h1 { font-size: 32px; }
-  .hero-stats { display: grid; grid-template-columns: auto repeat(4,minmax(0,1fr)); gap: 6px; align-items: center; }
-  .ringwrap, .ringwrap svg { width: 68px; height: 68px; }
-  .ring-t b { font-size: 16px; }
-  .ring-t small { font-size: 8px; }
-  .stat { min-width: 0; padding-left: 8px; }
-  .stat + .stat::before { display: none; }
-  .stat-n { font-size: 21px; }
-  .stat-l { font-size: 8px; }
-}
-@media(max-width:380px){
-  .hero-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .ringwrap { display: none; }
-  .stat { padding-left: 0; }
-}
-@media (max-width:1200px){
-  .hero { flex-direction: column; align-items: flex-start; }
-}
-</style>

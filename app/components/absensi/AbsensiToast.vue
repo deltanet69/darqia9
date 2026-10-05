@@ -1,13 +1,25 @@
 <template>
-  <div class="toast" :class="{ on: data.show }">
-    <span class="tk-ok" :class="{ no: data.isAlpa }">
+  <div
+    class="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#080F20]/95 backdrop-blur-md border border-[#2a3f6e] rounded-full px-5 py-3 shadow-2xl text-white text-xs sm:text-sm transition-all duration-300 pointer-events-none"
+    :class="data.show ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-12 opacity-0 scale-95'"
+  >
+    <span
+      class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs"
+      :class="data.isAlpa ? 'bg-rose-500/20 text-rose-400 border border-rose-500' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500'"
+    >
       {{ data.isAlpa ? '✕' : '✓' }}
     </span>
-    <b>{{ data.name }}</b>
-    <span v-if="data.className" class="tc">{{ data.className }}</span>
-    <span class="tt">{{ data.time }}</span>
-    <span class="pill sm" :class="getPillClass(data.status)">
-      <i></i>{{ getLabel(data.status) }}
+    <b class="text-white">{{ data.name }}</b>
+    <span v-if="data.className" class="px-2 py-0.5 rounded bg-blue-500/20 border border-blue-400/30 text-blue-300 font-bold text-[10px]">
+      {{ data.className }}
+    </span>
+    <span class="font-mono text-slate-400 text-xs">{{ data.time }}</span>
+    <span
+      class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5"
+      :class="getPillClass(data.status)"
+    >
+      <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="getDotClass(data.status)" />
+      <span>{{ getLabel(data.status) }}</span>
     </span>
   </div>
 </template>
@@ -21,10 +33,19 @@ defineProps<{
 
 const getPillClass = (status: AbsensiToastData['status']) => {
   switch (status) {
-    case 'tepat': return 'ok'
-    case 'terlambat': return 'late'
-    case 'alpa': return 'absent'
-    default: return 'wait'
+    case 'tepat': return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+    case 'terlambat': return 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+    case 'alpa': return 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+    default: return 'bg-transparent text-slate-400 border border-slate-700'
+  }
+}
+
+const getDotClass = (status: AbsensiToastData['status']) => {
+  switch (status) {
+    case 'tepat': return 'bg-emerald-400 shadow-[0_0_8px_#34D399]'
+    case 'terlambat': return 'bg-amber-400 shadow-[0_0_8px_#FB923C]'
+    case 'alpa': return 'bg-rose-400 shadow-[0_0_8px_#F87171]'
+    default: return 'bg-slate-500'
   }
 }
 
@@ -37,114 +58,3 @@ const getLabel = (status: AbsensiToastData['status']) => {
   }
 }
 </script>
-
-<style scoped>
-.toast {
-  position: fixed;
-  top: 18px;
-  left: 50%;
-  transform: translate(-50%, -90px);
-  z-index: 90;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(8, 15, 32, .97);
-  border: 1px solid #2a3f6e;
-  border-radius: 999px;
-  padding: 12px 24px;
-  box-shadow: 0 16px 44px rgba(0, 0, 0, .55);
-  font-size: 15px;
-  color: #F4F7FD;
-  opacity: 0;
-  transition: transform .35s cubic-bezier(.22, 1, .36, 1), opacity .3s;
-  pointer-events: none;
-  white-space: nowrap;
-  max-width: 94vw;
-}
-.toast.on {
-  transform: translate(-50%, 0);
-  opacity: 1;
-}
-.toast .tk-ok {
-  width: 28px;
-  height: 28px;
-  flex: none;
-  border-radius: 50%;
-  background: rgba(52, 211, 153, .15);
-  color: #34D399;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 800;
-}
-.toast .tk-ok.no {
-  background: rgba(248, 113, 113, .15);
-  color: #F87171;
-}
-.toast b {
-  font-weight: 800;
-}
-.toast .tt {
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-}
-.toast .tc {
-  color: #93A4C4;
-  font-weight: 700;
-  font-size: 13px;
-  background: rgba(46, 155, 255, .14);
-  padding: 4px 12px;
-  border-radius: 999px;
-}
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 800;
-  padding: 4px 10px;
-  border-radius: 999px;
-  letter-spacing: .03em;
-  white-space: nowrap;
-}
-.pill i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex: none;
-}
-.pill.ok {
-  background: rgba(52, 211, 153, .13);
-  color: #6ee7b7;
-}
-.pill.ok i {
-  background: #34D399;
-  box-shadow: 0 0 8px #34D399;
-}
-.pill.late {
-  background: rgba(251, 146, 60, .15);
-  color: #fdba74;
-}
-.pill.late i {
-  background: #FB923C;
-  box-shadow: 0 0 8px #FB923C;
-}
-.pill.absent {
-  background: rgba(248, 113, 113, .13);
-  color: #fca5a5;
-}
-.pill.absent i {
-  background: #F87171;
-  box-shadow: 0 0 8px #F87171;
-}
-.pill.sm {
-  font-size: 10px;
-  padding: 4px 10px;
-}
-
-@media(max-width:900px){
-  .toast { font-size: 13px; padding: 10px 18px; top: 12px; }
-  .toast b { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-}
-</style>

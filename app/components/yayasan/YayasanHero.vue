@@ -22,12 +22,12 @@
         </div>
 
         <!-- Main Heading -->
-        <h1 class="text-[clamp(28px,5.5vw,48px)] font-extrabold tracking-[-1px] leading-[1.16] mb-[18px] text-white">
+        <h1 class="gsap-rv text-[clamp(28px,5.5vw,48px)] font-extrabold tracking-[-1px] leading-[1.16] mb-[18px] text-white">
           Membina Generasi <span class="text-[#F0B429]">Qur’ani</span> untuk Prestasi Tinggi &amp; Akhlak Terpuji
         </h1>
 
         <!-- Subtitle -->
-        <p class="text-[#DCE7FA] text-[clamp(15px,2.2vw,17.5px)] leading-[1.65] max-w-[580px] mb-[12px]">
+        <p class="gsap-rv text-[#DCE7FA] text-[clamp(15px,2.2vw,17.5px)] leading-[1.65] max-w-[580px] mb-[12px]">
           Yayasan Darqia Attaqwa menaungi <b>SMP IT Bina Cendekia Assalam</b> dan <b>SMK IT Attaqwa 9</b> — memadukan keunggulan teknologi informatika dengan pembinaan karakter pesantren.
         </p>
 
@@ -37,7 +37,7 @@
         </p>
 
         <!-- Hero Action Buttons -->
-        <div class="flex flex-wrap items-center gap-[14px] mb-[40px]">
+        <div class="gsap-rv flex flex-wrap items-center gap-[14px] mb-[40px]">
           <a 
             href="#pmb" 
             class="inline-flex items-center justify-center gap-[9px] font-extrabold text-[15px] py-[13px] px-[26px] rounded-[14px] text-[#3D2C00] transition-all duration-200 hover:-translate-y-[2px] active:scale-95 shadow-lg"
@@ -85,7 +85,7 @@
       </div>
 
       <!-- Hero Right Column: Mockup Bento Grid & Floating Chips -->
-      <div class="relative hidden lg:block">
+      <div class="relative hidden lg:block gsap-rv" style="transition-delay: 200ms">
         <div class="relative rounded-[24px] p-[16px] shadow-[0_24px_60px_rgba(0,0,0,.35)] text-[#0F1E38] rotate-[1.5deg] transition-transform hover:rotate-0 duration-300" style="background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(12px);">
           <!-- Mockup Card Header -->
           <div class="flex items-center gap-[12px] p-[10px_14px] border-b border-[#E3EAF7]">
@@ -132,7 +132,3 @@
     </div>
   </section>
 </template>
-
-<style>
-/* Fix for Vite HMR missing scoped property bug */
-</style>

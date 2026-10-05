@@ -1,28 +1,29 @@
 <template>
-  <footer class="ticker">
-    <div class="ticker-tag">
-      <span class="livedot"></span>LIVE
+  <footer class="flex items-stretch border border-[#1D2C4E] rounded-xl bg-[#081226] overflow-hidden shadow-lg shrink-0 h-8 sm:h-9">
+    <div class="flex items-center gap-1.5 px-3 bg-red-600 text-white font-black text-[10px] sm:text-xs shrink-0 tracking-wider">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+      <span>LIVE</span>
     </div>
-    <div class="ticker-view">
-      <div class="ticker-track">
+    
+    <div class="flex-1 overflow-hidden relative flex items-center px-3">
+      <div class="flex items-center gap-6 whitespace-nowrap animate-marquee hover:[animation-play-state:paused]">
         <template v-if="events.length > 0">
           <span
             v-for="(ev, idx) in duplicatedEvents"
             :key="idx"
-            class="tk"
+            class="inline-flex items-center gap-2 text-xs text-slate-300"
           >
-            <b>{{ ev.time }}</b>
-            <span class="ct">{{ ev.className }}</span>
-            {{ ev.student.name }} tap masuk &bull;
-            <b :class="ev.student.status === 'tepat' ? 'ok' : 'late'">
-              {{ ev.student.status === 'tepat' ? 'Tepat waktu' : 'Terlambat' }}
+            <b class="text-white font-mono text-[11px] sm:text-xs">{{ ev.time }}</b>
+            <span class="px-1.5 py-0.5 rounded bg-[#0B152C] border border-[#1D2C4E] text-blue-300 font-bold text-[10px]">{{ ev.className }}</span>
+            <span class="text-[11px] sm:text-xs">{{ ev.student.name }} tap masuk</span>
+            <b :class="ev.student.status === 'tepat' ? 'text-emerald-400' : 'text-amber-400'" class="text-[11px] sm:text-xs">
+              &bull; {{ ev.student.status === 'tepat' ? 'Tepat waktu' : 'Terlambat' }}
             </b>
-            <span style="color:#33456b;margin-left:14px">●</span>
+            <span class="text-slate-600 ml-2">&bull;</span>
           </span>
         </template>
         <template v-else>
-          <span class="tk">Sistem siap &mdash; menunggu tap masuk siswa pertama…</span>
-          <span class="tk">Sistem siap &mdash; menunggu tap masuk siswa pertama…</span>
+          <span class="text-[11px] sm:text-xs text-slate-400 font-medium">Sistem siap &mdash; menunggu tap masuk siswa pertama…</span>
         </template>
       </div>
     </div>
@@ -44,87 +45,6 @@ const duplicatedEvents = computed(() => {
 </script>
 
 <style scoped>
-.ticker {
-  display: flex;
-  align-items: stretch;
-  border: 1px solid #1D2C4E;
-  border-radius: 14px;
-  background: #081226;
-  overflow: hidden;
-}
-.ticker-tag {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .2em;
-  color: #052e1f;
-  background: linear-gradient(135deg, #34D399, #10b981);
-  padding: 0 22px;
-}
-.livedot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #052e1f;
-  animation: pulse 1.8s infinite;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(5, 46, 31, .6); }
-  70% { box-shadow: 0 0 0 8px rgba(5, 46, 31, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(5, 46, 31, 0); }
-}
-.ticker-view {
-  flex: 1;
-  overflow: hidden;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
-}
-.ticker-track {
-  display: inline-block;
-  animation: mq 48s linear infinite;
-}
-.ticker-view:hover .ticker-track {
-  animation-play-state: paused;
-}
-@keyframes mq {
-  to { transform: translateX(-50%); }
-}
-.tk {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 36px;
-  font-size: 14px;
-  color: #c4d2ec;
-  font-weight: 500;
-  padding: 11px 0;
-}
-.tk b {
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-}
-.tk b.ok {
-  color: #34D399;
-}
-.tk b.late {
-  color: #FB923C;
-}
-.tk .ct {
-  font-size: 11px;
-  font-weight: 800;
-  background: rgba(46, 155, 255, .16);
-  color: #7cc4ff;
-  padding: 3px 10px;
-  border-radius: 6px;
-}
-
-@media(max-width:900px){
-  .ticker-tag { padding: 0 14px; font-size: 10px; }
-  .tk { font-size: 12px; margin: 0 20px; }
-}
+/* Empty style block to fix Vite HMR cache error */
 </style>
+

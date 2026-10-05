@@ -1,7 +1,8 @@
 <template>
-  <header class="top">
-    <div class="brand">
-      <svg class="shield" viewBox="0 0 48 56" fill="none">
+  <header class="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 pb-2 sm:pb-2.5 border-b border-[#1D2C4E] shrink-0">
+    <!-- Brand -->
+    <div class="flex items-center gap-3">
+      <svg class="w-8 h-10 sm:w-9 sm:h-11 shrink-0 filter drop-shadow-[0_0_10px_rgba(46,155,255,0.4)]" viewBox="0 0 48 56" fill="none">
         <defs>
           <linearGradient id="sg" x1="0" y1="0" x2="48" y2="56">
             <stop stop-color="#7cc4ff" />
@@ -19,19 +20,25 @@
         </text>
       </svg>
       <div>
-        <div class="brand-name">SMK IT <em>ATTAQWA 9</em></div>
-        <div class="brand-sub">Unggul dalam IMTAQ, Terdepan dalam IPTEK</div>
+        <div class="text-sm sm:text-base font-black text-white leading-tight tracking-wider">
+          SMK IT <span class="text-blue-400">ATTAQWA 9</span>
+        </div>
+        <div class="text-[10px] sm:text-[11px] font-semibold text-slate-400">
+          Unggul dalam IMTAQ, Terdepan dalam IPTEK
+        </div>
       </div>
     </div>
 
-    <div class="urlchip">
-      absen.smkitattaqwa9.sch.id/<b>{{ kode }}</b>
+    <!-- URL Chip -->
+    <div class="hidden md:flex items-center px-3.5 py-1.5 rounded-full bg-[#0A1730] border border-[#1D2C4E] text-xs font-mono text-slate-300">
+      absen.smkitattaqwa9.sch.id/<b class="text-blue-400 ml-1">{{ kode }}</b>
     </div>
 
-    <div class="clockbox">
-      <div class="date">{{ dateLine }}</div>
-      <div class="clock">
-        {{ hours }}<span class="c">:</span>{{ minutes }}<span class="c">:</span>{{ seconds }}
+    <!-- Clock -->
+    <div class="text-center sm:text-right">
+      <div class="text-[11px] font-semibold text-slate-400 mb-0.5">{{ dateLine }}</div>
+      <div class="text-2xl sm:text-3xl font-black font-mono tracking-wider text-white leading-none">
+        {{ hours }}<span class="text-blue-400 animate-pulse">:</span>{{ minutes }}<span class="text-blue-400 animate-pulse">:</span>{{ seconds }}
       </div>
     </div>
   </header>
@@ -46,81 +53,3 @@ defineProps<{
   dateLine: string
 }>()
 </script>
-
-<style scoped>
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 12px;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-.shield {
-  width: 48px;
-  height: 48px;
-  flex: none;
-  filter: drop-shadow(0 0 12px rgba(46,155,255,.4));
-}
-.brand-name {
-  font-weight: 900;
-  font-size: 21px;
-  letter-spacing: .1em;
-}
-.brand-name em {
-  font-style: normal;
-  color: #2E9BFF;
-}
-.brand-sub {
-  font-size: 12px;
-  color: #93A4C4;
-  font-weight: 500;
-}
-.urlchip {
-  font-size: 12px;
-  font-weight: 600;
-  color: #7cc4ff;
-  background: rgba(46,155,255,.1);
-  border: 1px solid rgba(46,155,255,.25);
-  padding: 9px 18px;
-  border-radius: 999px;
-}
-.urlchip b {
-  color: #fff;
-}
-.clockbox {
-  text-align: right;
-}
-.date {
-  font-size: 14px;
-  color: #93A4C4;
-  font-weight: 600;
-}
-.clock {
-  font-size: 46px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.05;
-  letter-spacing: .03em;
-}
-.clock .c {
-  color: #2E9BFF;
-  animation: blink 1s steps(1) infinite;
-}
-@keyframes blink {
-  50% { opacity: .2; }
-}
-@media(max-width:900px){
-  .top { flex-wrap: wrap; gap: 8px; padding-bottom: 10px; }
-  .shield { width: 38px; height: 38px; }
-  .brand-name { font-size: 16px; }
-  .brand-sub { font-size: 10.5px; }
-  .urlchip { display: none; }
-  .clock { font-size: 30px; }
-  .date { font-size: 11.5px; }
-}
-</style>

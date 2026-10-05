@@ -7,29 +7,29 @@
           <span class="w-[7px] h-[7px] rounded-full bg-[#1B5FD9]"></span>
           Kontak &amp; Informasi
         </div>
-        <h2 class="text-[clamp(26px,4.6vw,40px)] font-extrabold text-[#0F1E38] tracking-[-0.5px] leading-[1.2] mb-[12px]">
+        <h2 class="gsap-rv text-[clamp(26px,4.6vw,40px)] font-extrabold text-[#0F1E38] tracking-[-0.5px] leading-[1.2] mb-[12px]">
           Terhubung dengan <span class="bg-gradient-to-r from-[#1B5FD9] to-[#4C8DFF] bg-clip-text text-transparent">Yayasan &amp; Sekolah</span>
         </h2>
-        <p class="text-[#5A6B8C] text-[clamp(15px,2.4vw,17.5px)] leading-[1.6]">
+        <p class="gsap-rv text-[#5A6B8C] text-[clamp(15px,2.4vw,17.5px)] leading-[1.6]">
           Informasi administrasi, kemitraan, kunjungan kampus, dan pertanyaan seputar PMB dapat disampaikan melalui kanal resmi berikut.
         </p>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-[32px]">
+      <div class="gsap-rv grid grid-cols-1 lg:grid-cols-2 gap-[32px]">
         <!-- Left: Contact Details & Office Hours -->
         <div class="space-y-[18px]">
           <!-- Contact Cards Grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-[14px]">
+          <div class="gsap-rv grid grid-cols-1 sm:grid-cols-2 gap-[14px]">
             <div class="bg-[#F5F8FF] border border-[#E3EAF7] rounded-[16px] p-[18px]">
               <span class="text-[11.5px] font-extrabold uppercase tracking-[1px] text-[#1B5FD9] block mb-[4px]">Alamat Kampus</span>
-              <p class="text-[13.5px] text-[#33415C] leading-[1.5]">
+              <p class="gsap-rv text-[13.5px] text-[#33415C] leading-[1.5]">
                 Ujung Harapan Musholla Assalam, Kel. Bahagia, Kec. Babelan, Kab. Bekasi, Jawa Barat
               </p>
             </div>
 
             <div class="bg-[#F5F8FF] border border-[#E3EAF7] rounded-[16px] p-[18px]">
               <span class="text-[11.5px] font-extrabold uppercase tracking-[1px] text-[#1B5FD9] block mb-[4px]">Telepon &amp; WA</span>
-              <p class="text-[13.5px] text-[#33415C] leading-[1.6]">
+              <p class="gsap-rv text-[13.5px] text-[#33415C] leading-[1.6]">
                 Kantor: <a href="tel:02188886776" class="text-[#1B5FD9] font-bold hover:underline">021-8888 6776</a><br>
                 PMB WA: <a href="https://wa.me/6282210823033" target="_blank" rel="noopener noreferrer" class="text-[#166534] font-bold hover:underline">0822-1082-3033</a>
               </p>
@@ -44,7 +44,7 @@
 
             <div class="bg-[#F5F8FF] border border-[#E3EAF7] rounded-[16px] p-[18px]">
               <span class="text-[11.5px] font-extrabold uppercase tracking-[1px] text-[#1B5FD9] block mb-[4px]">Jam Layanan Kantor</span>
-              <p class="text-[13.5px] text-[#33415C] leading-[1.5]">
+              <p class="gsap-rv text-[13.5px] text-[#33415C] leading-[1.5]">
                 Senin–Kamis: 07.30–14.00 WIB<br>
                 Sabtu: 07.30–12.00 WIB
               </p>

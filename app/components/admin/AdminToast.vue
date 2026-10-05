@@ -6,10 +6,14 @@ withDefaults(defineProps<{ message: string; kind?: 'ok' | 'info' }>(), { kind: '
 
 <template>
   <Teleport to="body">
-    <div v-if="message" id="toast-root" aria-live="polite">
-      <div class="toast" :class="kind" role="status">
-        <span class="ic"><AdminIcon :name="kind === 'ok' ? 'check' : 'alert'" size="15" /></span>
-        {{ message }}
+    <div v-if="message" class="fixed bottom-6 right-6 z-50 animate-fadeIn" aria-live="polite">
+      <div
+        class="flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold shadow-2xl border transition-all"
+        :class="kind === 'ok' ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/25' : 'bg-slate-900 text-white border-slate-700'"
+        role="status"
+      >
+        <span class="shrink-0"><AdminIcon :name="kind === 'ok' ? 'check' : 'alert'" size="16" /></span>
+        <span>{{ message }}</span>
       </div>
     </div>
   </Teleport>

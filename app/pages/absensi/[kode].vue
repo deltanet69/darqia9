@@ -1,6 +1,6 @@
 <template>
-  <div class="absensi-tv-page">
-    <div class="wrap">
+  <div class="h-screen max-h-screen overflow-hidden bg-[#040814] text-[#F4F7FD] font-sans antialiased p-3 sm:p-4 lg:p-4 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
+    <div class="max-w-[1920px] w-full mx-auto flex flex-col gap-2.5 sm:gap-3 flex-1 min-h-0 overflow-hidden">
       <!-- HEADER -->
       <AbsensiHeader
         :kode="absensi.currentKode.value"
@@ -17,7 +17,7 @@
         :stats="absensi.stats.value"
       />
 
-      <!-- BOARD LIST KELAS -->
+      <!-- BOARD LIST KELAS (DYNAMIC TV FIT - NO SCROLLBAR) -->
       <AbsensiBoard
         :level-num="absensi.levelNum.value"
         :classes="absensi.classes.value"
@@ -82,43 +82,3 @@ useHead({
   ]
 })
 </script>
-
-<style scoped>
-.absensi-tv-page {
-  --bg0: #040814;
-  --bg1: #0A1730;
-  --blue: #2E9BFF;
-  --ok: #34D399;
-  --late: #FB923C;
-  --absent: #F87171;
-  --wait: #64748B;
-  --tx: #F4F7FD;
-  --mut: #93A4C4;
-  --card: #0B152C;
-  --line: #1D2C4E;
-
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  color: var(--tx);
-  background: radial-gradient(1100px 600px at 50% -10%, #122a5c 0%, transparent 60%),
-              linear-gradient(180deg, var(--bg1), var(--bg0));
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.wrap {
-  max-width: 1920px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 18px 34px 16px;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-@media(max-width:900px){
-  .wrap {
-    padding: 14px 14px 12px;
-  }
-}
-</style>

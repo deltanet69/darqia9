@@ -1,311 +1,204 @@
 <script setup lang="ts">
-useHead({
-  title: 'SPMB 2027/2028 — SMK IT Attaqwa 9',
-  meta: [
-    {
-      name: 'description',
-      content: 'Seleksi Penerimaan Murid Baru SMK IT Attaqwa 9 Tahun Ajaran 2027/2028. Kuota 7 rombel, 3 gelombang pendaftaran, biaya registrasi Rp50.000.'
-    }
-  ]
-})
-
-const gelombangList = [
-  {
-    nama: 'Gelombang I',
-    periode: '01 Sep – 26 Des 2026',
-    status: 'Sedang Dibuka',
-    isAktif: true,
-    tes: 'Ahad, 27 Desember 2026',
-    pengumuman: '30 Desember 2026'
-  },
-  {
-    nama: 'Gelombang II',
-    periode: '01 Jan – 24 Apr 2027',
-    status: 'Segera Dibuka',
-    isAktif: false,
-    tes: 'Ahad, 25 April 2027',
-    pengumuman: '28 April 2027'
-  },
-  {
-    nama: 'Gelombang Tambahan',
-    periode: '26 Apr – 27 Jun 2027',
-    status: 'Kuotapilihan',
-    isAktif: false,
-    tes: 'Setiap hari Ahad',
-    pengumuman: '2 hari setelah tes'
-  }
-]
-
-const beasiswaList = [
-  {
-    judul: 'Gratis Uang Pangkal',
-    ket: 'Untuk seluruh penerima program beasiswa resmi sekolah.',
-    icon: 'pangkal'
-  },
-  {
-    judul: 'Siswa Berprestasi',
-    ket: 'Gratis SPP jalur akademik dan non-akademik (juara lomba/tahfidz).',
-    icon: 'prestasi'
-  },
-  {
-    judul: 'Yatim & Anak Guru',
-    ket: 'Gratis SPP penuh sebagai bentuk kepedulian dan apresiasi dedikasi.',
-    icon: 'yatim'
-  },
-  {
-    judul: 'KETM',
-    ket: 'Gratis SPP bagi siswa dari keluarga ekonomi tidak mampu.',
-    icon: 'ketm'
-  },
-  {
-    judul: 'Seragam & Buku',
-    ket: 'Bantuan gratis seragam sekolah, modul pembelajaran, dan praktek.',
-    icon: 'buku'
-  },
-  {
-    judul: 'Subsidi Silang',
-    ket: 'Skema subsidi silang biaya pendidikan selama 3 tahun masa studi.',
-    icon: 'subsidi'
-  }
-]
+import { useGsapReveal } from "~/composables/useGsapReveal";
+useGsapReveal();
+definePageMeta({ layout: 'smk' })
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F5F8FF] text-[#0F1E38] font-sans antialiased flex flex-col">
-    <SmkHeader />
-
-    <main class="flex-1 pt-[104px] lg:pt-[112px]">
-      <!-- Page Hero Header -->
-      <section 
-        class="text-white py-[48px] sm:py-[64px] border-b border-white/10 relative overflow-hidden"
-        style="background: radial-gradient(900px 480px at 85% -10%, rgba(43,124,216,0.45), transparent 60%), linear-gradient(135deg, #0C2C61 0%, #0A2A5C 60%, #061A3E 100%); background-color: #0A2A5C;"
-      >
-        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
-        <div class="w-[min(1180px,100%-40px)] mx-auto relative z-10">
-          <div class="flex items-center gap-[8px] text-[13px] font-semibold text-[#A9BDDD] mb-[12px]">
-            <NuxtLink to="/smk" class="hover:text-white transition-colors">Home</NuxtLink>
-            <span>/</span>
-            <b class="text-[#FCD34D]">SPMB</b>
-          </div>
-          <h1 class="text-[clamp(28px,4vw,44px)] font-black tracking-tight leading-[1.15] mb-[12px]">
-            SPMB 2027/2028
-          </h1>
-          <p class="text-[#C9D8F2] text-[15.5px] sm:text-[17px] max-w-[640px] leading-relaxed">
-            Seleksi Penerimaan Murid Baru - hanya 7 rombel. Ditambah pendaftaran inden untuk tahun ajaran 2028/2029.
-          </p>
+  <div class="min-h-screen bg-[#F5F8FF] text-[#0F1E38] font-sans antialiased overflow-x-hidden">
+    <!-- ================================================================= -->
+    <!-- 1. PAGE HERO -->
+    <!-- ================================================================= -->
+    <section class="relative overflow-hidden text-white pt-[50px] pb-[60px] bg-gradient-to-br from-[#0C2C61] to-[#061A3E]">
+      <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
+      <div class="relative max-w-[1180px] mx-auto px-5 lg:px-6">
+        <div class="text-[12.5px] text-[#8FA6CC] font-semibold mb-3.5">
+          <NuxtLink to="/smk" class="hover:underline">Home</NuxtLink> / <b class="text-[#FCD34D]">SPMB</b>
         </div>
-      </section>
+        <h1 class="text-[clamp(30px,4.4vw,46px)] font-black tracking-[-0.02em] leading-tight mb-2.5">SPMB 2027/2028</h1>
+        <p class="text-[#B9CBE8] max-w-[700px] text-[16px] leading-relaxed">
+          Seleksi Penerimaan Murid Baru — hanya 7 rombel. Ditambah pendaftaran inden untuk tahun ajaran 2028/2029.
+        </p>
+      </div>
+    </section>
 
-      <!-- Section 1: Gelombang Pendaftaran -->
-      <section class="py-[64px] lg:py-[88px]">
-        <div class="w-[min(1180px,100%-40px)] mx-auto">
-          <div class="mb-[36px]">
-            <span class="text-[12px] font-extrabold tracking-[0.14em] uppercase text-[#1B5FD9] block mb-[8px]">
-              Jadwal Seleksi
-            </span>
-            <h2 class="text-[clamp(24px,3.2vw,34px)] font-black text-[#0A2A5C] tracking-tight">
-              Tiga Gelombang Pendaftaran
-            </h2>
+    <!-- ================================================================= -->
+    <!-- 2. JADWAL SELEKSI (Soft Ice Blue Background) -->
+    <!-- ================================================================= -->
+    <section class="py-[80px] bg-[#F5F8FF]">
+      <div class="max-w-[1180px] mx-auto px-5 lg:px-6">
+        <div class="mb-11">
+          <span class="inline-block text-[12px] font-extrabold tracking-[0.16em] text-[#1B5FD9] uppercase mb-2">Jadwal Seleksi</span>
+          <h2 class="text-[clamp(26px,3.6vw,38px)] font-black tracking-[-0.02em] text-[#061A3E]">Tiga Gelombang Pendaftaran</h2>
+        </div>
+
+        <div class="space-y-4 max-w-[900px]">
+          <!-- Gelombang I -->
+          <div class="bg-white border border-[#E3EAF7] rounded-[18px] p-6 sm:p-7 shadow-[0_10px_30px_rgba(10,42,92,0.08)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <b class="block text-[20px] font-black text-[#061A3E]">Gelombang I</b>
+              <span class="text-[13.5px] text-[#5A6B8C] font-semibold">01 Sep – 26 Des 2026</span>
+            </div>
+            <ul class="text-[14.5px] text-[#5A6B8C] space-y-1 sm:text-right">
+              <li>Tes seleksi: <b class="text-[#061A3E]">Ahad, 27 Des 2026</b></li>
+              <li>Pengumuman: <b class="text-[#061A3E]">30 Des 2026</b></li>
+            </ul>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-[20px] mb-[28px]">
-            <div 
-              v-for="gel in gelombangList" 
-              :key="gel.nama"
-              :class="[
-                'border rounded-[22px] p-[28px] transition-all flex flex-col',
-                gel.isAktif 
-                  ? 'bg-white border-[#1B5FD9] shadow-[0_16px_36px_rgba(27,95,217,.12)] relative' 
-                  : 'bg-white border-[#E3EAF7] shadow-[0_8px_24px_rgba(10,42,92,.05)]'
-              ]"
-            >
-              <div v-if="gel.isAktif" class="absolute -top-[12px] right-[24px] bg-gradient-to-r from-[#1B5FD9] to-[#0A2A5C] text-white text-[11px] font-black uppercase px-[12px] py-[3px] rounded-full shadow-xs">
-                Gelombang Aktif
+          <!-- Gelombang II -->
+          <div class="bg-white border border-[#E3EAF7] rounded-[18px] p-6 sm:p-7 shadow-[0_10px_30px_rgba(10,42,92,0.08)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <b class="block text-[20px] font-black text-[#061A3E]">Gelombang II</b>
+              <span class="text-[13.5px] text-[#5A6B8C] font-semibold">01 Jan – 24 Apr 2027</span>
+            </div>
+            <ul class="text-[14.5px] text-[#5A6B8C] space-y-1 sm:text-right">
+              <li>Tes seleksi: <b class="text-[#061A3E]">Ahad, 25 Apr 2027</b></li>
+              <li>Pengumuman: <b class="text-[#061A3E]">28 Apr 2027</b></li>
+            </ul>
+          </div>
+
+          <!-- Gelombang Tambahan -->
+          <div class="bg-white border border-[#E3EAF7] rounded-[18px] p-6 sm:p-7 shadow-[0_10px_30px_rgba(10,42,92,0.08)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <b class="block text-[20px] font-black text-[#061A3E]">Gelombang Tambahan</b>
+              <span class="text-[13.5px] text-[#5A6B8C] font-semibold">26 Apr – 27 Jun 2027</span>
+            </div>
+            <ul class="text-[14.5px] text-[#5A6B8C] space-y-1 sm:text-right">
+              <li>Tes seleksi: <b class="text-[#061A3E]">Setiap hari Ahad</b></li>
+              <li>Pengumuman: <b class="text-[#061A3E]">2 hari setelah tes</b></li>
+            </ul>
+          </div>
+        </div>
+
+        <p class="text-[#5A6B8C] text-[14px] mt-5 flex items-center gap-2">
+          <svg class="w-4 h-4 text-[#1B5FD9] stroke-current stroke-[2] fill-none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3"/><path d="M12 7.5V12l3.3 2"/></svg>
+          Pelayanan pendaftaran: Senin–Jumat 08.00–15.00 WIB · Sabtu–Ahad 09.00–14.00 WIB
+        </p>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- 3. PERSYARATAN & BEASISWA (Pure White Background) -->
+    <!-- ================================================================= -->
+    <section class="py-[80px] bg-white border-y border-[#E3EAF7]">
+      <div class="max-w-[1180px] mx-auto px-5 lg:px-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          
+          <!-- Persyaratan Box -->
+          <div class="bg-[#F5F8FF] border border-[#E3EAF7] rounded-[20px] p-8 shadow-[0_10px_30px_rgba(10,42,92,0.06)]">
+            <span class="inline-block text-[12px] font-extrabold tracking-[0.16em] text-[#1B5FD9] uppercase mb-2">Persyaratan</span>
+            <h2 class="text-[24px] font-black text-[#061A3E] mb-6">Syarat Pendaftaran</h2>
+            <ol class="list-decimal pl-5 space-y-2.5 text-[15px] text-[#0F1E38] leading-relaxed">
+              <li>Membayar biaya registrasi <b class="text-[#0A2A5C]">Rp50.000</b> <span class="text-[#5A6B8C] text-[13.5px]">(gratis bagi siswa berprestasi &amp; yatim)</span></li>
+              <li>Mengisi formulir pendaftaran</li>
+              <li>Fotokopi ijazah legalisir (3 lembar)</li>
+              <li>Fotokopi SKHUN legalisir (3 lembar)</li>
+              <li>Fotokopi NISN (3 lembar)</li>
+              <li>Fotokopi akte kelahiran (3 lembar)</li>
+              <li>Fotokopi kartu keluarga (3 lembar)</li>
+              <li>Pas foto hitam putih 3×4 (3 lembar)</li>
+            </ol>
+          </div>
+
+          <!-- Beasiswa Grid -->
+          <div>
+            <span class="inline-block text-[12px] font-extrabold tracking-[0.16em] text-[#1B5FD9] uppercase mb-2">Beasiswa</span>
+            <h2 class="text-[24px] font-black text-[#061A3E] mb-6">Beasiswa Vokasi</h2>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div class="bg-[#E8F0FE] border border-[#C9DDFB] rounded-[16px] p-4 text-[#0A2A5C]">
+                <b class="flex items-center gap-2 text-[15px] font-bold mb-1">
+                  <svg class="w-5 h-5 text-[#1B5FD9] stroke-current stroke-[2] fill-none shrink-0" viewBox="0 0 24 24"><path d="M2.5 9L12 4.5 21.5 9 12 13.5 2.5 9z"/><path d="M6.5 11.3V16c0 1.4 2.5 2.8 5.5 2.8s5.5-1.4 5.5-2.8v-4.7M21.5 9V14"/></svg>
+                  Gratis Uang Pangkal
+                </b>
+                <span class="text-[13px] text-[#5A6B8C]">Untuk seluruh penerima beasiswa</span>
               </div>
 
-              <div class="border-b border-[#E3EAF7] pb-[16px] mb-[18px]">
-                <h3 class="text-[20px] font-extrabold text-[#0A2A5C] mb-[4px]">{{ gel.nama }}</h3>
-                <span class="text-[14px] font-bold text-[#1B5FD9]">{{ gel.periode }}</span>
+              <div class="bg-[#E8F0FE] border border-[#C9DDFB] rounded-[16px] p-4 text-[#0A2A5C]">
+                <b class="flex items-center gap-2 text-[15px] font-bold mb-1">
+                  <svg class="w-5 h-5 text-[#1B5FD9] stroke-current stroke-[2] fill-none shrink-0" viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="4.8"/><path d="M9.2 10.8L5.5 3.5h5.6L12 6l.9-2.5h5.6l-3.7 7.3"/></svg>
+                  Siswa Berprestasi
+                </b>
+                <span class="text-[13px] text-[#5A6B8C]">Gratis SPP akademik &amp; non-akademik</span>
               </div>
 
-              <ul class="space-y-[12px] text-[14px] text-[#5A6B8C] mb-[24px] flex-1">
-                <li class="flex items-start gap-[10px]">
-                  <span class="w-[6px] h-[6px] rounded-full bg-[#1B5FD9] shrink-0 mt-[7px]"></span>
-                  <span><b>Tes seleksi:</b> {{ gel.tes }}</span>
-                </li>
-                <li class="flex items-start gap-[10px]">
-                  <span class="w-[6px] h-[6px] rounded-full bg-[#1B5FD9] shrink-0 mt-[7px]"></span>
-                  <span><b>Pengumuman:</b> {{ gel.pengumuman }}</span>
-                </li>
-              </ul>
+              <div class="bg-[#E8F0FE] border border-[#C9DDFB] rounded-[16px] p-4 text-[#0A2A5C]">
+                <b class="flex items-center gap-2 text-[15px] font-bold mb-1">
+                  <svg class="w-5 h-5 text-[#1B5FD9] stroke-current stroke-[2] fill-none shrink-0" viewBox="0 0 24 24"><path d="M12 20s-7.2-4.6-9.3-9.2a5 5 0 019.3-2.9A5 5 0 0121.3 11c-2.1 4.6-9.3 9-9.3 9z"/></svg>
+                  Yatim &amp; Anak Guru
+                </b>
+                <span class="text-[13px] text-[#5A6B8C]">Gratis SPP penuh</span>
+              </div>
 
+              <div class="bg-[#E8F0FE] border border-[#C9DDFB] rounded-[16px] p-4 text-[#0A2A5C]">
+                <b class="flex items-center gap-2 text-[15px] font-bold mb-1">
+                  <svg class="w-5 h-5 text-[#1B5FD9] stroke-current stroke-[2] fill-none shrink-0" viewBox="0 0 24 24"><path d="M12 20s-7.2-4.6-9.3-9.2a5 5 0 019.3-2.9A5 5 0 0121.3 11c-2.1 4.6-9.3 9-9.3 9z"/></svg>
+                  KETM
+                </b>
+                <span class="text-[13px] text-[#5A6B8C]">Gratis SPP keluarga ekonomi tidak mampu</span>
+              </div>
+
+              <div class="bg-[#E8F0FE] border border-[#C9DDFB] rounded-[16px] p-4 text-[#0A2A5C]">
+                <b class="flex items-center gap-2 text-[15px] font-bold mb-1">
+                  <svg class="w-5 h-5 text-[#1B5FD9] stroke-current stroke-[2] fill-none shrink-0" viewBox="0 0 24 24"><path d="M9 4L3.5 6.8 5.3 10l1.9-1.1V20h9.6V8.9l1.9 1.1 1.8-3.2L15 4a3 3 0 01-6 0z"/></svg>
+                  Seragam &amp; Buku
+                </b>
+                <span class="text-[13px] text-[#5A6B8C]">Gratis biaya seragam, buku, dan praktek</span>
+              </div>
+
+              <div class="bg-[#E8F0FE] border border-[#C9DDFB] rounded-[16px] p-4 text-[#0A2A5C]">
+                <b class="flex items-center gap-2 text-[15px] font-bold mb-1">
+                  <svg class="w-5 h-5 text-[#1B5FD9] stroke-current stroke-[2] fill-none shrink-0" viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 11-2.5-6"/><path d="M20.5 3.5V8H16"/></svg>
+                  Subsidi Silang
+                </b>
+                <span class="text-[13px] text-[#5A6B8C]">Subsidi silang biaya pendidikan 3 tahun</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- 4. CTA FORMULIR ONLINE (Soft Ice Blue Background) -->
+    <!-- ================================================================= -->
+    <section class="py-[80px] bg-[#F5F8FF]">
+      <div class="max-w-[1180px] mx-auto px-5 lg:px-6">
+        <div class="bg-gradient-to-br from-[#0C2C61] via-[#0A2A5C] to-[#061A3E] text-white rounded-[24px] p-8 md:p-12 shadow-[0_24px_60px_rgba(10,42,92,0.2)] grid grid-cols-1 lg:grid-cols-2 gap-8 items-center relative overflow-hidden">
+          
+          <div class="relative z-10">
+            <span class="inline-block text-[12px] font-extrabold tracking-[0.16em] text-[#FCD34D] uppercase mb-3">Formulir Online</span>
+            <h2 class="text-[clamp(26px,4vw,38px)] font-black tracking-[-0.02em] leading-tight mb-4">
+              Amankan kursimu di <span class="bg-gradient-to-r from-[#7DB9F5] to-[#FCD34D] bg-clip-text text-transparent">7 rombel</span> ini.
+            </h2>
+            <p class="text-[#C9D8F2] text-[15.5px] leading-relaxed mb-8 max-w-[500px]">
+              Klik tombol di bawah untuk mengisi formulir pendaftaran online resmi SPMB 2027/2028.
+            </p>
+
+            <div class="flex flex-wrap items-center gap-4">
               <NuxtLink 
-                to="/spmb/smk" 
-                :class="[
-                  'w-full py-[11px] px-[16px] rounded-[12px] font-bold text-[14px] text-center transition-all',
-                  gel.isAktif
-                    ? 'bg-[#1B5FD9] text-white hover:bg-[#0A2A5C] shadow-[0_6px_16px_rgba(27,95,217,.25)]'
-                    : 'bg-[#F5F8FF] text-[#0A2A5C] border border-[#E3EAF7] hover:bg-[#E8F0FE]'
-                ]"
+                to="/spmb" 
+                class="inline-flex items-center gap-2 font-extrabold text-[15px] py-3.5 px-7 rounded-[14px] text-white bg-gradient-to-r from-[#2B7CD8] to-[#0A2A5C] border border-[#7DB9F5]/40 shadow-[0_10px_25px_rgba(27,106,201,0.4)] hover:-translate-y-0.5 transition-all"
               >
-                {{ gel.isAktif ? 'Daftar Gelombang Ini →' : 'Lihat Alur SPMB' }}
+                Mulai Pendaftaran
+                <svg class="w-4 h-4 stroke-current stroke-[2] fill-none" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
               </NuxtLink>
             </div>
           </div>
 
-          <!-- Pelayanan Info Box -->
-          <div class="bg-white border border-[#E3EAF7] rounded-[16px] p-[16px_22px] flex items-center gap-[12px] text-[#5A6B8C] text-[13.5px] sm:text-[14px] shadow-xs">
-            <svg class="w-5 h-5 text-[#1B5FD9] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="8.3"/>
-              <path d="M12 7.5V12l3.3 2"/>
-            </svg>
-            <span>
-              <b>Pelayanan Pendaftaran:</b> Senin – Jumat (08.00 – 15.00 WIB) • Sabtu – Ahad (09.00 – 14.00 WIB)
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Section 2: Syarat & Beasiswa (2 Kolom) -->
-      <section class="py-[64px] lg:py-[88px] bg-white border-y border-[#E3EAF7]">
-        <div class="w-[min(1180px,100%-40px)] mx-auto">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-[48px]">
-            <!-- Syarat Pendaftaran (8 Poin) -->
-            <div>
-              <span class="text-[12px] font-extrabold tracking-[0.14em] uppercase text-[#1B5FD9] block mb-[8px]">
-                Persyaratan
-              </span>
-              <h2 class="text-[clamp(24px,3.2vw,32px)] font-black text-[#0A2A5C] tracking-tight mb-[24px]">
-                Syarat Pendaftaran
-              </h2>
-
-              <div class="bg-[#F5F8FF] border border-[#E3EAF7] rounded-[22px] p-[24px_28px]">
-                <ol class="space-y-[14px]">
-                  <li class="flex items-start gap-[12px] text-[14.5px] text-[#0F1E38]">
-                    <span class="w-[24px] h-[24px] rounded-full bg-[#0A2A5C] text-white text-[12px] font-black flex items-center justify-center shrink-0 mt-0.5">1</span>
-                    <div>
-                      <span>Membayar biaya registrasi <b>Rp50.000</b></span>
-                      <span class="block text-[13px] text-[#16A34A] font-semibold mt-0.5">(gratis bagi siswa berprestasi &amp; yatim)</span>
-                    </div>
-                  </li>
-                  <li class="flex items-start gap-[12px] text-[14.5px] text-[#0F1E38]">
-                    <span class="w-[24px] h-[24px] rounded-full bg-[#0A2A5C] text-white text-[12px] font-black flex items-center justify-center shrink-0 mt-0.5">2</span>
-                    <span>Mengisi formulir pendaftaran secara online atau offline</span>
-                  </li>
-                  <li class="flex items-start gap-[12px] text-[14.5px] text-[#0F1E38]">
-                    <span class="w-[24px] h-[24px] rounded-full bg-[#0A2A5C] text-white text-[12px] font-black flex items-center justify-center shrink-0 mt-0.5">3</span>
-                    <span>Fotokopi ijazah SMP/MTs sederajat legalisir (3 lembar)</span>
-                  </li>
-                  <li class="flex items-start gap-[12px] text-[14.5px] text-[#0F1E38]">
-                    <span class="w-[24px] h-[24px] rounded-full bg-[#0A2A5C] text-white text-[12px] font-black flex items-center justify-center shrink-0 mt-0.5">4</span>
-                    <span>Fotokopi SKHUN legalisir (3 lembar)</span>
-                  </li>
-                  <li class="flex items-start gap-[12px] text-[14.5px] text-[#0F1E38]">
-                    <span class="w-[24px] h-[24px] rounded-full bg-[#0A2A5C] text-white text-[12px] font-black flex items-center justify-center shrink-0 mt-0.5">5</span>
-                    <span>Fotokopi NISN (3 lembar)</span>
-                  </li>
-                  <li class="flex items-start gap-[12px] text-[14.5px] text-[#0F1E38]">
-                    <span class="w-[24px] h-[24px] rounded-full bg-[#0A2A5C] text-white text-[12px] font-black flex items-center justify-center shrink-0 mt-0.5">6</span>
-                    <span>Fotokopi akte kelahiran (3 lembar)</span>
-                  </li>
-                  <li class="flex items-start gap-[12px] text-[14.5px] text-[#0F1E38]">
-                    <span class="w-[24px] h-[24px] rounded-full bg-[#0A2A5C] text-white text-[12px] font-black flex items-center justify-center shrink-0 mt-0.5">7</span>
-                    <span>Fotokopi kartu keluarga (3 lembar)</span>
-                  </li>
-                  <li class="flex items-start gap-[12px] text-[14.5px] text-[#0F1E38]">
-                    <span class="w-[24px] h-[24px] rounded-full bg-[#0A2A5C] text-white text-[12px] font-black flex items-center justify-center shrink-0 mt-0.5">8</span>
-                    <span>Pas foto hitam putih ukuran 3×4 (3 lembar)</span>
-                  </li>
-                </ol>
-              </div>
-            </div>
-
-            <!-- Beasiswa Vokasi (6 Kartu) -->
-            <div>
-              <span class="text-[12px] font-extrabold tracking-[0.14em] uppercase text-[#1B5FD9] block mb-[8px]">
-                Beasiswa
-              </span>
-              <h2 class="text-[clamp(24px,3.2vw,32px)] font-black text-[#0A2A5C] tracking-tight mb-[24px]">
-                Beasiswa Vokasi
-              </h2>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-[14px]">
-                <div 
-                  v-for="b in beasiswaList" 
-                  :key="b.judul"
-                  class="bg-[#F5F8FF] border border-[#E3EAF7] rounded-[18px] p-[18px] hover:border-[#1B5FD9]/40 hover:bg-white transition-all"
-                >
-                  <div class="flex items-center gap-[10px] mb-[8px]">
-                    <span class="w-[32px] h-[32px] rounded-[10px] bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center font-bold">
-                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M2.5 9L12 4.5 21.5 9 12 13.5 2.5 9z"/>
-                        <path d="M6.5 11.3V16c0 1.4 2.5 2.8 5.5 2.8s5.5-1.4 5.5-2.8v-4.7M21.5 9V14"/>
-                      </svg>
-                    </span>
-                    <b class="text-[14.5px] text-[#0A2A5C]">{{ b.judul }}</b>
-                  </div>
-                  <p class="text-[12.5px] text-[#5A6B8C] leading-relaxed">
-                    {{ b.ket }}
-                  </p>
-                </div>
-              </div>
+          <div class="relative z-10 flex justify-center lg:justify-end">
+            <div class="w-full max-w-[420px] aspect-[4/3] bg-white/10 border-2 border-dashed border-white/30 rounded-[20px] p-6 flex flex-col items-center justify-center text-center text-[#DCE7FA] backdrop-blur-sm">
+              <svg class="w-12 h-12 mb-3 text-[#7DB9F5] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><circle cx="12" cy="13.5" r="3.4"/><path d="M8.5 7.5L10 5h4l1.5 2.5"/></svg>
+              <b class="text-[14px] font-bold text-white tracking-wide">FOTO : SISWA SMK IT ATTAQWA 9</b>
+              <small class="text-[12px] text-[#A9BDDD] mt-1">Ganti dengan foto asli</small>
             </div>
           </div>
+
         </div>
-      </section>
+        <p class="text-center text-[#5A6B8C] text-[13px] mt-4">Tautan menuju formulir SPMB online (prototipe).</p>
+      </div>
+    </section>
 
-      <!-- Section 3: Formulir Online CTA -->
-      <section class="py-[64px] lg:py-[88px]">
-        <div class="w-[min(1180px,100%-40px)] mx-auto">
-          <div class="bg-gradient-to-br from-[#0C2C61] via-[#0A2A5C] to-[#061A3E] text-white rounded-[28px] overflow-hidden shadow-[0_24px_60px_rgba(10,42,92,.18)] grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] border border-white/10">
-            <div class="p-[36px_28px] sm:p-[48px_44px] flex flex-col justify-center">
-              <span class="text-[11.5px] font-extrabold tracking-[1.5px] uppercase text-[#FCD34D] block mb-[12px]">
-                Formulir Online
-              </span>
-              <h2 class="text-[clamp(24px,3.4vw,36px)] font-black tracking-tight leading-[1.2] mb-[14px]">
-                Amankan kursimu di <span class="bg-gradient-to-r from-[#7DB9F5] to-[#FCD34D] bg-clip-text text-transparent">7 rombel</span> ini.
-              </h2>
-              <p class="text-[#C9D8F2] text-[15px] sm:text-[16px] leading-relaxed max-w-[460px] mb-[28px]">
-                Klik tombol di bawah untuk mengisi formulir pendaftaran online resmi SMK IT Attaqwa 9.
-              </p>
-              
-              <div class="flex flex-wrap items-center gap-[16px]">
-                <NuxtLink 
-                  to="/spmb/smk" 
-                  class="inline-flex items-center gap-[8px] font-extrabold text-[15px] py-[13px] px-[28px] rounded-[14px] text-[#3D2C00] bg-gradient-to-r from-[#F0B429] to-[#F59E0B] shadow-[0_10px_24px_rgba(240,180,41,.35)] hover:-translate-y-0.5 transition-all"
-                >
-                  <span>Mulai Pendaftaran</span>
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </NuxtLink>
-                <NuxtLink 
-                  to="/smk/kontak" 
-                  class="font-bold text-[14.5px] text-[#A9BDDD] hover:text-white transition-colors"
-                >
-                  Butuh bantuan formulir?
-                </NuxtLink>
-              </div>
-            </div>
-
-            <!-- Placeholder Foto -->
-            <div class="bg-white/5 min-h-[260px] flex items-center justify-center p-8 border-t lg:border-t-0 lg:border-l border-white/10">
-              <div class="border-2 border-dashed border-white/20 rounded-[20px] p-8 text-center flex flex-col items-center justify-center gap-3 w-full h-full min-h-[220px]">
-                <svg class="w-10 h-10 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/>
-                  <circle cx="12" cy="13.5" r="3.4"/>
-                  <path d="M8.5 7.5L10 5h4l1.5 2.5"/>
-                </svg>
-                <b class="text-[12px] font-extrabold text-white tracking-wider uppercase">FOTO : SISWA SMK IT ATTAQWA 9</b>
-                <small class="text-[11.5px] text-[#A9BDDD]">Ganti dengan foto asli siswa</small>
-              </div>
-            </div>
-          </div>
-          <p class="text-center text-[#5A6B8C] text-[13px] mt-[16px]">
-            Tautan formulir terintegrasi langsung dengan portal SPMB Online SMK IT Attaqwa 9.
-          </p>
-        </div>
-      </section>
-    </main>
-
-    <SmkFooter />
   </div>
 </template>

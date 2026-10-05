@@ -3,5 +3,5 @@ trigger: always_on
 ---
 
 ## Dokumen wajib baca
-Sebelum mulai task apa pun, baca dan pelajari dulu file .md di folder [docs] utama.
+Sebelum mulai task apa pun, baca dan pelajari dulu file .md di folder [docs] dan folder root utama AGENTS.md.
 File .md didalam sub folder [docs] hanya saat di mention.

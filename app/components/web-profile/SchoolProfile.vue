@@ -327,14 +327,3 @@ const setJenjang = (val: 'smk' | 'smp') => {
 const activeSmkVmTab = ref<'visi' | 'misi'>('visi')
 const activeSmpVmTab = ref<'tentang' | 'fokus'>('tentang')
 </script>
-
-<style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.35s ease-out forwards;
-}
-</style>

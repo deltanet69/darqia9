@@ -1,7 +1,7 @@
 <template>
   <!-- ======= TICKER MARQUEE ======= -->
   <div class="bg-[#F0B429] text-[#3D2C00] overflow-hidden whitespace-nowrap py-[12px] font-extrabold text-[14px] shadow-sm select-none" aria-hidden="true">
-    <div class="inline-flex gap-[32px] animate-[marquee_28s_linear_infinite]">
+    <div class="inline-flex gap-[32px] animate-marquee">
       <span>SPMB 2026/2027 Telah Dibuka ✦</span>
       <span>Unggul dalam IMTAQ, Terdepan dalam IPTEK ✦</span>
       <span>Akreditasi A — NPSN 69940449 ✦</span>
@@ -15,10 +15,3 @@
     </div>
   </div>
 </template>
-
-<style scoped>
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-</style>

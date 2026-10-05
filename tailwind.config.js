@@ -35,7 +35,16 @@ export default {
       animation: {
         marquee: 'marquee 28s linear infinite',
         fadeIn: 'fadeIn 0.2s ease-out forwards',
-        float: 'aiFloat 5s ease-in-out infinite'
+        float: 'aiFloat 5s ease-in-out infinite',
+        flashGreen: 'flashGreen 1.8s ease forwards',
+        flashRed: 'flashRed 1.8s ease forwards',
+        pillGlow: 'pillGlow 1.5s ease',
+        popIn: 'popIn 0.38s cubic-bezier(0.22, 1.4, 0.36, 1)',
+        blinkClock: 'blinkClock 1s steps(1) infinite',
+        riseIn: 'riseIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        fadeUp: 'fadeUp 0.3s ease both',
+        growBar: 'growBar 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        drawLn: 'drawLn 1.2s cubic-bezier(0.3, 0.7, 0.3, 1) forwards'
       },
       keyframes: {
         marquee: {
@@ -49,6 +58,41 @@ export default {
         aiFloat: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-7px)' }
+        },
+        flashGreen: {
+          '0%': { backgroundColor: 'rgba(52, 211, 153, 0.35)', boxShadow: '0 0 0 2px rgba(52, 211, 153, 0.6)' },
+          '100%': { backgroundColor: 'transparent', boxShadow: 'none' }
+        },
+        flashRed: {
+          '0%': { backgroundColor: 'rgba(248, 113, 113, 0.4)', boxShadow: '0 0 0 2px rgba(248, 113, 113, 0.6)' },
+          '100%': { backgroundColor: 'transparent', boxShadow: 'none' }
+        },
+        pillGlow: {
+          '0%': { boxShadow: '0 0 0 0 rgba(255, 255, 255, 0)' },
+          '35%': { boxShadow: '0 0 16px 3px currentColor' },
+          '100%': { boxShadow: '0 0 0 0 transparent' }
+        },
+        popIn: {
+          '0%': { opacity: '0', transform: 'scale(0.88) translateY(18px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' }
+        },
+        blinkClock: {
+          '50%': { opacity: '0.2' }
+        },
+        riseIn: {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        },
+        fadeUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        },
+        growBar: {
+          '0%': { transform: 'scaleY(0.12)', opacity: '0' },
+          '100%': { transform: 'scaleY(1)', opacity: '1' }
+        },
+        drawLn: {
+          '100%': { strokeDashoffset: '0' }
         }
       }
     }

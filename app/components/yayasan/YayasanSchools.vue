@@ -7,16 +7,16 @@
           <span class="w-[7px] h-[7px] rounded-full bg-[#1B5FD9]"></span>
           Sekolah Naungan
         </div>
-        <h2 class="text-[clamp(26px,4.6vw,40px)] font-extrabold text-[#0F1E38] tracking-[-0.5px] leading-[1.2] mb-[12px]">
+        <h2 class="gsap-rv text-[clamp(26px,4.6vw,40px)] font-extrabold text-[#0F1E38] tracking-[-0.5px] leading-[1.2] mb-[12px]">
           Dua Satuan Pendidikan <span class="bg-gradient-to-r from-[#1B5FD9] to-[#4C8DFF] bg-clip-text text-transparent">Unggulan</span>
         </h2>
-        <p class="text-[#5A6B8C] text-[clamp(15px,2.4vw,17.5px)] leading-[1.6]">
+        <p class="gsap-rv text-[#5A6B8C] text-[clamp(15px,2.4vw,17.5px)] leading-[1.6]">
           Pilihan pendidikan berjenjang dari tingkat menengah pertama hingga kejuruan vokasi dalam satu kawasan kampus terpadu.
         </p>
       </div>
 
       <!-- 2 Major School Cards Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-[28px]">
+      <div class="gsap-rv grid grid-cols-1 lg:grid-cols-2 gap-[28px]">
         <!-- Card 1: SMP IT Bina Cendekia Assalam -->
         <div class="bg-white border border-[#E3EAF7] rounded-[22px] p-[28px] sm:p-[32px] shadow-sm hover:shadow-[0_24px_60px_rgba(10,42,92,.14)] hover:border-[#1B5FD9] transition-all duration-300 flex flex-col justify-between">
           <div>
@@ -37,11 +37,11 @@
             <!-- Tagline Identitas -->
             <div class="bg-[#F5F8FF] border-l-4 border-[#1B5FD9] p-[14px_16px] rounded-r-[12px] mb-[18px]">
               <b class="text-[14.5px] text-[#0F1E38] block mb-[2px]">“SMP Rasa Pesantren”</b>
-              <p class="text-[13px] text-[#5A6B8C]">Membentuk generasi Qur’ani dengan kelas berbasis gender dan Metode Yanbu’a.</p>
+              <p class="gsap-rv text-[13px] text-[#5A6B8C]">Membentuk generasi Qur’ani dengan kelas berbasis gender dan Metode Yanbu’a.</p>
             </div>
 
             <!-- Description -->
-            <p class="text-[#33415C] text-[14.5px] leading-[1.65] mb-[22px]">
+            <p class="gsap-rv text-[#33415C] text-[14.5px] leading-[1.65] mb-[22px]">
               Sekolah menengah pertama Islam terpadu dengan pemisahan kelas putra dan putri secara terstruktur, penguatan literasi digital berbasis teknologi informasi, dan bimbingan baca Al-Qur’an bersanad Metode Yanbu’a. Berdiri melalui SK Operasional 2020 (Milad ke-6 tahun 2026).
             </p>
 
@@ -99,18 +99,18 @@
             <!-- Tagline Identitas -->
             <div class="bg-[#F5F8FF] border-l-4 border-[#F0B429] p-[14px_16px] rounded-r-[12px] mb-[18px]">
               <b class="text-[14.5px] text-[#0F1E38] block mb-[2px]">“SMK Rasa Pesantren”</b>
-              <p class="text-[13px] text-[#5A6B8C]">Membentuk generasi vokasi Qur’ani: siap kerja, siap kuliah, siap wirausaha.</p>
+              <p class="gsap-rv text-[13px] text-[#5A6B8C]">Membentuk generasi vokasi Qur’ani: siap kerja, siap kuliah, siap wirausaha.</p>
             </div>
 
             <!-- Description -->
-            <p class="text-[#33415C] text-[14.5px] leading-[1.65] mb-[22px]">
+            <p class="gsap-rv text-[#33415C] text-[14.5px] leading-[1.65] mb-[22px]">
               Sekolah kejuruan Islam terpadu dengan 6 program keahlian siap industri, fasilitas Balai Latihan Kerja (BLK Komunitas), kemitraan DUDIKA, dan pembinaan karakter pesantren harian. Tercatat 413 siswa aktif (Dapodik 2025/2026).
             </p>
 
             <!-- 6 Program Keahlian Grid -->
             <div class="mb-[28px]">
               <span class="text-[12px] font-bold text-[#5A6B8C] uppercase tracking-[1px] block mb-[10px]">6 Program Keahlian Terbuka:</span>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-[8px]">
+              <div class="gsap-rv grid grid-cols-2 sm:grid-cols-3 gap-[8px]">
                 <div class="p-[8px_10px] rounded-[10px] bg-[#F5F8FF] border border-[#E3EAF7] text-center">
                   <b class="text-[13px] text-[#0F1E38] block font-bold">AKL</b>
                   <small class="text-[11px] text-[#5A6B8C]">Akuntansi &amp; Keuangan</small>
