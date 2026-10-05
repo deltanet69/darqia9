@@ -3,6 +3,7 @@
     <SmkHeader />
     <slot />
     <SmkFooter />
+    <ChatbotAI />
   </div>
 </template>
 
