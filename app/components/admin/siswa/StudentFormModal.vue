@@ -101,7 +101,7 @@ const handleSubmit = () => {
           </button>
         </div>
 
-        <form style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden" @submit.prevent="handleSubmit">
+        <form class="flex flex-col flex-1 min-h-0 overflow-hidden" @submit.prevent="handleSubmit">
           <div class="p-5 overflow-y-auto flex-1 min-h-0 space-y-4">
             <!-- SECTION 1: BIODATA & ALAMAT -->
             <template v-if="currentSection === 'pribadi'">

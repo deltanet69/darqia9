@@ -59,11 +59,10 @@
 
       <!-- Institutional Transparency Banner (Dark Navy Panel) -->
       <!-- <div 
-        class="text-white rounded-[24px] p-[28px] sm:p-[36px] shadow-[0_24px_60px_rgba(10,42,92,.20)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-[24px]"
-        style="background: linear-gradient(135deg, #0A2A5C 0%, #0D3470 100%); background-color: #0A2A5C;"
+        class="text-white rounded-[24px] p-[28px] sm:p-[36px] shadow-[0_24px_60px_rgba(10,42,92,.20)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-[24px] bg-gradient-to-br from-[#0A2A5C] to-[#0D3470] bg-[#0A2A5C]"
       >
         <div class="max-w-[700px] relative z-10">
-          <div class="inline-flex items-center gap-[8px] py-[4px] px-[12px] rounded-full text-[12px] font-semibold text-[#FDE68A] mb-[10px]" style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2);">
+          <div class="inline-flex items-center gap-[8px] py-[4px] px-[12px] rounded-full text-[12px] font-semibold text-[#FDE68A] mb-[10px] bg-white/[0.12] border border-white/20">
             <span>Legalitas Resmi NIB OSS</span>
           </div>
           <h4 class="text-[20px] sm:text-[23px] font-extrabold text-white mb-[8px]">

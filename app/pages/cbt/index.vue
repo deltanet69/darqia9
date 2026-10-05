@@ -51,6 +51,7 @@
       :is-answered="cbt.isAnswered"
       :is-option-selected="cbt.isOptionSelected"
       :count-words="cbt.countWords"
+      :violations="cbt.violations.value"
       @go-to-section="cbt.goToSection"
       @toggle-flag="cbt.toggleFlag"
       @toggle-audio="cbt.toggleAudio"
@@ -62,6 +63,7 @@
       @update:show-mobile-palette="cbt.setShowMobilePalette"
       @next="cbt.handleNextClick"
       @go-review="cbt.goReview"
+      @simulate-violation="cbt.simulateViolation"
     />
 
     <!-- SCREEN 4 : REVIEW & SUBMIT -->

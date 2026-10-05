@@ -3,13 +3,13 @@
     <!-- ======= OVERLAY HEADER ======= -->
     <div 
       :class="[
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ',
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
         isScrolled 
           ? 'bg-white/95 backdrop-blur-md border-[#E3EAF7] shadow-[0_8px_28px_rgba(10,42,92,.12)]' 
-          : 'bg-transparent border-transparent'
+          : 'bg-[#0A2A5C]/90 backdrop-blur-sm border-white/10 lg:bg-transparent lg:border-transparent'
       ]"
     >
-      <!-- Topbar Info Yayasan (Desktop Only) -->
+      <!-- Topbar Info SMK (Desktop Only) -->
       <div 
         :class="[
           'hidden md:block text-[#DCE7FA] text-[12px] overflow-hidden transition-all duration-300',
@@ -38,28 +38,43 @@
 
       <!-- Main Navigation Bar -->
       <header class="h-[68px] transition-colors duration-300 flex items-center mt-4 mb-4">
-        <div class="w-[min(1180px,100%-40px)] mx-auto h-full flex items-center gap-[14px]">
+        <div class="w-[min(1180px,100%-40px)] mx-auto h-full flex items-center justify-between gap-[14px]">
           <!-- Brand / Logos -->
-          <NuxtLink to="/smk" class="flex items-center gap-[10px] mr-auto min-w-0 group" aria-label="Beranda Yayasan">
-            <img 
-              src="/asset/logosmp.png" 
-              alt="Logo SMK IT Attaqwa 9" 
-              class="w-[42px] h-[50px] lg:w-[46px] lg:h-[54px] object-contain shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,.25)]"
-            >
+          <NuxtLink to="/smk" class="flex items-center gap-[10px] min-w-0 group" aria-label="Beranda SMK IT Attaqwa 9">
             <img 
               src="/asset/logo.png" 
               alt="Logo SMK IT Attaqwa 9" 
               class="w-[42px] h-[50px] lg:w-[46px] lg:h-[54px] object-contain shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,.25)]"
             >
+            <div class="flex flex-col">
+              <span 
+                :class="[
+                  'text-[15px] sm:text-[16px] font-black tracking-tight leading-tight transition-colors duration-200',
+                  isScrolled ? 'text-[#0A2A5C]' : 'text-white'
+                ]"
+              >
+                SMK IT Attaqwa 9
+              </span>
+              <span 
+                :class="[
+                  'text-[11px] font-semibold tracking-wider uppercase transition-colors duration-200',
+                  isScrolled ? 'text-[#1B5FD9]' : 'text-[#FCD34D]'
+                ]"
+              >
+                Vokasi Unggulan &amp; Berakhlak
+              </span>
+            </div>
           </NuxtLink>
 
-          <!-- Desktop Navigation Links -->
-          <nav class="hidden xl:flex items-center gap-[4px]" aria-label="Menu utama">
+          <!-- Desktop Navigation Links (7 Pages) -->
+          <nav class="hidden xl:flex items-center gap-[3px]" aria-label="Menu utama">
             <NuxtLink 
               to="/smk" 
               :class="[
-                'py-[10px] px-[12px] rounded-[10px] font-semibold text-[16px] whitespace-nowrap transition-all duration-200',
-                isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white'
+                'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
+                $route.path === '/smk' 
+                  ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
+                  : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
             >
               Beranda
@@ -68,60 +83,69 @@
             <NuxtLink 
               to="/smk/tentang" 
               :class="[
-                'py-[10px] px-[12px] rounded-[10px] font-semibold text-[16px] whitespace-nowrap transition-all duration-200',
-                isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white'
+                'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
+                $route.path === '/smk/tentang' 
+                  ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
+                  : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
             >
               Tentang Kami
             </NuxtLink>
 
             <NuxtLink 
+              to="/smk/akademik" 
+              :class="[
+                'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
+                $route.path === '/smk/akademik' 
+                  ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
+                  : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
+              ]"
+            >
+              Akademik
+            </NuxtLink>
+
+            <NuxtLink 
               to="/smk/ekstrakurikuler" 
               :class="[
-                'py-[10px] px-[12px] rounded-[10px] font-semibold text-[16px] whitespace-nowrap transition-all duration-200',
-                isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white'
+                'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
+                $route.path === '/smk/ekstrakurikuler' 
+                  ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
+                  : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
             >
               Ekstrakurikuler
             </NuxtLink>
+
             <NuxtLink 
               to="/smk/berita" 
               :class="[
-                'py-[10px] px-[12px] rounded-[10px] font-semibold text-[16px] whitespace-nowrap transition-all duration-200',
-                isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white'
+                'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
+                $route.path === '/smk/berita' 
+                  ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
+                  : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
             >
-              Berita & Artikel
-            </NuxtLink>
-
-            <NuxtLink 
-              to="/smk/akademik" 
-              :class="[
-                'py-[10px] px-[12px] rounded-[10px] font-semibold text-[16px] whitespace-nowrap transition-all duration-200',
-                isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white'
-              ]"
-            >
-              Pembinaan
+              Berita &amp; Artikel
             </NuxtLink>
 
             <NuxtLink 
               to="/smk/spmb" 
               :class="[
-                'py-[10px] px-[12px] rounded-[10px] font-semibold text-[16px] whitespace-nowrap transition-all duration-200',
-                isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white'
+                'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
+                $route.path === '/smk/spmb' 
+                  ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
+                  : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
             >
               SPMB 2027/2028
             </NuxtLink>
-
-
           </nav>
 
           <!-- Right Action CTA -->
           <div class="flex items-center gap-[10px]">
             <NuxtLink 
               to="/smk/kontak" 
-              class="hidden sm:inline-flex items-center justify-center font-bold text-[15px] py-[11px] px-[22px] rounded-[13px] text-[#3D2C00] bg-gradient-to-r from-[#E9A319] to-[#F0B429] shadow-[0_10px_22px_rgba(240,180,41,.35)] hover:shadow-[0_14px_28px_rgba(240,180,41,.45)] hover:-translate-y-[1px] active:scale-95 transition-all"
+              class="hidden sm:inline-flex items-center justify-center font-bold text-[14px] py-[9px] px-[18px] rounded-[12px] text-[#3D2C00] bg-gradient-to-r from-[#E9A319] to-[#F0B429] shadow-[0_8px_18px_rgba(240,180,41,.3)] hover:shadow-[0_12px_24px_rgba(240,180,41,.4)] hover:-translate-y-[1px] active:scale-95 transition-all"
             >
               <span>Kontak Kami</span>
             </NuxtLink>
@@ -155,18 +179,27 @@
       @click="isMobileMenuOpen = false"
     >
       <div 
-        class="bg-white border-b border-[#E3EAF7] px-[20px] py-[20px] space-y-[12px] shadow-2xl animate-fadeIn max-h-[calc(100vh-72px)] overflow-y-auto"
+        class="bg-white border-b border-[#E3EAF7] px-[20px] py-[20px] space-y-[8px] shadow-2xl animate-fadeIn max-h-[calc(100vh-72px)] overflow-y-auto"
         @click.stop
       >
-        <div class="pb-[12px] border-b border-[#E3EAF7] flex items-center justify-center gap-[14px]">
-          <img src="/asset/logosmp.png" alt="Logo SMP" class="w-[44px] h-[50px] object-contain">
-          <img src="/asset/logo.png" alt="Logo SMK" class="w-[44px] h-[50px] object-contain">
+        <div class="pb-[12px] border-b border-[#E3EAF7] flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <img src="/asset/logo.png" alt="Logo SMK" class="w-[36px] h-[42px] object-contain">
+            <div>
+              <b class="text-[14px] text-[#0A2A5C] block leading-tight">SMK IT Attaqwa 9</b>
+              <small class="text-[11px] text-[#5A6B8C]">Babelan, Kab. Bekasi</small>
+            </div>
+          </div>
+          <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+            Akreditasi A
+          </span>
         </div>
 
         <NuxtLink 
           to="/smk" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
+          :class="$route.path === '/smk' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
           Beranda
         </NuxtLink>
@@ -174,37 +207,48 @@
           to="/smk/tentang" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
+          :class="$route.path === '/smk/tentang' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
-          Tentang Sekolah
-        </NuxtLink>
-        <NuxtLink 
-          to="/smk/ekstrakurikuler" 
-          @click="isMobileMenuOpen = false" 
-          class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
-        >
-          Ekstrakurikuler
+          Tentang Kami
         </NuxtLink>
         <NuxtLink 
           to="/smk/akademik" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
+          :class="$route.path === '/smk/akademik' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
           Akademik
+        </NuxtLink>
+        <NuxtLink 
+          to="/smk/ekstrakurikuler" 
+          @click="isMobileMenuOpen = false" 
+          class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
+          :class="$route.path === '/smk/ekstrakurikuler' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
+        >
+          Ekstrakurikuler
+        </NuxtLink>
+        <NuxtLink 
+          to="/smk/berita" 
+          @click="isMobileMenuOpen = false" 
+          class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
+          :class="$route.path === '/smk/berita' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
+        >
+          Berita &amp; Artikel
         </NuxtLink>
         <NuxtLink 
           to="/smk/spmb" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
+          :class="$route.path === '/smk/spmb' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
           SPMB 2027/2028
         </NuxtLink>
-
 
         <div class="pt-[12px] border-t border-[#E3EAF7]">
           <NuxtLink 
             to="/smk/kontak" 
             @click="isMobileMenuOpen = false" 
-            class="w-full text-center block text-[15px] font-extrabold text-[#3D2C00] bg-gradient-to-r from-[#E9A319] to-[#F0B429] py-[13px] px-[18px] rounded-[12px] shadow-md"
+            class="w-full text-center block text-[15px] font-extrabold text-[#3D2C00] bg-gradient-to-r from-[#E9A319] to-[#F0B429] py-[12px] px-[18px] rounded-[12px] shadow-md"
           >
             Kontak Kami
           </NuxtLink>
@@ -218,32 +262,18 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const isScrolled = ref(false)
-const isDropdownOpen = ref(false)
 const isMobileMenuOpen = ref(false)
-const schoolsDropdownRef = ref<HTMLElement | null>(null)
 
 const handleScroll = () => {
-  isScrolled.value = window.scrollY > 30
-}
-
-const toggleDropdown = () => {
-  isDropdownOpen.value = !isDropdownOpen.value
-}
-
-const handleClickOutside = (e: MouseEvent) => {
-  if (schoolsDropdownRef.value && !schoolsDropdownRef.value.contains(e.target as Node)) {
-    isDropdownOpen.value = false
-  }
+  isScrolled.value = window.scrollY > 25
 }
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
-  document.addEventListener('click', handleClickOutside)
   handleScroll()
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
-  document.removeEventListener('click', handleClickOutside)
 })
 </script>

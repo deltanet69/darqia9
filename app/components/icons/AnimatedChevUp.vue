@@ -7,10 +7,10 @@
     stroke-width="2"
     stroke-linecap="round"
     stroke-linejoin="round"
-    class="animated-chev-up"
+    class="text-inherit group"
     :style="{ width: size, height: size }"
   >
-    <path class="chev-path" d="m18 15-6-6-6 6" />
+    <path class="group-hover:animate-bounceUp" d="m18 15-6-6-6 6" />
   </svg>
 </template>
 
@@ -22,18 +22,3 @@ defineProps({
   }
 })
 </script>
-
-<style scoped>
-.animated-chev-up {
-  color: inherit;
-}
-
-.animated-chev-up:hover .chev-path {
-  animation: bounce-up 0.8s cubic-bezier(0.28, 0.84, 0.42, 1) infinite alternate;
-}
-
-@keyframes bounce-up {
-  0% { transform: translateY(2px); }
-  100% { transform: translateY(-4px); }
-}
-</style>

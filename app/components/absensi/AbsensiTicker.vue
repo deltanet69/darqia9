@@ -44,7 +44,4 @@ const duplicatedEvents = computed(() => {
 })
 </script>
 
-<style scoped>
-/* Empty style block to fix Vite HMR cache error */
-</style>
 

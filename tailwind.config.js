@@ -44,7 +44,32 @@ export default {
         riseIn: 'riseIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both',
         fadeUp: 'fadeUp 0.3s ease both',
         growBar: 'growBar 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both',
-        drawLn: 'drawLn 1.2s cubic-bezier(0.3, 0.7, 0.3, 1) forwards'
+        drawLn: 'drawLn 1.2s cubic-bezier(0.3, 0.7, 0.3, 1) forwards',
+        // Flat Icon Sprite Animations
+        aiPing: 'aiPing 2.4s ease-out infinite',
+        aiPingSlow: 'aiPing 3.6s ease-out infinite',
+        aiSpin: 'aiSpin 12s linear infinite',
+        aiBlink: 'aiBlink 2.8s ease-in-out infinite',
+        aiTwinkle: 'aiBlink 3.4s ease-in-out infinite',
+        aiTyping: 'aiBlink 1.4s ease-in-out infinite',
+        aiSlideX: 'aiSlideX 2.2s ease-in-out infinite',
+        aiFly: 'aiSlideX 3s ease-in-out infinite',
+        aiWave: 'aiWave 3s ease-in-out infinite',
+        aiSmoke: 'aiSmoke 3s ease-in-out infinite',
+        aiSteam: 'aiSmoke 2.6s ease-in-out infinite',
+        aiFlicker: 'aiFlicker 4s linear infinite',
+        aiToss: 'aiToss 5s ease-in-out infinite',
+        aiWiggle: 'aiToss 3.6s ease-in-out infinite',
+        aiBob: 'aiBob 2.6s ease-in-out infinite',
+        aiHit: 'aiHit 1.8s ease-in-out infinite',
+        // Animated Icon Component Animations
+        bounceUp: 'bounceUp 0.8s cubic-bezier(0.28, 0.84, 0.42, 1) infinite alternate',
+        sparkleStar: 'sparkleSpin 3s linear infinite, sparklePulse 1.5s ease-in-out infinite alternate',
+        sparkleBlink: 'sparkleBlink 2s ease-in-out infinite',
+        xCross1: 'xCross1 0.3s ease-in-out',
+        xCross2: 'xCross2 0.3s ease-in-out',
+        flyAway: 'flyAway 0.6s ease-in-out forwards',
+        capBounce: 'capBounce 0.5s cubic-bezier(0.28, 0.84, 0.42, 1)'
       },
       keyframes: {
         marquee: {
@@ -93,6 +118,88 @@ export default {
         },
         drawLn: {
           '100%': { strokeDashoffset: '0' }
+        },
+        // Flat Icon Sprite Keyframes
+        aiPing: {
+          '0%': { transform: 'scale(0.55)', opacity: '0.9' },
+          '75%, 100%': { transform: 'scale(1.7)', opacity: '0' }
+        },
+        aiSpin: {
+          'to': { transform: 'rotate(360deg)' }
+        },
+        aiBlink: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.25' }
+        },
+        aiSlideX: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '50%': { transform: 'translateX(4px)' }
+        },
+        aiWave: {
+          '0%, 100%': { transform: 'skewY(0)' },
+          '50%': { transform: 'skewY(5deg)' }
+        },
+        aiSmoke: {
+          '0%': { transform: 'translateY(0)', opacity: '0.9' },
+          '100%': { transform: 'translateY(-7px)', opacity: '0' }
+        },
+        aiFlicker: {
+          '0%, 100%': { opacity: '1' },
+          '92%': { opacity: '1' },
+          '93%': { opacity: '0.4' },
+          '94%': { opacity: '1' },
+          '96%': { opacity: '0.6' },
+          '97%': { opacity: '1' }
+        },
+        aiToss: {
+          '0%, 100%': { transform: 'rotate(-5deg)' },
+          '50%': { transform: 'rotate(5deg)' }
+        },
+        aiBob: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-3px)' }
+        },
+        aiHit: {
+          '0%, 100%': { transform: 'rotate(0)' },
+          '50%': { transform: 'rotate(-14deg)' }
+        },
+        // Animated Icon Component Keyframes
+        bounceUp: {
+          '0%': { transform: 'translateY(2px)' },
+          '100%': { transform: 'translateY(-4px)' }
+        },
+        sparkleSpin: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(180deg)' }
+        },
+        sparklePulse: {
+          '0%': { transform: 'scale(0.8) rotate(0deg)' },
+          '100%': { transform: 'scale(1.1) rotate(45deg)' }
+        },
+        sparkleBlink: {
+          '0%, 100%': { opacity: '0.2', transform: 'scale(0.5)' },
+          '50%': { opacity: '1', transform: 'scale(1.2)' }
+        },
+        xCross1: {
+          '0%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(0.5)', opacity: '0.5' },
+          '100%': { transform: 'scale(1)', opacity: '1' }
+        },
+        xCross2: {
+          '0%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.5)' },
+          '100%': { transform: 'scale(1)' }
+        },
+        flyAway: {
+          '0%': { transform: 'translate(0, 0)', opacity: '1' },
+          '40%': { transform: 'translate(10px, -10px)', opacity: '0' },
+          '41%': { transform: 'translate(-10px, 10px)', opacity: '0' },
+          '100%': { transform: 'translate(0, 0)', opacity: '1' }
+        },
+        capBounce: {
+          '0%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-5px)' },
+          '100%': { transform: 'translateY(0)' }
         }
       }
     }

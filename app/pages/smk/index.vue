@@ -10,35 +10,34 @@ definePageMeta({ layout: 'smk' })
     <!-- 1. HERO SECTION (Dark Navy Gradient) -->
     <!-- ================================================================= -->
     <section 
-      class="relative overflow-hidden text-white pt-[60px] pb-[80px] md:pt-[90px] md:pb-[100px]"
-      style="background: radial-gradient(900px 480px at 85% -10%, rgba(43, 124, 216, 0.55), transparent 60%), linear-gradient(135deg, #0C2C61 0%, #0A2A5C 55%, #061A3E 100%);"
+      class="relative overflow-hidden text-white pt-[190px] lg:pt-[230px] pb-0 bg-[radial-gradient(900px_480px_at_85%_-10%,rgba(43,124,216,0.55),transparent_60%),linear-gradient(135deg,#0C2C61_0%,#0A2A5C_55%,#061A3E_100%)]"
     >
       <!-- Ambient Dot Grid -->
       <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:26px_26px] pointer-events-none"></div>
 
       <div class="relative max-w-[1180px] mx-auto px-5 lg:px-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-end">
           
           <!-- Kolom Kiri: Copywriting & CTAs -->
-          <div>
+          <div class="lg:col-span-7 pb-[60px] sm:pb-[80px] lg:pb-[170px]">
             <!-- Badge SPMB -->
-            <span class="inline-flex items-center gap-2 bg-[#F59E0B]/15 border border-[#F59E0B]/50 text-[#FCD34D] text-[13px] font-bold py-2 px-4 rounded-full mb-6">
+            <span class="inline-flex items-center gap-2 bg-[#F59E0B]/15 border border-[#F59E0B]/50 text-[#FCD34D] text-[13px] font-bold py-2 px-4 rounded-full mb-5">
               <i class="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse"></i>
               SPMB 2027/2028 Telah Dibuka
             </span>
 
             <!-- Main Heading -->
-            <h1 class="text-[clamp(32px,5.2vw,56px)] font-black leading-[1.12] tracking-[-0.02em] mb-4 text-white">
+            <h1 class="text-[clamp(32px,5.2vw,54px)] font-black leading-[1.12] tracking-[-0.02em] mb-4 text-white">
               Unggul dalam <em class="not-italic bg-gradient-to-r from-[#7DB9F5] to-[#FCD34D] bg-clip-text text-transparent">IMTAQ</em>, Terdepan dalam <em class="not-italic bg-gradient-to-r from-[#7DB9F5] to-[#FCD34D] bg-clip-text text-transparent">IPTEK</em>
             </h1>
 
             <!-- Motto -->
-            <p class="text-[#C9D8F2] text-[16px] md:text-[17.5px] max-w-[580px] mb-8 leading-relaxed">
+            <p class="text-[#C9D8F2] text-[16px] md:text-[17.5px] max-w-[580px] mb-7 leading-relaxed">
               "Membentuk Generasi Vokasi Qur'ani yang Benar, Pintar, dan Terampil."
             </p>
 
             <!-- Hero Action Buttons -->
-            <div class="flex flex-wrap items-center gap-3.5 mb-12">
+            <div class="flex flex-wrap items-center gap-3.5 mb-8 sm:mb-9">
               <NuxtLink 
                 to="/smk/spmb" 
                 class="inline-flex items-center gap-2 font-bold text-[15px] py-3.5 px-7 rounded-[14px] text-white bg-gradient-to-r from-[#F0B429] to-[#C98A12] shadow-[0_10px_24px_rgba(245,158,11,0.35)] hover:-translate-y-0.5 transition-all duration-150"
@@ -57,46 +56,47 @@ definePageMeta({ layout: 'smk' })
 
             <!-- Stats Counter 4 Grid -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 max-w-[860px]">
-              <div class="hstat bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-4 sm:p-5 backdrop-blur-sm">
+              <div class="hstat bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-4 sm:p-4.5 backdrop-blur-sm">
                 <b class="block text-[28px] sm:text-[30px] font-black text-white leading-tight">316<small class="text-[#FCD34D] text-[18px] font-bold">+</small></b>
                 <span class="text-[12.5px] text-[#A9BDDD] font-semibold">Siswa Aktif</span>
               </div>
-              <div class="hstat bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-4 sm:p-5 backdrop-blur-sm">
+              <div class="hstat bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-4 sm:p-4.5 backdrop-blur-sm">
                 <b class="block text-[28px] sm:text-[30px] font-black text-white leading-tight">6</b>
                 <span class="text-[12.5px] text-[#A9BDDD] font-semibold">Konsentrasi Keahlian</span>
               </div>
-              <div class="hstat bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-4 sm:p-5 backdrop-blur-sm">
+              <div class="hstat bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-4 sm:p-4.5 backdrop-blur-sm">
                 <b class="block text-[28px] sm:text-[30px] font-black text-white leading-tight">13</b>
                 <span class="text-[12.5px] text-[#A9BDDD] font-semibold">Ekstrakurikuler</span>
               </div>
-              <div class="hstat bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-4 sm:p-5 backdrop-blur-sm">
+              <div class="hstat bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-4 sm:p-4.5 backdrop-blur-sm">
                 <b class="block text-[28px] sm:text-[30px] font-black text-white leading-tight">A</b>
                 <span class="text-[12.5px] text-[#A9BDDD] font-semibold">Akreditasi BAN-SM</span>
               </div>
             </div>
           </div>
 
-          <!-- Kolom Kanan: Foto Frame & Floating Badges -->
-          <div class="relative flex justify-center lg:justify-end">
-            <div class="relative w-full max-w-[480px]">
-              <!-- Frame Placeholder Foto -->
-              <div class="w-full aspect-[4/3] sm:aspect-[16/11] bg-gradient-to-br from-[#123E85] to-[#0A2A5C] border-2 border-dashed border-[#4C8DFF]/40 rounded-[22px] p-6 flex flex-col items-center justify-center text-center text-[#B9D2F5] shadow-2xl">
-                <svg class="w-12 h-12 mb-3 text-[#4C8DFF] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><circle cx="12" cy="13.5" r="3.4"/><path d="M8.5 7.5L10 5h4l1.5 2.5"/></svg>
-                <b class="text-[15px] font-bold text-white tracking-wide">FOTO : SISWA SMK IT ATTAQWA 9</b>
-                <small class="text-[12px] text-[#8FA6CC] mt-1">Ganti dengan foto asli</small>
-              </div>
-
+          <!-- Kolom Kanan: Foto Siswa Frameless Grounded di Ujung Bawah Frame & Floating Badges -->
+          <div class="lg:col-span-5 flex justify-center lg:justify-end items-end relative self-end">
+            <div class="relative w-full sm:w-[500px] lg:w-[650px] xl:w-[720px] max-w-none flex justify-center items-end lg:-mr-16 xl:-mr-24">
               <!-- Chip 1: Akreditasi A -->
-              <div class="absolute -top-3 -left-2 sm:-left-5 bg-white text-[#0A2A5C] font-extrabold text-[13px] py-2 px-3.5 rounded-full shadow-[0_8px_20px_rgba(10,42,92,0.15)] border border-[#E3EAF7] flex items-center gap-2">
+              <div class="absolute top-12 -left-4 sm:left-4 lg:left-0 bg-white/95 backdrop-blur-md text-[#0A2A5C] font-extrabold text-[12.5px] sm:text-[13px] py-2 px-3.5 rounded-full shadow-[0_12px_28px_rgba(0,0,0,0.35)] border border-[#E3EAF7] flex items-center gap-2 z-10 hover:scale-105 transition-transform">
                 <svg class="w-4 h-4 text-[#1B5FD9] stroke-current stroke-[2] fill-none" viewBox="0 0 24 24"><path d="M12 2.5l7.5 2.8v5.7c0 4.8-3.3 8.2-7.5 10.5-4.2-2.3-7.5-5.7-7.5-10.5V5.3L12 2.5z"/><path d="M9 11.8l2.2 2.2 4-4.2"/></svg>
                 Akreditasi A
               </div>
 
               <!-- Chip 2: 316+ Siswa -->
-              <div class="absolute -bottom-3 -right-2 sm:-right-5 bg-white text-[#0A2A5C] font-extrabold text-[13px] py-2 px-3.5 rounded-full shadow-[0_8px_20px_rgba(10,42,92,0.15)] border border-[#E3EAF7] flex items-center gap-2">
+              <div class="absolute bottom-32 -right-2 sm:right-4 lg:right-6 bg-white/95 backdrop-blur-md text-[#0A2A5C] font-extrabold text-[12.5px] sm:text-[13px] py-2 px-3.5 rounded-full shadow-[0_12px_28px_rgba(0,0,0,0.35)] border border-[#E3EAF7] flex items-center gap-2 z-10 hover:scale-105 transition-transform">
                 <svg class="w-4 h-4 text-[#1B5FD9] stroke-current stroke-[2] fill-none" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 19.5c.8-3.3 3.3-5.2 6.2-5.2s5.4 1.9 6.2 5.2"/><circle cx="16.8" cy="9" r="2.6"/><path d="M16.2 14.3c2.5.4 4.3 2.1 5 5.2"/></svg>
-                316+ Siswa
+                316+ Siswa Aktif
               </div>
+
+              <!-- Foto Siswa Asli (Frameless Cutout, Grounded di Ujung Bawah Frame) -->
+              <img 
+                src="/asset/SMK/herosmk.png" 
+                alt="Siswa SMK IT Attaqwa 9" 
+                class="relative z-0 w-full h-auto max-h-[500px] sm:max-h-[600px] lg:max-h-[750px] object-contain object-bottom block drop-shadow-[0_25px_40px_rgba(0,0,0,0.5)] select-none pointer-events-none"
+                loading="eager"
+              />
             </div>
           </div>
 

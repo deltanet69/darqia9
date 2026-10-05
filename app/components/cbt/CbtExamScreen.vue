@@ -7,7 +7,7 @@
         <span>Ujian sedang dibekukan sementara oleh pengawas. Timer ujian dijeda.</span>
       </div>
 
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
         <!-- Subject Info -->
         <div class="flex items-center gap-3">
           <img src="/asset/logo.png" alt="Logo" class="w-9 h-9 sm:w-10 sm:h-10 object-contain">
@@ -17,18 +17,71 @@
           </div>
         </div>
 
-        <!-- Auto-save & Timer -->
-        <div class="flex items-center gap-3">
+        <!-- Anti-Cheat Status & Live Actions -->
+        <div class="flex items-center gap-2.5">
+          <!-- Anti-Cheat Status Pill -->
+          <div
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors"
+            :class="violations > 0 ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-emerald-50 border-emerald-200 text-emerald-800'"
+          >
+            <span class="relative flex h-2 w-2">
+              <span v-if="violations > 0" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span class="relative inline-flex rounded-full h-2 w-2" :class="violations > 0 ? 'bg-amber-500' : 'bg-emerald-500'" />
+            </span>
+            <span>Anti-Cheat {{ violations > 0 ? `(${violations}/3)` : 'Aktif' }}</span>
+          </div>
+
+          <!-- Presenter Demo Simulation Buttons -->
+          <div class="hidden md:flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 px-1.5">Simulasi:</span>
+            <button
+              type="button"
+              class="px-2 py-1 rounded-lg text-[11px] font-bold bg-white text-slate-700 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 border border-slate-200/80 shadow-2xs transition-colors cursor-pointer"
+              title="Simulasi Peringatan 1 (Password: cbt)"
+              @click="$emit('simulate-violation', 1)"
+            >
+              1. Peringatan
+            </button>
+            <button
+              type="button"
+              class="px-2 py-1 rounded-lg text-[11px] font-bold bg-white text-slate-700 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 border border-slate-200/80 shadow-2xs transition-colors cursor-pointer"
+              title="Simulasi Peringatan 2 (Password: cbt)"
+              @click="$emit('simulate-violation', 2)"
+            >
+              2. Waspada
+            </button>
+            <button
+              type="button"
+              class="px-2 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/80 shadow-2xs transition-colors cursor-pointer"
+              title="Simulasi Peringatan 3 (Lock & Paksa Submit)"
+              @click="$emit('simulate-violation', 3)"
+            >
+              3. Paksa Submit
+            </button>
+          </div>
+
+          <!-- Mobile Simulation Single Trigger -->
+          <button
+            type="button"
+            class="md:hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
+            title="Uji coba simulasi deteksi kecurangan"
+            @click="$emit('simulate-violation')"
+          >
+            <span>⚡ Uji Tab</span>
+          </button>
+
+          <!-- Auto-save Dot Indicator -->
           <span class="relative flex h-3 w-3" title="Penyimpanan otomatis aktif">
-            <span v-if="isSaving" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3" :class="isSaving ? 'bg-emerald-500' : 'bg-slate-300'"></span>
+            <span v-if="isSaving" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span class="relative inline-flex rounded-full h-3 w-3" :class="isSaving ? 'bg-emerald-500' : 'bg-slate-300'" />
           </span>
 
+          <!-- Timer Countdown -->
           <span
             class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-mono font-black text-xs sm:text-sm transition-colors"
             :class="remainingTime <= 300 && remainingTime > 0 ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-800'"
           >
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>
             <span>{{ fmtTime(remainingTime) }}</span>
           </span>
         </div>
@@ -345,6 +398,7 @@ defineProps<{
   sectionDoneCount: (secId: string) => number
   secRange: (secId: string) => number[]
   typeLabel: (q: QuestionItem) => string
+  violations?: number
   isFlagged: (idx: number) => boolean
   isAnswered: (idx: number) => boolean
   isOptionSelected: (qIdx: number, optIdx: number) => boolean
@@ -363,5 +417,6 @@ defineEmits<{
   (e: 'update:showMobilePalette', val: boolean): void
   (e: 'next'): void
   (e: 'go-review'): void
+  (e: 'simulate-violation', level?: number): void
 }>()
 </script>

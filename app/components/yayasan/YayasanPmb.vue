@@ -1,8 +1,7 @@
 <template>
   <section 
     id="pmb"
-    class="py-[64px] lg:py-[88px] text-white relative overflow-hidden"
-    style="background: linear-gradient(135deg, #0A2A5C 0%, #123E85 50%, #1B5FD9 100%); background-color: #0A2A5C;"
+    class="py-[64px] lg:py-[88px] text-white relative overflow-hidden bg-gradient-to-br from-[#0A2A5C] via-[#123E85] to-[#1B5FD9] bg-[#0A2A5C]"
   >
     <!-- Ambient Glow & Pattern -->
     <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] [background-size:30px_30px] pointer-events-none" aria-hidden="true"></div>
@@ -10,7 +9,7 @@
     <div class="relative w-[min(1180px,100%-40px)] mx-auto">
       <!-- Section Header -->
       <div class="mb-[36px]">
-        <div class="inline-flex items-center gap-[8px] text-[12.5px] font-bold tracking-[1.6px] uppercase text-[#FDE68A] py-[7px] px-[14px] rounded-full mb-[16px]" style="background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25);">
+        <div class="inline-flex items-center gap-[8px] text-[12.5px] font-bold tracking-[1.6px] uppercase text-[#FDE68A] py-[7px] px-[14px] rounded-full mb-[16px] bg-white/[0.15] border border-white/25">
           <span class="w-[7px] h-[7px] rounded-full bg-[#FDE68A]"></span>
           PMB 2027/2028
         </div>
@@ -25,7 +24,7 @@
       <!-- Main PMB Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-[28px] items-start">
         <!-- Left: Gelombang Diskon Table -->
-        <div class="rounded-[22px] p-[26px] sm:p-[32px]" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(12px);">
+        <div class="rounded-[22px] p-[26px] sm:p-[32px] bg-white/[0.08] border border-white/[0.18] backdrop-blur-md">
           <h3 class="text-[20px] font-extrabold text-white mb-[8px]">
             Skema Gelombang Biaya Masuk
           </h3>
@@ -36,7 +35,7 @@
           <!-- Table Cards -->
           <div class="space-y-[12px] mb-[24px]">
             <!-- Gelombang 1 -->
-            <div class="rounded-[16px] p-[16px_20px] flex items-center justify-between gap-[16px]" style="background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.16);">
+            <div class="rounded-[16px] p-[16px_20px] flex items-center justify-between gap-[16px] bg-white/10 border border-white/[0.16]">
               <div>
                 <b class="text-[16px] text-white block font-bold">Gelombang 1</b>
                 <span class="text-[12.5px] text-[#C9D9F5]">Periode Awal Pendaftaran</span>
@@ -48,7 +47,7 @@
             </div>
 
             <!-- Gelombang 2 -->
-            <div class="rounded-[16px] p-[16px_20px] flex items-center justify-between gap-[16px]" style="background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.16);">
+            <div class="rounded-[16px] p-[16px_20px] flex items-center justify-between gap-[16px] bg-white/10 border border-white/[0.16]">
               <div>
                 <b class="text-[16px] text-white block font-bold">Gelombang 2</b>
                 <span class="text-[12.5px] text-[#C9D9F5]">Periode Lanjutan</span>
@@ -60,7 +59,7 @@
             </div>
 
             <!-- Gelombang 3 -->
-            <div class="rounded-[16px] p-[16px_20px] flex items-center justify-between gap-[16px]" style="background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.16);">
+            <div class="rounded-[16px] p-[16px_20px] flex items-center justify-between gap-[16px] bg-white/10 border border-white/[0.16]">
               <div>
                 <b class="text-[16px] text-white block font-bold">Gelombang 3</b>
                 <span class="text-[12.5px] text-[#C9D9F5]">Periode Terakhir</span>
@@ -73,7 +72,7 @@
           </div>
 
           <!-- Note Jalur Inden -->
-          <div class="rounded-[14px] p-[14px] text-[13px] text-[#FFE3A1] leading-[1.5]" style="background: rgba(240, 180, 41, 0.15); border: 1px solid rgba(240, 180, 41, 0.3);">
+          <div class="rounded-[14px] p-[14px] text-[13px] text-[#FFE3A1] leading-[1.5] bg-[#F0B429]/[0.15] border border-[#F0B429]/30">
             <b>Jalur Inden 2028/2029:</b> Orang tua dapat mengamankan kuota putra/putri untuk tahun ajaran berikutnya dengan syarat khusus melalui panitia PMB.
           </div>
         </div>

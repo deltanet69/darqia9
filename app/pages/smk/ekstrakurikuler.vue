@@ -11,7 +11,7 @@ definePageMeta({ layout: 'smk' })
     <!-- ================================================================= -->
     <!-- 1. PAGE HERO -->
     <!-- ================================================================= -->
-    <section class="relative overflow-hidden text-white pt-[50px] pb-[60px] bg-gradient-to-br from-[#0C2C61] to-[#061A3E]">
+    <section class="relative overflow-hidden text-white pt-[170px] sm:pt-[180px] md:pt-[190px] lg:pt-[200px] pb-[60px] lg:pb-[70px] bg-gradient-to-br from-[#0C2C61] to-[#061A3E]">
       <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
       <div class="relative max-w-[1180px] mx-auto px-5 lg:px-6">
         <div class="text-[12.5px] text-[#8FA6CC] font-semibold mb-3.5">

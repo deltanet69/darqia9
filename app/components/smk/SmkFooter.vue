@@ -1,5 +1,5 @@
 <template>
-  <footer class="text-white pt-[56px] pb-[32px] border-t border-white/10" style="background-color: #071D40;">
+  <footer class="text-white pt-[56px] pb-[32px] border-t border-white/10 bg-[#071D40]">
     <div class="w-[min(1180px,100%-40px)] mx-auto">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr] gap-[36px] pb-[40px] border-b border-white/10">
         <!-- Col 1: Identity & Legal -->
@@ -25,7 +25,7 @@
           <ul class="space-y-[12px] text-[14px] text-[#C9D9F5]">
             <li>
               <NuxtLink to="/smk/tentang" class="hover:text-white transition-colors block">
-                <b class="text-white block">Tentang Sekolah</b>
+                <b class="text-white block">Tentang Kami</b>
               </NuxtLink>
             </li>
             <li>
@@ -40,7 +40,17 @@
             </li>
             <li>
               <NuxtLink to="/smk/berita" class="hover:text-white transition-colors block">
-                <b class="text-white block">Berita & Artikel</b>
+                <b class="text-white block">Berita &amp; Artikel</b>
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink to="/smk/spmb" class="hover:text-white transition-colors block">
+                <b class="text-white block">SPMB 2027/2028</b>
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink to="/smk/kontak" class="hover:text-white transition-colors block">
+                <b class="text-white block">Kontak Kami</b>
               </NuxtLink>
             </li>
           </ul>
@@ -57,7 +67,7 @@
             </p>
             <p>
               Telepon: <a href="tel:02188886776" class="text-white font-semibold hover:underline">021-8888 6776</a><br>
-              Email: <a href="mailto:yayasandarqia@gmail.com" class="text-white hover:underline">yayasandarqia@gmail.com</a>
+              Email: <a href="mailto:smkitattaqwa09@gmail.com" class="text-white hover:underline">smkitattaqwa09@gmail.com</a>
             </p>
             <p class="text-[12.5px] text-[#C9D9F5]/80 pt-[4px]">
               Senin–Kamis: 07.30–14.00 WIB · Sabtu: 07.30–12.00 WIB

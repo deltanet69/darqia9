@@ -7,11 +7,13 @@
     stroke-width="2"
     stroke-linecap="round"
     stroke-linejoin="round"
-    class="animated-send"
+    class="text-inherit transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] hover:translate-x-[2px] hover:-translate-y-[2px] hover:scale-110 group"
     :style="{ width: size, height: size }"
   >
-    <path class="send-paper" d="M22 2 11 13" />
-    <path class="send-paper" d="M22 2 15 22l-4-9-9-4 22-7z" />
+    <g class="group-hover:animate-flyAway">
+      <path d="M22 2 11 13" />
+      <path d="M22 2 15 22l-4-9-9-4 22-7z" />
+    </g>
   </svg>
 </template>
 
@@ -23,25 +25,3 @@ defineProps({
   }
 })
 </script>
-
-<style scoped>
-.animated-send {
-  color: inherit;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.animated-send:hover {
-  transform: translate(2px, -2px) scale(1.1);
-}
-
-.animated-send:hover .send-paper {
-  animation: fly-away 0.6s ease-in-out forwards;
-}
-
-@keyframes fly-away {
-  0% { transform: translate(0, 0); opacity: 1; }
-  40% { transform: translate(10px, -10px); opacity: 0; }
-  41% { transform: translate(-10px, 10px); opacity: 0; }
-  100% { transform: translate(0, 0); opacity: 1; }
-}
-</style>

@@ -7,11 +7,11 @@
     stroke-width="2"
     stroke-linecap="round"
     stroke-linejoin="round"
-    class="animated-x"
+    class="text-inherit transition-transform duration-300 hover:rotate-90 hover:scale-110 group"
     :style="{ width: size, height: size }"
   >
-    <path class="x-line-1" d="M18 6 6 18" />
-    <path class="x-line-2" d="m6 6 12 12" />
+    <path class="group-hover:animate-xCross1" d="M18 6 6 18" />
+    <path class="group-hover:animate-xCross2" d="m6 6 12 12" />
   </svg>
 </template>
 
@@ -23,34 +23,3 @@ defineProps({
   }
 })
 </script>
-
-<style scoped>
-.animated-x {
-  color: inherit;
-  transition: transform 0.3s ease;
-}
-
-.animated-x:hover {
-  transform: rotate(90deg) scale(1.1);
-}
-
-.animated-x:hover .x-line-1 {
-  animation: x-cross-1 0.3s ease-in-out;
-}
-
-.animated-x:hover .x-line-2 {
-  animation: x-cross-2 0.3s ease-in-out;
-}
-
-@keyframes x-cross-1 {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.5); opacity: 0.5; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes x-cross-2 {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.5); }
-  100% { transform: scale(1); }
-}
-</style>

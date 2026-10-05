@@ -1,6 +1,6 @@
 <template>
   <!-- ======= FLAT ANIMATED ICON SPRITE ======= -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<svg width="0" height="0" class="absolute" aria-hidden="true"><defs>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
 <symbol id="i-school" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="1"/><path d="M12 10V4"/><path class="wave" d="M12 4h6l-1.5 2L18 8h-6"/><path d="M9 14h2m2 0h2M9 17.5h6"/></symbol>
 <symbol id="i-news" viewBox="0 0 24 24"><path d="M4 5h13v15H6a2 2 0 0 1-2-2z"/><path d="M17 8h2.5A1.5 1.5 0 0 1 21 9.5V18a3 3 0 0 1-3 3H6"/><path d="M8 9.5h7M8 13h7M8 16.5h4"/></symbol>

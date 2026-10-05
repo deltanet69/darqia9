@@ -1,6 +1,6 @@
 <template>
   <!-- ======= RUNNING TICKER ======= -->
-  <div class="overflow-hidden whitespace-nowrap py-[12px] font-extrabold text-[14px] shadow-sm select-none" style="background-color: #F0B429; color: #3D2C00;" aria-hidden="true">
+  <div class="overflow-hidden whitespace-nowrap py-[12px] font-extrabold text-[14px] shadow-sm select-none bg-[#F0B429] text-[#3D2C00]" aria-hidden="true">
     <div class="inline-flex gap-[32px] animate-marquee">
       <span>Yayasan Darqia Attaqwa •</span>
       <span>Membina Generasi Qur’ani •</span>

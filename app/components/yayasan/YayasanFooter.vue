@@ -1,5 +1,5 @@
 <template>
-  <footer class="text-white pt-[56px] pb-[32px] border-t border-white/10" style="background-color: #071D40;">
+  <footer class="text-white pt-[56px] pb-[32px] border-t border-white/10 bg-[#071D40]">
     <div class="w-[min(1180px,100%-40px)] mx-auto">
       <div class="gsap-rv grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr] gap-[36px] pb-[40px] border-b border-white/10">
         <!-- Col 1: Identity & Legal -->

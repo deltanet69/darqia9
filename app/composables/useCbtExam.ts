@@ -46,6 +46,8 @@ export interface ModalState {
   pin: string
   pinError: boolean
   fatal: boolean
+  level?: number
+  badge?: string
 }
 
 export interface LoginForm {
@@ -204,7 +206,7 @@ export const useCbtExam = () => {
 
   /* Anti cheat */
   const violations = ref<number>(0)
-  const CHEAT_PIN = 'pengawas123'
+  const CHEAT_PIN = 'cbt'
 
   const defaultQuestion: QuestionItem = {
     sec: 'pg',
@@ -332,6 +334,8 @@ export const useCbtExam = () => {
     btnClass?: string
     requiresPin?: boolean
     fatal?: boolean
+    level?: number
+    badge?: string
     onOk?: () => void
   }): void => {
     modal.title = opts.title
@@ -343,6 +347,8 @@ export const useCbtExam = () => {
     modal.pin = ''
     modal.pinError = false
     modal.fatal = !!opts.fatal
+    modal.level = opts.level || (opts.fatal ? 3 : opts.requiresPin ? 1 : 0)
+    modal.badge = opts.badge || ''
     modal.onOk = opts.onOk || null
     modal.show = true
   }
@@ -359,7 +365,8 @@ export const useCbtExam = () => {
 
   const handleModalOk = (): void => {
     if (modal.requiresPin) {
-      if (modal.pin === CHEAT_PIN) {
+      const cleanPin = modal.pin.trim().toLowerCase()
+      if (cleanPin === 'cbt' || cleanPin === 'pengawas123') {
         modal.show = false
         modal.pin = ''
         modal.pinError = false
@@ -682,47 +689,92 @@ export const useCbtExam = () => {
   }
 
   /* Anti cheat & leave protection */
+  let lastViolationTimestamp = 0
+
+  const triggerCheatLock = (customReason?: string, explicitLevel?: number): void => {
+    const now = Date.now()
+    if (!explicitLevel && now - lastViolationTimestamp < 1200) return // debounce rapid blur & visibility events
+    lastViolationTimestamp = now
+
+    if (explicitLevel) {
+      violations.value = explicitLevel
+    } else {
+      violations.value++
+    }
+    persist(true)
+
+    const defaultReason = 'Meninggalkan layar ujian (terdeteksi perpindahan tab, alt+tab, atau aplikasi lain)'
+    const reasonText = customReason || defaultReason
+
+    if (violations.value >= 3) {
+      // PERINGATAN 3: FATAL LOCKDOWN & PAKSA SUBMIT
+      openModal({
+        title: 'PERINGATAN 3: PELANGGARAN FATAL',
+        badge: 'AKUN DIBLOKIR TOTAL • PAKSA SUBMIT',
+        level: 3,
+        desc: `<span class="text-rose-600 font-black block mb-2">🛑 STATUS: AKUN UJIAN DIBEKUKAN PERMANEN</span>Sistem mendeteksi aktivitas terlarang: <b>${reasonText}</b> telah mencapai batas maksimal (3x pelanggaran).<br><br>Sesuai aturan anti-kecurangan, <b>sesi ujian Anda dihentikan paksa</b>. Seluruh jawaban Anda yang telah tersimpan otomatis dikumpulkan ke server dan lembar ujian dikunci total.`,
+        okText: 'Paksa Kumpulkan Jawaban & Selesai',
+        fatal: true,
+        btnClass: 'btn-danger',
+        onOk: () => doSubmit(true)
+      })
+    } else if (violations.value === 2) {
+      // PERINGATAN 2: HIGH ALERT & WARNING SERIUS
+      openModal({
+        title: 'PERINGATAN 2: PERINGATAN KERAS (WASPADA)',
+        badge: 'PERINGATAN 2 • SISA 1 KESEMPATAN!',
+        level: 2,
+        desc: `<span class="text-amber-700 font-black block mb-2">⚠️ PERINGATAN WASPADA TINGKAT TINGGI</span>Anda kembali terdeteksi <b>${reasonText}</b>!<br><br>Ini adalah <b>kesempatan terakhir Anda</b>. Jika terdeteksi meninggalkan layar 1x lagi, akun Anda akan <b>DIBLOKIR TOTAL DAN UJIAN DIPAKSA SUBMIT</b>.<br><br>Silakan minta pengawas memasukkan password proktor untuk membuka kunci.`,
+        requiresPin: true,
+        okText: 'Buka Kunci Ujian (Peringatan Terakhir)',
+        btnClass: 'btn-primary'
+      })
+    } else {
+      // PERINGATAN 1: PERINGATAN AWAL DENGAN PASSWORD CBT
+      openModal({
+        title: 'PERINGATAN 1: TERDETEKSI PINDAH TAB',
+        badge: 'PERINGATAN 1 • TOLERANSI SISA 2X',
+        level: 1,
+        desc: `Anda terdeteksi <b>${reasonText}</b>.<br><br>Sesuai tata tertib CBT, <b>layar ujian Anda telah dikunci sementara oleh sistem</b>. Silakan lapor kepada pengawas ujian dan masukkan password proktor untuk melanjutkan (Toleransi tersisa: <b>2x</b> sebelum akun diblokir permanen).`,
+        requiresPin: true,
+        okText: 'Buka Kunci Ujian',
+        btnClass: 'btn-primary'
+      })
+    }
+  }
+
+  const simulateViolation = (targetLevel?: number): void => {
+    if (typeof targetLevel === 'number') {
+      triggerCheatLock(`Simulasi Deteksi Kecurangan Tingkat ${targetLevel} (Uji Coba Presentasi)`, targetLevel)
+    } else {
+      triggerCheatLock('Simulasi Deteksi Kecurangan (Uji Coba Presentasi & Demo)')
+    }
+  }
+
   const onVisibilityChange = (): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
       if (document.visibilityState === 'hidden') {
-        violations.value++
-        triggerCheatLock()
+        triggerCheatLock('Berpindah tab atau meminimalkan jendela ujian')
       }
     }
   }
 
   const onWindowBlur = (): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
-      violations.value++
-      triggerCheatLock()
-    }
-  }
-
-  const triggerCheatLock = (): void => {
-    if (violations.value >= 3) {
-      openModal({
-        title: 'Pelanggaran Fatal!',
-        desc: 'Kamu terdeteksi meninggalkan layar ujian lebih dari batas maksimal (3x). <b>Akun kamu diblokir permanen untuk ujian ini dan data ujian terkunci.</b>',
-        fatal: true
-      })
-    } else {
-      openModal({
-        title: 'Peringatan Pelanggaran!',
-        desc: `Kamu terdeteksi meninggalkan layar ujian (pindah tab/aplikasi). Ini adalah pelanggaran ke-<b>${violations.value}</b> (Maks 2x sebelum blokir total). Silakan minta kata sandi ke pengawas ujian untuk membuka kunci.`,
-        requiresPin: true,
-        okText: 'Buka Kunci'
-      })
+      triggerCheatLock('Kehilangan fokus jendela ujian (membuka aplikasi lain / Alt+Tab)')
     }
   }
 
   const onBeforeUnload = (e: BeforeUnloadEvent): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
       e.preventDefault()
-      e.returnValue = ''
+      e.returnValue = 'Dilarang meninggalkan atau menutup halaman ujian! Tindakan ini akan mengunci akun ujian Anda.'
+      triggerCheatLock('Mencoba menutup atau me-reload jendela ujian')
     }
   }
 
   const registerListeners = (): void => {
+    if (typeof window === 'undefined') return
     document.addEventListener('keydown', onKeydown)
     document.addEventListener('visibilitychange', onVisibilityChange)
     window.addEventListener('blur', onWindowBlur)
@@ -730,6 +782,7 @@ export const useCbtExam = () => {
   }
 
   const unregisterListeners = (): void => {
+    if (typeof window === 'undefined') return
     document.removeEventListener('keydown', onKeydown)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('blur', onWindowBlur)
@@ -834,6 +887,7 @@ export const useCbtExam = () => {
     setAgreeStart,
     setShowMobilePalette,
     goToExamScreen,
+    simulateViolation,
     registerListeners,
     unregisterListeners
   }
