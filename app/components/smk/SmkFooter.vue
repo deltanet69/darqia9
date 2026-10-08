@@ -30,12 +30,7 @@
             </li>
             <li>
               <NuxtLink to="/smk/akademik" class="hover:text-white transition-colors block">
-                <b class="text-white block">Akademik</b>
-              </NuxtLink>
-            </li>
-            <li>
-              <NuxtLink to="/smk/ekstrakurikuler" class="hover:text-white transition-colors block">
-                <b class="text-white block">Ekstrakurikuler</b>
+                <b class="text-white block">Akademik &amp; Ekskul</b>
               </NuxtLink>
             </li>
             <li>

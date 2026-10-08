@@ -101,19 +101,7 @@
                   : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
             >
-              Akademik
-            </NuxtLink>
-
-            <NuxtLink 
-              to="/smk/ekstrakurikuler" 
-              :class="[
-                'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
-                $route.path === '/smk/ekstrakurikuler' 
-                  ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
-                  : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
-              ]"
-            >
-              Ekstrakurikuler
+              Akademik &amp; Ekskul
             </NuxtLink>
 
             <NuxtLink 
@@ -217,15 +205,7 @@
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
           :class="$route.path === '/smk/akademik' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
-          Akademik
-        </NuxtLink>
-        <NuxtLink 
-          to="/smk/ekstrakurikuler" 
-          @click="isMobileMenuOpen = false" 
-          class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
-          :class="$route.path === '/smk/ekstrakurikuler' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
-        >
-          Ekstrakurikuler
+          Akademik &amp; Ekstrakurikuler
         </NuxtLink>
         <NuxtLink 
           to="/smk/berita" 
