@@ -11,34 +11,30 @@ definePageMeta({ layout: 'smp' })
     <!-- ================================================================= -->
     <!-- 1. PAGE HERO -->
     <!-- ================================================================= -->
-    <section class="relative overflow-hidden text-white pt-[170px] sm:pt-[180px] md:pt-[190px] lg:pt-[200px] pb-[70px] lg:pb-[80px] bg-gradient-to-br from-[#0A4A30] via-[#063826] to-[#052E22]">
-      <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
-      
-      <div class="relative max-w-[1180px] mx-auto px-5 lg:px-6">
-        <div class="text-[12.5px] text-[#A9D4BC] font-semibold mb-3.5 flex items-center gap-1.5">
+    <section class="relative overflow-hidden text-white bg-gradient-to-br from-[#0A4A30] to-[#052E22]">
+      <div class="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.08)_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
+
+      <div class="max-w-[1180px] mx-auto px-[22px] py-[64px] pb-[60px] relative">
+        <div class="text-[12.5px] text-[#8FBCA1] font-semibold mb-[14px] flex items-center gap-1.5">
           <NuxtLink to="/smp" class="hover:text-white transition-colors">Home</NuxtLink>
-          <span class="text-[#34C77B]">/</span>
-          <b class="text-[#FCD34D]">SPMB 2027/2028</b>
+          <span>/</span>
+          <b class="text-[#FCD34D] font-bold">SPMB</b>
         </div>
 
         <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
           <div>
-            <span class="inline-flex items-center gap-1.5 text-[12px] font-extrabold tracking-[0.16em] text-[#7EE2AE] uppercase py-1 px-3.5 rounded-full bg-white/10 backdrop-blur-md mb-3 border border-white/15">
-              <svg class="w-3.5 h-3.5 stroke-current stroke-[2.2] fill-none" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              Penerimaan Murid Baru
-            </span>
-            <h1 class="text-[clamp(32px,4.5vw,50px)] font-black tracking-[-0.02em] leading-tight mb-3">
-              SPMB <span class="bg-gradient-to-r from-[#7EE2AE] to-[#FCD34D] bg-clip-text text-transparent">2027/2028</span>
+            <h1 class="text-[clamp(30px,4.4vw,46px)] font-black tracking-[-0.02em] leading-tight mb-2.5">
+              SPMB 2027/2028
             </h1>
-            <p class="text-[#C4E4D4] max-w-[680px] text-[15.5px] md:text-[17px] leading-relaxed">
-              Seleksi Penerimaan Murid Baru SMP IT Bina Cendekia Assalam — kuota terbatas hanya <strong class="text-white">7 rombel</strong>. Sekolah berbasis kelas gender dengan program beasiswa Milad BCA ke-6.
+            <p class="text-[#BFE0CE] max-w-[70ch] text-[16px] leading-relaxed">
+              Seleksi Penerimaan Murid Baru — hanya 7 rombel. Ditambah pendaftaran inden untuk tahun ajaran 2028/2029.
             </p>
           </div>
 
           <div class="flex items-center gap-3 shrink-0 self-start lg:self-end">
             <NuxtLink 
               to="/spmb" 
-              class="inline-flex items-center gap-2 font-extrabold text-[15px] py-3.5 px-7 rounded-[14px] text-[#3D2C00] bg-gradient-to-r from-[#F0B429] to-[#C98A12] shadow-[0_10px_24px_rgba(245,158,11,0.35)] hover:-translate-y-0.5 transition-all"
+              class="inline-flex items-center gap-2 font-extrabold text-[15px] py-3.5 px-7 rounded-[14px] text-white bg-gradient-to-r from-[#F0B429] to-[#C98A12] shadow-[0_10px_24px_rgba(245,158,11,0.35)] hover:-translate-y-0.5 transition-all"
             >
               Mulai Pendaftaran Online
               <svg class="w-4 h-4 stroke-current stroke-[2.2] fill-none" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>

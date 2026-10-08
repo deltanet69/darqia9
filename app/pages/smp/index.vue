@@ -9,127 +9,142 @@ definePageMeta({ layout: 'smp' })
   <div class="min-h-screen bg-[#F2F9F5] text-[#0E241B] font-sans antialiased overflow-x-hidden">
     
     <!-- ================================================================= -->
-    <!-- 1. HERO SECTION -->
+    <!-- 1. HERO SECTION (Mirroring .hero from web-profil-smp-bca.html) -->
     <!-- ================================================================= -->
-    <section class="relative overflow-hidden text-white pt-[170px] sm:pt-[180px] md:pt-[190px] lg:pt-[200px] pb-[80px] lg:pb-[100px] bg-gradient-to-br from-[#0A4A30] via-[#063826] to-[#052E22]">
-      <!-- Background Texture -->
-      <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
-      
-      <!-- Glowing Emerald Orbs -->
-      <div class="absolute -top-32 right-0 w-[550px] h-[550px] bg-[#34C77B]/20 rounded-full blur-3xl pointer-events-none"></div>
-      <div class="absolute bottom-0 -left-20 w-[450px] h-[450px] bg-[#12A15E]/15 rounded-full blur-3xl pointer-events-none"></div>
+    <section class="relative overflow-hidden text-white bg-[#063826] bg-[radial-gradient(900px_480px_at_85%_-10%,rgba(52,199,123,0.45),transparent_60%),linear-gradient(135deg,#0A4A30_0%,#063826_55%,#052E22_100%)]">
+      <!-- Background Grid Texture -->
+      <div class="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.09)_1.5px,transparent_1.5px)] [background-size:26px_26px] pointer-events-none"></div>
 
-      <div class="relative max-w-[1180px] mx-auto px-5 lg:px-6">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <div class="max-w-[1180px] mx-auto px-[22px] py-[70px] lg:py-[88px] pb-[80px] lg:pb-[96px] relative">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           
           <!-- Teks Kiri (7 Cols) -->
           <div class="lg:col-span-7">
             <!-- Badge -->
-            <div class="inline-flex items-center gap-2 bg-[#F59E0B]/15 border border-[#F59E0B]/40 text-[#FCD34D] font-extrabold text-[12px] sm:text-[13px] py-1.5 px-4 rounded-full mb-5 shadow-sm">
+            <div class="inline-flex items-center gap-[9px] bg-[#F59E0B]/[0.16] border border-[#F59E0B]/50 text-[#FCD34D] text-[13px] font-bold py-[9px] px-[18px] rounded-full mb-[22px]">
               <span class="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse"></span>
-              <span>SPMB 2027/2028 Telah Dibuka — Kuota 7 Rombel</span>
+              <span>SPMB 2027/2028 Telah Dibuka — 7 Rombel</span>
             </div>
 
-            <!-- Main Headline -->
-            <h1 class="text-[clamp(32px,4.8vw,54px)] font-black tracking-[-0.02em] leading-[1.15] mb-4">
-              Alqur'an &amp; <span class="bg-gradient-to-r from-[#7EE2AE] to-[#FCD34D] bg-clip-text text-transparent">Akhlaknya Terpuji</span>,<br />
-              Prestasi <span class="bg-gradient-to-r from-[#7EE2AE] to-[#FCD34D] bg-clip-text text-transparent">Akademiknya Teruji</span>
+            <!-- Headline H1 -->
+            <h1 class="text-[clamp(32px,5vw,56px)] font-black leading-[1.15] tracking-[-0.02em] max-w-[18ch] text-white">
+              Alqur'an &amp; <em class="not-italic bg-gradient-to-r from-[#7EE2AE] to-[#FCD34D] bg-clip-text text-transparent">Akhlaknya Terpuji</em>, Prestasi <em class="not-italic bg-gradient-to-r from-[#7EE2AE] to-[#FCD34D] bg-clip-text text-transparent">Akademiknya Teruji</em>
             </h1>
 
-            <p class="text-[#C4E4D4] text-[16px] sm:text-[17px] leading-relaxed mb-3 max-w-[620px]">
-              SMP IT Bina Cendekia Assalam (BCA) — sekolah Islam terpadu berbasis <strong>kelas gender</strong> di bawah مؤسسة دار القهار, memadukan kurikulum nasional Diknas dengan pembiasaan karakter Qur'ani.
+            <!-- Subtitle -->
+            <p class="text-[17.5px] text-[#C4E4D4] max-w-[62ch] my-[20px] mb-[12px] leading-relaxed">
+              SMP IT Bina Cendekia Assalam — sekolah berbasis kelas gender di bawah مؤسسة دار القهار, memadukan kurikulum nasional dengan pendidikan Islam terpadu.
             </p>
 
-            <p class="text-[#FDE68A] font-bold text-[14px] sm:text-[15px] italic mb-8">
+            <!-- Motto -->
+            <p class="text-[#FDE68A] font-bold text-[clamp(14px,2.4vw,16.5px)] mb-[28px] tracking-[0.2px]">
               "Membentuk Generasi Qur'ani Berprestasi yang Terpercaya, Cerdas dan Mandiri."
             </p>
 
             <!-- Action Buttons -->
-            <div class="flex flex-wrap items-center gap-4 mb-10">
+            <div class="flex items-center gap-[14px] flex-wrap mb-[40px] lg:mb-[56px]">
               <NuxtLink 
                 to="/smp/spmb" 
-                class="inline-flex items-center gap-2 font-extrabold text-[15px] py-3.5 px-7 rounded-[14px] text-[#3D2C00] bg-gradient-to-r from-[#F0B429] to-[#C98A12] shadow-[0_10px_24px_rgba(245,158,11,0.35)] hover:-translate-y-0.5 transition-all"
+                class="inline-flex items-center gap-[9px] font-bold text-[15px] py-[14px] px-[28px] rounded-[14px] text-white bg-gradient-to-r from-[#F0B429] to-[#C98A12] shadow-[0_10px_24px_rgba(245,158,11,0.35)] hover:-translate-y-0.5 active:scale-95 transition-all"
               >
-                Daftar SPMB 2027/2028
-                <svg class="w-4 h-4 stroke-current stroke-[2.2] fill-none" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                <span>Daftar SPMB 2027/2028</span>
+                <svg class="w-[20px] h-[20px] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
               </NuxtLink>
 
               <NuxtLink 
                 to="/smp/tentang" 
-                class="inline-flex items-center gap-2 font-bold text-[15px] py-3.5 px-6 rounded-[14px] bg-white/10 hover:bg-white/20 border border-white/20 text-white backdrop-blur-md transition-all"
+                class="inline-flex items-center gap-[9px] font-bold text-[15px] py-[14px] px-[28px] rounded-[14px] text-white bg-white/10 border-2 border-white/35 hover:bg-white/20 transition-colors"
               >
-                Jelajahi Profil
+                <span>Jelajahi Sekolah</span>
               </NuxtLink>
             </div>
 
-            <!-- Stats 4 Tiles -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-6 border-t border-white/10">
-              <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 sm:p-4 backdrop-blur-sm">
-                <strong class="block text-[24px] font-black text-white">7<small class="text-[#FCD34D] text-[16px]">+</small></strong>
-                <span class="text-[12px] font-bold text-[#A9D4BC]">Kelas / Rombel</span>
+            <!-- Stats 4 Boxes -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-[14px] max-w-[860px]">
+              <div class="bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-[18px_20px] backdrop-blur-[4px]">
+                <b class="block text-[30px] font-black text-white leading-none mb-1">7<small class="text-[18px] text-[#FCD34D] font-bold">+</small></b>
+                <span class="text-[12.5px] text-[#A9D4BC] font-semibold">Kelas / Rombel</span>
               </div>
-              <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 sm:p-4 backdrop-blur-sm">
-                <strong class="block text-[24px] font-black text-white">7</strong>
-                <span class="text-[12px] font-bold text-[#A9D4BC]">Program Unggulan</span>
+
+              <div class="bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-[18px_20px] backdrop-blur-[4px]">
+                <b class="block text-[30px] font-black text-white leading-none mb-1">7</b>
+                <span class="text-[12.5px] text-[#A9D4BC] font-semibold">Program Unggulan</span>
               </div>
-              <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 sm:p-4 backdrop-blur-sm">
-                <strong class="block text-[24px] font-black text-white">13</strong>
-                <span class="text-[12px] font-bold text-[#A9D4BC]">Ekstrakurikuler</span>
+
+              <div class="bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-[18px_20px] backdrop-blur-[4px]">
+                <b class="block text-[30px] font-black text-white leading-none mb-1">13</b>
+                <span class="text-[12.5px] text-[#A9D4BC] font-semibold">Ekstrakurikuler</span>
               </div>
-              <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 sm:p-4 backdrop-blur-sm">
-                <strong class="block text-[24px] font-black text-white">6<small class="text-[#FCD34D] text-[16px]">th</small></strong>
-                <span class="text-[12px] font-bold text-[#A9D4BC]">Milad SMP IT BCA</span>
+
+              <div class="bg-white/[0.07] border border-white/[0.14] rounded-[16px] p-[18px_20px] backdrop-blur-[4px]">
+                <b class="block text-[30px] font-black text-white leading-none mb-1">6<small class="text-[18px] text-[#FCD34D] font-bold">th</small></b>
+                <span class="text-[12.5px] text-[#A9D4BC] font-semibold">Milad SMP IT BCA</span>
               </div>
             </div>
 
           </div>
 
           <!-- Visual Kanan (5 Cols) -->
-          <div class="lg:col-span-5 relative flex justify-center">
-            
-            <div class="relative w-full max-w-md">
-              <!-- Floating Badge 1 -->
-              <div class="absolute -top-4 -left-2 sm:left-0 z-20 bg-white text-[#063826] font-extrabold text-[12.5px] py-2 px-4 rounded-xl shadow-xl border border-[#D1E7DD] flex items-center gap-2 animate-bounce">
-                <span class="w-2 h-2 rounded-full bg-[#10B981]"></span>
-                <span>Sekolah Kelas Gender</span>
+          <div class="lg:col-span-5 relative mt-6 lg:mt-0">
+            <div class="grid grid-cols-2 gap-[16px] relative">
+              
+              <!-- Siswi Photo Box -->
+              <div class="rounded-[20px] overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.4)] border-[3px] border-white/25 bg-gradient-to-br from-[#12A15E] to-[#063826] min-h-[340px] max-h-[460px] flex flex-col justify-between p-6 relative">
+                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+                  <svg class="w-6 h-6 stroke-current stroke-[2] fill-none" viewBox="0 0 24 24">
+                    <circle cx="12" cy="9" r="5"/>
+                    <path d="M12 14v7M9 18h6"/>
+                  </svg>
+                </div>
+                <div class="bg-black/35 backdrop-blur-md p-3.5 rounded-xl border border-white/15">
+                  <strong class="text-white text-sm font-black block">Santri Putri</strong>
+                  <span class="text-xs text-[#A9D4BC]">Fokus &amp; Berkarakter</span>
+                </div>
               </div>
 
-              <!-- Floating Badge 2 -->
-              <div class="absolute -bottom-4 -right-2 sm:right-0 z-20 bg-[#063826] text-[#FCD34D] font-extrabold text-[12.5px] py-2 px-4 rounded-xl shadow-xl border border-white/20 flex items-center gap-2">
-                <svg class="w-4 h-4 stroke-current stroke-[2] fill-none" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <span>1000+ Santri Alumni</span>
+              <!-- Siswa Photo Box -->
+              <div class="rounded-[20px] overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.4)] border-[3px] border-white/25 bg-gradient-to-br from-[#0A4A30] to-[#052E22] min-h-[340px] max-h-[460px] flex flex-col justify-between p-6 relative">
+                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-[#FCD34D] shadow-inner">
+                  <svg class="w-6 h-6 stroke-current stroke-[2] fill-none" viewBox="0 0 24 24">
+                    <path d="M16 4h4v4M20 4l-6.5 6.5"/>
+                    <circle cx="9.5" cy="14.5" r="5.5"/>
+                  </svg>
+                </div>
+                <div class="bg-black/35 backdrop-blur-md p-3.5 rounded-xl border border-white/15">
+                  <strong class="text-white text-sm font-black block">Santri Putra</strong>
+                  <span class="text-xs text-[#A9D4BC]">Mandiri &amp; Cerdas</span>
+                </div>
               </div>
 
-              <!-- Duo Illustration Visual Box -->
-              <div class="grid grid-cols-2 gap-3.5 bg-white/10 p-3.5 rounded-[26px] border border-white/20 backdrop-blur-md shadow-2xl">
-                
-                <!-- Card Putra -->
-                <div class="bg-gradient-to-b from-[#0A4A30] to-[#063826] border border-white/15 rounded-[20px] p-5 flex flex-col items-center justify-center text-center min-h-[260px] text-white">
-                  <div class="w-14 h-14 rounded-2xl bg-white/15 text-[#7EE2AE] flex items-center justify-center mb-3">
-                    <svg class="w-7 h-7 stroke-current stroke-[2] fill-none" viewBox="0 0 24 24"><path d="M16 4h4v4M20 4l-6.5 6.5"/><circle cx="9.5" cy="14.5" r="5.5"/></svg>
-                  </div>
-                  <strong class="text-[16px] font-black text-white block mb-1">Kelas Putra</strong>
-                  <span class="text-[12px] text-[#A9D4BC]">Fokus, dinamis &amp; kompetitif sehat</span>
-                </div>
+              <!-- Floating Chip 1 (Top Left) -->
+              <div class="absolute top-[14px] -left-[10px] sm:left-[6px] bg-white text-[#052E22] rounded-[14px] shadow-[0_18px_44px_rgba(3,15,40,0.35)] px-[17px] py-[12px] flex items-center gap-[10px] font-extrabold text-[13.5px] whitespace-nowrap z-10 animate-bounce">
+                <svg class="w-[22px] h-[22px] text-[#0E7A4E] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24">
+                  <path d="M12 2.5l7.5 2.8v5.7c0 4.8-3.3 8.2-7.5 10.5-4.2-2.3-7.5-5.7-7.5-10.5V5.3L12 2.5z"/>
+                  <path d="M9 11.8l2.2 2.2 4-4.2"/>
+                </svg>
+                <span>Kelas Gender</span>
+              </div>
 
-                <!-- Card Putri -->
-                <div class="bg-gradient-to-b from-[#0A4A30] to-[#063826] border border-white/15 rounded-[20px] p-5 flex flex-col items-center justify-center text-center min-h-[260px] text-white">
-                  <div class="w-14 h-14 rounded-2xl bg-white/15 text-[#FCD34D] flex items-center justify-center mb-3">
-                    <svg class="w-7 h-7 stroke-current stroke-[2] fill-none" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M12 14v7M9 18h6"/></svg>
-                  </div>
-                  <strong class="text-[16px] font-black text-white block mb-1">Kelas Putri</strong>
-                  <span class="text-[12px] text-[#A9D4BC]">Nyaman, santun &amp; berprestasi</span>
-                </div>
-
+              <!-- Floating Chip 2 (Bottom Right) -->
+              <div class="absolute bottom-[14px] -right-[10px] sm:right-[6px] bg-white text-[#052E22] rounded-[14px] shadow-[0_18px_44px_rgba(3,15,40,0.35)] px-[17px] py-[12px] flex items-center gap-[10px] font-extrabold text-[13.5px] whitespace-nowrap z-10">
+                <svg class="w-[22px] h-[22px] text-[#0E7A4E] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24">
+                  <circle cx="9" cy="8" r="3.4"/>
+                  <path d="M2.8 19.5c.8-3.3 3.3-5.2 6.2-5.2s5.4 1.9 6.2 5.2"/>
+                  <circle cx="16.8" cy="9" r="2.6"/>
+                  <path d="M16.2 14.3c2.5.4 4.3 2.1 5 5.2"/>
+                </svg>
+                <span>1000+ Siswa</span>
               </div>
 
             </div>
-
           </div>
 
         </div>
       </div>
     </section>
+
 
     <!-- ================================================================= -->
     <!-- 2. TUJUH PROGRAM UNGGULAN (Soft Emerald Background) -->

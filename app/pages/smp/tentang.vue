@@ -11,23 +11,20 @@ definePageMeta({ layout: 'smp' })
     <!-- ================================================================= -->
     <!-- 1. PAGE HERO -->
     <!-- ================================================================= -->
-    <section class="relative overflow-hidden text-white pt-[170px] sm:pt-[180px] md:pt-[190px] lg:pt-[200px] pb-[70px] lg:pb-[80px] bg-gradient-to-br from-[#0A4A30] via-[#063826] to-[#052E22]">
-      <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
-      
-      <!-- Glowing Orbs -->
-      <div class="absolute -top-32 right-0 w-[500px] h-[500px] bg-[#34C77B]/20 rounded-full blur-3xl pointer-events-none"></div>
+    <section class="relative overflow-hidden text-white bg-gradient-to-br from-[#0A4A30] to-[#052E22]">
+      <div class="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.08)_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
 
-      <div class="relative max-w-[1180px] mx-auto px-5 lg:px-6">
-        <div class="text-[12.5px] text-[#A9D4BC] font-semibold mb-3.5 flex items-center gap-1.5">
+      <div class="max-w-[1180px] mx-auto px-[22px] py-[64px] pb-[60px] relative">
+        <div class="text-[12.5px] text-[#8FBCA1] font-semibold mb-[14px] flex items-center gap-1.5">
           <NuxtLink to="/smp" class="hover:text-white transition-colors">Home</NuxtLink>
-          <span class="text-[#34C77B]">/</span>
-          <b class="text-[#FCD34D]">Tentang Sekolah</b>
+          <span>/</span>
+          <b class="text-[#FCD34D] font-bold">Tentang Sekolah</b>
         </div>
-        <h1 class="text-[clamp(32px,4.5vw,48px)] font-black tracking-[-0.02em] leading-tight mb-3">
-          Tentang <span class="bg-gradient-to-r from-[#7EE2AE] to-[#FCD34D] bg-clip-text text-transparent">Sekolah</span>
+        <h1 class="text-[clamp(30px,4.4vw,46px)] font-black tracking-[-0.02em] leading-tight mb-2.5">
+          Tentang Sekolah
         </h1>
-        <p class="text-[#C4E4D4] max-w-[700px] text-[16px] leading-relaxed">
-          Mengenal lebih dekat SMP IT Bina Cendekia Assalam — sejarah berdirinya, visi misi pendidikan, serta sarana penunjang kenyamanan belajar santri.
+        <p class="text-[#BFE0CE] max-w-[70ch] text-[16px] leading-relaxed">
+          Mengenal lebih dekat SMP IT Bina Cendekia Assalam — sejarah, visi misi, dan orang-orang di baliknya.
         </p>
       </div>
     </section>

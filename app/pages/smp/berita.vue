@@ -320,27 +320,23 @@ onUnmounted(() => {
     <!-- ================================================================= -->
     <!-- 1. PAGE HERO -->
     <!-- ================================================================= -->
-    <section class="relative overflow-hidden text-white pt-[170px] sm:pt-[180px] md:pt-[190px] lg:pt-[200px] pb-[70px] lg:pb-[80px] bg-gradient-to-br from-[#0A4A30] via-[#063826] to-[#052E22]">
-      <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
-      
-      <div class="relative max-w-[1180px] mx-auto px-5 lg:px-6">
-        <div class="text-[12.5px] text-[#A9D4BC] font-semibold mb-3.5 flex items-center gap-1.5">
+    <section class="relative overflow-hidden text-white bg-gradient-to-br from-[#0A4A30] to-[#052E22]">
+      <div class="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.08)_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
+
+      <div class="max-w-[1180px] mx-auto px-[22px] py-[64px] pb-[60px] relative">
+        <div class="text-[12.5px] text-[#8FBCA1] font-semibold mb-[14px] flex items-center gap-1.5">
           <NuxtLink to="/smp" class="hover:text-white transition-colors">Home</NuxtLink>
-          <span class="text-[#34C77B]">/</span>
-          <b class="text-[#FCD34D]">Berita &amp; Artikel</b>
+          <span>/</span>
+          <b class="text-[#FCD34D] font-bold">Berita &amp; Artikel</b>
         </div>
 
         <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div>
-            <span class="inline-flex items-center gap-1.5 text-[12px] font-extrabold tracking-[0.16em] text-[#7EE2AE] uppercase py-1 px-3.5 rounded-full bg-white/10 backdrop-blur-md mb-3 border border-white/15">
-              <svg class="w-3.5 h-3.5 stroke-current stroke-[2.2] fill-none" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
-              Publikasi &amp; Kabar Santri
-            </span>
-            <h1 class="text-[clamp(32px,4.5vw,48px)] font-black tracking-[-0.02em] leading-tight mb-2.5">
-              Berita &amp; <span class="bg-gradient-to-r from-[#7EE2AE] to-[#FCD34D] bg-clip-text text-transparent">Artikel</span>
+            <h1 class="text-[clamp(30px,4.4vw,46px)] font-black tracking-[-0.02em] leading-tight mb-2.5">
+              Berita &amp; Artikel
             </h1>
-            <p class="text-[#C4E4D4] max-w-[650px] text-[15.5px] md:text-[16.5px] leading-relaxed">
-              Kabar kegiatan sekolah, pembinaan kelas gender, program tahfidz Yanbu'a, dan pengumuman resmi SMP IT BCA.
+            <p class="text-[#BFE0CE] max-w-[70ch] text-[16px] leading-relaxed">
+              Kabar terbaru, gagasan pendidikan, dan pengumuman resmi dari SMP IT Bina Cendekia Assalam.
             </p>
           </div>
 
