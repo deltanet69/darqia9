@@ -29,6 +29,16 @@ export default defineNuxtConfig({
   supabase: {
     redirect: false
   },
+  runtimeConfig: {
+    // Kredensial server-only (tidak bocor ke browser)
+    instagramAppSecret: process.env.INSTAGRAM_APP_SECRET || '',
+    instagramAccessToken: process.env.INSTAGRAM_ACCESS_TOKEN || '',
+    public: {
+      // Kredensial public (bisa diakses di client jika dibutuhkan)
+      instagramAppId: process.env.NUXT_PUBLIC_INSTAGRAM_APP_ID || '',
+      instagramUsername: 'smkit.attaqwa9'
+    }
+  },
   vite: {
     server: {
       watch: {

@@ -165,9 +165,9 @@ definePageMeta({ layout: 'smk' })
     <!-- ================================================================= -->
     <section class="py-[80px] bg-[#F5F8FF]">
       <div class="max-w-[1180px] mx-auto px-5 lg:px-6">
-        <div class="bg-gradient-to-br from-[#0C2C61] via-[#0A2A5C] to-[#061A3E] text-white rounded-[24px] p-8 md:p-12 shadow-[0_24px_60px_rgba(10,42,92,0.2)] grid grid-cols-1 lg:grid-cols-2 gap-8 items-center relative overflow-hidden">
+        <div class="bg-[radial-gradient(700px_400px_at_85%_100%,rgba(43,124,216,0.45),transparent_65%),linear-gradient(135deg,#0C2C61_0%,#0A2A5C_55%,#061A3E_100%)] text-white rounded-[24px] p-6 sm:p-8 md:px-12 md:pt-12 pb-0 shadow-[0_24px_60px_rgba(10,42,92,0.2)] grid grid-cols-1 lg:grid-cols-12 gap-8 items-end relative overflow-hidden">
           
-          <div class="relative z-10">
+          <div class="lg:col-span-7 relative z-10 pb-8 md:pb-12">
             <span class="inline-block text-[12px] font-extrabold tracking-[0.16em] text-[#FCD34D] uppercase mb-3">Formulir Online</span>
             <h2 class="text-[clamp(26px,4vw,38px)] font-black tracking-[-0.02em] leading-tight mb-4">
               Amankan kursimu di <span class="bg-gradient-to-r from-[#7DB9F5] to-[#FCD34D] bg-clip-text text-transparent">7 rombel</span> ini.
@@ -179,7 +179,7 @@ definePageMeta({ layout: 'smk' })
             <div class="flex flex-wrap items-center gap-4">
               <NuxtLink 
                 to="/spmb" 
-                class="inline-flex items-center gap-2 font-extrabold text-[15px] py-3.5 px-7 rounded-[14px] text-white bg-gradient-to-r from-[#2B7CD8] to-[#0A2A5C] border border-[#7DB9F5]/40 shadow-[0_10px_25px_rgba(27,106,201,0.4)] hover:-translate-y-0.5 transition-all"
+                class="inline-flex items-center gap-2 font-extrabold text-[15px] py-3.5 px-7 rounded-[14px] text-white bg-gradient-to-r from-[#F0B429] to-[#C98A12] shadow-[0_10px_24px_rgba(245,158,11,0.35)] hover:-translate-y-0.5 transition-all duration-150"
               >
                 Mulai Pendaftaran
                 <svg class="w-4 h-4 stroke-current stroke-[2] fill-none" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -187,11 +187,21 @@ definePageMeta({ layout: 'smk' })
             </div>
           </div>
 
-          <div class="relative z-10 flex justify-center lg:justify-end">
-            <div class="w-full max-w-[420px] aspect-[4/3] bg-white/10 border-2 border-dashed border-white/30 rounded-[20px] p-6 flex flex-col items-center justify-center text-center text-[#DCE7FA] backdrop-blur-sm">
-              <svg class="w-12 h-12 mb-3 text-[#7DB9F5] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><circle cx="12" cy="13.5" r="3.4"/><path d="M8.5 7.5L10 5h4l1.5 2.5"/></svg>
-              <b class="text-[14px] font-bold text-white tracking-wide">FOTO : SISWA SMK IT ATTAQWA 9</b>
-              <small class="text-[12px] text-[#A9BDDD] mt-1">Ganti dengan foto asli</small>
+          <div class="lg:col-span-5 relative z-10 flex justify-center lg:justify-end items-end self-end">
+            <div class="relative w-full max-w-[380px] sm:max-w-[420px] lg:max-w-none flex justify-center items-end">
+              <div class="absolute bottom-0 inset-x-0 h-[280px] bg-[radial-gradient(ellipse_at_bottom,rgba(43,124,216,0.45),transparent_70%)] pointer-events-none"></div>
+
+              <div class="absolute top-6 -left-2 sm:left-4 bg-white/95 backdrop-blur-md text-[#0A2A5C] font-extrabold text-[12px] py-1.5 px-3 rounded-full shadow-[0_8px_20px_rgba(0,0,0,0.3)] border border-[#E3EAF7] flex items-center gap-1.5 z-10 hover:scale-105 transition-transform">
+                <span class="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
+                Kuota 7 Rombel
+              </div>
+
+              <img 
+                src="/asset/SMK/herosmk.png" 
+                alt="Siswa SMK IT Attaqwa 9" 
+                class="relative z-0 w-full h-auto max-h-[340px] sm:max-h-[390px] lg:max-h-[440px] object-contain object-bottom block drop-shadow-[0_15px_30px_rgba(0,0,0,0.45)] select-none pointer-events-none"
+                loading="lazy"
+              />
             </div>
           </div>
 

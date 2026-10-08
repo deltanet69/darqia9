@@ -53,97 +53,215 @@ definePageMeta({ layout: 'smk' })
         <!-- Headline Featured Card -->
         <div 
           v-show="activeFilter === 'semua' || activeFilter === 'pengumuman'"
-          class="bg-white border border-[#E3EAF7] rounded-[22px] overflow-hidden shadow-[0_10px_30px_rgba(10,42,92,0.08)] grid grid-cols-1 lg:grid-cols-12 gap-0 mb-8 hover:-translate-y-1 transition-all duration-200"
+          class="rv bg-white border border-[#E2ECF8] rounded-[22px] overflow-hidden shadow-[0_10px_30px_rgba(10,42,92,0.08)] hover:shadow-[0_22px_45px_rgba(10,42,92,0.14)] grid grid-cols-1 lg:grid-cols-12 gap-0 mb-10 hover:-translate-y-1.5 transition-all duration-300 group cursor-pointer"
         >
-          <div class="lg:col-span-5 min-h-[220px] bg-gradient-to-br from-[#0C2C61] to-[#0A2A5C] flex items-center justify-center text-white p-8">
-            <svg class="w-16 h-16 text-[#4C8DFF] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><path d="M3.5 10.5v4l3.5.6v-5.2l-3.5.6z"/><path d="M7 9.9L17.5 5v14L7 14.1"/><path d="M17.5 8.8a3.2 3.2 0 010 6.4"/></svg>
+          <div class="lg:col-span-5 min-h-[260px] relative overflow-hidden bg-[#0A2A5C]">
+            <img 
+              src="/asset/SMK/news-spmb.jpg" 
+              alt="SPMB 2027/2028 SMK IT Attaqwa 9" 
+              class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
+            <span class="absolute top-4 left-4 inline-flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#FEF3C7]/95 text-[#92400E] backdrop-blur-md shadow-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#D97706] animate-pulse"></span>
+              Pengumuman · Headline
+            </span>
           </div>
           <div class="lg:col-span-7 p-8 md:p-10 flex flex-col justify-center">
-            <span class="inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#FEF3C7] text-[#B45309] w-fit mb-3">Pengumuman · Headline</span>
-            <h2 class="text-[22px] md:text-[26px] font-black text-[#061A3E] leading-snug mb-3">SPMB 2027/2028 Dibuka: 7 Rombel, 3 Gelombang Pendaftaran</h2>
-            <p class="text-[15px] text-[#5A6B8C] leading-relaxed mb-4">Penerimaan murid baru tahun ajaran 2027/2028 resmi dibuka dengan tiga gelombang dan biaya registrasi hanya Rp50.000. Kuota terbatas hanya tujuh rombel — ditambah pendaftaran inden untuk 2028/2029.</p>
-            <span class="text-[13px] text-[#8FA6CC] font-semibold">4 Oktober 2026 · Panitia SPMB</span>
+            <div class="flex items-center gap-2 text-[13px] text-[#8FA6CC] font-semibold mb-3">
+              <span>4 Oktober 2026</span>
+              <span>·</span>
+              <span class="text-[#1B5FD9] font-bold">Panitia SPMB</span>
+              <span>·</span>
+              <span>3 mnt baca</span>
+            </div>
+            <h2 class="text-[22px] md:text-[26px] font-black text-[#061A3E] leading-snug mb-3 group-hover:text-[#1B5FD9] transition-colors">
+              SPMB 2027/2028 Dibuka: 7 Rombel, 3 Gelombang Pendaftaran
+            </h2>
+            <p class="text-[15px] text-[#5A6B8C] leading-relaxed mb-5">
+              Penerimaan murid baru tahun ajaran 2027/2028 resmi dibuka dengan tiga gelombang dan biaya registrasi hanya Rp50.000. Kuota terbatas hanya tujuh rombel — ditambah pendaftaran inden untuk 2028/2029.
+            </p>
+            <div class="flex items-center gap-2 text-[14px] font-bold text-[#1B5FD9]">
+              <span>Baca Selengkapnya</span>
+              <svg class="w-4 h-4 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </div>
           </div>
         </div>
 
         <!-- 3-Column Grid Articles -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           <!-- Card 1 -->
-          <div v-show="activeFilter === 'semua' || activeFilter === 'artikel'" class="bg-white border border-[#E3EAF7] rounded-[18px] overflow-hidden shadow-[0_10px_30px_rgba(10,42,92,0.08)] hover:-translate-y-1.5 transition-all duration-200 flex flex-col">
-            <div class="min-h-[170px] bg-gradient-to-br from-[#123E85] to-[#0A2A5C] flex items-center justify-center text-white">
-              <svg class="w-10 h-10 text-[#4C8DFF] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><path d="M9.5 18.5h5M10.5 21.5h3"/><path d="M12 3a6 6 0 00-3.4 10.9c.8.6 1.4 1.3 1.4 2.6h4c0-1.3.6-2 1.4-2.6A6 6 0 0012 3z"/></svg>
+          <div v-show="activeFilter === 'semua' || activeFilter === 'artikel'" class="rv group bg-white border border-[#E2ECF8] rounded-[20px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_20px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 transition-all duration-300 flex flex-col cursor-pointer">
+            <div class="relative h-[200px] overflow-hidden bg-[#0A2A5C]">
+              <img 
+                src="/asset/SMK/news-deeplearning.jpg" 
+                alt="Deep Learning" 
+                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
+              <span class="absolute top-3.5 left-3.5 inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#EEF2FF]/95 text-[#4338CA] backdrop-blur-md">
+                Artikel Edukasi
+              </span>
             </div>
-            <div class="p-6 flex-1 flex flex-col">
-              <span class="inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#E0E7FF] text-[#4338CA] w-fit mb-3">Artikel</span>
-              <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2">Mengenal Deep Learning: Cara Baru Belajar di Kurikulum Merdeka</h3>
-              <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">Bukan sekadar menghafal — bagaimana pendekatan pembelajaran mendalam mengubah cara siswa memahami pelajaran.</p>
-              <span class="text-[12.5px] text-[#8FA6CC] font-semibold mt-auto block">28 September 2026</span>
+            <div class="p-6 flex-1 flex flex-col justify-between">
+              <div>
+                <span class="text-[12px] text-[#8FA6CC] font-semibold block mb-2">28 September 2026 · Tim Kurikulum</span>
+                <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
+                  Mengenal Deep Learning: Cara Baru Belajar di Kurikulum Merdeka
+                </h3>
+                <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
+                  Bukan sekadar menghafal — bagaimana pendekatan pembelajaran mendalam mengubah cara siswa memahami pelajaran vokasi.
+                </p>
+              </div>
+              <span class="text-[13px] font-bold text-[#1B5FD9] flex items-center gap-1.5 pt-3 border-t border-[#F1F5F9] mt-auto">
+                Baca Artikel <svg class="w-3.5 h-3.5 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
             </div>
           </div>
 
           <!-- Card 2 -->
-          <div v-show="activeFilter === 'semua' || activeFilter === 'berita'" class="bg-white border border-[#E3EAF7] rounded-[18px] overflow-hidden shadow-[0_10px_30px_rgba(10,42,92,0.08)] hover:-translate-y-1.5 transition-all duration-200 flex flex-col">
-            <div class="min-h-[170px] bg-gradient-to-br from-[#123E85] to-[#0A2A5C] flex items-center justify-center text-white">
-              <svg class="w-10 h-10 text-[#4C8DFF] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="1.5"/><path d="M9 7.5h2M13 7.5h2M9 11h2M13 11h2M9 14.5h2M13 14.5h2M10 20.5v-2.8h4v2.8"/></svg>
+          <div v-show="activeFilter === 'semua' || activeFilter === 'berita'" class="rv group bg-white border border-[#E2ECF8] rounded-[20px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_20px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 transition-all duration-300 flex flex-col cursor-pointer">
+            <div class="relative h-[200px] overflow-hidden bg-[#0A2A5C]">
+              <img 
+                src="/asset/SMK/news-blk.jpg" 
+                alt="BLK Komunitas" 
+                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
+              <span class="absolute top-3.5 left-3.5 inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#DBEAFE]/95 text-[#1D4ED8] backdrop-blur-md">
+                Berita Kejuruan
+              </span>
             </div>
-            <div class="p-6 flex-1 flex flex-col">
-              <span class="inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#DBEAFE] text-[#1D4ED8] w-fit mb-3">Berita</span>
-              <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2">BLK Komunitas: Jembatan Sekolah Menuju Dunia Industri</h3>
-              <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">Gedung Balai Latihan Kerja Komunitas Kemnaker RI menjadi pusat praktik kejuruan berstandar industri.</p>
-              <span class="text-[12.5px] text-[#8FA6CC] font-semibold mt-auto block">20 September 2026</span>
+            <div class="p-6 flex-1 flex flex-col justify-between">
+              <div>
+                <span class="text-[12px] text-[#8FA6CC] font-semibold block mb-2">20 September 2026 · Humas DUDIKA</span>
+                <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
+                  BLK Komunitas: Jembatan Sekolah Menuju Dunia Industri
+                </h3>
+                <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
+                  Gedung Balai Latihan Kerja Komunitas Kemnaker RI menjadi pusat praktik kejuruan berstandar industri nasional.
+                </p>
+              </div>
+              <span class="text-[13px] font-bold text-[#1B5FD9] flex items-center gap-1.5 pt-3 border-t border-[#F1F5F9] mt-auto">
+                Baca Berita <svg class="w-3.5 h-3.5 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
             </div>
           </div>
 
           <!-- Card 3 -->
-          <div v-show="activeFilter === 'semua' || activeFilter === 'artikel'" class="bg-white border border-[#E3EAF7] rounded-[18px] overflow-hidden shadow-[0_10px_30px_rgba(10,42,92,0.08)] hover:-translate-y-1.5 transition-all duration-200 flex flex-col">
-            <div class="min-h-[170px] bg-gradient-to-br from-[#123E85] to-[#0A2A5C] flex items-center justify-center text-white">
-              <svg class="w-10 h-10 text-[#4C8DFF] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><path d="M12 6.5C10 5 7.5 4.5 4 4.5v14c3.5 0 6 .5 8 2 2-1.5 4.5-2 8-2v-14c-3.5 0-6 .5-8 2v14z"/><path d="M12 6.5v14"/></svg>
+          <div v-show="activeFilter === 'semua' || activeFilter === 'artikel'" class="rv group bg-white border border-[#E2ECF8] rounded-[20px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_20px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 transition-all duration-300 flex flex-col cursor-pointer">
+            <div class="relative h-[200px] overflow-hidden bg-[#0A2A5C]">
+              <img 
+                src="/asset/SMK/ig-3.jpg" 
+                alt="Program Tahfidz Yanbua" 
+                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
+              <span class="absolute top-3.5 left-3.5 inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#EEF2FF]/95 text-[#4338CA] backdrop-blur-md">
+                Artikel
+              </span>
             </div>
-            <div class="p-6 flex-1 flex flex-col">
-              <span class="inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#E0E7FF] text-[#4338CA] w-fit mb-3">Artikel</span>
-              <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2">Program Tahfidz Yanbu'a: Target Hafalan Setiap Semester</h3>
-              <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">Metode Yanbu'a membuat setoran hafalan Qur'an menjadi pembiasaan yang ringan dan terukur bagi siswa vokasi.</p>
-              <span class="text-[12.5px] text-[#8FA6CC] font-semibold mt-auto block">12 September 2026</span>
+            <div class="p-6 flex-1 flex flex-col justify-between">
+              <div>
+                <span class="text-[12px] text-[#8FA6CC] font-semibold block mb-2">12 September 2026 · Asatidz Tahfidz</span>
+                <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
+                  Program Tahfidz Yanbu'a: Target Hafalan Setiap Semester
+                </h3>
+                <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
+                  Metode Yanbu'a membuat setoran hafalan Qur'an menjadi pembiasaan yang ringan dan terukur bagi siswa vokasi.
+                </p>
+              </div>
+              <span class="text-[13px] font-bold text-[#1B5FD9] flex items-center gap-1.5 pt-3 border-t border-[#F1F5F9] mt-auto">
+                Baca Artikel <svg class="w-3.5 h-3.5 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
             </div>
           </div>
 
           <!-- Card 4 -->
-          <div v-show="activeFilter === 'semua' || activeFilter === 'berita'" class="bg-white border border-[#E3EAF7] rounded-[18px] overflow-hidden shadow-[0_10px_30px_rgba(10,42,92,0.08)] hover:-translate-y-1.5 transition-all duration-200 flex flex-col">
-            <div class="min-h-[170px] bg-gradient-to-br from-[#123E85] to-[#0A2A5C] flex items-center justify-center text-white">
-              <svg class="w-10 h-10 text-[#4C8DFF] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><path d="M20 13.2A8.2 8.2 0 1110.8 4 6.6 6.6 0 0020 13.2z"/></svg>
+          <div v-show="activeFilter === 'semua' || activeFilter === 'berita'" class="rv group bg-white border border-[#E2ECF8] rounded-[20px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_20px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 transition-all duration-300 flex flex-col cursor-pointer">
+            <div class="relative h-[200px] overflow-hidden bg-[#0A2A5C]">
+              <img 
+                src="/asset/SMK/ig-4.jpg" 
+                alt="Prestasi Juara LKS" 
+                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
+              <span class="absolute top-3.5 left-3.5 inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#DBEAFE]/95 text-[#1D4ED8] backdrop-blur-md">
+                Prestasi Siswa
+              </span>
             </div>
-            <div class="p-6 flex-1 flex flex-col">
-              <span class="inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#DBEAFE] text-[#1D4ED8] w-fit mb-3">Berita</span>
-              <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2">Sima'an Qur'an dan Sholat Berjamaah: Pembiasaan Harian</h3>
-              <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">Setiap hari dimulai dengan sima'an dan ditutup dengan sholat berjamaah — budaya sekolah yang membentuk karakter.</p>
-              <span class="text-[12.5px] text-[#8FA6CC] font-semibold mt-auto block">5 September 2026</span>
+            <div class="p-6 flex-1 flex flex-col justify-between">
+              <div>
+                <span class="text-[12px] text-[#8FA6CC] font-semibold block mb-2">5 September 2026 · Humas Sekolah</span>
+                <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
+                  Juara 1 LKS IT Network System Administration Kab. Bekasi
+                </h3>
+                <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
+                  Siswa kompetensi keahlian TKJ SMK IT Attaqwa 9 berhasil membuktikan keunggulan skill di ajang bergengsi LKS.
+                </p>
+              </div>
+              <span class="text-[13px] font-bold text-[#1B5FD9] flex items-center gap-1.5 pt-3 border-t border-[#F1F5F9] mt-auto">
+                Baca Berita <svg class="w-3.5 h-3.5 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
             </div>
           </div>
 
           <!-- Card 5 -->
-          <div v-show="activeFilter === 'semua' || activeFilter === 'berita'" class="bg-white border border-[#E3EAF7] rounded-[18px] overflow-hidden shadow-[0_10px_30px_rgba(10,42,92,0.08)] hover:-translate-y-1.5 transition-all duration-200 flex flex-col">
-            <div class="min-h-[170px] bg-gradient-to-br from-[#123E85] to-[#0A2A5C] flex items-center justify-center text-white">
-              <svg class="w-10 h-10 text-[#4C8DFF] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><path d="M9.5 18.5h5M10.5 21.5h3"/><path d="M12 3a6 6 0 00-3.4 10.9c.8.6 1.4 1.3 1.4 2.6h4c0-1.3.6-2 1.4-2.6A6 6 0 0012 3z"/></svg>
+          <div v-show="activeFilter === 'semua' || activeFilter === 'berita'" class="rv group bg-white border border-[#E2ECF8] rounded-[20px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_20px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 transition-all duration-300 flex flex-col cursor-pointer">
+            <div class="relative h-[200px] overflow-hidden bg-[#0A2A5C]">
+              <img 
+                src="/asset/SMK/ig-2.jpg" 
+                alt="Showcase Portofolio DKV" 
+                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
+              <span class="absolute top-3.5 left-3.5 inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#DBEAFE]/95 text-[#1D4ED8] backdrop-blur-md">
+                Karya Siswa
+              </span>
             </div>
-            <div class="p-6 flex-1 flex flex-col">
-              <span class="inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#DBEAFE] text-[#1D4ED8] w-fit mb-3">Berita</span>
-              <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2">Entrepreneur Day: Melatih Jiwa Wirausaha Sejak Sekolah</h3>
-              <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">Siswa mempraktikkan ilmu kewirausahaan lewat bazar dan proyek usaha nyata di lingkungan sekolah.</p>
-              <span class="text-[12.5px] text-[#8FA6CC] font-semibold mt-auto block">28 Agustus 2026</span>
+            <div class="p-6 flex-1 flex flex-col justify-between">
+              <div>
+                <span class="text-[12px] text-[#8FA6CC] font-semibold block mb-2">28 Agustus 2026 · Jurusan DKV</span>
+                <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
+                  Showcase Portofolio: Desain UI/UX &amp; Animasi Santri DKV
+                </h3>
+                <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
+                  Pameran karya digital santri vokasi siap industri: prototipe aplikasi mobile dan kreasi visual berstandar agensi.
+                </p>
+              </div>
+              <span class="text-[13px] font-bold text-[#1B5FD9] flex items-center gap-1.5 pt-3 border-t border-[#F1F5F9] mt-auto">
+                Baca Liputan <svg class="w-3.5 h-3.5 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
             </div>
           </div>
 
           <!-- Card 6 -->
-          <div v-show="activeFilter === 'semua' || activeFilter === 'pengumuman'" class="bg-white border border-[#E3EAF7] rounded-[18px] overflow-hidden shadow-[0_10px_30px_rgba(10,42,92,0.08)] hover:-translate-y-1.5 transition-all duration-200 flex flex-col">
-            <div class="min-h-[170px] bg-gradient-to-br from-[#123E85] to-[#0A2A5C] flex items-center justify-center text-white">
-              <svg class="w-10 h-10 text-[#4C8DFF] stroke-current stroke-[1.8] fill-none" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+          <div v-show="activeFilter === 'semua' || activeFilter === 'pengumuman'" class="rv group bg-white border border-[#E2ECF8] rounded-[20px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_20px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 transition-all duration-300 flex flex-col cursor-pointer">
+            <div class="relative h-[200px] overflow-hidden bg-[#0A2A5C]">
+              <img 
+                src="/asset/SMK/ig-1.jpg" 
+                alt="Jadwal Tes Seleksi" 
+                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
+              <span class="absolute top-3.5 left-3.5 inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#FEF3C7]/95 text-[#92400E] backdrop-blur-md">
+                Pengumuman
+              </span>
             </div>
-            <div class="p-6 flex-1 flex flex-col">
-              <span class="inline-block text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#FEF3C7] text-[#B45309] w-fit mb-3">Pengumuman</span>
-              <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2">Jadwal Tes Gelombang I SPMB 2027/2028</h3>
-              <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">Tes seleksi gelombang pertama dilaksanakan Ahad, 27 Desember 2026. Pengumuman hasil 30 Desember 2026.</p>
-              <span class="text-[12.5px] text-[#8FA6CC] font-semibold mt-auto block">15 Agustus 2026</span>
+            <div class="p-6 flex-1 flex flex-col justify-between">
+              <div>
+                <span class="text-[12px] text-[#8FA6CC] font-semibold block mb-2">15 Agustus 2026 · Panitia SPMB</span>
+                <h3 class="text-[17px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
+                  Jadwal Tes Gelombang I SPMB 2027/2028
+                </h3>
+                <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
+                  Tes seleksi gelombang pertama dilaksanakan Ahad, 27 Desember 2026. Pengumuman hasil seleksi 30 Desember 2026.
+                </p>
+              </div>
+              <span class="text-[13px] font-bold text-[#1B5FD9] flex items-center gap-1.5 pt-3 border-t border-[#F1F5F9] mt-auto">
+                Baca Jadwal <svg class="w-3.5 h-3.5 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
             </div>
           </div>
 
