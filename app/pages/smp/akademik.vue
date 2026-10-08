@@ -119,22 +119,22 @@ const ekskulList = [
   <div class="min-h-screen bg-[#F2F9F5] text-[#0E241B] font-sans antialiased overflow-x-hidden">
     
     <!-- ================================================================= -->
-    <!-- 1. PAGE HERO -->
+    <!-- 1. PAGE HERO (Dark Green Gradient Overlay) -->
     <!-- ================================================================= -->
-    <section class="relative overflow-hidden text-white bg-gradient-to-br from-[#0A4A30] to-[#052E22]">
+    <section class="relative overflow-hidden text-white pt-[170px] sm:pt-[180px] md:pt-[190px] lg:pt-[205px] pb-[60px] lg:pb-[75px] bg-[radial-gradient(900px_480px_at_85%_-10%,rgba(52,199,123,0.45),transparent_60%),linear-gradient(135deg,#0A4A30_0%,#063826_55%,#052E22_100%)]">
       <div class="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.08)_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
 
-      <div class="max-w-[1180px] mx-auto px-[22px] py-[64px] pb-[60px] relative">
-        <div class="text-[12.5px] text-[#8FBCA1] font-semibold mb-[14px] flex items-center gap-1.5">
-          <NuxtLink to="/smp" class="hover:text-white transition-colors">Home</NuxtLink>
-          <span>/</span>
-          <b class="text-[#FCD34D] font-bold">Akademik</b>
+      <div class="relative max-w-[1180px] mx-auto px-5 lg:px-6">
+        <div class="text-[12.5px] text-[#A9D4BC] font-semibold mb-3.5 flex items-center gap-1.5">
+          <NuxtLink to="/smp" class="hover:text-white transition-colors">Beranda</NuxtLink>
+          <span class="text-[#34C77B]">/</span>
+          <b class="text-[#FCD34D]">Akademik &amp; Ekstrakurikuler</b>
         </div>
-        <h1 class="text-[clamp(30px,4.4vw,46px)] font-black tracking-[-0.02em] leading-tight mb-2.5">
-          Akademik
+        <h1 class="text-[clamp(32px,4.5vw,48px)] font-black tracking-[-0.02em] leading-tight mb-3">
+          Akademik &amp; <span class="bg-gradient-to-r from-[#7EE2AE] to-[#FCD34D] bg-clip-text text-transparent">Ekstrakurikuler</span>
         </h1>
-        <p class="text-[#BFE0CE] max-w-[70ch] text-[16px] leading-relaxed">
-          Kurikulum, kelas gender, dan keunggulan pembelajaran di SMP IT Bina Cendekia Assalam.
+        <p class="text-[#C4E4D4] max-w-[720px] text-[16px] leading-relaxed">
+          Kurikulum terpadu berbasis ICT, kelas gender dengan metode CTL, 7 program unggulan, serta 13 pilihan ekstrakurikuler santri SMP IT BCA.
         </p>
       </div>
     </section>

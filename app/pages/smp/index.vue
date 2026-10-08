@@ -15,7 +15,7 @@ definePageMeta({ layout: 'smp' })
       <!-- Background Grid Texture -->
       <div class="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.09)_1.5px,transparent_1.5px)] [background-size:26px_26px] pointer-events-none"></div>
 
-      <div class="max-w-[1180px] mx-auto px-[22px] py-[70px] lg:py-[88px] pb-[80px] lg:pb-[96px] relative">
+      <div class="max-w-[1180px] mx-auto px-[22px] pt-[190px] sm:pt-[200px] lg:pt-[220px] pb-[80px] lg:pb-[96px] relative">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           
           <!-- Teks Kiri (7 Cols) -->
