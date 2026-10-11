@@ -369,94 +369,97 @@
         </div>
       </div>
 
-      <!-- VIEW 1: GRID CARDS (Bento Cards) -->
+      <!-- VIEW 1: GRID CARDS (Referensi Desain Clean Card & Sesuai 5 Data Wajib) -->
       <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <article
           v-for="(item, idx) in pagedClasses"
           :key="item.name"
-          class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_16px_32px_-6px_rgba(37,99,235,0.12)] hover:border-blue-400 hover:-translate-y-1.5 transition-all duration-300 text-left flex flex-col justify-between group animate-riseIn"
+          class="bg-white border border-slate-200/80 rounded-[28px] p-6 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_16px_36px_-6px_rgba(37,99,235,0.12)] hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left group animate-riseIn"
           :style="{ animationDelay: `${idx * 40}ms` }"
         >
           <div>
-            <!-- Card Header -->
-            <div class="flex items-center justify-between gap-2 mb-4">
-              <div>
-                <b class="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors block">{{ item.name }}</b>
-                <span class="text-[11px] text-slate-400 font-mono font-medium">{{ item.room }}</span>
+            <!-- 1. Header: Avatar + Nama Kelas (Tingkatan) + Gedung & Ruang Kelas -->
+            <div class="flex items-start gap-4 mb-4">
+              <!-- Avatar Circle + Status Pill Underneath -->
+              <div class="flex flex-col items-center gap-1.5 shrink-0">
+                <div
+                  class="w-14 h-14 rounded-full text-white font-bold text-sm flex items-center justify-center shadow-xs ring-2 ring-slate-100"
+                  :class="avatarGradient(item.name)"
+                >
+                  {{ initials(item.teacher) }}
+                </div>
+                <span
+                  class="px-2 py-0.5 rounded-full text-[10.5px] font-extrabold flex items-center gap-1 shadow-2xs"
+                  :class="item.attendance >= 94 ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'"
+                >
+                  <span>★</span>
+                  <span>{{ item.attendance }}%</span>
+                </span>
               </div>
-              <span
-                class="px-2.5 py-1 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider shrink-0 border"
-                :class="badgeClass(item.level, item.major)"
-              >
-                {{ item.level }}<template v-if="item.major"> &bull; {{ item.major }}</template>
-              </span>
+
+              <!-- Nama Kelas, Tingkatan, Gedung & Ruang Kelas -->
+              <div class="min-w-0 flex-1 pt-0.5">
+                <h3 class="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight truncate">
+                  {{ item.name }}
+                </h3>
+                <p class="text-xs text-slate-500 font-medium mt-1 truncate">
+                  {{ getTingkat(item.name, item.level) }} &bull; {{ item.level === 'SMP' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9' }}
+                </p>
+                <p class="text-xs text-slate-500 font-medium mt-1 flex items-center gap-1.5 truncate">
+                  <AdminIcon name="bldg" size="13" class="text-slate-400 shrink-0" />
+                  <span>{{ item.room }}</span>
+                </p>
+              </div>
             </div>
 
-            <!-- Wali Kelas Profile -->
-            <div class="flex items-center gap-3 mb-5 p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-              <span
-                class="w-10 h-10 rounded-2xl text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm"
-                :class="avatarGradient(item.name)"
-              >
-                {{ initials(item.teacher) }}
-              </span>
-              <div class="min-w-0">
-                <div class="text-xs font-bold text-slate-900 truncate">{{ item.teacher }}</div>
-                <div class="text-[10.5px] text-slate-500 truncate font-medium">Wali Kelas &bull; NIP: {{ item.teacherNip }}</div>
+            <!-- 2. Wali Kelas & 3. Jumlah Siswa (Laki-laki / Perempuan) -->
+            <div class="space-y-1.5 py-3 border-t border-slate-100 text-xs text-slate-600">
+              <div class="truncate">
+                <span class="text-slate-400 font-medium">Wali Kelas: </span>
+                <b class="text-slate-800 font-bold">{{ item.teacher }}</b>
+              </div>
+              <div class="truncate">
+                <span class="text-slate-400 font-medium">Jumlah Siswa: </span>
+                <b class="text-slate-800 font-bold">{{ item.students }} Siswa</b>
+                <span class="text-slate-500 font-medium"> ({{ item.boys }} Laki-laki / {{ item.girls }} Perempuan)</span>
               </div>
             </div>
 
-            <!-- Metrics Grid -->
-            <div class="grid grid-cols-3 gap-2 bg-slate-50/80 border border-slate-100 p-3 rounded-2xl text-center mb-4">
-              <div>
-                <b class="text-sm font-black text-slate-900 block font-mono">{{ item.students }}</b>
-                <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Siswa</span>
-              </div>
-              <div>
-                <b class="text-sm font-black text-slate-900 block font-mono">{{ item.boys }}/{{ item.girls }}</b>
-                <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">L / P</span>
-              </div>
-              <div>
-                <b class="text-sm font-black text-blue-600 block font-mono">{{ item.average }}</b>
-                <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Rata² Nilai</span>
-              </div>
+            <!-- Tag Chips (Kategori / Rombel) -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-2 pb-4">
+              <span class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                {{ getTingkat(item.name, item.level) }}
+              </span>
+              <span v-if="item.major" class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
+                Jurusan {{ item.major }}
+              </span>
+              <span class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                {{ item.room.split('·')[0].trim() }}
+              </span>
+              <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                Aktif
+              </span>
             </div>
           </div>
 
-          <!-- Card Footer with Progress & Actions -->
-          <div class="space-y-3 pt-3 border-t border-slate-100">
-            <div class="space-y-1">
-              <div class="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                <span>Tingkat Kehadiran Hari Ini</span>
-                <b class="text-emerald-700 font-mono">{{ item.attendance }}%</b>
+          <!-- Bottom: 4. Ringkasan Kehadiran Hari Ini & 5. Button [Detail Kelas] -->
+          <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+            <div>
+              <div class="text-lg font-black font-mono text-slate-900 leading-none">
+                {{ item.attendance }}% Hadir
               </div>
-              <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-700 ease-out"
-                  :style="{ width: `${item.attendance}%` }"
-                />
+              <div class="text-[11px] text-slate-400 font-medium mt-1">
+                Ringkasan kehadiran hari ini
               </div>
             </div>
 
-            <div class="flex items-center justify-between gap-2 pt-1">
-              <button
-                class="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-bold transition-colors inline-flex items-center justify-center gap-1"
-                type="button"
-                @click="openDetail(item)"
-              >
-                <AdminIcon name="eye" size="14" />
-                <span>Detail Rombel</span>
-              </button>
-              <button
-                class="py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors inline-flex items-center justify-center gap-1"
-                type="button"
-                title="Lihat Absensi Siswa Kelas Ini"
-                @click="$router.push('/admin/absensi-siswa')"
-              >
-                <AdminIcon name="check" size="14" />
-                <span>Absensi</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              class="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-sm hover:shadow-md transition-all cursor-pointer shrink-0"
+              @click="goToClassDetail(item)"
+            >
+              Detail Kelas
+            </button>
           </div>
         </article>
       </div>
@@ -579,202 +582,180 @@
       </div>
     </div>
 
-    <!-- Modal 1: Detail Rombel Kelas (Teleported to body) -->
-    <Teleport to="body">
-      <div
-        v-if="selected"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn"
-        @click.self="selected = null"
-      >
-        <div class="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 p-6 space-y-6 animate-scaleUp">
-          <!-- Modal Header -->
-          <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-100">
-            <div class="flex items-center gap-3.5">
-              <span
-                class="w-12 h-12 rounded-2xl text-white font-black text-sm flex items-center justify-center shrink-0 shadow-md"
-                :class="avatarGradient(selected.name)"
-              >
-                {{ initials(selected.name) }}
+    <!-- Slide-Over 1: Detail Rombel Kelas -->
+    <AdminSlideOver
+      :open="Boolean(selected)"
+      :title="selected?.name || 'Detail Rombel'"
+      :subtitle="`${selected?.level || ''} • ${selected?.room || ''}`"
+      badge="Data Rombel"
+      badge-type="primary"
+      width="xl"
+      @close="selected = null"
+    >
+      <div v-if="selected" class="space-y-6">
+        <!-- Hero Header Card -->
+        <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 text-white shadow-lg relative overflow-hidden">
+          <div class="flex items-center gap-4">
+            <span
+              class="w-14 h-14 rounded-2xl text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md border border-white/20"
+              :class="avatarGradient(selected.name)"
+            >
+              {{ initials(selected.name) }}
+            </span>
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white inline-block mb-1">
+                {{ selected.level }} &bull; {{ selected.major || 'Reguler' }}
               </span>
-              <div>
-                <h3 class="text-lg font-black text-slate-900 leading-tight">{{ selected.name }}</h3>
-                <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                  <span class="font-bold text-blue-600">{{ selected.level }} &bull; {{ selected.major || 'Reguler' }}</span>
-                  <span>&bull;</span>
-                  <span>{{ selected.room }}</span>
-                </div>
-              </div>
-            </div>
-            <button
-              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold text-sm transition-colors shrink-0"
-              type="button"
-              @click="selected = null"
-            >
-              ✕
-            </button>
-          </div>
-
-          <!-- Wali Kelas Info -->
-          <div class="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 flex items-center justify-between">
-            <div>
-              <span class="text-[10.5px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">Wali Kelas Terdaftar</span>
-              <b class="text-slate-900 text-xs block font-bold">{{ selected.teacher }}</b>
-              <span class="text-[11px] text-slate-500 font-mono">NIP: {{ selected.teacherNip }}</span>
-            </div>
-            <span class="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-800">Aktif Mengajar</span>
-          </div>
-
-          <!-- Rincian Statistik -->
-          <div class="grid grid-cols-2 gap-3 text-xs">
-            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <span class="text-slate-500 text-[10.5px] font-semibold block">Total Siswa Terdaftar:</span>
-              <b class="text-slate-900 font-mono text-sm font-bold">{{ selected.students }} Siswa</b>
-              <span class="text-[10px] text-slate-400 block mt-0.5 font-mono">({{ selected.boys }} Laki-laki &bull; {{ selected.girls }} Perempuan)</span>
-            </div>
-            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <span class="text-slate-500 text-[10.5px] font-semibold block">Tingkat Kehadiran:</span>
-              <b class="text-emerald-600 font-mono text-sm font-bold">{{ selected.attendance }}%</b>
-              <span class="text-[10px] text-slate-400 block mt-0.5">Rata-rata 30 hari terakhir</span>
-            </div>
-            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <span class="text-slate-500 text-[10.5px] font-semibold block">Rata-rata Nilai Semester:</span>
-              <b class="text-blue-600 font-mono text-sm font-bold">{{ selected.average }} / 100</b>
-              <span class="text-[10px] text-slate-400 block mt-0.5">Akumulasi Nilai CBT</span>
-            </div>
-            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <span class="text-slate-500 text-[10.5px] font-semibold block">Lokasi Ruang Belajar:</span>
-              <b class="text-slate-900 text-xs font-bold">{{ selected.room }}</b>
-              <span class="text-[10px] text-slate-400 block mt-0.5">Kapasitas Maks: 36 Siswa</span>
-            </div>
-          </div>
-
-          <!-- Modal Footer -->
-          <div class="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
-            <button
-              class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
-              type="button"
-              @click="selected = null"
-            >
-              Tutup
-            </button>
-            <div class="flex items-center gap-2">
-              <button
-                class="px-4 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
-                type="button"
-                @click="goToAttendance(selected.name)"
-              >
-                Cek Absensi Kelas
-              </button>
+              <h4 class="text-xl font-black text-white leading-tight">
+                {{ selected.name }}
+              </h4>
+              <p class="text-xs text-slate-300 font-mono mt-0.5">Lokasi: {{ selected.room }}</p>
             </div>
           </div>
         </div>
-      </div>
-    </Teleport>
 
-    <!-- Modal 2: Tambah Rombel Kelas (Teleported to body) -->
-    <Teleport to="body">
-      <div
-        v-if="showCreateModal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn"
-        @click.self="showCreateModal = false"
-      >
-        <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 p-6 space-y-5 animate-scaleUp text-slate-900">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div>
-              <h3 class="text-base font-black text-slate-900">Tambah Rombel Kelas Baru</h3>
-              <p class="text-xs text-slate-500 mt-0.5">Tahun Ajaran 2026/2027</p>
-            </div>
-            <button
-              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500"
-              type="button"
-              @click="showCreateModal = false"
-            >
-              ✕
-            </button>
+        <!-- Wali Kelas Card -->
+        <div class="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 flex items-center justify-between">
+          <div>
+            <span class="text-[10.5px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">Wali Kelas Terdaftar</span>
+            <b class="text-slate-900 text-sm block font-bold">{{ selected.teacher }}</b>
+            <span class="text-xs text-slate-500 font-mono">NIP: {{ selected.teacherNip }}</span>
           </div>
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Aktif Mengajar</span>
+        </div>
 
-          <!-- Form Fields -->
-          <div class="space-y-3.5 text-xs">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Nama Rombel Kelas</label>
-              <input
-                v-model.trim="newClass.name"
-                placeholder="Contoh: X RPL 3, XI TKJ 2, VII-C"
-                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-600 bg-slate-50 focus:bg-white transition-colors font-medium"
-              />
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Jenjang</label>
-                <select
-                  v-model="newClass.level"
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-600 bg-white font-bold cursor-pointer"
-                >
-                  <option value="SMK">SMK IT Attaqwa 9</option>
-                  <option value="SMP">SMP IT BCA</option>
-                </select>
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">Jurusan / Program</label>
-                <select
-                  v-model="newClass.major"
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-600 bg-white font-bold cursor-pointer"
-                >
-                  <option value="">Reguler (SMP)</option>
-                  <option value="RPL">RPL</option>
-                  <option value="TKJ">TKJ</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Wali Kelas</label>
-              <select
-                v-model="newClass.teacher"
-                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-600 bg-white font-bold cursor-pointer"
-              >
-                <option value="" disabled>Pilih Wali Kelas</option>
-                <option v-for="t in teacherOptions" :key="t" :value="t">{{ t }}</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Ruangan Kelas</label>
-              <input
-                v-model.trim="newClass.room"
-                placeholder="Contoh: Gedung B &bull; Lab 3"
-                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-600 bg-slate-50 focus:bg-white transition-colors font-medium"
-              />
-            </div>
+        <!-- Rincian Statistik Bento Grid -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+            <span class="text-slate-500 text-[10.5px] font-semibold block">Total Siswa Terdaftar</span>
+            <b class="text-slate-900 font-mono text-base font-bold block mt-1">{{ selected.students }} Siswa</b>
+            <span class="text-[11px] text-slate-400 block mt-0.5 font-mono">({{ selected.boys }} Laki-laki &bull; {{ selected.girls }} Perempuan)</span>
           </div>
-
-          <!-- Modal Action -->
-          <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <button
-              class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
-              type="button"
-              @click="showCreateModal = false"
-            >
-              Batal
-            </button>
-            <button
-              class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20"
-              type="button"
-              @click="submitCreateClass"
-            >
-              Simpan Rombel
-            </button>
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+            <span class="text-slate-500 text-[10.5px] font-semibold block">Tingkat Kehadiran</span>
+            <b class="text-emerald-600 font-mono text-base font-bold block mt-1">{{ selected.attendance }}%</b>
+            <span class="text-[11px] text-slate-400 block mt-0.5">Rata-rata 30 hari terakhir</span>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+            <span class="text-slate-500 text-[10.5px] font-semibold block">Rata-rata Nilai Semester</span>
+            <b class="text-blue-600 font-mono text-base font-bold block mt-1">{{ selected.average }} / 100</b>
+            <span class="text-[11px] text-slate-400 block mt-0.5">Akumulasi Nilai CBT</span>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+            <span class="text-slate-500 text-[10.5px] font-semibold block">Kapasitas Ruangan</span>
+            <b class="text-slate-900 text-sm font-bold block mt-1">{{ selected.room }}</b>
+            <span class="text-[11px] text-slate-400 block mt-0.5">Kapasitas Maks: 36 Siswa</span>
           </div>
         </div>
       </div>
-    </Teleport>
+
+      <template #footer>
+        <button
+          class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="selected = null"
+        >
+          Tutup
+        </button>
+        <button
+          class="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm cursor-pointer min-h-[44px]"
+          type="button"
+          @click="selected ? goToAttendance(selected.name) : null"
+        >
+          Cek Absensi Kelas
+        </button>
+      </template>
+    </AdminSlideOver>
+
+    <!-- Modal Center 2: Tambah Rombel Kelas (Mobile First & Modern) -->
+    <AdminSlideOver
+      :open="showCreateModal"
+      title="Tambah Rombel Kelas Baru"
+      subtitle="Tahun Ajaran 2026/2027 • Semester Ganjil"
+      badge="Form Rombel"
+      badge-type="primary"
+      width="lg"
+      @close="showCreateModal = false"
+    >
+      <div class="space-y-4 sm:space-y-5 text-sm">
+        <div>
+          <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Nama Rombel Kelas</label>
+          <input
+            v-model.trim="newClass.name"
+            placeholder="Contoh: X RPL 3, XI TKJ 2, VII-C"
+            class="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 bg-slate-50 focus:bg-white transition-all font-medium text-sm text-slate-800 min-h-[44px]"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Jenjang</label>
+            <select
+              v-model="newClass.level"
+              class="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 bg-white font-bold cursor-pointer text-sm text-slate-800 min-h-[44px]"
+            >
+              <option value="SMK">SMK IT Attaqwa 9</option>
+              <option value="SMP">SMP IT BCA</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Jurusan / Program</label>
+            <select
+              v-model="newClass.major"
+              class="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 bg-white font-bold cursor-pointer text-sm text-slate-800 min-h-[44px]"
+            >
+              <option value="">Reguler (SMP)</option>
+              <option value="RPL">RPL</option>
+              <option value="TKJ">TKJ</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Wali Kelas</label>
+          <select
+            v-model="newClass.teacher"
+            class="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 bg-white font-bold cursor-pointer text-sm text-slate-800 min-h-[44px]"
+          >
+            <option value="" disabled>Pilih Wali Kelas</option>
+            <option v-for="t in teacherOptions" :key="t" :value="t">{{ t }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Ruangan Kelas</label>
+          <input
+            v-model.trim="newClass.room"
+            placeholder="Contoh: Gedung B &bull; Lab 3"
+            class="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 bg-slate-50 focus:bg-white transition-all font-medium text-sm text-slate-800 min-h-[44px]"
+          />
+        </div>
+      </div>
+
+      <template #footer>
+        <button
+          class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="showCreateModal = false"
+        >
+          Batal
+        </button>
+        <button
+          class="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="submitCreateClass"
+        >
+          Simpan Rombel
+        </button>
+      </template>
+    </AdminSlideOver>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
+import AdminSlideOver from '~/components/admin/AdminSlideOver.vue'
 import AdminLineChart from '~/components/admin/AdminLineChart.vue'
 import AdminDonutChart from '~/components/admin/AdminDonutChart.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -983,15 +964,28 @@ watch([searchQuery, filterGrade, filterMajor, selectedCategory, selectedSort], (
 })
 
 const filterClassAndGoDetail = (className: string) => {
-  searchQuery.value = className
-  activeSubmenu.value = 'daftar'
+  router.push(`/admin/kelas/${encodeURIComponent(className)}`)
 }
 
-// Modal Detail State
+// Modal Detail State & Navigation
 const selected = ref<ClassRombel | null>(null)
 
+const goToClassDetail = (item: ClassRombel) => {
+  router.push(`/admin/kelas/${encodeURIComponent(item.name)}`)
+}
+
+const goToClassAttendance = (item: ClassRombel) => {
+  router.push({
+    path: '/admin/absensi-siswa',
+    query: {
+      kelas: item.name,
+      jenjang: item.level
+    }
+  })
+}
+
 const openDetail = (item: ClassRombel) => {
-  selected.value = item
+  goToClassDetail(item)
 }
 
 const goToAttendance = (className: string) => {
@@ -1058,6 +1052,16 @@ const submitCreateClass = () => {
 }
 
 // Helpers & Formatters
+const getTingkat = (name: string, level: string) => {
+  if (name.startsWith('VII-')) return 'Tingkat VII'
+  if (name.startsWith('VIII-')) return 'Tingkat VIII'
+  if (name.startsWith('IX-')) return 'Tingkat IX'
+  if (name.startsWith('X ')) return 'Tingkat X'
+  if (name.startsWith('XI ')) return 'Tingkat XI'
+  if (name.startsWith('XII ')) return 'Tingkat XII'
+  return level === 'SMP' ? 'Tingkat SMP' : 'Tingkat SMK'
+}
+
 const initials = (name: string) => {
   return name.replace(/^Drs\.\s*|H\.\s*|S\.Pd\s*|M\.Kom\s*|S\.Kom\s*|S\.Si\s*|S\.T\s*/g, '').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 }

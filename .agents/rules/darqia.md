@@ -5,7 +5,7 @@ trigger: always_on
 # WAJIB SEBELUM CODING (blocking, jangan skip)
 
 1. Baca sampai habis: AGENTS.md (root repo).
-2. Buka folder docs/ dan baca file yang relevan dengan task. 
+2. Buka folder docs/ dan baca file yang relevan dengan task. (prd.md / INFRA.md / SEO.md / Structure.md )
 
 contoh:
    - Task CBT / admin CBT → docs/BRIEF-CBT-JADWAL.md (WAJIB, desain final owner hasil 4x revisi)

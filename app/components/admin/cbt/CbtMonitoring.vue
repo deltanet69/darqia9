@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useAdminCbtState, type Exam } from '~/composables/useAdminCbtState'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
+import AdminSlideOver from '~/components/admin/AdminSlideOver.vue'
 
 const { liveExams, grade } = useAdminCbtState()
 const selectedExamForDetail = ref<Exam | null>(null)
@@ -192,130 +193,110 @@ const showToast = (msg: string) => {
       </article>
     </div>
 
-    <!-- DETAIL PESERTA LIVE MODAL -->
-    <div
-      v-if="isModalOpen && selectedExamForDetail"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
-      @click.self="closeModal"
+    <!-- DETAIL PESERTA LIVE SLIDE-OVER -->
+    <AdminSlideOver
+      :open="Boolean(isModalOpen && selectedExamForDetail)"
+      :title="selectedExamForDetail?.name || 'Pantauan Peserta Ujian'"
+      :subtitle="`${selectedExamForDetail?.classroom || ''} • ${selectedExamForDetail?.subject || ''}`"
+      badge="Live Monitoring"
+      badge-type="primary"
+      width="2xl"
+      @close="closeModal"
     >
-      <div class="bg-white rounded-[20px] shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp">
-        <!-- Modal Head -->
-        <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-mono">
-                {{ selectedExamForDetail.classroom }}
-              </span>
-              <span class="text-xs font-bold text-slate-500">{{ selectedExamForDetail.subject }}</span>
-            </div>
-            <h3 class="text-lg font-bold text-slate-900">{{ selectedExamForDetail.name }} &mdash; Pantauan Peserta</h3>
-          </div>
-          <button
-            class="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition"
-            type="button"
-            @click="closeModal"
-          >
-            <AdminIcon name="x" size="18" />
-          </button>
+      <div v-if="selectedExamForDetail" class="space-y-4 text-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-700 font-semibold bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200/80">
+          <span>Siswa yang berpindah tab atau keluar fullscreen otomatis terkunci &amp; membutuhkan PIN Pengawas untuk membuka.</span>
+          <span class="font-mono text-blue-700 font-bold shrink-0">PIN Darurat: ATQ-9481</span>
         </div>
 
-        <!-- Modal Body (Table) -->
-        <div class="p-5 sm:p-6 overflow-y-auto space-y-4">
-          <div class="flex items-center justify-between text-xs text-slate-500 font-semibold bg-blue-50/60 p-3 rounded-xl border border-blue-100">
-            <span>Siswa yang berpindah tab atau keluar fullscreen otomatis terkunci &amp; membutuhkan PIN Pengawas untuk membuka.</span>
-            <span class="font-mono text-blue-700 font-bold">PIN Darurat: ATQ-9481</span>
-          </div>
-
-          <div class="overflow-x-auto border border-slate-200/80 rounded-xl">
-            <table class="w-full text-left text-xs text-slate-700">
-              <thead class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                <tr>
-                  <th class="px-4 py-3">Nama Siswa</th>
-                  <th class="px-4 py-3">NISN</th>
-                  <th class="px-4 py-3">Progres Soal</th>
-                  <th class="px-4 py-3 text-center">Pelanggaran</th>
-                  <th class="px-4 py-3 text-center">Status</th>
-                  <th class="px-4 py-3 text-right">Aksi Pengawas</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                <tr v-for="stu in liveStudents" :key="stu.id" class="hover:bg-slate-50/60 transition">
-                  <td class="px-4 py-3 font-bold text-slate-900">{{ stu.name }}</td>
-                  <td class="px-4 py-3 font-mono text-slate-500">{{ stu.nisn }}</td>
-                  <td class="px-4 py-3">
-                    <div class="flex items-center gap-2">
-                      <span class="font-mono font-bold text-slate-800">{{ stu.progress }}/{{ stu.total }}</span>
-                      <div class="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                        <div class="bg-blue-600 h-full rounded-full" :style="{ width: `${(stu.progress / stu.total) * 100}%` }"></div>
-                      </div>
+        <div class="overflow-x-auto border border-slate-200/80 rounded-2xl">
+          <table class="w-full text-left text-xs text-slate-700">
+            <thead class="bg-slate-50 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+              <tr>
+                <th class="px-4 py-3">Nama Siswa</th>
+                <th class="px-4 py-3">NISN</th>
+                <th class="px-4 py-3">Progres Soal</th>
+                <th class="px-4 py-3 text-center">Pelanggaran</th>
+                <th class="px-4 py-3 text-center">Status</th>
+                <th class="px-4 py-3 text-right">Aksi Pengawas</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="stu in liveStudents" :key="stu.id" class="hover:bg-slate-50/60 transition">
+                <td class="px-4 py-3 font-bold text-slate-900">{{ stu.name }}</td>
+                <td class="px-4 py-3 font-mono text-slate-500">{{ stu.nisn }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-slate-800">{{ stu.progress }}/{{ stu.total }}</span>
+                    <div class="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      <div class="bg-blue-600 h-full rounded-full" :style="{ width: `${(stu.progress / stu.total) * 100}%` }"></div>
                     </div>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <span
-                      class="px-2 py-0.5 rounded-md font-bold text-[11px]"
-                      :class="stu.violations > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'"
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span
+                    class="px-2 py-0.5 rounded-md font-bold text-[11px]"
+                    :class="stu.violations > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'"
+                  >
+                    {{ stu.violations }}x Peringatan
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[11px]"
+                    :class="{
+                      'bg-emerald-50 text-emerald-700 border border-emerald-200': stu.status === 'Selesai',
+                      'bg-blue-50 text-blue-700 border border-blue-200': stu.status === 'Mengerjakan',
+                      'bg-rose-50 text-rose-700 border border-rose-200': stu.status.includes('Terkunci')
+                    }"
+                  >
+                    {{ stu.status }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button
+                      v-if="stu.status.includes('Terkunci')"
+                      class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-[11px] transition shadow-xs cursor-pointer"
+                      type="button"
+                      @click="triggerUnlock(stu)"
                     >
-                      {{ stu.violations }}x Peringatan
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <span
-                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[11px]"
-                      :class="{
-                        'bg-emerald-50 text-emerald-700 border border-emerald-200': stu.status === 'Selesai',
-                        'bg-blue-50 text-blue-700 border border-blue-200': stu.status === 'Mengerjakan',
-                        'bg-rose-50 text-rose-700 border border-rose-200': stu.status.includes('Terkunci')
-                      }"
+                      Buka Kunci
+                    </button>
+                    <button
+                      v-if="stu.status === 'Mengerjakan'"
+                      class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-semibold text-[11px] transition cursor-pointer"
+                      type="button"
+                      @click="triggerWarning(stu)"
                     >
-                      {{ stu.status }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 text-right">
-                    <div class="flex items-center justify-end gap-1.5">
-                      <button
-                        v-if="stu.status.includes('Terkunci')"
-                        class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-[11px] transition shadow-xs"
-                        type="button"
-                        @click="triggerUnlock(stu)"
-                      >
-                        Buka Kunci
-                      </button>
-                      <button
-                        v-if="stu.status === 'Mengerjakan'"
-                        class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-semibold text-[11px] transition"
-                        type="button"
-                        @click="triggerWarning(stu)"
-                      >
-                        Peringatkan
-                      </button>
-                      <button
-                        v-if="stu.status === 'Mengerjakan'"
-                        class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold text-[11px] transition"
-                        type="button"
-                        @click="triggerForceSubmit(stu)"
-                      >
-                        Kumpulkan
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <span class="text-xs text-slate-500">Data terhubung secara real-time ke aplikasi ujian siswa</span>
-          <button
-            class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition"
-            type="button"
-            @click="closeModal"
-          >
-            Tutup
-          </button>
+                      Peringatkan
+                    </button>
+                    <button
+                      v-if="stu.status === 'Mengerjakan'"
+                      class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold text-[11px] transition cursor-pointer"
+                      type="button"
+                      @click="triggerForceSubmit(stu)"
+                    >
+                      Kumpulkan
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
+
+      <template #footer>
+        <span class="text-xs sm:text-sm text-slate-500 font-medium mr-auto hidden sm:block">Data terhubung secara real-time ke aplikasi ujian siswa</span>
+        <button
+          class="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-sm transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="closeModal"
+        >
+          Tutup
+        </button>
+      </template>
+    </AdminSlideOver>
   </div>
 </template>

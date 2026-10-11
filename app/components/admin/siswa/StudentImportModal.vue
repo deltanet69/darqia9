@@ -209,26 +209,67 @@ const handleApplyImport = () => {
 
 <template>
   <Teleport to="body">
-    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="$emit('close')" />
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden z-10" role="dialog" aria-modal="true">
-        <!-- HEADER -->
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
-          <div>
-            <h3 class="text-base font-bold text-slate-900">
-              Import Data Siswa (CSV)
-            </h3>
-            <p class="text-xs text-slate-400 mt-0.5">
-              Unggah file CSV data induk siswa untuk jenjang <b>{{ grade === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9' }}</b>.
-            </p>
-          </div>
-          <button class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition" type="button" aria-label="Tutup" @click="$emit('close')">
-            <AdminIcon name="x" size="18" />
-          </button>
-        </div>
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-5 md:p-6 overflow-y-auto"
+    >
+      <!-- Backdrop Gelap dengan Blur Halus -->
+      <Transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          class="fixed inset-0 bg-slate-950/65 backdrop-blur-sm cursor-pointer"
+          aria-hidden="true"
+          @click="$emit('close')"
+        />
+      </Transition>
 
-        <!-- BODY -->
-        <div class="p-5 overflow-y-auto flex-1 min-h-0 space-y-4">
+      <!-- Centered Modal Card (Keren, Modern, Mobile-First) -->
+      <Transition
+        enter-active-class="transition duration-200 ease-out transform"
+        enter-from-class="opacity-0 scale-95 translate-y-2"
+        enter-to-class="opacity-100 scale-100 translate-y-0"
+        leave-active-class="transition duration-150 ease-in transform"
+        leave-from-class="opacity-100 scale-100 translate-y-0"
+        leave-to-class="opacity-0 scale-95 translate-y-2"
+      >
+        <div
+          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <!-- HEADER STICKY -->
+          <div class="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/95 backdrop-blur-xs sticky top-0 z-10">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/80 shadow-xs">
+                <AdminIcon name="dl" size="20" />
+              </div>
+              <div>
+                <h3 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug">
+                  Import Data Siswa (CSV)
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                  Unggah file CSV data induk siswa untuk jenjang <b>{{ grade === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9' }}</b>.
+                </p>
+              </div>
+            </div>
+            <button
+              class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer touch-manipulation shrink-0"
+              type="button"
+              aria-label="Tutup dialog"
+              @click="$emit('close')"
+            >
+              <AdminIcon name="x" size="18" />
+            </button>
+          </div>
+
+          <!-- BODY -->
+          <div class="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4 text-slate-800 text-sm">
           <!-- STEP 1: UPLOAD & TEMPLATE -->
           <div class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center">
             <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
@@ -331,19 +372,27 @@ const handleApplyImport = () => {
           </div>
         </div>
 
-        <!-- FOOTER -->
-        <div class="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-white">
-          <button class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition" type="button" @click="$emit('close')">Batal</button>
+        <!-- FOOTER STICKY (TOUCH FRIENDLY) -->
+        <div class="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0 bg-slate-50/90 backdrop-blur-xs">
           <button
-            class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition min-h-[44px] cursor-pointer"
+            type="button"
+            @click="$emit('close')"
+          >
+            Batal
+          </button>
+          <button
+            class="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] cursor-pointer"
             type="button"
             :disabled="validRows.length === 0"
             @click="handleApplyImport"
           >
-            <AdminIcon name="plus" size="14" /> Import {{ validRows.length }} Data Siswa
+            <AdminIcon name="plus" size="16" />
+            <span>Import {{ validRows.length }} Data Siswa</span>
           </button>
         </div>
       </div>
-    </div>
-  </Teleport>
+    </Transition>
+  </div>
+</Teleport>
 </template>

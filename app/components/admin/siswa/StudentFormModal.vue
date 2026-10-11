@@ -69,39 +69,80 @@ const handleSubmit = () => {
 
 <template>
   <Teleport to="body">
-    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="$emit('close')" />
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden z-10" role="dialog" aria-modal="true">
-        <!-- HEADER -->
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
-          <div>
-            <h3 class="text-base font-bold text-slate-900">
-              {{ mode === 'add' ? 'Tambah Data Siswa Baru' : 'Edit Data Induk Siswa' }}
-            </h3>
-            <p class="text-xs text-slate-400 mt-0.5">
-              Lengkapi data pokok peserta didik sesuai format data resmi sekolah / Dapodik.
-            </p>
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-5 md:p-6 overflow-y-auto"
+    >
+      <!-- Backdrop Gelap dengan Blur Halus -->
+      <Transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          class="fixed inset-0 bg-slate-950/65 backdrop-blur-sm cursor-pointer"
+          aria-hidden="true"
+          @click="$emit('close')"
+        />
+      </Transition>
+
+      <!-- Centered Modal Card (Keren, Modern, Mobile-First) -->
+      <Transition
+        enter-active-class="transition duration-200 ease-out transform"
+        enter-from-class="opacity-0 scale-95 translate-y-2"
+        enter-to-class="opacity-100 scale-100 translate-y-0"
+        leave-active-class="transition duration-150 ease-in transform"
+        leave-from-class="opacity-100 scale-100 translate-y-0"
+        leave-to-class="opacity-0 scale-95 translate-y-2"
+      >
+        <div
+          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <!-- HEADER STICKY -->
+          <div class="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/95 backdrop-blur-xs sticky top-0 z-10">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/80 shadow-xs">
+                <AdminIcon name="student" size="20" />
+              </div>
+              <div>
+                <h3 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug">
+                  {{ mode === 'add' ? 'Tambah Data Siswa Baru' : 'Edit Data Induk Siswa' }}
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                  Lengkapi data pokok peserta didik sesuai format Dapodik resmi.
+                </p>
+              </div>
+            </div>
+            <button
+              class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer touch-manipulation shrink-0"
+              type="button"
+              aria-label="Tutup dialog"
+              @click="$emit('close')"
+            >
+              <AdminIcon name="x" size="18" />
+            </button>
           </div>
-          <button class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition" type="button" aria-label="Tutup" @click="$emit('close')">
-            <AdminIcon name="x" size="18" />
-          </button>
-        </div>
 
-        <!-- FORM TABS -->
-        <div class="flex gap-1 px-5 pt-2 border-b border-slate-100 bg-slate-50/50 overflow-x-auto shrink-0">
-          <button
-            v-for="st in sections"
-            :key="st.id"
-            type="button"
-            class="px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition border-b-2"
-            :class="currentSection === st.id ? 'text-blue-600 border-blue-600' : 'text-slate-500 border-transparent hover:text-slate-800'"
-            @click="currentSection = st.id"
-          >
-            {{ st.label }}
-          </button>
-        </div>
+          <!-- FORM TABS (TOUCH FRIENDLY) -->
+          <div class="flex gap-2 px-5 sm:px-6 pt-3 pb-2 border-b border-slate-100 bg-slate-50/70 overflow-x-auto shrink-0">
+            <button
+              v-for="st in sections"
+              :key="st.id"
+              type="button"
+              class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition min-h-[38px] cursor-pointer"
+              :class="currentSection === st.id ? 'bg-blue-600 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100'"
+              @click="currentSection = st.id"
+            >
+              {{ st.label }}
+            </button>
+          </div>
 
-        <form class="flex flex-col flex-1 min-h-0 overflow-hidden" @submit.prevent="handleSubmit">
+          <form class="flex flex-col flex-1 min-h-0 overflow-hidden" @submit.prevent="handleSubmit">
           <div class="p-5 overflow-y-auto flex-1 min-h-0 space-y-4">
             <!-- SECTION 1: BIODATA & ALAMAT -->
             <template v-if="currentSection === 'pribadi'">
@@ -276,19 +317,31 @@ const handleSubmit = () => {
           </div>
 
           <!-- FOOTER -->
-          <div class="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between shrink-0 bg-white">
-            <div class="text-xs text-slate-400">
-              Langkah: <b class="text-slate-700">{{ sectionTitle }}</b>
+          <!-- FOOTER STICKY (TOUCH FRIENDLY) -->
+          <div class="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/90 backdrop-blur-xs">
+            <div class="text-xs sm:text-sm text-slate-500 font-medium hidden sm:block">
+              Langkah: <b class="text-slate-800 font-bold">{{ sectionTitle }}</b>
             </div>
-            <div class="flex items-center gap-2">
-              <button class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition" type="button" @click="$emit('close')">Batal</button>
-              <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition" type="submit">
-                {{ mode === 'add' ? 'Simpan Siswa' : 'Perbarui Data' }}
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <button
+                class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition min-h-[44px] cursor-pointer"
+                type="button"
+                @click="$emit('close')"
+              >
+                Batal
+              </button>
+              <button
+                class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm transition min-h-[44px] flex items-center gap-2 cursor-pointer"
+                type="submit"
+              >
+                <AdminIcon name="check" size="16" />
+                <span>{{ mode === 'add' ? 'Simpan Siswa' : 'Perbarui Data' }}</span>
               </button>
             </div>
           </div>
         </form>
       </div>
-    </div>
-  </Teleport>
+    </Transition>
+  </div>
+</Teleport>
 </template>

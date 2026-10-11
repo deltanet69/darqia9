@@ -55,10 +55,15 @@
         <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-600" />
       </button>
       
-      <!-- Avatar Badge -->
-      <button class="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-sm" type="button" aria-label="Profil Administrator">
+      <!-- Avatar Badge (Links to /admin/profile) -->
+      <NuxtLink
+        to="/admin/profile"
+        class="w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center shadow-sm transition-colors"
+        title="Profil Administrator"
+        aria-label="Profil Administrator"
+      >
         AD
-      </button>
+      </NuxtLink>
     </div>
   </header>
 </template>
@@ -74,7 +79,12 @@ defineEmits<{ 'toggle-menu': [] }>()
 const route = useRoute()
 const grade = useAdminGrade()
 
-const key = computed(() => route.name?.toString().replace('admin-', '') || 'dashboard')
+const key = computed(() => {
+  const byName = route.name?.toString().replace('admin-', '')
+  if (byName && adminTitles[byName]) return byName
+  const byPath = route.path.split('/')[2] || 'dashboard'
+  return byPath
+})
 const title = computed(() => adminTitles[key.value]?.[0] || 'Dashboard')
 const subtitle = computed(() => adminTitles[key.value]?.[1] || 'Ringkasan operasional sekolah')
 </script>

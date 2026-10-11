@@ -44,51 +44,96 @@ const initials = (name: string) => {
 
 <template>
   <Teleport to="body">
-    <div v-if="student" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="$emit('close')" />
-      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden z-10" role="dialog" aria-modal="true">
-        <!-- HEADER -->
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
-          <div class="flex items-center gap-3.5">
-            <span
-              class="w-12 h-12 rounded-xl text-white flex items-center justify-center font-bold text-base shrink-0"
-              :class="student.gender === 'L' ? 'bg-gradient-to-br from-blue-500 to-blue-700' : 'bg-gradient-to-br from-pink-500 to-rose-700'"
-            >
-              {{ initials(student.name) }}
-            </span>
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-base font-bold text-slate-900">{{ student.name }}</h3>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold" :class="student.status === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">{{ student.status }}</span>
-                <span v-if="student.hasRfid" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold font-mono bg-blue-50 text-blue-700 border border-blue-200">RFID Ready</span>
+    <div
+      v-if="student"
+      class="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-5 md:p-6 overflow-y-auto"
+    >
+      <!-- Backdrop Gelap dengan Blur Halus -->
+      <Transition
+        enter-active-class="transition-opacity duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          class="fixed inset-0 bg-slate-950/65 backdrop-blur-sm cursor-pointer"
+          aria-hidden="true"
+          @click="$emit('close')"
+        />
+      </Transition>
+
+      <!-- Centered Modal Card (Keren, Modern, Mobile-First) -->
+      <Transition
+        enter-active-class="transition duration-200 ease-out transform"
+        enter-from-class="opacity-0 scale-95 translate-y-2"
+        enter-to-class="opacity-100 scale-100 translate-y-0"
+        leave-active-class="transition duration-150 ease-in transform"
+        leave-from-class="opacity-100 scale-100 translate-y-0"
+        leave-to-class="opacity-0 scale-95 translate-y-2"
+      >
+        <div
+          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <!-- HEADER STICKY -->
+          <div class="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/95 backdrop-blur-xs sticky top-0 z-10">
+            <div class="flex items-center gap-3.5 min-w-0">
+              <span
+                class="w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-base shrink-0 shadow-xs"
+                :class="student.gender === 'L' ? 'bg-gradient-to-br from-blue-500 to-blue-700' : 'bg-gradient-to-br from-pink-500 to-rose-700'"
+              >
+                {{ initials(student.name) }}
+              </span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug truncate">
+                    {{ student.name }}
+                  </h3>
+                  <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider"
+                    :class="student.status === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
+                  >
+                    {{ student.status }}
+                  </span>
+                  <span v-if="student.hasRfid" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-blue-50 text-blue-700 border border-blue-200">
+                    RFID Ready
+                  </span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium truncate mt-0.5">
+                  ID: <b class="font-mono text-blue-600 font-bold">{{ student.id }}</b> &bull; NIS: <b>{{ student.nis || '-' }}</b> &bull; NISN: <b>{{ student.nisn }}</b> &bull; Kelas: <b>{{ student.className }}</b>
+                  <template v-if="student.major"> &bull; {{ student.major }}</template>
+                </p>
               </div>
-              <p class="text-xs text-slate-400 mt-0.5">
-                ID: <b class="font-mono text-blue-600 font-bold">{{ student.id }}</b> &bull; NIS: <b>{{ student.nis || '-' }}</b> &bull; NISN: <b>{{ student.nisn }}</b> &bull; Kelas: <b>{{ student.className }}</b>
-                <template v-if="student.major"> &bull; {{ student.major }}</template>
-              </p>
             </div>
+            <button
+              class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer touch-manipulation shrink-0"
+              type="button"
+              aria-label="Tutup dialog"
+              @click="$emit('close')"
+            >
+              <AdminIcon name="x" size="18" />
+            </button>
           </div>
-          <button class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition" type="button" aria-label="Tutup" @click="$emit('close')">
-            <AdminIcon name="x" size="18" />
-          </button>
-        </div>
 
-        <!-- TABS HEADER -->
-        <div class="flex gap-1 px-5 pt-2 border-b border-slate-100 bg-slate-50/50 overflow-x-auto shrink-0">
-          <button
-            v-for="t in tabs"
-            :key="t.id"
-            type="button"
-            class="px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition border-b-2"
-            :class="activeTab === t.id ? 'text-blue-600 border-blue-600' : 'text-slate-500 border-transparent hover:text-slate-800'"
-            @click="activeTab = t.id"
-          >
-            {{ t.label }}
-          </button>
-        </div>
+          <!-- TABS HEADER (TOUCH FRIENDLY) -->
+          <div class="flex gap-2 px-5 sm:px-6 pt-3 pb-2 border-b border-slate-100 bg-slate-50/70 overflow-x-auto shrink-0">
+            <button
+              v-for="t in tabs"
+              :key="t.id"
+              type="button"
+              class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition min-h-[38px] cursor-pointer"
+              :class="activeTab === t.id ? 'bg-blue-600 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-100'"
+              @click="activeTab = t.id"
+            >
+              {{ t.label }}
+            </button>
+          </div>
 
-        <!-- MODAL BODY -->
-        <div class="p-5 overflow-y-auto flex-1 min-h-0 space-y-4">
+          <!-- MODAL BODY -->
+          <div class="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4 text-slate-800 text-sm">
           <!-- TAB 1: BIODATA & ALAMAT -->
           <div v-if="activeTab === 'pribadi'" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
@@ -309,16 +354,26 @@ const initials = (name: string) => {
           </div>
         </div>
 
-        <!-- FOOTER -->
-        <div class="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between shrink-0 bg-white">
-          <button class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition" type="button" @click="$emit('edit', student)">
-            <AdminIcon name="pencil" size="14" /> Edit Biodata
+        <!-- FOOTER STICKY (TOUCH FRIENDLY) -->
+        <div class="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/90 backdrop-blur-xs">
+          <button
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200/90 hover:bg-slate-100 text-slate-700 text-sm font-bold rounded-xl shadow-xs transition min-h-[44px] cursor-pointer"
+            type="button"
+            @click="$emit('edit', student)"
+          >
+            <AdminIcon name="pencil" size="16" />
+            <span>Edit Biodata</span>
           </button>
-          <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition" type="button" @click="$emit('close')">
+          <button
+            class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm transition min-h-[44px] cursor-pointer"
+            type="button"
+            @click="$emit('close')"
+          >
             Tutup
           </button>
         </div>
       </div>
-    </div>
-  </Teleport>
+    </Transition>
+  </div>
+</Teleport>
 </template>

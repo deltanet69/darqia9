@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useAdminCbtState, type Exam } from '~/composables/useAdminCbtState'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
+import AdminSlideOver from '~/components/admin/AdminSlideOver.vue'
 
 const { exams, allExams, grade, activeTab } = useAdminCbtState()
 
@@ -293,129 +294,130 @@ const statusBadgeClass = (status: string) => {
       </div>
     </template>
 
-    <!-- MODAL DETAIL PELANGGARAN -->
-    <div
-      v-if="isViolationModalOpen && selectedExamViolations"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
-      @click.self="closeViolationsModal"
+    <!-- MODAL CENTER 1: DETAIL PELANGGARAN (MOBILE FIRST & MODERN) -->
+    <AdminSlideOver
+      :open="Boolean(isViolationModalOpen && selectedExamViolations)"
+      title="Catatan Pelanggaran Sesi"
+      :subtitle="`${selectedExamViolations?.name || ''} • ${selectedExamViolations?.classroom || ''}`"
+      badge="Anti-Cheat CBT"
+      badge-type="warning"
+      width="lg"
+      @close="closeViolationsModal"
     >
-      <div class="bg-white rounded-[20px] shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-scaleUp">
-        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div>
-            <h4 class="text-base font-bold text-slate-900">Catatan Pelanggaran Sesi</h4>
-            <p class="text-xs text-slate-500">{{ selectedExamViolations.name }} &bull; {{ selectedExamViolations.classroom }}</p>
-          </div>
-          <button class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center" @click="closeViolationsModal">
-            <AdminIcon name="x" size="16" />
-          </button>
+      <div v-if="selectedExamViolations" class="space-y-3.5 text-sm">
+        <div v-if="selectedExamViolations.violations === 0" class="text-center py-8 text-sm text-slate-400 font-medium">
+          Tidak ada pelanggaran tercatat untuk sesi ujian ini. Seluruh peserta tertib.
         </div>
-        <div class="p-5 space-y-3">
-          <div v-if="selectedExamViolations.violations === 0" class="text-center py-6 text-xs text-slate-400">
-            Tidak ada pelanggaran tercatat untuk sesi ujian ini.
-          </div>
-          <div v-else class="space-y-2">
-            <div class="p-3 rounded-xl bg-rose-50 border border-rose-100 text-xs">
-              <div class="flex justify-between items-center font-bold text-rose-800">
-                <span>Nabila Zahra Putri (NISN: 0071234504)</span>
-                <span class="font-mono text-[11px]">08:15 WIB</span>
-              </div>
-              <p class="text-rose-700 mt-1">Terdeteksi 2x berpindah tab/aplikasi lain di browser.</p>
-              <span class="inline-block mt-1 font-bold text-[10px] bg-rose-200/80 text-rose-900 px-2 py-0.5 rounded">Status: Terkunci (1x) &bull; PIN: ATQ-9481</span>
+        <div v-else class="space-y-3">
+          <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-sm">
+            <div class="flex justify-between items-center font-bold text-rose-900">
+              <span>Nabila Zahra Putri (NISN: 0071234504)</span>
+              <span class="font-mono text-xs font-bold text-rose-700">08:15 WIB</span>
             </div>
-            <div class="p-3 rounded-xl bg-rose-50 border border-rose-100 text-xs">
-              <div class="flex justify-between items-center font-bold text-rose-800">
-                <span>Siti Aisyah (NISN: 0071234502)</span>
-                <span class="font-mono text-[11px]">08:42 WIB</span>
-              </div>
-              <p class="text-rose-700 mt-1">Keluar dari mode full-screen jendela ujian.</p>
-              <span class="inline-block mt-1 font-bold text-[10px] bg-rose-200/80 text-rose-900 px-2 py-0.5 rounded">Status: Terkunci (1x) &bull; PIN: ATQ-3312</span>
-            </div>
+            <p class="text-rose-800 text-xs sm:text-sm mt-1.5 font-medium">Terdeteksi 2x berpindah tab/aplikasi lain di browser.</p>
+            <span class="inline-block mt-2 font-bold text-xs bg-rose-200/90 text-rose-950 px-2.5 py-1 rounded-lg">Status: Terkunci (1x) &bull; PIN: ATQ-9481</span>
           </div>
-        </div>
-        <div class="p-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
-          <button class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl" @click="closeViolationsModal">
-            Tutup
-          </button>
+          <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-sm">
+            <div class="flex justify-between items-center font-bold text-rose-900">
+              <span>Siti Aisyah (NISN: 0071234502)</span>
+              <span class="font-mono text-xs font-bold text-rose-700">08:42 WIB</span>
+            </div>
+            <p class="text-rose-800 text-xs sm:text-sm mt-1.5 font-medium">Keluar dari mode full-screen jendela ujian.</p>
+            <span class="inline-block mt-2 font-bold text-xs bg-rose-200/90 text-rose-950 px-2.5 py-1 rounded-lg">Status: Terkunci (1x) &bull; PIN: ATQ-3312</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- MODAL TAMBAH JADWAL UJIAN -->
-    <div
-      v-if="isCreateExamModalOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
-      @click.self="isCreateExamModalOpen = false"
+      <template #footer>
+        <button
+          class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="closeViolationsModal"
+        >
+          Tutup
+        </button>
+      </template>
+    </AdminSlideOver>
+
+    <!-- MODAL CENTER 2: TAMBAH JADWAL UJIAN (MOBILE FIRST & MODERN) -->
+    <AdminSlideOver
+      :open="isCreateExamModalOpen"
+      title="Jadwalkan Sesi Ujian Baru"
+      subtitle="Manajemen CBT • Bank Soal Terpadu"
+      badge="Form Ujian"
+      badge-type="primary"
+      width="lg"
+      @close="isCreateExamModalOpen = false"
     >
-      <div class="bg-white rounded-[20px] shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-scaleUp">
-        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <h4 class="text-base font-bold text-slate-900">Jadwalkan Sesi Ujian Baru</h4>
-          <button class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center" @click="isCreateExamModalOpen = false">
-            <AdminIcon name="x" size="16" />
-          </button>
+      <div class="space-y-4 sm:space-y-5 text-sm">
+        <div>
+          <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Nama Sesi Ujian</label>
+          <input
+            v-model="newExamName"
+            placeholder="Contoh: PTS Matematika Terpadu"
+            class="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all text-sm font-medium min-h-[44px]"
+          />
         </div>
 
-        <div class="p-5 space-y-4 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label class="block font-bold text-slate-700 mb-1">Nama Sesi Ujian</label>
-            <input
-              v-model="newExamName"
-              placeholder="Contoh: PTS Matematika Terpadu"
-              class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:border-blue-500 focus:outline-none"
-            />
+            <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Kelas</label>
+            <select v-model="newExamClass" class="w-full px-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 cursor-pointer font-bold text-sm min-h-[44px]">
+              <option v-for="g in activeGroups" :key="g.classroom" :value="g.classroom">{{ g.classroom }}</option>
+            </select>
           </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Kelas</label>
-              <select v-model="newExamClass" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none">
-                <option v-for="g in activeGroups" :key="g.classroom" :value="g.classroom">{{ g.classroom }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Mata Pelajaran</label>
-              <input
-                v-model="newExamSubject"
-                placeholder="Informatika"
-                class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Tanggal</label>
-              <input
-                v-model="newExamDate"
-                class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none"
-              />
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Waktu &amp; Jam</label>
-              <input
-                v-model="newExamTime"
-                class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none"
-              />
-            </div>
-          </div>
-
           <div>
-            <label class="block font-bold text-slate-700 mb-1">Pengawas Ujian</label>
+            <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Mata Pelajaran</label>
             <input
-              v-model="newExamSupervisor"
-              class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none"
+              v-model="newExamSubject"
+              placeholder="Informatika"
+              class="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all text-sm font-medium min-h-[44px]"
             />
           </div>
         </div>
 
-        <div class="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
-          <button class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs rounded-xl" @click="isCreateExamModalOpen = false">
-            Batal
-          </button>
-          <button class="px-5 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 text-white font-bold text-xs rounded-xl shadow-xs" @click="saveNewExam">
-            Simpan Jadwal
-          </button>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Tanggal</label>
+            <input
+              v-model="newExamDate"
+              class="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all text-sm font-medium min-h-[44px]"
+            />
+          </div>
+          <div>
+            <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Waktu &amp; Jam</label>
+            <input
+              v-model="newExamTime"
+              class="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all text-sm font-medium min-h-[44px]"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Pengawas Ujian</label>
+          <input
+            v-model="newExamSupervisor"
+            class="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all text-sm font-medium min-h-[44px]"
+          />
         </div>
       </div>
-    </div>
+
+      <template #footer>
+        <button
+          class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="isCreateExamModalOpen = false"
+        >
+          Batal
+        </button>
+        <button
+          class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-sm transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="saveNewExam"
+        >
+          Simpan Jadwal
+        </button>
+      </template>
+    </AdminSlideOver>
   </div>
 </template>

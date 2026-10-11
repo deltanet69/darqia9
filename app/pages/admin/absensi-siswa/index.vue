@@ -563,142 +563,138 @@
       </div>
     </div>
 
-    <!-- Student Detail Modal (Teleported to Body) -->
-    <Teleport to="body">
-      <div
-        v-if="selectedStudent"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn"
-        @click.self="closeStudentDetail"
-      >
-        <div class="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 p-6 space-y-6 animate-scaleUp">
-          <!-- Modal Header -->
-          <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-100">
-            <div class="flex items-center gap-3.5">
-              <span
-                class="w-12 h-12 rounded-2xl text-white font-black text-sm flex items-center justify-center shrink-0 shadow-md"
-                :class="avatarGradient(selectedStudent.id)"
-              >
-                {{ initials(selectedStudent.name) }}
-              </span>
-              <div>
-                <h3 class="text-base font-black text-slate-900 leading-tight">{{ selectedStudent.name }}</h3>
-                <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                  <span class="font-mono font-semibold text-slate-700">NISN: {{ selectedStudent.nisn }}</span>
-                  <span>&bull;</span>
-                  <span class="font-bold text-blue-600">{{ selectedStudent.classroom }}</span>
-                </div>
-              </div>
-            </div>
-            <button
-              class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold text-sm transition-colors shrink-0"
-              type="button"
-              @click="closeStudentDetail"
-            >
-              ✕
-            </button>
-          </div>
-
-          <!-- Presence Status Highlight -->
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Status Hari Ini (05 Okt 2026)</span>
-              <span
-                class="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm"
-                :class="pillClass(selectedStudent.status)"
-              >
-                <span class="w-2 h-2 rounded-full" :class="dotClass(selectedStudent.status)" />
-                <span>{{ selectedStudent.status }}</span>
-              </span>
-            </div>
-            <div class="text-left sm:text-right font-mono text-xs">
-              <span class="text-[11px] font-sans font-semibold text-slate-500 block">Waktu Tap RFID:</span>
-              <b class="text-slate-900 text-sm font-bold">{{ selectedStudent.timeIn || '—' }}</b>
-              <span v-if="selectedStudent.timeOut" class="text-slate-500 font-sans text-[11px]"> (Keluar: {{ selectedStudent.timeOut }})</span>
-            </div>
-          </div>
-
-          <!-- RFID Card Info Card -->
-          <div class="grid grid-cols-2 gap-3 text-xs">
-            <div class="p-3 rounded-2xl bg-blue-50/60 border border-blue-100">
-              <span class="text-[10.5px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">UID Kartu RFID</span>
-              <b class="text-slate-900 font-mono text-xs">{{ selectedStudent.rfidUid }}</b>
-              <span class="text-[10px] text-emerald-600 font-bold block mt-1">● Status: Terdaftar Aktif</span>
-            </div>
-            <div class="p-3 rounded-2xl bg-indigo-50/60 border border-indigo-100">
-              <span class="text-[10.5px] font-bold text-indigo-600 uppercase tracking-wider block mb-0.5">Gateway Reader</span>
-              <b class="text-slate-900 text-xs">{{ selectedStudent.gate || 'Gate 1 (Gerbang Utama)' }}</b>
-              <span class="text-[10px] text-slate-500 font-mono block mt-1">IP: 192.168.10.14</span>
-            </div>
-          </div>
-
-          <!-- 7-Day Attendance Matrix -->
+    <!-- Slide-Over Detail Presensi Siswa -->
+    <AdminSlideOver
+      :open="Boolean(selectedStudent)"
+      :title="selectedStudent?.name || 'Detail Presensi Siswa'"
+      :subtitle="`${selectedStudent?.classroom || ''} • NISN: ${selectedStudent?.nisn || ''}`"
+      badge="Presensi RFID"
+      badge-type="primary"
+      width="xl"
+      @close="closeStudentDetail"
+    >
+      <div v-if="selectedStudent" class="space-y-6">
+        <!-- Student Identity Card -->
+        <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 text-white shadow-lg flex items-center gap-4">
+          <span
+            class="w-14 h-14 rounded-2xl text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md border border-white/20"
+            :class="avatarGradient(selectedStudent.id)"
+          >
+            {{ initials(selectedStudent.name) }}
+          </span>
           <div>
-            <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">Riwayat Presensi 5 Hari Terakhir</h4>
-            <div class="grid grid-cols-5 gap-2 text-center text-xs">
-              <div
-                v-for="hist in attendanceHistoryMock"
-                :key="hist.day"
-                class="p-2 rounded-2xl border transition-all"
-                :class="hist.status === 'Hadir' ? 'bg-emerald-50 border-emerald-200/80 text-emerald-800' :
-                  hist.status === 'Terlambat' ? 'bg-amber-50 border-amber-200/80 text-amber-800' :
-                  hist.status === 'Izin' ? 'bg-blue-50 border-blue-200/80 text-blue-800' :
-                  'bg-rose-50 border-rose-200/80 text-rose-800'"
-              >
-                <span class="text-[10.5px] font-bold block text-slate-500 mb-0.5">{{ hist.day }}</span>
-                <b class="text-[11px] font-extrabold block">{{ hist.status }}</b>
-                <span class="text-[10px] font-mono opacity-80">{{ hist.time }}</span>
-              </div>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white inline-block mb-1">
+              {{ selectedStudent.classroom }}
+            </span>
+            <h4 class="text-lg font-black text-white leading-tight">
+              {{ selectedStudent.name }}
+            </h4>
+            <div class="flex items-center gap-2 text-[11px] text-slate-300 font-mono mt-0.5">
+              <span>NISN: {{ selectedStudent.nisn }}</span>
             </div>
           </div>
+        </div>
 
-          <!-- Manual Status Adjustment by Admin -->
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-3">
-            <div class="flex items-center justify-between">
-              <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Penyesuaian Manual Status</h4>
-              <span class="text-[10.5px] text-slate-400">Khusus Administrator</span>
-            </div>
-            <div class="grid grid-cols-4 gap-2">
-              <button
-                v-for="st in ['Hadir', 'Izin', 'Sakit', 'Alpa']"
-                :key="st"
-                type="button"
-                class="py-2 px-2.5 rounded-xl text-xs font-bold border transition-all"
-                :class="selectedStudent.status === st
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400'"
-                @click="updateStudentStatus(st)"
-              >
-                {{ st }}
-              </button>
+        <!-- Presence Status Highlight -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Status Hari Ini (05 Okt 2026)</span>
+            <span
+              class="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm"
+              :class="pillClass(selectedStudent.status)"
+            >
+              <span class="w-2 h-2 rounded-full" :class="dotClass(selectedStudent.status)" />
+              <span>{{ selectedStudent.status }}</span>
+            </span>
+          </div>
+          <div class="text-left sm:text-right font-mono text-xs">
+            <span class="text-[11px] font-sans font-semibold text-slate-500 block">Waktu Tap RFID:</span>
+            <b class="text-slate-900 text-sm font-bold">{{ selectedStudent.timeIn || '—' }}</b>
+            <span v-if="selectedStudent.timeOut" class="text-slate-500 font-sans text-[11px]"> (Keluar: {{ selectedStudent.timeOut }})</span>
+          </div>
+        </div>
+
+        <!-- RFID Card Info Card -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/80">
+            <span class="text-[10.5px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">UID Kartu RFID</span>
+            <b class="text-slate-900 font-mono text-xs">{{ selectedStudent.rfidUid }}</b>
+            <span class="text-[10px] text-emerald-600 font-bold block mt-1">● Status: Terdaftar Aktif</span>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/80">
+            <span class="text-[10.5px] font-bold text-indigo-600 uppercase tracking-wider block mb-0.5">Gateway Reader</span>
+            <b class="text-slate-900 text-xs">{{ selectedStudent.gate || 'Gate 1 (Gerbang Utama)' }}</b>
+            <span class="text-[10px] text-slate-500 font-mono block mt-1">IP: 192.168.10.14</span>
+          </div>
+        </div>
+
+        <!-- 5-Day Attendance Matrix -->
+        <div>
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">Riwayat Presensi 5 Hari Terakhir</h4>
+          <div class="grid grid-cols-5 gap-2 text-center text-xs">
+            <div
+              v-for="hist in attendanceHistoryMock"
+              :key="hist.day"
+              class="p-2.5 rounded-2xl border transition-all"
+              :class="hist.status === 'Hadir' ? 'bg-emerald-50 border-emerald-200/80 text-emerald-800' :
+                hist.status === 'Terlambat' ? 'bg-amber-50 border-amber-200/80 text-amber-800' :
+                hist.status === 'Izin' ? 'bg-blue-50 border-blue-200/80 text-blue-800' :
+                'bg-rose-50 border-rose-200/80 text-rose-800'"
+            >
+              <span class="text-[10.5px] font-bold block text-slate-500 mb-0.5">{{ hist.day }}</span>
+              <b class="text-[11px] font-extrabold block">{{ hist.status }}</b>
+              <span class="text-[10px] font-mono opacity-80">{{ hist.time }}</span>
             </div>
           </div>
+        </div>
 
-          <!-- Modal Footer -->
-          <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+        <!-- Manual Status Adjustment by Admin -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Penyesuaian Manual Status</h4>
+            <span class="text-[10.5px] text-slate-400">Khusus Administrator</span>
+          </div>
+          <div class="grid grid-cols-4 gap-2">
             <button
-              class="px-5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+              v-for="st in ['Hadir', 'Izin', 'Sakit', 'Alpa']"
+              :key="st"
               type="button"
-              @click="closeStudentDetail"
+              class="py-2.5 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer"
+              :class="selectedStudent.status === st
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400'"
+              @click="updateStudentStatus(st)"
             >
-              Tutup
-            </button>
-            <button
-              class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all"
-              type="button"
-              @click="saveStudentDetail"
-            >
-              Simpan Perubahan
+              {{ st }}
             </button>
           </div>
         </div>
       </div>
-    </Teleport>
+
+      <template #footer>
+        <button
+          class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="closeStudentDetail"
+        >
+          Tutup
+        </button>
+        <button
+          class="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all cursor-pointer min-h-[44px]"
+          type="button"
+          @click="saveStudentDetail"
+        >
+          Simpan Perubahan
+        </button>
+      </template>
+    </AdminSlideOver>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
+import AdminSlideOver from '~/components/admin/AdminSlideOver.vue'
 import AdminLineChart from '~/components/admin/AdminLineChart.vue'
 import AdminDonutChart from '~/components/admin/AdminDonutChart.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'

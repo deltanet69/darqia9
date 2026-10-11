@@ -3,16 +3,16 @@
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
       <div>
-        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center flex-wrap gap-2">
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center flex-wrap gap-2">
           <span>Selamat {{ greetingTime }}, <span class="bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 bg-clip-text text-transparent">Administrator</span></span>
           <span
             class="text-xs font-bold text-white px-2.5 py-1 rounded-lg tracking-wider shadow-sm"
             :class="grade === 'SMP' ? 'bg-emerald-600' : 'bg-blue-600'"
           >
             {{ grade }}
-          </span>
+          </span> 
         </h2>
-        <p class="text-xs sm:text-sm text-slate-500 mt-1 font-medium">{{ currentDate }} &bull; Data {{ activeData.schoolName }} &bull; Ringkasan operasional sekolah hari ini.</p>
+        <p class="text-md sm:text-md text-slate-500 mt-1 ">{{ currentDate }} &bull; Data {{ activeData.schoolName }} &bull; Ringkasan operasional sekolah hari ini.</p>
       </div>
 
       <div class="flex items-center gap-2.5">
@@ -144,10 +144,10 @@
       <div class="lg:col-span-2 bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
         <div class="flex items-center justify-between pb-4 border-b border-slate-100">
           <div>
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+            <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
               Tren Kehadiran Siswa
             </h3>
-            <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Persentase kehadiran 7 hari terakhir</div>
+            <div class="text-md text-slate-500  ml-3.5">Persentase kehadiran 7 hari terakhir</div>
           </div>
           <div class="flex items-center gap-4 text-xs font-bold">
             <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-[#2563eb] inline-block shadow-sm"></i>SMP</span>
@@ -167,10 +167,10 @@
       <div class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
         <div class="flex items-center justify-between pb-4 border-b border-slate-100">
           <div>
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
+            <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
               Arus Kas
             </h3>
-            <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Pemasukan vs Pengeluaran &bull; 6 bulan</div>
+            <div class="text-md text-slate-500  ml-3.5 ">Pemasukan vs Pengeluaran &bull; 6 bulan</div>
           </div>
         </div>
 
@@ -193,7 +193,7 @@
       <!-- Card 1: Komposisi Siswa (Interactive Donut Chart) -->
       <div class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
         <div class="pb-3 border-b border-slate-100">
-          <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-indigo-500 before:to-purple-600 before:shadow-[0_2px_8px_rgba(99,102,241,0.4)]">
+          <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-indigo-500 before:to-purple-600 before:shadow-[0_2px_8px_rgba(99,102,241,0.4)]">
             Komposisi Siswa
           </h3>
         </div>
@@ -219,10 +219,10 @@
       <div class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
           <div>
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-amber-500 before:to-orange-600 before:shadow-[0_2px_8px_rgba(245,158,11,0.4)]">
+            <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-amber-500 before:to-orange-600 before:shadow-[0_2px_8px_rgba(245,158,11,0.4)]">
               Ujian CBT
             </h3>
-            <div class="text-xs text-slate-500 ml-3.5 font-medium">Jadwal terdekat</div>
+            <div class="text-md text-slate-500  ml-3.5">Jadwal terdekat</div>
           </div>
           <button
             class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all hover:scale-105 active:scale-95"
@@ -272,10 +272,10 @@
       <div class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
           <div>
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-cyan-500 before:to-blue-600 before:shadow-[0_2px_8px_rgba(6,182,212,0.4)]">
+            <h3 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-cyan-500 before:to-blue-600 before:shadow-[0_2px_8px_rgba(6,182,212,0.4)]">
               Aktivitas Terbaru
             </h3>
-            <div class="text-xs text-slate-500 ml-3.5 font-medium">Jejak audit sistem</div>
+            <div class="text-md text-slate-500  ml-3.5">Jejak audit sistem</div>
           </div>
           <button
             class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all hover:scale-105 active:scale-95"

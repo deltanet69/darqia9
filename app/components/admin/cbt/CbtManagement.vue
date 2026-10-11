@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useAdminCbtState, type ViolationLog } from '~/composables/useAdminCbtState'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
+import AdminSlideOver from '~/components/admin/AdminSlideOver.vue'
 
 const { cheatLogs, teachers, grade } = useAdminCbtState()
 const activeSubMenu = ref<'violations' | 'teachers' | 'participants'>('violations')
@@ -313,47 +314,49 @@ const filteredParticipants = computed(() => {
       </div>
     </template>
 
-    <!-- UNLOCK MODAL -->
-    <div
-      v-if="isUnlockModalOpen && selectedLogForUnlock"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
-      @click.self="isUnlockModalOpen = false"
+    <!-- MODAL CENTER: BUKA KUNCI AKUN (MOBILE FIRST & MODERN) -->
+    <AdminSlideOver
+      :open="Boolean(isUnlockModalOpen && selectedLogForUnlock)"
+      title="Buka Kunci Akun Siswa"
+      :subtitle="`${selectedLogForUnlock?.studentName || ''} • ${selectedLogForUnlock?.classroom || ''}`"
+      badge="Anti-Cheat CBT"
+      badge-type="warning"
+      width="md"
+      @close="isUnlockModalOpen = false"
     >
-      <div class="bg-white rounded-[20px] shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-scaleUp">
-        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div>
-            <h4 class="text-base font-bold text-slate-900">Buka Kunci Akun Siswa</h4>
-            <p class="text-xs text-slate-500">{{ selectedLogForUnlock.studentName }} &bull; {{ selectedLogForUnlock.classroom }}</p>
-          </div>
-          <button class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center" @click="isUnlockModalOpen = false">
-            <AdminIcon name="x" size="16" />
-          </button>
+      <div v-if="selectedLogForUnlock" class="space-y-4 sm:space-y-5 text-sm">
+        <div class="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-sm">
+          <span class="font-bold block mb-1">Pelanggaran Terdeteksi:</span>
+          <p class="font-medium">{{ selectedLogForUnlock.reason }} pada {{ selectedLogForUnlock.time }}</p>
         </div>
 
-        <div class="p-5 space-y-4 text-xs">
-          <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900">
-            <span class="font-bold block mb-1">Pelanggaran Terdeteksi:</span>
-            <p>{{ selectedLogForUnlock.reason }} pada {{ selectedLogForUnlock.time }}</p>
+        <div>
+          <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">PIN Pengawas Resmi:</label>
+          <div class="p-4 bg-slate-900 text-white font-mono text-center text-2xl font-black rounded-2xl tracking-widest shadow-inner">
+            {{ unlockInputPin }}
           </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 mb-1">PIN Pengawas Resmi:</label>
-            <div class="p-3 bg-slate-900 text-white font-mono text-center text-lg font-extrabold rounded-xl tracking-widest">
-              {{ unlockInputPin }}
-            </div>
-            <p class="text-[11px] text-slate-500 mt-1">Berikan PIN ini kepada siswa untuk dimasukkan pada layar ujian yang terkunci.</p>
-          </div>
-        </div>
-
-        <div class="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
-          <button class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs rounded-xl" @click="isUnlockModalOpen = false">
-            Tutup
-          </button>
-          <button class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs" @click="confirmUnlock">
-            Konfirmasi Buka Kunci
-          </button>
+          <p class="text-xs text-slate-500 mt-2 font-medium">
+            Berikan PIN ini kepada siswa untuk dimasukkan pada layar ujian yang terkunci agar sesi dapat dilanjutkan.
+          </p>
         </div>
       </div>
-    </div>
+
+      <template #footer>
+        <button
+          class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="isUnlockModalOpen = false"
+        >
+          Tutup
+        </button>
+        <button
+          class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-sm transition-colors cursor-pointer min-h-[44px]"
+          type="button"
+          @click="confirmUnlock"
+        >
+          Konfirmasi Buka Kunci
+        </button>
+      </template>
+    </AdminSlideOver>
   </div>
 </template>

@@ -1,16 +1,31 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import AdminSidebar from '~/components/admin/AdminSidebar.vue'
 import AdminTopbar from '~/components/admin/AdminTopbar.vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { adminMobileNavigation } from '~/composables/useAdminNavigation'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 
+const route = useRoute()
 const grade = useAdminGrade()
 const sidebarMin = ref(false)
 const sidebarOpen = ref(false)
 
 const adminPath = (id: string) => id === 'dashboard' ? '/admin' : `/admin/${id}`
+
+// Synchronize grade from query parameter if present
+watch(
+  () => route.query.jenjang,
+  (val) => {
+    if (typeof val === 'string') {
+      const upper = val.toUpperCase()
+      if (upper === 'SMP' || upper === 'SMK') {
+        grade.value = upper
+      }
+    }
+  },
+  { immediate: true }
+)
 
 const toggleSidebar = () => {
   if (typeof window !== 'undefined' && window.innerWidth <= 1024) {
@@ -56,9 +71,9 @@ const toggleSidebar = () => {
       <NuxtLink
         v-for="item in adminMobileNavigation"
         :key="item.id"
-        :to="adminPath(item.id)"
+        :to="item.to || adminPath(item.id)"
         class="flex flex-col items-center gap-1 text-[10px] font-bold py-1 px-2.5 rounded-xl transition-all"
-        :class="$route.path === adminPath(item.id) ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'"
+        :class="$route.path === (item.to || adminPath(item.id)) ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'"
       >
         <AdminIcon :name="item.icon" size="20" />
         <span>{{ item.t }}</span>

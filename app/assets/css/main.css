@@ -4,16 +4,14 @@
 
 @layer base {
   html {
-    scroll-behavior: smooth;
+    @apply scroll-smooth;
     scroll-padding-top: 82px;
   }
   
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: #F5F8FF;
-    color: #0F1E38;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
+    @apply font-sans antialiased text-[#0F1E38] bg-[#F5F8FF] overflow-x-hidden;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    letter-spacing: -0.011em;
   }
 }
 
@@ -63,55 +61,56 @@
   }
 }
 
-/* ---------- Admin & Global Scrollbar Removal ---------- */
-/* Modern, Simple, and Nice Scrollbar mimicking the prototype */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
+@layer utilities {
+  /* ---------- Admin & Global Scrollbar Styling ---------- */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
 
-/* Hide scrollbar completely only where explicitly requested with .no-scrollbar */
-.no-scrollbar::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-.no-scrollbar {
-  -ms-overflow-style: none !important;
-  scrollbar-width: none !important;
-}
+  /* Hide scrollbar completely only where explicitly requested with .no-scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
 
-/* Dark Thin Scrollbar (for Absensi TV) */
-.dark-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #2a3f6e transparent;
-}
-.dark-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.dark-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.dark-scrollbar::-webkit-scrollbar-thumb {
-  background: #2a3f6e;
-  border-radius: 9999px;
-}
-.dark-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #3b5998;
+  /* Dark Thin Scrollbar (for Absensi TV) */
+  .dark-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #2a3f6e transparent;
+  }
+  .dark-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .dark-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .dark-scrollbar::-webkit-scrollbar-thumb {
+    background: #2a3f6e;
+    border-radius: 9999px;
+  }
+  .dark-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #3b5998;
+  }
 }
 
