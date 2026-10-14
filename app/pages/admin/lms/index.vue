@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -95,14 +95,14 @@ const saveCourse = () => {
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span
-            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider border"
+            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider border"
             :class="grade === 'SMP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'"
           >
             {{ schoolName }}
           </span>
           <span class="text-xs font-semibold text-slate-500">Learning Management System (LMS)</span>
         </div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Manajemen LMS</h2>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Manajemen LMS</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pengelolaan ruang kelas virtual, penugasan digital, dan forum diskusi interaktif</p>
       </div>
 
@@ -122,22 +122,22 @@ const saveCourse = () => {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Kelas Daring Aktif</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ filteredCourses.length }} Kursus</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ filteredCourses.length }} Kursus</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Ruang belajar virtual</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Materi Daring</span>
-        <b class="text-2xl font-black text-blue-600 block mt-1">{{ totalMaterials }} Materi</b>
+        <b class="text-2xl font-bold text-blue-600 block mt-1">{{ totalMaterials }} Materi</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Video &amp; dokumen aktif</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Partisipasi Siswa</span>
-        <b class="text-2xl font-black text-emerald-600 block mt-1">{{ totalStudents }} Siswa</b>
+        <b class="text-2xl font-bold text-emerald-600 block mt-1">{{ totalStudents }} Siswa</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Terdaftar di kursus</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Interaksi Forum</span>
-        <b class="text-2xl font-black text-purple-600 block mt-1">
+        <b class="text-2xl font-bold text-purple-600 block mt-1">
           {{ filteredCourses.reduce((a, b) => a + b.activeDiscussions, 0) }} Diskusi
         </b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Tanya jawab berjalan</span>
@@ -185,7 +185,7 @@ const saveCourse = () => {
             </span>
           </div>
 
-          <h3 class="text-base font-black text-slate-900 leading-snug">{{ c.title }}</h3>
+          <h3 class="text-base font-bold text-slate-900 leading-snug">{{ c.title }}</h3>
           <p class="text-xs text-slate-500 mt-1 font-medium">Pengampu: <b class="text-slate-700">{{ c.teacherName }}</b></p>
         </div>
 

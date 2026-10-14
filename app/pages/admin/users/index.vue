@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminModal from '~/components/admin/AdminModal.vue'
@@ -118,7 +118,7 @@ const openViewModal = (u: User) => {
             {{ roles.length }} Peran
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ store.users.length }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ store.users.length }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Total Akun Terdaftar</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[8, 10, 12, 13, 15, 16]" color="#ffffff" />
@@ -136,7 +136,7 @@ const openViewModal = (u: User) => {
             {{ ((activeUsersCount / (store.users.length || 1)) * 100).toFixed(0) }}% Aktif
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ activeUsersCount }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ activeUsersCount }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">User Aktif Saat Ini</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[6, 8, 10, 12, 14, 15]" color="#ffffff" />
@@ -154,7 +154,7 @@ const openViewModal = (u: User) => {
             Akademik
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ guruCount }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ guruCount }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Guru &amp; Wali Kelas</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[5, 6, 8, 9, 10, 11]" color="#ffffff" />
@@ -172,7 +172,7 @@ const openViewModal = (u: User) => {
             Super &amp; Tim
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ adminCount }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ adminCount }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Admin &amp; Staf Pengelola</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[2, 3, 3, 4, 4, 5]" color="#ffffff" />
@@ -316,7 +316,7 @@ const openViewModal = (u: User) => {
     <AdminModal :open="Boolean(selectedUser)" title="Detail Akun Pengguna" @close="selectedUser = null">
       <div v-if="selectedUser" class="space-y-5">
         <div class="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-slate-200/80">
-          <div class="w-16 h-16 rounded-2xl flex items-center justify-center font-extrabold text-2xl shrink-0 shadow-md" :style="getAvatarStyle(selectedUser.nama)">
+          <div class="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-2xl shrink-0 shadow-md" :style="getAvatarStyle(selectedUser.nama)">
             {{ getInitials(selectedUser.nama) }}
           </div>
           <div>

@@ -332,7 +332,7 @@ const filteredParticipants = computed(() => {
 
         <div>
           <label class="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5">PIN Pengawas Resmi:</label>
-          <div class="p-4 bg-slate-900 text-white font-mono text-center text-2xl font-black rounded-2xl tracking-widest shadow-inner">
+          <div class="p-4 bg-slate-900 text-white font-mono text-center text-2xl font-bold rounded-2xl tracking-widest shadow-inner">
             {{ unlockInputPin }}
           </div>
           <p class="text-xs text-slate-500 mt-2 font-medium">

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -123,14 +123,14 @@ const saveSubject = () => {
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span
-            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider border"
+            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider border"
             :class="grade === 'SMP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'"
           >
             {{ schoolName }}
           </span>
           <span class="text-xs font-semibold text-slate-500">Struktur Kurikulum Nasional</span>
         </div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Master Mata Pelajaran</h2>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Master Mata Pelajaran</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Daftar mata pelajaran, bobot jam tatap muka, dan standar KKM</p>
       </div>
 
@@ -158,22 +158,22 @@ const saveSubject = () => {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Mata Pelajaran</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ filteredSubjects.length }} Mapel</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ filteredSubjects.length }} Mapel</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Kurikulum Aktif {{ grade }}</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Beban Tatap Muka</span>
-        <b class="text-2xl font-black text-blue-600 block mt-1">{{ totalHours }} Jam/Minggu</b>
+        <b class="text-2xl font-bold text-blue-600 block mt-1">{{ totalHours }} Jam/Minggu</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Alokasi beban guru</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Standar KKM Rata-rata</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">75 - 78</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">75 - 78</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Kriteria Ketuntasan Minimum</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Status Kurikulum</span>
-        <b class="text-2xl font-black text-emerald-600 block mt-1">Terverifikasi</b>
+        <b class="text-2xl font-bold text-emerald-600 block mt-1">Terverifikasi</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Disetujui Waka Kurikulum</span>
       </div>
     </div>

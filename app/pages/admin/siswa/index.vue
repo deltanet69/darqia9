@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminSparkline from '~/components/admin/AdminSparkline.vue'
@@ -63,7 +63,7 @@ const onEditFromDetail = (s: StudentItem) => {
             {{ studentsStore.grade.value }}
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ studentsStore.stats.value.total }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ studentsStore.stats.value.total }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Peserta Didik Terdaftar Aktif</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[12, 16, 20, 24, 28, 32]" color="#ffffff" />
@@ -81,7 +81,7 @@ const onEditFromDetail = (s: StudentItem) => {
             {{ studentsStore.stats.value.boys }}L / {{ studentsStore.stats.value.girls }}P
           </span>
         </div>
-        <div class="relative z-10 text-2xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm flex items-baseline gap-2">
+        <div class="relative z-10 text-2xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm flex items-baseline gap-2">
           <span>{{ studentsStore.stats.value.boys }} <small class="text-xs font-medium text-white/80">Putra</small></span>
           <span>&bull;</span>
           <span>{{ studentsStore.stats.value.girls }} <small class="text-xs font-medium text-white/80">Putri</small></span>
@@ -103,7 +103,7 @@ const onEditFromDetail = (s: StudentItem) => {
             {{ studentsStore.stats.value.totalClasses }} Rombel
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ studentsStore.stats.value.totalClasses }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ studentsStore.stats.value.totalClasses }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Total Kelas Rombongan Belajar</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[4, 6, 8, 8, 10, 12]" color="#ffffff" />
@@ -121,7 +121,7 @@ const onEditFromDetail = (s: StudentItem) => {
             {{ studentsStore.stats.value.rfidPct }}% Aktif
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">
           {{ studentsStore.stats.value.rfidCount }} <span class="text-sm font-normal text-white/80">/ {{ studentsStore.stats.value.total }}</span>
         </div>
         <div class="relative z-10 text-xs font-medium text-white/85">Siap Absensi Tap Kartu RFID</div>
@@ -238,7 +238,7 @@ const onEditFromDetail = (s: StudentItem) => {
                 </span>
               </td>
               <td class="px-4 py-3.5 text-center">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg text-xs font-extrabold" :class="s.gender === 'L' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg text-xs font-bold" :class="s.gender === 'L' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'">
                   {{ s.gender }}
                 </span>
               </td>

@@ -68,8 +68,10 @@ const handleSubClick = (sub: AdminSubItem) => {
   emit('close')
 }
 
-const logout = () => {
+const logout = async () => {
   if (confirm('Keluar dari Admin Portal?')) {
+    const supabase = useSupabaseClient()
+    await supabase.auth.signOut()
     router.push('/admin/login')
   }
 }
@@ -162,7 +164,7 @@ const logout = () => {
                 <span class="truncate flex-1">{{ sub.t }}</span>
                 <span
                   v-if="sub.grade"
-                  class="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded font-mono uppercase"
+                  class="text-[9.5px] font-bold px-1.5 py-0.5 rounded font-mono uppercase"
                   :class="sub.grade === 'SMP' ? 'bg-emerald-500/30 text-emerald-300' : 'bg-blue-500/30 text-blue-200'"
                 >
                   {{ sub.grade }}

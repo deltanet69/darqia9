@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminSlideOver from '~/components/admin/AdminSlideOver.vue'
@@ -79,14 +79,14 @@ const openPreview = (s: ReportStudent) => {
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span
-            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider border"
+            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider border"
             :class="grade === 'SMP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'"
           >
             {{ schoolName }}
           </span>
           <span class="text-xs font-semibold text-slate-500">Semester Ganjil &bull; T.A 2026/2027</span>
         </div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Raport Siswa</h2>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Raport Siswa</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Rekapitulasi pencapaian nilai kompetensi, ketuntasan belajar, dan cetak rapor digital</p>
       </div>
 
@@ -106,24 +106,24 @@ const openPreview = (s: ReportStudent) => {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Siswa Terdaftar</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ filteredList.length }} Siswa</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ filteredList.length }} Siswa</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Jenjang {{ grade }}</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Ketuntasan Belajar</span>
-        <b class="text-2xl font-black text-emerald-600 block mt-1">{{ completionRate }}%</b>
+        <b class="text-2xl font-bold text-emerald-600 block mt-1">{{ completionRate }}%</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">{{ completedCount }} siswa tuntas KKM</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Rapor Diterbitkan</span>
-        <b class="text-2xl font-black text-blue-600 block mt-1">
+        <b class="text-2xl font-bold text-blue-600 block mt-1">
           {{ filteredList.filter(s => s.reportStatus === 'Diterbitkan').length }}
         </b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Tervalidasi Kepala Sekolah</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Rapor Siap Cetak</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">
+        <b class="text-2xl font-bold text-slate-900 block mt-1">
           {{ filteredList.filter(s => s.reportStatus === 'Siap Cetak').length }}
         </b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Menunggu penandatanganan</span>
@@ -251,14 +251,14 @@ const openPreview = (s: ReportStudent) => {
         <div class="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 to-[#0A1F44] text-white shadow-lg relative overflow-hidden">
           <div class="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="flex items-center gap-4">
-              <span class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-2xl flex items-center justify-center shrink-0 shadow-inner">
+              <span class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold text-2xl flex items-center justify-center shrink-0 shadow-inner">
                 {{ activePreviewStudent.name.charAt(0) }}
               </span>
               <div>
                 <span class="text-xs font-bold text-blue-300 uppercase tracking-widest block mb-0.5">
                   {{ schoolName }}
                 </span>
-                <h4 class="text-xl sm:text-2xl font-black text-white leading-tight">
+                <h4 class="text-xl sm:text-2xl font-bold text-white leading-tight">
                   {{ activePreviewStudent.name }}
                 </h4>
                 <div class="flex items-center gap-2 text-xs sm:text-sm text-slate-300 font-mono mt-1">
@@ -273,7 +273,7 @@ const openPreview = (s: ReportStudent) => {
 
             <div class="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-white/15 gap-1.5">
               <span class="text-xs text-slate-300 uppercase tracking-wider font-semibold">Peringkat Kelas</span>
-              <span class="px-3.5 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-black text-sm font-mono shadow-sm">
+              <span class="px-3.5 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-bold text-sm font-mono shadow-sm">
                 Juara #{{ activePreviewStudent.rank }}
               </span>
             </div>
@@ -284,22 +284,22 @@ const openPreview = (s: ReportStudent) => {
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Rata-rata Nilai</span>
-            <b class="text-2xl sm:text-3xl font-black text-blue-600 font-mono block mt-1.5">{{ activePreviewStudent.averageScore }}</b>
+            <b class="text-2xl sm:text-3xl font-bold text-blue-600 font-mono block mt-1.5">{{ activePreviewStudent.averageScore }}</b>
             <span class="text-xs text-slate-500 block mt-0.5 font-medium">Skala 100</span>
           </div>
           <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Status KKM</span>
-            <b class="text-lg sm:text-xl font-black text-emerald-600 block mt-2">{{ activePreviewStudent.kkmStatus }}</b>
+            <b class="text-lg sm:text-xl font-bold text-emerald-600 block mt-2">{{ activePreviewStudent.kkmStatus }}</b>
             <span class="text-xs text-slate-500 block mt-0.5 font-medium">Standar KKM 75</span>
           </div>
           <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Kehadiran KBM</span>
-            <b class="text-2xl sm:text-3xl font-black text-slate-900 font-mono block mt-1.5">98%</b>
+            <b class="text-2xl sm:text-3xl font-bold text-slate-900 font-mono block mt-1.5">98%</b>
             <span class="text-xs text-emerald-600 font-bold block mt-0.5">0 Hari Alpa</span>
           </div>
           <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Sikap &amp; Karakter</span>
-            <b class="text-lg sm:text-xl font-black text-purple-600 block mt-2">Sangat Baik</b>
+            <b class="text-lg sm:text-xl font-bold text-purple-600 block mt-2">Sangat Baik</b>
             <span class="text-xs text-slate-500 block mt-0.5 font-medium">Predikat A</span>
           </div>
         </div>
@@ -325,36 +325,36 @@ const openPreview = (s: ReportStudent) => {
                 <tr class="hover:bg-slate-50/60 transition-colors">
                   <td class="py-3.5 px-4 font-bold text-slate-900">Pendidikan Agama Islam &amp; Budi Pekerti</td>
                   <td class="py-3.5 px-3.5 text-center font-mono text-slate-600">75</td>
-                  <td class="py-3.5 px-3.5 text-center font-mono font-black text-blue-600 text-base">92</td>
-                  <td class="py-3.5 px-3.5 text-center font-black text-emerald-600">A</td>
+                  <td class="py-3.5 px-3.5 text-center font-mono font-bold text-blue-600 text-base">92</td>
+                  <td class="py-3.5 px-3.5 text-center font-bold text-emerald-600">A</td>
                   <td class="py-3.5 px-3.5 text-center"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Tuntas</span></td>
                 </tr>
                 <tr class="hover:bg-slate-50/60 transition-colors">
                   <td class="py-3.5 px-4 font-bold text-slate-900">Tahfidz &amp; Tahsin Al-Qur'an</td>
                   <td class="py-3.5 px-3.5 text-center font-mono text-slate-600">80</td>
-                  <td class="py-3.5 px-3.5 text-center font-mono font-black text-blue-600 text-base">90</td>
-                  <td class="py-3.5 px-3.5 text-center font-black text-emerald-600">A</td>
+                  <td class="py-3.5 px-3.5 text-center font-mono font-bold text-blue-600 text-base">90</td>
+                  <td class="py-3.5 px-3.5 text-center font-bold text-emerald-600">A</td>
                   <td class="py-3.5 px-3.5 text-center"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Tuntas</span></td>
                 </tr>
                 <tr class="hover:bg-slate-50/60 transition-colors">
                   <td class="py-3.5 px-4 font-bold text-slate-900">Bahasa Indonesia</td>
                   <td class="py-3.5 px-3.5 text-center font-mono text-slate-600">75</td>
-                  <td class="py-3.5 px-3.5 text-center font-mono font-black text-blue-600 text-base">88</td>
-                  <td class="py-3.5 px-3.5 text-center font-black text-emerald-600">A</td>
+                  <td class="py-3.5 px-3.5 text-center font-mono font-bold text-blue-600 text-base">88</td>
+                  <td class="py-3.5 px-3.5 text-center font-bold text-emerald-600">A</td>
                   <td class="py-3.5 px-3.5 text-center"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Tuntas</span></td>
                 </tr>
                 <tr class="hover:bg-slate-50/60 transition-colors">
                   <td class="py-3.5 px-4 font-bold text-slate-900">Matematika</td>
                   <td class="py-3.5 px-3.5 text-center font-mono text-slate-600">75</td>
-                  <td class="py-3.5 px-3.5 text-center font-mono font-black text-blue-600 text-base">85</td>
-                  <td class="py-3.5 px-3.5 text-center font-black text-blue-600">B</td>
+                  <td class="py-3.5 px-3.5 text-center font-mono font-bold text-blue-600 text-base">85</td>
+                  <td class="py-3.5 px-3.5 text-center font-bold text-blue-600">B</td>
                   <td class="py-3.5 px-3.5 text-center"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Tuntas</span></td>
                 </tr>
                 <tr class="hover:bg-slate-50/60 transition-colors">
                   <td class="py-3.5 px-4 font-bold text-slate-900">{{ grade === 'SMP' ? 'Ilmu Pengetahuan Alam' : 'Pemrograman Kejuruan' }}</td>
                   <td class="py-3.5 px-3.5 text-center font-mono text-slate-600">75</td>
-                  <td class="py-3.5 px-3.5 text-center font-mono font-black text-blue-600 text-base">87</td>
-                  <td class="py-3.5 px-3.5 text-center font-black text-emerald-600">A</td>
+                  <td class="py-3.5 px-3.5 text-center font-mono font-bold text-blue-600 text-base">87</td>
+                  <td class="py-3.5 px-3.5 text-center font-bold text-emerald-600">A</td>
                   <td class="py-3.5 px-3.5 text-center"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Tuntas</span></td>
                 </tr>
               </tbody>

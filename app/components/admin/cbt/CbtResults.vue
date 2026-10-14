@@ -149,11 +149,11 @@ const filteredStudents = computed(() => {
             <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50/80 rounded-xl border border-slate-100 mt-4 text-center">
               <div>
                 <span class="block text-[11px] font-semibold text-slate-500">Rata-rata Nilai</span>
-                <span class="text-xl font-extrabold text-slate-900 font-mono">{{ cls.avg }}</span>
+                <span class="text-xl font-bold text-slate-900 font-mono">{{ cls.avg }}</span>
               </div>
               <div>
                 <span class="block text-[11px] font-semibold text-emerald-600">Tingkat Kelulusan</span>
-                <span class="text-xl font-extrabold text-emerald-700 font-mono">{{ Math.round((cls.passed / cls.count) * 100) }}%</span>
+                <span class="text-xl font-bold text-emerald-700 font-mono">{{ Math.round((cls.passed / cls.count) * 100) }}%</span>
               </div>
             </div>
           </div>
@@ -263,7 +263,7 @@ const filteredStudents = computed(() => {
                   </span>
                   <span v-else class="text-slate-400 font-mono">-</span>
                 </td>
-                <td class="px-4 py-3.5 text-center font-mono font-extrabold text-sm" :class="s.totalScore >= 75 ? 'text-emerald-700' : 'text-rose-700'">
+                <td class="px-4 py-3.5 text-center font-mono font-bold text-sm" :class="s.totalScore >= 75 ? 'text-emerald-700' : 'text-rose-700'">
                   {{ s.totalScore }}
                 </td>
                 <td class="px-4 py-3.5 text-center">

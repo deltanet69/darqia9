@@ -239,7 +239,7 @@ const handleApplyImport = () => {
         leave-to-class="opacity-0 scale-95 translate-y-2"
       >
         <div
-          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto font-admin"
           role="dialog"
           aria-modal="true"
         >
@@ -250,7 +250,7 @@ const handleApplyImport = () => {
                 <AdminIcon name="dl" size="20" />
               </div>
               <div>
-                <h3 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug">
+                <h3 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-snug">
                   Import Data Siswa (CSV)
                 </h3>
                 <p class="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">

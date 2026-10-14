@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminSparkline from '~/components/admin/AdminSparkline.vue'
@@ -157,7 +157,7 @@ const exportLedger = () => {
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
       <div>
-        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
           <span>Manajemen Nilai</span>
         </h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-1 font-medium">Kelas {{ classroom }} &bull; {{ currentSubjects.length }} mata pelajaran &bull; Standar KKM 75</p>
@@ -214,11 +214,11 @@ const exportLedger = () => {
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="book" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <span>{{ classAvg >= 75 ? 'Di atas KKM' : 'Di bawah KKM' }}</span>
           </span>
         </div>
-        <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ classAvg.toFixed(1) }}</div>
+        <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ classAvg.toFixed(1) }}</div>
         <div class="text-xs font-semibold text-blue-100 relative z-10">Rata-rata Nilai Kelas</div>
         
         <div class="absolute right-3.5 bottom-2.5 z-10 pointer-events-none">
@@ -236,11 +236,11 @@ const exportLedger = () => {
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="check" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <span>{{ Math.round(passedCount / students.length * 100) }}% siswa</span>
           </span>
         </div>
-        <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ passedCount }}</div>
+        <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ passedCount }}</div>
         <div class="text-xs font-semibold text-emerald-100 relative z-10">Tuntas Nilai (&ge;75)</div>
         
         <div class="absolute right-3.5 bottom-2.5 z-10 pointer-events-none">
@@ -258,11 +258,11 @@ const exportLedger = () => {
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="spark" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm truncate max-w-[140px]">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm truncate max-w-[140px]">
             <span>{{ highestStudent ? highestStudent.name.split(' ').slice(0, 2).join(' ') : '-' }}</span>
           </span>
         </div>
-        <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ highestStudent ? getStudentScore(highestStudent).toFixed(0) : '0' }}</div>
+        <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ highestStudent ? getStudentScore(highestStudent).toFixed(0) : '0' }}</div>
         <div class="text-xs font-semibold text-amber-100 relative z-10">Nilai Tertinggi Kelas</div>
         
         <div class="absolute right-3.5 bottom-2.5 z-10 pointer-events-none">
@@ -280,11 +280,11 @@ const exportLedger = () => {
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="grad" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <span>rerata {{ strongestSubject.avg }}</span>
           </span>
         </div>
-        <div class="text-xl sm:text-2xl font-black tracking-tight mb-1 relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)] truncate">{{ strongestSubject.name }}</div>
+        <div class="text-xl sm:text-2xl font-bold tracking-tight mb-1 relative z-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)] truncate">{{ strongestSubject.name }}</div>
         <div class="text-xs font-semibold text-purple-100 relative z-10">Mata Pelajaran Terkuat</div>
         
         <div class="absolute right-3.5 bottom-2.5 z-10 pointer-events-none">
@@ -298,7 +298,7 @@ const exportLedger = () => {
       <!-- Chart 1: Rata-rata per Mata Pelajaran -->
       <div class="lg:col-span-8 bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
         <div class="pb-4 border-b border-slate-100 mb-4">
-          <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+          <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
             Rata-rata per Mata Pelajaran
           </h3>
           <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Nilai rata-rata seluruh siswa kelas {{ classroom }}</div>
@@ -315,7 +315,7 @@ const exportLedger = () => {
       <!-- Chart 2: Distribusi Predikat (Interactive Donut Chart) -->
       <div class="lg:col-span-4 bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
         <div class="pb-3 border-b border-slate-100 mb-3">
-          <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-purple-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(168,85,247,0.4)]">
+          <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-purple-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(168,85,247,0.4)]">
             Distribusi Predikat
           </h3>
           <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Persebaran nilai A, B, C, D</div>
@@ -342,7 +342,7 @@ const exportLedger = () => {
     <div class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden flex flex-col justify-between">
       <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
+          <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
             Daftar Nilai Siswa
           </h3>
           <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Rekap nilai mata pelajaran kelas {{ classroom }}</div>
@@ -351,7 +351,7 @@ const exportLedger = () => {
 
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
-          <thead class="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-100 text-[11px]">
+          <thead class="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-100 text-[11px]">
             <tr>
               <th class="py-3.5 px-5">Siswa</th>
               <th class="py-3.5 px-5">NIS</th>

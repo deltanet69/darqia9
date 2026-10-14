@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminSparkline from '~/components/admin/AdminSparkline.vue'
@@ -116,7 +116,7 @@ const exportLog = () => {
             Audit Trail
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ store.logs.length }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ store.logs.length }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Total Log Tercatat</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[14, 20, 28, 35, 42, 50]" color="#ffffff" />
@@ -134,7 +134,7 @@ const exportLog = () => {
             Realtime
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ todayLogsCount }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ todayLogsCount }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Aktivitas Hari Ini</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[8, 12, 16, 22, 28, 32]" color="#ffffff" />
@@ -152,7 +152,7 @@ const exportLog = () => {
             {{ uniqueModules.length }} Modul
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">Absensi</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">Absensi</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Modul Paling Sering Diakses</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[12, 18, 25, 30, 36, 44]" color="#ffffff" />
@@ -170,7 +170,7 @@ const exportLog = () => {
             100% Aman
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">0 Insiden</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">0 Insiden</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Integritas Log Sistem Terverifikasi</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[0, 0, 0, 0, 0, 0]" color="#ffffff" />

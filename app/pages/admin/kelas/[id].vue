@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="space-y-6 animate-fadeUp">
     <!-- Breadcrumb & Top Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
@@ -18,7 +18,7 @@
         </div>
 
         <div class="flex items-center gap-3 flex-wrap">
-          <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+          <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
             <span>Rombel {{ classData.name }}</span>
             <span
               class="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border shadow-xs"
@@ -94,7 +94,7 @@
         <!-- Wali Kelas Assigned -->
         <div class="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs flex items-center gap-4">
           <div
-            class="w-12 h-12 rounded-2xl text-white font-black text-sm flex items-center justify-center shrink-0 shadow-md"
+            class="w-12 h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-md"
             :class="avatarGradient(classData.name)"
           >
             {{ initials(classData.teacher) }}
@@ -125,7 +125,7 @@
             </div>
           </div>
           <div class="flex items-baseline gap-1.5">
-            <b class="text-2xl font-black font-mono text-emerald-600 leading-none">
+            <b class="text-2xl font-bold font-mono text-emerald-600 leading-none">
               {{ overviewPeriod === 'Harian' ? classData.attendance : (overviewPeriod === 'Mingguan' ? '95.4' : '94.8') }}%
             </b>
             <span class="text-xs font-bold text-emerald-700">{{ overviewPeriod }}</span>
@@ -143,7 +143,7 @@
           <div class="min-w-0 flex-1">
             <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Total Siswa</span>
             <div class="flex items-baseline gap-1.5">
-              <b class="text-2xl font-black font-mono text-slate-900 leading-none">{{ classData.students }}</b>
+              <b class="text-2xl font-bold font-mono text-slate-900 leading-none">{{ classData.students }}</b>
               <span class="text-xs font-bold text-slate-500">Siswa</span>
             </div>
             <span class="text-[11px] font-semibold text-slate-500 mt-1 block">
@@ -173,7 +173,7 @@
         <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-4">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <b class="text-base font-black text-slate-900">Jadwal Pelajaran Hari Ini</b>
+              <b class="text-base font-bold text-slate-900">Jadwal Pelajaran Hari Ini</b>
               <p class="text-xs text-slate-500 mt-0.5">Sesi aktif dan jadwal berlangsung</p>
             </div>
             <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
@@ -221,7 +221,7 @@
         <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-4">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <b class="text-base font-black text-slate-900">Jadwal Kegiatan &amp; Ujian Harian</b>
+              <b class="text-base font-bold text-slate-900">Jadwal Kegiatan &amp; Ujian Harian</b>
               <p class="text-xs text-slate-500 mt-0.5">Agenda kelas terpantau pekan ini</p>
             </div>
             <span class="text-xs font-bold text-slate-400">Pekan Berjalan</span>
@@ -308,7 +308,7 @@
       <div class="bg-white border border-slate-200/80 rounded-3xl shadow-xs overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs sm:text-sm">
-            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-100 text-[11px]">
+            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-100 text-[11px]">
               <tr>
                 <th class="py-3.5 px-4 w-12 text-center">No</th>
                 <th class="py-3.5 px-4">NISN</th>
@@ -423,7 +423,7 @@
       <div class="bg-white border border-slate-200/80 rounded-3xl shadow-xs overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs sm:text-sm">
-            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-100 text-[11px]">
+            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-100 text-[11px]">
               <tr>
                 <th class="py-3.5 px-4 w-12 text-center">No</th>
                 <th class="py-3.5 px-4">Nama Siswa</th>
@@ -473,7 +473,7 @@
             </span>
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-sm sm:text-base font-black text-slate-900 tracking-tight">Jadwal Pelajaran</h3>
+                <h3 class="text-sm sm:text-base font-bold text-slate-900 tracking-tight">Jadwal Pelajaran</h3>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
                   {{ classData.name }}
                 </span>
@@ -497,18 +497,18 @@
             <div class="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
               <button
                 type="button"
-                class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all cursor-pointer text-sm font-black"
+                class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all cursor-pointer text-sm font-bold"
                 title="Hari Sebelumnya"
                 @click="prevScheduleDay"
               >
                 ‹
               </button>
-              <span class="px-2.5 text-xs font-black text-slate-800 min-w-[65px] text-center">
+              <span class="px-2.5 text-xs font-bold text-slate-800 min-w-[65px] text-center">
                 {{ selectedScheduleDay }}
               </span>
               <button
                 type="button"
-                class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all cursor-pointer text-sm font-black"
+                class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-white transition-all cursor-pointer text-sm font-bold"
                 title="Hari Berikutnya"
                 @click="nextScheduleDay"
               >
@@ -569,7 +569,7 @@
               <div class="flex items-center gap-2 flex-wrap">
                 <!-- 1. Jam Pelajaran (Mute bg on upcoming, tapi teks tetap tegas & jelas) -->
                 <span
-                  class="text-[11px] font-mono font-black px-2 py-0.5 rounded-lg shrink-0 inline-flex items-center gap-1"
+                  class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg shrink-0 inline-flex items-center gap-1"
                   :class="slot.isCurrent
                     ? 'bg-blue-600 text-white'
                     : (isSlotUpcoming(slot) ? 'bg-slate-200/80 text-slate-800' : 'bg-slate-100 text-slate-800 border border-slate-200/80')"
@@ -584,7 +584,7 @@
 
                 <span
                   v-if="slot.isCurrent"
-                  class="text-[9px] font-black uppercase tracking-wider text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md inline-block animate-pulse"
+                  class="text-[9px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md inline-block animate-pulse"
                 >
                   ● Aktif
                 </span>
@@ -597,14 +597,14 @@
               </div>
 
               <!-- 2. Mata Pelajaran (Tanpa kode mapel & tanpa ruang kelas agar query ringan) -->
-              <h4 class="text-xs sm:text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+              <h4 class="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                 {{ slot.subject }}
               </h4>
 
               <!-- 3. Guru Pengajar + Checklist Kehadiran Langsung (Tanpa NIP, lebih simple) -->
               <div class="flex items-center gap-1.5 text-xs text-slate-700 pt-0.5">
                 <div
-                  class="w-5 h-5 rounded-lg flex items-center justify-center text-white text-[9px] font-black shrink-0"
+                  class="w-5 h-5 rounded-lg flex items-center justify-center text-white text-[9px] font-bold shrink-0"
                   :class="avatarGradient(slot.teacher)"
                 >
                   {{ initials(slot.teacher) }}
@@ -740,7 +740,7 @@
       <div class="bg-white border border-slate-200/80 rounded-3xl shadow-xs overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs sm:text-sm">
-            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-100 text-[11px]">
+            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-100 text-[11px]">
               <tr>
                 <th class="py-3.5 px-4 w-12 text-center">No</th>
                 <th class="py-3.5 px-4">NISN</th>
@@ -765,7 +765,7 @@
                 <td class="py-3.5 px-4 font-mono text-center font-bold text-slate-800">88</td>
                 <td class="py-3.5 px-4 font-mono font-bold text-center text-blue-600 text-sm">{{ stu.avgScore }}</td>
                 <td class="py-3.5 px-4 text-center">
-                  <span class="px-2.5 py-0.5 rounded-md text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200">
+                  <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                     {{ stu.avgScore >= 85 ? 'A' : 'B' }}
                   </span>
                 </td>
@@ -953,7 +953,7 @@
               <AdminIcon name="cal" size="18" />
             </div>
             <div class="min-w-0">
-              <h3 class="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-snug truncate">
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug truncate">
                 Presensi: {{ activeSlot.subject }}
               </h3>
               <p class="text-xs text-slate-500 font-medium truncate mt-0.5">

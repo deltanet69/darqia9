@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -97,14 +97,14 @@ const downloadModule = (title: string) => {
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span
-            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider border"
+            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider border"
             :class="grade === 'SMP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'"
           >
             {{ schoolName }}
           </span>
           <span class="text-xs font-semibold text-slate-500">Perangkat Kurikulum Merdeka</span>
         </div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Modul Pembelajaran</h2>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Modul Pembelajaran</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Repositori bahan ajar digital, lembar kerja siswa (LKS), dan modul praktikum</p>
       </div>
 
@@ -124,24 +124,24 @@ const downloadModule = (title: string) => {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Modul Aktif</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ filteredModules.length }} Modul</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ filteredModules.length }} Modul</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Bahan ajar terverifikasi</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Unduhan Siswa</span>
-        <b class="text-2xl font-black text-blue-600 block mt-1">
+        <b class="text-2xl font-bold text-blue-600 block mt-1">
           {{ filteredModules.reduce((a, b) => a + b.downloads, 0) }}x
         </b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Akses materi digital</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Mata Pelajaran Tercover</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ uniqueSubjects.length }} Mapel</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ uniqueSubjects.length }} Mapel</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Semua mapel inti</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Status Perangkat Ajar</span>
-        <b class="text-2xl font-black text-emerald-600 block mt-1">Lengkap</b>
+        <b class="text-2xl font-bold text-emerald-600 block mt-1">Lengkap</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Sesuai standar ATP</span>
       </div>
     </div>

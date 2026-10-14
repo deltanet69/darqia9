@@ -74,7 +74,7 @@ const initials = (name: string) => {
         leave-to-class="opacity-0 scale-95 translate-y-2"
       >
         <div
-          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto font-admin"
           role="dialog"
           aria-modal="true"
         >
@@ -82,18 +82,18 @@ const initials = (name: string) => {
           <div class="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/95 backdrop-blur-xs sticky top-0 z-10">
             <div class="flex items-center gap-3.5 min-w-0">
               <span
-                class="w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-base shrink-0 shadow-xs"
+                class="w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold text-base shrink-0 shadow-xs"
                 :class="student.gender === 'L' ? 'bg-gradient-to-br from-blue-500 to-blue-700' : 'bg-gradient-to-br from-pink-500 to-rose-700'"
               >
                 {{ initials(student.name) }}
               </span>
               <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <h3 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug truncate">
+                  <h3 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-snug truncate">
                     {{ student.name }}
                   </h3>
                   <span
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider"
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider"
                     :class="student.status === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
                   >
                     {{ student.status }}

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, reactive } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminModal from '~/components/admin/AdminModal.vue'
@@ -101,7 +101,7 @@ const updatePassword = () => {
           <div class="p-6 pt-0">
             <div class="flex flex-wrap items-end justify-between gap-4 -mt-12 mb-6">
               <div class="flex items-end gap-4">
-                <div class="w-22 h-22 rounded-2xl border-4 border-white bg-gradient-to-br from-blue-500 to-indigo-700 text-white font-black text-2xl flex items-center justify-center shadow-lg shrink-0">
+                <div class="w-22 h-22 rounded-2xl border-4 border-white bg-gradient-to-br from-blue-500 to-indigo-700 text-white font-bold text-2xl flex items-center justify-center shadow-lg shrink-0">
                   {{ getInitials(ME.nama) }}
                 </div>
                 <div class="pb-1">
@@ -149,15 +149,15 @@ const updatePassword = () => {
           <div class="p-5">
             <div class="grid grid-cols-3 gap-3.5 text-center">
               <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 shadow-xs">
-                <b class="block text-2xl font-extrabold text-slate-900 tracking-tight">1.284</b>
+                <b class="block text-2xl font-bold text-slate-900 tracking-tight">1.284</b>
                 <span class="block text-xs font-medium text-slate-400 mt-1">Total Sesi Login</span>
               </div>
               <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 shadow-xs">
-                <b class="block text-2xl font-extrabold text-blue-600 tracking-tight">96</b>
+                <b class="block text-2xl font-bold text-blue-600 tracking-tight">96</b>
                 <span class="block text-xs font-medium text-slate-400 mt-1">Aksi Bulan Ini</span>
               </div>
               <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 shadow-xs">
-                <b class="block text-2xl font-extrabold text-emerald-600 tracking-tight">12</b>
+                <b class="block text-2xl font-bold text-emerald-600 tracking-tight">12</b>
                 <span class="block text-xs font-medium text-slate-400 mt-1">Laporan Dibuat</span>
               </div>
             </div>

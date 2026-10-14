@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', 'katex/dist/katex.min.css'],
   app: {
     head: {
       title: 'DARQIA ATTAQWA — Unggul dalam IMTAQ, Terdepan dalam IPTEK',
@@ -24,7 +24,7 @@ export default defineNuxtConfig({
         { rel: 'apple-touch-icon', href: '/icons/smk-192.png' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap' }
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap' }
       ]
     }
   },
@@ -33,7 +33,9 @@ export default defineNuxtConfig({
     '@nuxtjs/supabase'
   ],
   supabase: {
-    redirect: false
+    redirect: false,
+    url: process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL,
+    key: process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NUXT_PUBLIC_SUPABASE_KEY
   },
   runtimeConfig: {
     // Kredensial server-only (tidak bocor ke browser)
