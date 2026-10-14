@@ -137,15 +137,15 @@ const showToast = (msg: string) => {
           <div class="grid grid-cols-3 gap-3 p-3.5 bg-slate-50/80 rounded-xl mb-4 border border-slate-100">
             <div class="text-center">
               <span class="block text-[11px] font-semibold text-slate-500">Total Peserta</span>
-              <span class="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono">{{ exam.participants }}</span>
+              <span class="text-xl sm:text-2xl font-bold text-slate-900 font-mono">{{ exam.participants }}</span>
             </div>
             <div class="text-center">
               <span class="block text-[11px] font-semibold text-purple-600">Mengerjakan</span>
-              <span class="text-xl sm:text-2xl font-extrabold text-purple-700 font-mono">{{ exam.doing }}</span>
+              <span class="text-xl sm:text-2xl font-bold text-purple-700 font-mono">{{ exam.doing }}</span>
             </div>
             <div class="text-center">
               <span class="block text-[11px] font-semibold text-emerald-600">Selesai</span>
-              <span class="text-xl sm:text-2xl font-extrabold text-emerald-700 font-mono">{{ exam.collected }}</span>
+              <span class="text-xl sm:text-2xl font-bold text-emerald-700 font-mono">{{ exam.collected }}</span>
             </div>
           </div>
 

@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
         leave-to-class="opacity-0 scale-95 translate-y-2"
       >
         <section
-          class="relative w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+          class="relative w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto font-admin"
           :class="wide ? 'max-w-2xl sm:max-w-3xl' : 'max-w-lg sm:max-w-xl'"
           role="dialog"
           aria-modal="true"
@@ -96,11 +96,11 @@ onBeforeUnmount(() => {
               </div>
               <div class="min-w-0">
                 <div v-if="badge" class="mb-1">
-                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
                     {{ badge }}
                   </span>
                 </div>
-                <h3 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug truncate">
+                <h3 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-snug truncate">
                   {{ title }}
                 </h3>
                 <p v-if="subtitle" class="text-xs sm:text-sm text-slate-500 font-medium truncate mt-0.5">

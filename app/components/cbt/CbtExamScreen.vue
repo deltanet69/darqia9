@@ -141,9 +141,21 @@
               </button>
             </div>
 
-            <!-- Question Text -->
-            <div class="text-base sm:text-lg font-medium text-slate-900 leading-relaxed">
-              {{ curQuestion.text }}
+            <!-- Question Text with KaTeX & Arabic RTL -->
+            <div
+              class="text-base sm:text-lg font-medium text-slate-900 leading-relaxed overflow-x-auto"
+              :dir="isArabicText(curQuestion.text) ? 'rtl' : 'ltr'"
+              :class="isArabicText(curQuestion.text) ? 'text-right font-serif text-xl sm:text-2xl leading-loose py-2 text-slate-950' : ''"
+              v-html="renderKaTeXHtml(curQuestion.text)"
+            />
+
+            <!-- Question Image (if any) -->
+            <div v-if="curQuestion.imageUrl" class="my-4">
+              <img
+                :src="curQuestion.imageUrl"
+                alt="Foto Soal Ujian"
+                class="max-h-72 w-auto rounded-2xl border border-slate-200 object-contain shadow-xs bg-slate-50 p-1"
+              />
             </div>
 
             <!-- Single choice / Audio / Video options -->
@@ -195,7 +207,12 @@
                   >
                     {{ letters[oi] }}
                   </span>
-                  <span class="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed pt-0.5">{{ op }}</span>
+                  <span
+                    class="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed pt-0.5"
+                    :dir="isArabicText(op) ? 'rtl' : 'ltr'"
+                    :class="isArabicText(op) ? 'font-serif text-base' : ''"
+                    v-html="renderKaTeXHtml(op)"
+                  />
                 </button>
               </div>
             </template>
@@ -221,7 +238,12 @@
                   >
                     {{ isOptionSelected(qIdx, oi) ? '✓' : letters[oi] }}
                   </span>
-                  <span class="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed pt-0.5">{{ op }}</span>
+                  <span
+                    class="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed pt-0.5"
+                    :dir="isArabicText(op) ? 'rtl' : 'ltr'"
+                    :class="isArabicText(op) ? 'font-serif text-base' : ''"
+                    v-html="renderKaTeXHtml(op)"
+                  />
                 </button>
               </div>
             </template>
@@ -376,6 +398,7 @@
 
 <script setup lang="ts">
 import type { QuestionItem, SectionItem } from '~/composables/useCbtExam'
+import { renderKaTeXHtml, isArabicText } from '~/utils/cbtFormula'
 
 defineProps<{
   screen: string

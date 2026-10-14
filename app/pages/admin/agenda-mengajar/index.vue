@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -151,14 +151,14 @@ const submitAgenda = () => {
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span
-            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider border"
+            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider border"
             :class="grade === 'SMP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'"
           >
             {{ schoolName }}
           </span>
           <span class="text-xs font-semibold text-slate-500">Jurnal KBM Harian Guru</span>
         </div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Agenda Mengajar Guru</h2>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Agenda Mengajar Guru</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pencatatan realisasi materi pembelajaran, presensi kelas, dan catatan kemajuan siswa</p>
       </div>
 
@@ -178,26 +178,26 @@ const submitAgenda = () => {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Jurnal KBM</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ filteredAgenda.length }} Jurnal</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ filteredAgenda.length }} Jurnal</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Tercatat di sistem</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Terverifikasi Kurikulum</span>
-        <b class="text-2xl font-black text-emerald-600 block mt-1">
+        <b class="text-2xl font-bold text-emerald-600 block mt-1">
           {{ filteredAgenda.filter(a => a.status === 'Terverifikasi').length }}
         </b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Sesuai silabus KBM</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Menunggu Validasi</span>
-        <b class="text-2xl font-black text-amber-500 block mt-1">
+        <b class="text-2xl font-bold text-amber-500 block mt-1">
           {{ filteredAgenda.filter(a => a.status === 'Menunggu Verifikasi').length }}
         </b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Perlu ditinjau Waka</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Rata-rata Kehadiran</span>
-        <b class="text-2xl font-black text-blue-600 block mt-1">98.5%</b>
+        <b class="text-2xl font-bold text-blue-600 block mt-1">98.5%</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Partisipasi siswa tinggi</span>
       </div>
     </div>

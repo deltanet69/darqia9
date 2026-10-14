@@ -41,7 +41,7 @@
             <span class="text-[11px] font-mono font-bold uppercase tracking-widest text-blue-300 block">
               Yayasan Darqia Attaqwa
             </span>
-            <h2 class="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
+            <h2 class="text-xl sm:text-2xl font-bold text-white leading-tight tracking-tight">
               SMK IT Attaqwa 9
             </h2>
             <p class="text-xs text-slate-300 font-medium">
@@ -52,7 +52,7 @@
 
         <!-- Headline Utama -->
         <div class="space-y-3">
-          <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.15] text-white">
+          <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.15] text-white">
             Satu pintu untuk <br class="hidden sm:inline">
             <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-sky-200 to-indigo-200">
               seluruh operasional
@@ -125,13 +125,13 @@
           <!-- Card Header -->
           <div class="pb-5 border-b border-slate-100">
             <div class="flex items-center justify-between gap-2 mb-2">
-              <span class="inline-flex items-center gap-1.5 text-[10.5px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-1 rounded-full">
+              <span class="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-1 rounded-full">
                 <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
                 Admin Portal
               </span>
               <span class="text-[11px] font-mono font-bold text-slate-400">Versi 2.4</span>
             </div>
-            <h2 class="text-2xl font-black tracking-tight text-slate-900">
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900">
               Selamat Datang Kembali
             </h2>
             <p class="text-xs text-slate-500 mt-1 font-medium">
@@ -157,40 +157,31 @@
             </button>
           </div>
 
-          <!-- Alert Feedback Autofill Demo -->
-          <div
-            v-if="autofillNotice"
-            class="mt-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-fadeIn"
-          >
-            <AdminIcon name="check" size="16" class="text-emerald-600 shrink-0" />
-            <span>Kredensial demo berhasil diisikan ke formulir.</span>
-          </div>
-
           <!-- Form Login -->
           <form class="space-y-4 pt-4" autocomplete="off" @submit.prevent="handleLogin">
-            <!-- Input Username / NIP -->
+            <!-- Input Email Akun Admin -->
             <div>
-              <label for="li-user" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Username / NIP
+              <label for="li-email" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Email Administrator
               </label>
               <div
                 class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/90 focus-within:bg-white focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/15 transition-all shadow-2xs"
               >
-                <AdminIcon name="user" size="17" class="text-slate-400 shrink-0" />
+                <AdminIcon name="mail" size="17" class="text-slate-400 shrink-0" />
                 <input
-                  id="li-user"
-                  v-model.trim="username"
-                  type="text"
-                  placeholder="Masukkan username atau NIP"
+                  id="li-email"
+                  v-model.trim="email"
+                  type="email"
+                  placeholder="admin@darqia.sch.id"
                   class="w-full bg-transparent text-xs sm:text-sm font-semibold outline-none text-slate-900 placeholder:text-slate-400"
                   required
                 >
                 <button
-                  v-if="username"
+                  v-if="email"
                   type="button"
                   class="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
                   title="Hapus input"
-                  @click="username = ''"
+                  @click="email = ''"
                 >
                   ✕
                 </button>
@@ -235,18 +226,6 @@
               </div>
             </div>
 
-            <!-- Opsi Ingat Saya -->
-            <div class="flex items-center justify-between text-xs pt-0.5">
-              <label class="flex items-center gap-2 cursor-pointer select-none text-slate-600 font-medium">
-                <input
-                  v-model="rememberMe"
-                  type="checkbox"
-                  class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                >
-                <span>Ingat sesi di perangkat ini</span>
-              </label>
-            </div>
-
             <!-- Tombol Submit -->
             <button
               type="submit"
@@ -259,25 +238,10 @@
             </button>
           </form>
 
-          <!-- Interaktif: Tombol Isi Otomatis Akun Demo -->
-          <div class="mt-5 pt-4 border-t border-slate-100 space-y-2">
-            <div class="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Akun Percobaan</span>
-                <span class="text-xs font-mono font-bold text-slate-800">admin &bull; admin123</span>
-              </div>
-              <button
-                type="button"
-                class="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border border-slate-200 hover:border-blue-300 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 flex items-center gap-1"
-                title="Isikan akun demo otomatis ke form"
-                @click="autofillDemo"
-              >
-                <AdminIcon name="spark" size="13" />
-                <span>Isi Otomatis</span>
-              </button>
-            </div>
-            <p class="text-[11px] text-center text-slate-400 font-medium">
-              Butuh bantuan akses? Hubungi <b class="text-slate-600">Tim IT Darqia 9</b>
+          <!-- Informasi Layanan Bantuan Akses -->
+          <div class="mt-5 pt-4 border-t border-slate-100 text-center">
+            <p class="text-[11px] text-slate-400 font-medium">
+              Akses portal khusus staf &amp; pengelola terdaftar. Hubungi <b class="text-slate-600">Administrator IT Darqia 9</b> jika mengalami kendala.
             </p>
           </div>
         </div>
@@ -302,49 +266,53 @@ definePageMeta({
 })
 
 const router = useRouter()
-const username = ref('admin')
-const password = ref('admin123')
+const supabase = useSupabaseClient()
+const email = ref('')
+const password = ref('')
 const showPassword = ref(false)
-const rememberMe = ref(true)
 const errorMsg = ref('')
-const autofillNotice = ref(false)
 const loading = ref(false)
-
-// Interaktif: Autofill Akun Demo
-const autofillDemo = () => {
-  username.value = 'admin'
-  password.value = 'admin123'
-  errorMsg.value = ''
-  autofillNotice.value = true
-  setTimeout(() => {
-    autofillNotice.value = false
-  }, 3000)
-}
 
 // Bantuan Lupa Password
 const forgotPasswordHint = () => {
   alert('Untuk pemulihan kata sandi akun staf atau guru, silakan hubungi Administrator IT Sekolah di smkitattaqwa09@gmail.com atau telepon (021) 8888-6776.')
 }
 
-const handleLogin = () => {
+const handleLogin = async () => {
   errorMsg.value = ''
-  autofillNotice.value = false
 
-  if (!username.value || !password.value) {
-    errorMsg.value = 'Mohon masukkan username dan kata sandi Anda.'
+  if (!email.value || !password.value) {
+    errorMsg.value = 'Mohon masukkan email dan kata sandi Anda.'
     return
   }
 
   loading.value = true
-  
-  setTimeout(() => {
-    loading.value = false
-    if (username.value === 'admin' && password.value === 'admin123') {
-      router.push('/admin')
-    } else {
-      errorMsg.value = 'Username atau kata sandi tidak cocok. Gunakan akun demo: admin / admin123'
+
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.value,
+      password: password.value
+    })
+
+    if (authError || !authData.user) {
+      if (authError?.message?.includes('Email not confirmed')) {
+        errorMsg.value = 'Email belum dikonfirmasi. Matikan "Confirm Email" di Supabase → Authentication → Providers → Email.'
+      } else if (authError?.message?.includes('Invalid login credentials')) {
+        errorMsg.value = 'Email atau kata sandi salah. Periksa kembali atau reset password di Supabase Dashboard.'
+      } else {
+        errorMsg.value = authError?.message || 'Email atau kata sandi tidak valid.'
+      }
+      loading.value = false
+      return
     }
-  }, 600)
+
+    // Auth berhasil — langsung redirect, middleware yang verifikasi role
+    await navigateTo('/admin')
+  } catch (err: any) {
+    errorMsg.value = err?.message || 'Terjadi kendala saat memverifikasi sesi login.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

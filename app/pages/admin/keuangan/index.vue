@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminModal from '~/components/admin/AdminModal.vue'
@@ -140,7 +140,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
       <div>
-        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
           <span>Keuangan Sekolah</span>
         </h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-1 font-medium">Arus kas, infaq &amp; transaksi &bull; Tahun Ajaran 2026/2027</p>
@@ -199,12 +199,12 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
             <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
               <AdminIcon name="tup" size="22" />
             </span>
-            <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+            <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
               <AdminIcon name="tup" size="12" />
               <span>+8.2% vs bln lalu</span>
             </span>
           </div>
-          <div class="text-2xl sm:text-3xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(currentMonth.rawIncome) }}</div>
+          <div class="text-2xl sm:text-3xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(currentMonth.rawIncome) }}</div>
           <div class="text-xs font-semibold text-amber-100 relative z-10">Pemasukan Bulan Ini</div>
           
           <!-- Sparkline -->
@@ -223,11 +223,11 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
             <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
               <AdminIcon name="tdn" size="22" />
             </span>
-            <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+            <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
               <span>terkendali</span>
             </span>
           </div>
-          <div class="text-2xl sm:text-3xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(currentMonth.rawExpense) }}</div>
+          <div class="text-2xl sm:text-3xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(currentMonth.rawExpense) }}</div>
           <div class="text-xs font-semibold text-emerald-100 relative z-10">Pengeluaran Bulan Ini</div>
           
           <!-- Sparkline -->
@@ -246,12 +246,12 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
             <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
               <AdminIcon name="wallet" size="22" />
             </span>
-            <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+            <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
               <AdminIcon name="tup" size="12" />
               <span>sehat</span>
             </span>
           </div>
-          <div class="text-2xl sm:text-3xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(currentMonth.rawIncome - currentMonth.rawExpense) }}</div>
+          <div class="text-2xl sm:text-3xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(currentMonth.rawIncome - currentMonth.rawExpense) }}</div>
           <div class="text-xs font-semibold text-blue-100 relative z-10">Surplus Bulan Ini</div>
           
           <!-- Sparkline -->
@@ -270,11 +270,11 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
             <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
               <AdminIcon name="file" size="22" />
             </span>
-            <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+            <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
               <span>{{ transactions.length }} data</span>
             </span>
           </div>
-          <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ transactions.length }}</div>
+          <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ transactions.length }}</div>
           <div class="text-xs font-semibold text-purple-100 relative z-10">Total Transaksi &bull; 40 hari terakhir</div>
           
           <!-- Sparkline -->
@@ -288,7 +288,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
       <div class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300">
         <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
           <div>
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+            <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
               Arus Kas 6 Bulan
             </h3>
             <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Dalam juta rupiah &bull; Pemasukan vs Pengeluaran</div>
@@ -311,7 +311,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
       <div class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden flex flex-col justify-between">
         <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
+            <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
               Riwayat Transaksi
             </h3>
             <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Seluruh pencatatan kas keluar &amp; masuk</div>
@@ -335,7 +335,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
 
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-100 text-[11px]">
+            <thead class="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-100 text-[11px]">
               <tr>
                 <th class="py-3.5 px-5">Tanggal</th>
                 <th class="py-3.5 px-5">Keterangan</th>
@@ -419,11 +419,11 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
           <div>
             <div class="text-xs font-bold uppercase tracking-wider text-blue-200 mb-1">Infaq Bulanan &bull; Periode Berjalan 2026</div>
-            <div class="text-3xl sm:text-4xl font-black font-mono text-white tracking-tight drop-shadow-md">
+            <div class="text-3xl sm:text-4xl font-bold font-mono text-white tracking-tight drop-shadow-md">
               {{ rupiah(infaqTotal) }} <span class="text-base sm:text-lg font-medium text-blue-200">/ {{ rupiah(infaqTarget) }}</span>
             </div>
           </div>
-          <span class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-extrabold bg-white/20 border border-white/30 backdrop-blur-md text-white shadow-sm w-fit">
+          <span class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold bg-white/20 border border-white/30 backdrop-blur-md text-white shadow-sm w-fit">
             {{ infaqProgress }}% Tercapai
           </span>
         </div>
@@ -444,7 +444,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
         <div class="lg:col-span-7 bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300">
           <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
             <div>
-              <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
+              <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
                 Tren Infaq 6 Bulan
               </h3>
               <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Dalam juta rupiah &bull; Realisasi vs Target (Rp 18 jt)</div>
@@ -466,7 +466,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
         <!-- Infaq per Class Distribution -->
         <div class="lg:col-span-5 bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
           <div class="pb-3 border-b border-slate-100 mb-3">
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+            <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
               Distribusi per Kelas
             </h3>
             <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Capaian infaq 13 kelas bulan berjalan</div>

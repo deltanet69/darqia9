@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed } from 'vue'
 import { useAdminCbtState } from '~/composables/useAdminCbtState'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
@@ -71,7 +71,7 @@ const handleQuickAction = () => {
         <span>{{ tab.label }}</span>
         <span
           v-if="tab.badge"
-          class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+          class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
           :class="activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-600 border border-rose-200'"
         >
           <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>

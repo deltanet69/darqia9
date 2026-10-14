@@ -1,6 +1,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminGrade } from '~/composables/useAdminGrade'
+import { useAdminCbtState } from '~/composables/useAdminCbtState'
 
 export interface SectionItem {
   id: string
@@ -23,6 +24,7 @@ export interface QuestionItem {
   audioScript?: string
   videoDur?: string
   videoTitle?: string
+  imageUrl?: string
 }
 
 export type RevFilterType = 'all' | 'un' | 'fl' | 'ok'
@@ -154,7 +156,55 @@ export const useCbtExam = () => {
     }
   ]
 
+  const { allBankPackages, fetchBankPackagesFromDb } = useAdminCbtState()
+
+  // On mount, auto-fetch from Supabase if needed
+  onMounted(async () => {
+    await fetchBankPackagesFromDb()
+  })
+
   const questions = computed<QuestionItem[]>(() => {
+    // 1. Cari paket bank soal aktif sesuai jenjang pendidikan saat ini
+    const activePackages = allBankPackages.value.filter(p => p.grade === grade.value)
+    if (activePackages.length > 0 && activePackages[0].questions && activePackages[0].questions.length > 0) {
+      // Ambil paket pertama yang memiliki butir soal lengkap
+      const activePkg = activePackages.find(p => p.questions.length >= 4) || activePackages[0]
+      return activePkg.questions.map(q => {
+        let sec = 'pg'
+        let qType: QuestionItem['type'] = 'single'
+
+        if (q.type === 'PG') {
+          sec = 'pg'
+          qType = q.isMultiSelect ? 'multiple' : 'single'
+        } else if (q.type === 'Isian') {
+          sec = 'singkat'
+          qType = 'short'
+        } else if (q.type === 'Esai') {
+          sec = 'essay'
+          qType = 'essay'
+        } else if (q.type === 'Interaktif') {
+          sec = 'interaktif'
+          qType = q.mediaType === 'video' ? 'video' : 'audio'
+        }
+
+        const options = q.options ? q.options.map(o => o.text) : []
+
+        return {
+          sec,
+          type: qType,
+          text: q.text,
+          options: options.length > 0 ? options : undefined,
+          placeholder: q.type === 'Esai' ? 'Tulis jawaban essay-mu di sini…' : 'Ketik jawaban singkatmu…',
+          minWords: q.wordCountMin || (q.type === 'Esai' ? 30 : undefined),
+          imageUrl: q.imageUrl,
+          audioTitle: q.mediaFileName || 'Audio Ujian Terkompresi',
+          audioSub: 'Dengarkan rekaman dengan saksama',
+          videoTitle: 'Video Materi Soal'
+        }
+      })
+    }
+
+    // Fallback kurikulum bawaan bila bank soal kosong
     return grade.value === 'SMP' ? questionsSMP : questionsSMK
   })
 

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="space-y-6 animate-fadeUp">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
@@ -47,12 +47,12 @@
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="users" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <AdminIcon name="tup" size="12" />
             <span>{{ activeData.kpi.siswaBaru }}</span>
           </span>
         </div>
-        <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ activeData.kpi.totalSiswa }}</div>
+        <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ activeData.kpi.totalSiswa }}</div>
         <div class="text-xs font-semibold text-blue-100 relative z-10">Total Siswa Terdaftar</div>
         
         <!-- Sparkline -->
@@ -73,11 +73,11 @@
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="ucheck" size="22" />
           </span>
-          <span class="text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             {{ activeData.kpi.guruTendik }}
           </span>
         </div>
-        <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ activeData.kpi.totalGuru }}</div>
+        <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ activeData.kpi.totalGuru }}</div>
         <div class="text-xs font-semibold text-purple-100 relative z-10">Guru &amp; Tenaga Kependidikan</div>
         
         <!-- Sparkline -->
@@ -98,11 +98,11 @@
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="cal" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             {{ activeData.kpi.absenDetail }}
           </span>
         </div>
-        <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ activeData.kpi.kehadiranSiswa }}</div>
+        <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ activeData.kpi.kehadiranSiswa }}</div>
         <div class="text-xs font-semibold text-emerald-100 relative z-10">Kehadiran Siswa Hari Ini</div>
         
         <!-- Sparkline -->
@@ -123,12 +123,12 @@
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="wallet" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <AdminIcon name="tup" size="12" />
             <span>{{ activeData.kpi.pemasukanDelta }}</span>
           </span>
         </div>
-        <div class="text-3xl sm:text-4xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ activeData.kpi.pemasukanBulan }}</div>
+        <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ activeData.kpi.pemasukanBulan }}</div>
         <div class="text-xs font-semibold text-amber-100 relative z-10">Pemasukan Bulan Ini</div>
         
         <!-- Sparkline -->
@@ -241,7 +241,7 @@
               <b class="text-xs font-bold text-slate-900 block truncate">Informatika</b>
               <span class="text-[11px] text-slate-500 font-medium">X RPL 1 &bull; 08:00 - 09:30</span>
             </div>
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 uppercase tracking-wider">Menunggu</span>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">Menunggu</span>
           </div>
 
           <div class="flex items-center gap-3 pt-2 group hover:bg-slate-50 p-2 rounded-xl transition-all">
@@ -252,7 +252,7 @@
               <b class="text-xs font-bold text-slate-900 block truncate">Pemrograman Web</b>
               <span class="text-[11px] text-slate-500 font-medium">XI RPL 2 &bull; Berlangsung</span>
             </div>
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 uppercase tracking-wider">Berjalan</span>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 uppercase tracking-wider">Berjalan</span>
           </div>
           
           <div class="flex items-center gap-3 pt-2 group hover:bg-slate-50 p-2 rounded-xl transition-all">
@@ -263,7 +263,7 @@
               <b class="text-xs font-bold text-slate-900 block truncate">Matematika</b>
               <span class="text-[11px] text-slate-500 font-medium">IX-A &bull; Selesai</span>
             </div>
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Selesai</span>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Selesai</span>
           </div>
         </div>
       </div>
@@ -316,7 +316,7 @@
     <!-- Section: Ekosistem Aplikasi -->
     <div class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300">
       <div class="pb-4 border-b border-slate-100 mb-5">
-        <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-600 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(37,99,235,0.4)]">
+        <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-600 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(37,99,235,0.4)]">
           Ekosistem Aplikasi
         </h3>
         <div class="text-xs text-slate-500 ml-3.5 font-medium">Status seluruh aplikasi yang dikelola dalam monorepo Darqia 9</div>
@@ -331,7 +331,7 @@
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 flex-wrap">
               <b class="text-xs font-bold text-slate-900">Web Profile</b>
-              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Online</span>
+              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Online</span>
             </div>
             <div class="text-[11.5px] text-slate-500 mt-1 line-clamp-2">Website resmi, profil yayasan &amp; SPMB online</div>
             <div class="text-[10.5px] text-slate-400 font-mono mt-2 font-medium">v2.4.1 &bull; 12,4 rb kunjungan/bln</div>
@@ -346,7 +346,7 @@
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 flex-wrap">
               <b class="text-xs font-bold text-slate-900">Aplikasi CBT</b>
-              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Online</span>
+              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Online</span>
             </div>
             <div class="text-[11.5px] text-slate-500 mt-1 line-clamp-2">Ujian digital, anti kecurangan &amp; bank soal</div>
             <div class="text-[10.5px] text-slate-400 font-mono mt-2 font-medium">v1.8.0 &bull; 2 ujian aktif hari ini</div>
@@ -361,7 +361,7 @@
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 flex-wrap">
               <b class="text-xs font-bold text-slate-900">Admin Portal</b>
-              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Online</span>
+              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Online</span>
             </div>
             <div class="text-[11.5px] text-slate-500 mt-1 line-clamp-2">Pusat kendali akademik, keuangan &amp; RBAC</div>
             <div class="text-[10.5px] text-slate-400 font-mono mt-2 font-medium">v1.0.0 &bull; Nuxt 4 Monorepo</div>
@@ -376,7 +376,7 @@
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 flex-wrap">
               <b class="text-xs font-bold text-slate-900">Absensi TV RFID</b>
-              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Online</span>
+              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">Online</span>
             </div>
             <div class="text-[11.5px] text-slate-500 mt-1 line-clamp-2">Monitoring realtime tap kartu RFID siswa &amp; guru</div>
             <div class="text-[10.5px] text-slate-400 font-mono mt-2 font-medium">v1.1.0 &bull; 13 kelas terintegrasi</div>

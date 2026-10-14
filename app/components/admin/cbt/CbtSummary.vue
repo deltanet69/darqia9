@@ -43,7 +43,7 @@ const copyToken = (token: string) => {
             {{ grade }}
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-xs font-mono">{{ exams.length }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-xs font-mono">{{ exams.length }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Total Sesi Ujian Terdaftar</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[4, 5, 6, 6, 7, 8]" color="#ffffff" />
@@ -65,7 +65,7 @@ const copyToken = (token: string) => {
             Sedang Berjalan
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-xs font-mono">{{ liveExams.length }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-xs font-mono">{{ liveExams.length }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Ujian Sedang Berlangsung</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[1, 2, 2, 3, 2, 2]" color="#ffffff" />
@@ -86,7 +86,7 @@ const copyToken = (token: string) => {
             Terjadwal
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-xs font-mono">{{ scheduledExams.length }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-xs font-mono">{{ scheduledExams.length }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Jadwal Ujian Mendatang</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[2, 3, 2, 4, 3, 2]" color="#ffffff" />
@@ -107,7 +107,7 @@ const copyToken = (token: string) => {
             Arsip Nilai
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-xs font-mono">{{ completedExams.length }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-xs font-mono">{{ completedExams.length }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Ujian Selesai &amp; Dinilai</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[3, 4, 5, 7, 8, 9]" color="#ffffff" />
@@ -194,19 +194,19 @@ const copyToken = (token: string) => {
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-3 px-3.5 bg-slate-50/90 rounded-xl border border-slate-100">
                 <div class="text-center">
                   <span class="block text-[11px] font-semibold text-slate-500">Total Peserta</span>
-                  <span class="text-base sm:text-lg font-extrabold text-slate-900 font-mono">{{ exam.participants }} Siswa</span>
+                  <span class="text-base sm:text-lg font-bold text-slate-900 font-mono">{{ exam.participants }} Siswa</span>
                 </div>
                 <div class="text-center">
                   <span class="block text-[11px] font-semibold text-purple-600">Mengerjakan</span>
-                  <span class="text-base sm:text-lg font-extrabold text-purple-700 font-mono">{{ exam.doing }} ({{ Math.round((exam.doing / exam.participants) * 100) }}%)</span>
+                  <span class="text-base sm:text-lg font-bold text-purple-700 font-mono">{{ exam.doing }} ({{ Math.round((exam.doing / exam.participants) * 100) }}%)</span>
                 </div>
                 <div class="text-center">
                   <span class="block text-[11px] font-semibold text-emerald-600">Selesai Submit</span>
-                  <span class="text-base sm:text-lg font-extrabold text-emerald-700 font-mono">{{ exam.collected }} ({{ Math.round((exam.collected / exam.participants) * 100) }}%)</span>
+                  <span class="text-base sm:text-lg font-bold text-emerald-700 font-mono">{{ exam.collected }} ({{ Math.round((exam.collected / exam.participants) * 100) }}%)</span>
                 </div>
                 <div class="text-center">
                   <span class="block text-[11px] font-semibold text-slate-500">Belum Mulai</span>
-                  <span class="text-base sm:text-lg font-extrabold text-slate-600 font-mono">{{ exam.participants - exam.doing - exam.collected }} Siswa</span>
+                  <span class="text-base sm:text-lg font-bold text-slate-600 font-mono">{{ exam.participants - exam.doing - exam.collected }} Siswa</span>
                 </div>
               </div>
 
@@ -214,7 +214,7 @@ const copyToken = (token: string) => {
               <div>
                 <div class="flex justify-between text-xs font-bold text-slate-600 mb-1">
                   <span>Tingkat Penyelesaian Sesi</span>
-                  <span class="font-mono text-blue-700 font-extrabold">{{ exam.collected }} / {{ exam.participants }} Siswa ({{ Math.round((exam.collected / exam.participants) * 100) }}%)</span>
+                  <span class="font-mono text-blue-700 font-bold">{{ exam.collected }} / {{ exam.participants }} Siswa ({{ Math.round((exam.collected / exam.participants) * 100) }}%)</span>
                 </div>
                 <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden shadow-inner">
                   <div

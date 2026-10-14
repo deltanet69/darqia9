@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminModal from '~/components/admin/AdminModal.vue'
@@ -101,7 +101,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
       <div>
-        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
           <span>Tabungan Siswa</span>
         </h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-1 font-medium">{{ accounts.length }} penabung aktif &bull; Program tabungan mandiri siswa SMP &amp; SMK</p>
@@ -130,11 +130,11 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="piggy" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <span>{{ accounts.length }} rekening</span>
           </span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(totalBalance) }}</div>
+        <div class="text-2xl sm:text-3xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(totalBalance) }}</div>
         <div class="text-xs font-semibold text-blue-100 relative z-10">Total Dana Terkumpul</div>
         
         <!-- Sparkline -->
@@ -153,11 +153,11 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="tup" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <span>{{ currentTransactions.filter(t => t.kind === 'setor').length }} transaksi</span>
           </span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(monthlyDeposit) }}</div>
+        <div class="text-2xl sm:text-3xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(monthlyDeposit) }}</div>
         <div class="text-xs font-semibold text-emerald-100 relative z-10">Setoran Bulan Ini</div>
         
         <!-- Sparkline -->
@@ -176,11 +176,11 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="tdn" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <span>{{ currentTransactions.filter(t => t.kind === 'tarik').length }} transaksi</span>
           </span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(monthlyWithdrawal) }}</div>
+        <div class="text-2xl sm:text-3xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(monthlyWithdrawal) }}</div>
         <div class="text-xs font-semibold text-amber-100 relative z-10">Penarikan Bulan Ini</div>
         
         <!-- Sparkline -->
@@ -199,11 +199,11 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
           <span class="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-md text-white flex items-center justify-center">
             <AdminIcon name="spark" size="22" />
           </span>
-          <span class="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
+          <span class="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-white/20 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm">
             <span>per siswa</span>
           </span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(Math.round(totalBalance / accounts.length)) }}</div>
+        <div class="text-2xl sm:text-3xl font-bold tracking-tight mb-1 relative z-10 font-mono text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">{{ rupiah(Math.round(totalBalance / accounts.length)) }}</div>
         <div class="text-xs font-semibold text-purple-100 relative z-10">Rata-rata Saldo Tabungan</div>
         
         <!-- Sparkline -->
@@ -219,7 +219,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
       <div class="lg:col-span-8 bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden flex flex-col justify-between">
         <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
+            <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-indigo-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
               Rekening Tabungan
             </h3>
             <div class="text-xs text-slate-500 mt-0.5 ml-3.5 font-medium">Daftar buku tabungan seluruh siswa</div>
@@ -233,7 +233,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
 
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-100 text-[11px]">
+            <thead class="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-100 text-[11px]">
               <tr>
                 <th class="py-3.5 px-5">Siswa</th>
                 <th class="py-3.5 px-5">Kelas</th>
@@ -325,7 +325,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
       <!-- Right: Recent Saving Activity -->
       <div class="lg:col-span-4 bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-between">
         <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-2">
-          <h3 class="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
+          <h3 class="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-emerald-500 before:to-teal-600 before:shadow-[0_2px_8px_rgba(16,185,129,0.4)]">
             Transaksi Terakhir
           </h3>
           <span class="text-[11px] text-slate-400 font-semibold">Realtime</span>

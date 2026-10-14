@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminModal from '~/components/admin/AdminModal.vue'
@@ -122,7 +122,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
             {{ publishedCount }} Tayang
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ posts.length }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ posts.length }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Total Konten Terdata</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[10, 14, 18, 22, 28, 32]" color="#ffffff" />
@@ -140,7 +140,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
             Aktif
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ newsCount }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ newsCount }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Berita &amp; Artikel Sekolah</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[4, 6, 9, 12, 14, 18]" color="#ffffff" />
@@ -158,7 +158,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
             PPDB &amp; UTS
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ announcementCount }}</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ announcementCount }}</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Pengumuman Terbit</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[2, 3, 5, 4, 7, 8]" color="#ffffff" />
@@ -176,7 +176,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
             +18.4% bln ini
           </span>
         </div>
-        <div class="relative z-10 text-3xl font-extrabold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ (totalViews / 1000).toFixed(1) }}k</div>
+        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ (totalViews / 1000).toFixed(1) }}k</div>
         <div class="relative z-10 text-xs font-medium text-white/85">Total Kunjungan Publik</div>
         <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
           <AdminSparkline :points="[12, 16, 24, 28, 38, 46]" color="#ffffff" />

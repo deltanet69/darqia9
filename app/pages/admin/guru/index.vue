@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -144,12 +144,12 @@ const exportStaffCsv = () => {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <div class="flex items-center gap-2 mb-1">
-          <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+          <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
             Ekosistem Pendidikan Attaqwa 9
           </span>
           <span class="text-xs font-semibold text-slate-500">Pendidik &amp; Tenaga Kependidikan</span>
         </div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Data Guru &amp; Staff</h2>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Data Guru &amp; Staff</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Manajemen profil pendidik, penugasan, dan integrasi kartu absensi RFID</p>
       </div>
 
@@ -177,26 +177,26 @@ const exportStaffCsv = () => {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Guru &amp; Staff</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ staffList.length }} Orang</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ staffList.length }} Orang</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Seluruh Unit Sekolah</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Guru SMP IT BCA</span>
-        <b class="text-2xl font-black text-emerald-600 block mt-1">
+        <b class="text-2xl font-bold text-emerald-600 block mt-1">
           {{ staffList.filter(s => s.unit === 'SMP').length }} Guru
         </b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Pendidik aktif SMP</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Guru SMK IT Attaqwa 9</span>
-        <b class="text-2xl font-black text-blue-600 block mt-1">
+        <b class="text-2xl font-bold text-blue-600 block mt-1">
           {{ staffList.filter(s => s.unit === 'SMK').length }} Guru
         </b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Pendidik aktif SMK</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Kartu RFID Terdaftar</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">100%</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">100%</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Semua guru memiliki RFID</span>
       </div>
     </div>
@@ -321,7 +321,7 @@ const exportStaffCsv = () => {
       <div class="space-y-5 text-sm">
         <!-- Section 1: Identitas Pokok -->
         <div class="space-y-3.5">
-          <span class="text-xs font-black uppercase tracking-wider text-slate-400 block pb-1 border-b border-slate-100">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block pb-1 border-b border-slate-100">
             Identitas Pokok Pendidik
           </span>
           <div>
@@ -357,7 +357,7 @@ const exportStaffCsv = () => {
 
         <!-- Section 2: Penugasan & Unit -->
         <div class="space-y-3.5">
-          <span class="text-xs font-black uppercase tracking-wider text-slate-400 block pb-1 border-b border-slate-100">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block pb-1 border-b border-slate-100">
             Penugasan &amp; Unit Sekolah
           </span>
           <div>
@@ -383,7 +383,7 @@ const exportStaffCsv = () => {
 
         <!-- Section 3: Kontak & Presensi RFID -->
         <div class="space-y-3.5">
-          <span class="text-xs font-black uppercase tracking-wider text-slate-400 block pb-1 border-b border-slate-100">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block pb-1 border-b border-slate-100">
             Kontak &amp; Presensi RFID
           </span>
           <div>

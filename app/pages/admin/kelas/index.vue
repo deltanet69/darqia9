@@ -1,17 +1,17 @@
-<template>
+﻿<template>
   <div class="space-y-6 animate-fadeUp">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
       <div>
         <div class="flex items-center gap-2.5 mb-1">
-          <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200/80">
+          <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200/80">
             {{ activeGrade === 'SMP' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9' }}
           </span>
           <span class="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500">
             Tahun Ajaran 2026/2027 &bull; Semester Ganjil
           </span>
         </div>
-        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ title }}</h2>
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ title }}</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">{{ subtitle }}</p>
       </div>
 
@@ -92,11 +92,11 @@
 
           <div class="flex items-center justify-between relative z-10">
             <div class="text-xs font-bold uppercase tracking-wider text-white/90">{{ item.label }}</div>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 backdrop-blur-sm border border-white/25">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-sm border border-white/25">
               {{ item.sub }}
             </span>
           </div>
-          <div class="text-3xl sm:text-4xl font-black font-mono my-1.5 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)] flex items-baseline gap-1.5">
+          <div class="text-3xl sm:text-4xl font-bold font-mono my-1.5 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)] flex items-baseline gap-1.5">
             <span>{{ item.value }}</span>
             <span class="text-xs font-semibold text-white/80 font-sans">{{ item.unit }}</span>
           </div>
@@ -216,11 +216,11 @@
           >
             <div class="flex items-start justify-between">
               <div>
-                <span class="text-[10.5px] font-black uppercase tracking-wider text-blue-600 block mb-0.5">{{ grp.badge }}</span>
-                <b class="text-base font-black text-slate-900">{{ grp.title }}</b>
+                <span class="text-[10.5px] font-bold uppercase tracking-wider text-blue-600 block mb-0.5">{{ grp.badge }}</span>
+                <b class="text-base font-bold text-slate-900">{{ grp.title }}</b>
                 <p class="text-xs text-slate-500 mt-0.5">{{ grp.sub }}</p>
               </div>
-              <span class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 font-black text-xs flex items-center justify-center font-mono">
+              <span class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 font-bold text-xs flex items-center justify-center font-mono">
                 {{ grp.classesCount }} Rombel
               </span>
             </div>
@@ -360,7 +360,7 @@
           >
             <span>{{ cat.label }}</span>
             <span
-              class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-extrabold"
+              class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold"
               :class="selectedCategory === cat.value ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'"
             >
               {{ cat.count }}
@@ -389,7 +389,7 @@
                   {{ initials(item.teacher) }}
                 </div>
                 <span
-                  class="px-2 py-0.5 rounded-full text-[10.5px] font-extrabold flex items-center gap-1 shadow-2xs"
+                  class="px-2 py-0.5 rounded-full text-[10.5px] font-bold flex items-center gap-1 shadow-2xs"
                   :class="item.attendance >= 94 ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'"
                 >
                   <span>★</span>
@@ -445,7 +445,7 @@
           <!-- Bottom: 4. Ringkasan Kehadiran Hari Ini & 5. Button [Detail Kelas] -->
           <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
             <div>
-              <div class="text-lg font-black font-mono text-slate-900 leading-none">
+              <div class="text-lg font-bold font-mono text-slate-900 leading-none">
                 {{ item.attendance }}% Hadir
               </div>
               <div class="text-[11px] text-slate-400 font-medium mt-1">
@@ -468,7 +468,7 @@
       <div v-else-if="viewMode === 'table'" class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-100 text-[11px]">
+            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-100 text-[11px]">
               <tr>
                 <th class="py-3.5 px-4">Rombel Kelas</th>
                 <th class="py-3.5 px-4">Jenjang &amp; Jurusan</th>
@@ -494,7 +494,7 @@
                 <!-- Jenjang & Jurusan -->
                 <td class="py-3.5 px-4">
                   <span
-                    class="px-2.5 py-1 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider border"
+                    class="px-2.5 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider border"
                     :class="badgeClass(item.level, item.major)"
                   >
                     {{ item.level }}<template v-if="item.major"> &bull; {{ item.major }}</template>
@@ -597,16 +597,16 @@
         <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 text-white shadow-lg relative overflow-hidden">
           <div class="flex items-center gap-4">
             <span
-              class="w-14 h-14 rounded-2xl text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md border border-white/20"
+              class="w-14 h-14 rounded-2xl text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md border border-white/20"
               :class="avatarGradient(selected.name)"
             >
               {{ initials(selected.name) }}
             </span>
             <div>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white inline-block mb-1">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white inline-block mb-1">
                 {{ selected.level }} &bull; {{ selected.major || 'Reguler' }}
               </span>
-              <h4 class="text-xl font-black text-white leading-tight">
+              <h4 class="text-xl font-bold text-white leading-tight">
                 {{ selected.name }}
               </h4>
               <p class="text-xs text-slate-300 font-mono mt-0.5">Lokasi: {{ selected.room }}</p>

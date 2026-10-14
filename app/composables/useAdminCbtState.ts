@@ -48,15 +48,24 @@ export interface BankQuestionItem {
   text: string
   difficulty: Difficulty
   isMultiSelect?: boolean
-  options?: { key: string; text: string }[]
+  options?: { key: string; text: string; imageUrl?: string }[]
   key: string | string[]
   rubric?: string
+  rubricScore?: number
   mediaType?: 'audio' | 'video'
+  mediaId?: string
   mediaUrl?: string
   mediaFileName?: string
   mediaFileSize?: string
   mediaCompressStatus?: string
   interactiveAnswerType?: 'PG' | 'PG_Multi' | 'Isian'
+  imageUrl?: string
+  imageOriginalSize?: string
+  imageCompressedSize?: string
+  imageAiSuggestion?: string
+  isRtl?: boolean
+  wordCountMin?: number
+  wordCountMax?: number
 }
 
 export interface BankSubjectPackage {
@@ -847,6 +856,189 @@ export const useAdminCbtState = () => {
   const scheduledExams = computed(() => exams.value.filter(e => e.status === 'Terjadwal'))
   const completedExams = computed(() => exams.value.filter(e => e.status === 'Selesai'))
 
+  // SUPABASE REAL DATABASE SYNC
+  const isDbLoading = useState<boolean>('admin-cbt-db-loading', () => false)
+  const isDbConnected = useState<boolean>('admin-cbt-db-connected', () => false)
+
+  const isValidUuid = (val: string) => {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val)
+  }
+
+  const generateUuid = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID()
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0
+      const v = c === 'x' ? r : (r & 0x3 | 0x8)
+      return v.toString(16)
+    })
+  }
+
+  // Fetch all packages & questions from Supabase
+  const fetchBankPackagesFromDb = async () => {
+    isDbLoading.value = true
+    try {
+      const supabase = useSupabaseClient()
+      const { data: dbPackages, error: pkgError } = await supabase
+        .from('question_banks')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (pkgError || !dbPackages || dbPackages.length === 0) {
+        // Jika tabel belum dibuat atau kosong, tetap gunakan data bawaan
+        isDbLoading.value = false
+        return false
+      }
+
+      const { data: dbQuestions, error: qError } = await supabase
+        .from('questions')
+        .select('*')
+        .order('number', { ascending: true })
+
+      if (qError) {
+        isDbLoading.value = false
+        return false
+      }
+
+      // Gabungkan relasi question_banks -> questions
+      const mappedPackages: BankSubjectPackage[] = dbPackages.map((pkg: any) => {
+        const pkgQuestions: BankQuestionItem[] = (dbQuestions || [])
+          .filter((q: any) => q.bank_id === pkg.id)
+          .map((q: any) => ({
+            id: q.id,
+            number: q.number,
+            type: q.type,
+            text: q.text,
+            difficulty: q.difficulty,
+            isMultiSelect: q.is_multi_select,
+            options: q.options || undefined,
+            key: q.answer_key,
+            rubric: q.rubric || undefined,
+            rubricScore: q.rubric_score || 20,
+            imageUrl: q.image_url || undefined,
+            mediaType: q.media_type || undefined,
+            mediaId: q.media_id || undefined,
+            mediaUrl: q.media_url || undefined,
+            mediaFileName: q.media_file_name || undefined,
+            interactiveAnswerType: q.interactive_answer_type || undefined,
+            isRtl: q.is_rtl
+          }))
+
+        return {
+          id: pkg.id,
+          code: pkg.code,
+          classroom: pkg.classroom,
+          subject: pkg.subject,
+          grade: pkg.grade,
+          difficulty: pkg.difficulty,
+          teacherName: pkg.teacher_name,
+          updatedAt: pkg.updated_at ? new Date(pkg.updated_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Hari Ini',
+          hasInteractive: pkg.has_interactive,
+          questions: pkgQuestions
+        }
+      })
+
+      if (mappedPackages.length > 0) {
+        allBankPackages.value = mappedPackages
+        isDbConnected.value = true
+      }
+      return true
+    } catch {
+      return false
+    } finally {
+      isDbLoading.value = false
+    }
+  }
+
+  // Save / Update package and its questions to Supabase
+  const savePackageToDb = async (pkg: BankSubjectPackage): Promise<boolean> => {
+    isDbLoading.value = true
+    try {
+      const supabase = useSupabaseClient()
+      const packageId = isValidUuid(pkg.id) ? pkg.id : generateUuid()
+      pkg.id = packageId
+
+      // 1. Upsert question_banks
+      const { error: pkgError } = await supabase
+        .from('question_banks')
+        .upsert({
+          id: packageId,
+          code: pkg.code,
+          classroom: pkg.classroom,
+          subject: pkg.subject,
+          grade: pkg.grade,
+          difficulty: pkg.difficulty,
+          teacher_name: pkg.teacherName,
+          has_interactive: pkg.hasInteractive,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'code' })
+
+      if (pkgError) {
+        console.warn('Gagal menyimpan ke question_banks:', pkgError.message)
+      }
+
+      // 2. Hapus pertanyaan lama dari paket ini untuk digantikan yang baru
+      await supabase
+        .from('questions')
+        .delete()
+        .eq('bank_id', packageId)
+
+      // 3. Insert butir pertanyaan baru
+      if (pkg.questions && pkg.questions.length > 0) {
+        const questionsToInsert = pkg.questions.map((q, idx) => ({
+          id: isValidUuid(q.id) ? q.id : generateUuid(),
+          bank_id: packageId,
+          number: idx + 1,
+          type: q.type,
+          text: q.text,
+          difficulty: q.difficulty,
+          is_multi_select: !!q.isMultiSelect,
+          options: q.options || null,
+          answer_key: q.key,
+          rubric: q.rubric || null,
+          rubric_score: q.rubricScore || 20,
+          image_url: q.imageUrl || null,
+          media_type: q.mediaType || null,
+          media_id: q.mediaId || null,
+          media_url: q.mediaUrl || null,
+          media_file_name: q.mediaFileName || null,
+          interactive_answer_type: q.interactiveAnswerType || null,
+          is_rtl: !!q.isRtl
+        }))
+
+        const { error: qInsertError } = await supabase
+          .from('questions')
+          .insert(questionsToInsert)
+
+        if (qInsertError) {
+          console.warn('Gagal menyimpan butir questions:', qInsertError.message)
+        }
+      }
+
+      isDbConnected.value = true
+      return true
+    } catch (e: any) {
+      console.warn('Kendala koneksi database:', e?.message)
+      return false
+    } finally {
+      isDbLoading.value = false
+    }
+  }
+
+  // Delete package from Supabase
+  const deletePackageFromDb = async (pkgId: string): Promise<boolean> => {
+    try {
+      if (isValidUuid(pkgId)) {
+        const supabase = useSupabaseClient()
+        await supabase.from('question_banks').delete().eq('id', pkgId)
+      }
+      return true
+    } catch {
+      return false
+    }
+  }
+
   return {
     grade,
     activeTab,
@@ -864,7 +1056,12 @@ export const useAdminCbtState = () => {
     teachers,
     liveExams,
     scheduledExams,
-    completedExams
+    completedExams,
+    isDbLoading,
+    isDbConnected,
+    fetchBankPackagesFromDb,
+    savePackageToDb,
+    deletePackageFromDb
   }
 }
 

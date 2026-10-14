@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -69,14 +69,14 @@ const filteredSchedules = computed(() => {
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span
-            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider border"
+            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider border"
             :class="grade === 'SMP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'"
           >
             {{ schoolName }}
           </span>
           <span class="text-xs font-semibold text-slate-500">Beban Jam Mengajar (JTM) &bull; T.A 2026/2027</span>
         </div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Jadwal Mengajar Guru</h2>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Jadwal Mengajar Guru</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Distribusi jam mengajar pendidik per kelas, hari, dan ruangan</p>
       </div>
 
@@ -96,22 +96,22 @@ const filteredSchedules = computed(() => {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Jam Terjadwal</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ filteredSchedules.length * 2 }} Jam</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ filteredSchedules.length * 2 }} Jam</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Sesi mengajar {{ grade }}</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Guru Bertugas</span>
-        <b class="text-2xl font-black text-blue-600 block mt-1">{{ teacherNames.length }} Guru</b>
+        <b class="text-2xl font-bold text-blue-600 block mt-1">{{ teacherNames.length }} Guru</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Memiliki jadwal aktif</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Beban Rata-rata</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">24 Jam / mg</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">24 Jam / mg</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Standar sertifikasi pendidik</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Kesesuaian Ruangan</span>
-        <b class="text-2xl font-black text-emerald-600 block mt-1">100%</b>
+        <b class="text-2xl font-bold text-emerald-600 block mt-1">100%</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Tidak ada bentrok jadwal</span>
       </div>
     </div>

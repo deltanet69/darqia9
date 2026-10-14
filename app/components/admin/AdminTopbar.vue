@@ -12,7 +12,7 @@
       </button>
       
       <div>
-        <h1 class="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-tight">{{ title }}</h1>
+        <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">{{ title }}</h1>
         <p class="hidden sm:block text-xs text-slate-500 font-medium">{{ subtitle }}</p>
       </div>
     </div>
@@ -23,7 +23,7 @@
       <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
         <button
           type="button"
-          class="px-3 py-1 text-xs font-extrabold rounded-lg transition-all"
+          class="px-3 py-1 text-xs font-bold rounded-lg transition-all"
           :class="grade === 'SMP' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'"
           @click="grade = 'SMP'"
         >
@@ -31,7 +31,7 @@
         </button>
         <button
           type="button"
-          class="px-3 py-1 text-xs font-extrabold rounded-lg transition-all"
+          class="px-3 py-1 text-xs font-bold rounded-lg transition-all"
           :class="grade === 'SMK' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'"
           @click="grade = 'SMK'"
         >

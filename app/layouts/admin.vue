@@ -34,10 +34,16 @@ const toggleSidebar = () => {
     sidebarMin.value = !sidebarMin.value
   }
 }
+
+useHead({
+  bodyAttrs: {
+    class: 'font-admin'
+  }
+})
 </script>
 
 <template>
-  <div class="admin-shell no-scrollbar min-h-screen bg-[#EEF2F7] text-[#0F172A] font-sans antialiased flex flex-col selection:bg-blue-600 selection:text-white">
+  <div class="admin-shell no-scrollbar min-h-screen bg-[#EEF2F7] text-[#0F172A] font-admin antialiased flex flex-col selection:bg-blue-600 selection:text-white">
     <!-- Backdrop Overlay for Mobile Sidebar -->
     <div
       v-if="sidebarOpen"

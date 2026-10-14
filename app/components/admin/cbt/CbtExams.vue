@@ -240,16 +240,16 @@ const statusBadgeClass = (status: string) => {
           <!-- Quick stats counter -->
           <div class="flex items-center gap-4 sm:gap-6 py-2 px-3 bg-slate-50/80 rounded-xl border border-slate-100 shrink-0">
             <div class="text-center">
-              <span class="block text-base sm:text-lg font-extrabold text-slate-900 font-mono">{{ exam.participants }}</span>
+              <span class="block text-base sm:text-lg font-bold text-slate-900 font-mono">{{ exam.participants }}</span>
               <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Peserta</span>
             </div>
             <div class="text-center">
-              <span class="block text-base sm:text-lg font-extrabold text-emerald-600 font-mono">{{ exam.collected }}</span>
+              <span class="block text-base sm:text-lg font-bold text-emerald-600 font-mono">{{ exam.collected }}</span>
               <span class="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">Selesai</span>
             </div>
             <div class="text-center cursor-pointer" @click="openViolationsModal(exam)">
               <span
-                class="block text-base sm:text-lg font-extrabold font-mono"
+                class="block text-base sm:text-lg font-bold font-mono"
                 :class="exam.violations > 0 ? 'text-rose-600 underline' : 'text-slate-400'"
               >
                 {{ exam.violations }}

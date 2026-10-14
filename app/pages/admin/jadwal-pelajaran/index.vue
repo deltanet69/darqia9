@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -79,14 +79,14 @@ const printSchedule = () => {
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span
-            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider border"
+            class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider border"
             :class="grade === 'SMP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'"
           >
             {{ schoolName }}
           </span>
           <span class="text-xs font-semibold text-slate-500">Semester Ganjil &bull; T.A 2026/2027</span>
         </div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Jadwal Pelajaran</h2>
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Jadwal Pelajaran</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Distribusi jadwal kegiatan belajar mengajar per kelas dan ruang</p>
       </div>
 
@@ -106,22 +106,22 @@ const printSchedule = () => {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Sesi Mingguan</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ totalSchedules }} Sesi</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ totalSchedules }} Sesi</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Seluruh Rombel {{ grade }}</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Jadwal Hari {{ selectedDay }}</span>
-        <b class="text-2xl font-black text-blue-600 block mt-1">{{ todaySchedules }} Sesi</b>
+        <b class="text-2xl font-bold text-blue-600 block mt-1">{{ todaySchedules }} Sesi</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Tatap muka aktif</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Jumlah Rombel</span>
-        <b class="text-2xl font-black text-slate-900 block mt-1">{{ availableClasses.length }} Kelas</b>
+        <b class="text-2xl font-bold text-slate-900 block mt-1">{{ availableClasses.length }} Kelas</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Terjadwal 100%</span>
       </div>
       <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
         <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Status Pelaksanaan</span>
-        <b class="text-2xl font-black text-emerald-600 block mt-1">Normal</b>
+        <b class="text-2xl font-bold text-emerald-600 block mt-1">Normal</b>
         <span class="text-[11px] text-slate-500 block mt-0.5">Kurikulum Merdeka</span>
       </div>
     </div>

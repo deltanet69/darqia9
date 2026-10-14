@@ -103,7 +103,7 @@ const widthClass = computed(() => {
         leave-to-class="opacity-0 scale-95 translate-y-2"
       >
         <section
-          class="relative w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+          class="relative w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto font-admin"
           :class="widthClass"
           role="dialog"
           aria-modal="true"
@@ -121,7 +121,7 @@ const widthClass = computed(() => {
               <div class="min-w-0">
                 <div v-if="badge" class="flex items-center gap-2 mb-1">
                   <span
-                    class="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider"
+                    class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider"
                     :class="{
                       'bg-blue-50 text-blue-700 border border-blue-200': badgeType === 'primary',
                       'bg-emerald-50 text-emerald-700 border border-emerald-200': badgeType === 'success',
@@ -132,7 +132,7 @@ const widthClass = computed(() => {
                     {{ badge }}
                   </span>
                 </div>
-                <h3 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug truncate">
+                <h3 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-snug truncate">
                   {{ title }}
                 </h3>
                 <p v-if="subtitle" class="text-xs sm:text-sm text-slate-500 font-medium truncate mt-0.5">

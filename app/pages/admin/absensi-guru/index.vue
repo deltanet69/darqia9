@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="space-y-6 animate-fadeUp">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
       <div>
         <div class="flex items-center gap-2.5 mb-1">
-          <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200/80">
+          <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200/80">
             {{ activeGrade === 'SMP' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9' }}
           </span>
           <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
@@ -12,7 +12,7 @@
             RFID Reader Online (Ruang Guru & Gerbang)
           </span>
         </div>
-        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ title }}</h2>
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ title }}</h2>
         <p class="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">{{ subtitle }}</p>
       </div>
 
@@ -105,11 +105,11 @@
 
           <div class="flex items-center justify-between relative z-10">
             <div class="text-xs font-bold uppercase tracking-wider text-white/90">{{ item.label }}</div>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 backdrop-blur-sm border border-white/25">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-sm border border-white/25">
               {{ item.sub }}
             </span>
           </div>
-          <div class="text-3xl sm:text-4xl font-black font-mono my-1.5 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)] flex items-baseline gap-1.5">
+          <div class="text-3xl sm:text-4xl font-bold font-mono my-1.5 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)] flex items-baseline gap-1.5">
             <span>{{ item.value }}</span>
             <span class="text-xs font-semibold text-white/80 font-sans">Pendidik</span>
           </div>
@@ -216,7 +216,7 @@
           <div>
             <div class="flex items-center gap-2">
               <span class="text-xs font-bold text-white tracking-wide">Live Stream RFID Card Tap Guru</span>
-              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-wider bg-emerald-500 text-white animate-pulse">Live</span>
+              <span class="px-2 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-wider bg-emerald-500 text-white animate-pulse">Live</span>
             </div>
             <p class="text-[11px] text-slate-400 font-medium">Reader Ruang Guru & Gerbang Utama</p>
           </div>
@@ -235,7 +235,7 @@
             </div>
             <div class="text-right shrink-0">
               <span
-                class="px-2 py-0.5 rounded-full text-[9.5px] font-extrabold uppercase tracking-wider block mb-0.5"
+                class="px-2 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-wider block mb-0.5"
                 :class="tap.status === 'Tepat Waktu' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'"
               >
                 {{ tap.time }}
@@ -262,7 +262,7 @@
           >
             <div class="flex items-start justify-between">
               <div>
-                <b class="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors block">{{ r.role }}</b>
+                <b class="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors block">{{ r.role }}</b>
                 <span class="text-[11px] text-slate-400 font-medium">{{ r.count }} Guru / Tendik</span>
               </div>
               <span class="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
@@ -406,7 +406,7 @@
               <span v-if="item.color" class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: item.color }" />
               <span>{{ item.label }}</span>
               <span
-                class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-extrabold"
+                class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold"
                 :class="selectedStatus === item.value ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'"
               >
                 {{ item.count }}
@@ -418,7 +418,7 @@
         <!-- Table View (Desktop & Tablet) -->
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-100 text-[11px]">
+            <thead class="bg-slate-50/90 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-100 text-[11px]">
               <tr>
                 <th class="py-3.5 px-4">Guru / Tendik</th>
                 <th class="py-3.5 px-4">NIP & RFID</th>
@@ -439,7 +439,7 @@
                 <td class="py-3.5 px-4">
                   <div class="flex items-center gap-3">
                     <span
-                      class="w-9 h-9 rounded-2xl text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm"
+                      class="w-9 h-9 rounded-2xl text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm"
                       :class="avatarGradient(item.id)"
                     >
                       {{ initials(item.name) }}
@@ -490,7 +490,7 @@
                 <!-- Status Presensi -->
                 <td class="py-3.5 px-4">
                   <span
-                    class="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm"
+                    class="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm"
                     :class="pillClass(item.status)"
                   >
                     <span class="w-1.5 h-1.5 rounded-full" :class="dotClass(item.status)" />
@@ -576,16 +576,16 @@
         <!-- Teacher Identity Card -->
         <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 text-white shadow-lg flex items-center gap-4">
           <span
-            class="w-14 h-14 rounded-2xl text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md border border-white/20"
+            class="w-14 h-14 rounded-2xl text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md border border-white/20"
             :class="avatarGradient(selectedTeacher.id)"
           >
             {{ initials(selectedTeacher.name) }}
           </span>
           <div>
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white inline-block mb-1">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white inline-block mb-1">
               {{ selectedTeacher.school }}
             </span>
-            <h4 class="text-lg font-black text-white leading-tight">
+            <h4 class="text-lg font-bold text-white leading-tight">
               {{ selectedTeacher.name }}
             </h4>
             <div class="flex items-center gap-2 text-[11px] text-slate-300 font-mono mt-0.5">
@@ -601,7 +601,7 @@
           <div>
             <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Status Hari Ini (05 Okt 2026)</span>
             <span
-              class="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm"
+              class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm"
               :class="pillClass(selectedTeacher.status)"
             >
               <span class="w-2 h-2 rounded-full" :class="dotClass(selectedTeacher.status)" />
@@ -631,7 +631,7 @@
 
         <!-- 5-Day Attendance Matrix -->
         <div>
-          <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">Riwayat Presensi 5 Hari Terakhir</h4>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Riwayat Presensi 5 Hari Terakhir</h4>
           <div class="grid grid-cols-5 gap-2 text-center text-xs">
             <div
               v-for="hist in attendanceHistoryMock"
@@ -643,7 +643,7 @@
                 'bg-rose-50 border-rose-200/80 text-rose-800'"
             >
               <span class="text-[10.5px] font-bold block text-slate-500 mb-0.5">{{ hist.day }}</span>
-              <b class="text-[11px] font-extrabold block">{{ hist.status }}</b>
+              <b class="text-[11px] font-bold block">{{ hist.status }}</b>
               <span class="text-[10px] font-mono opacity-80">{{ hist.time }}</span>
             </div>
           </div>
@@ -652,7 +652,7 @@
         <!-- Manual Status Adjustment by Super Admin -->
         <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-3">
           <div class="flex items-center justify-between">
-            <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Penyesuaian Manual Status</h4>
+            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Penyesuaian Manual Status</h4>
             <span class="text-[10.5px] text-slate-400">Super Administrator</span>
           </div>
           <div class="grid grid-cols-4 gap-2">
