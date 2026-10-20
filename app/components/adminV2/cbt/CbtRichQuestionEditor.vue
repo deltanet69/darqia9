@@ -13,6 +13,7 @@ const emit = defineEmits<{
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
 const extracting = ref(false)
+const extractionNote = ref('')
 const detectedRtl = computed(() => props.rtl || isArabicText(props.modelValue))
 const formulaError = computed(() => validateLatexExpressions(props.modelValue))
 const tick = String.fromCharCode(96)
@@ -46,23 +47,20 @@ const handleImage = async (event: Event) => {
 
 const extractImageText = async () => {
   if (!props.imageUrl || extracting.value) return
-  const Detector = (window as any).TextDetector
-  if (!Detector) {
-    emit('message', 'Mesin ekstraksi teks belum tersedia pada peramban ini. Teks dan rumus perlu disalin secara manual.')
-    return
-  }
   extracting.value = true
+  extractionNote.value = ''
   try {
-    const image = new Image()
-    image.src = props.imageUrl
-    await image.decode()
-    const blocks = await new Detector().detect(image)
-    const extracted = blocks.map((block: any) => block.rawValue).filter(Boolean).join('\n').trim()
-    if (!extracted) throw new Error('Tidak ada teks yang terbaca.')
-    emit('update:modelValue', props.modelValue + (props.modelValue.trim() ? '\n' : '') + extracted)
-    emit('message', 'Teks berhasil diekstrak. Periksa kembali tulisan dan rumus sebelum menyimpan.')
+    const extracted = await $fetch<{ text: string; isRtl: boolean; containsFormula: boolean; reviewNote: string }>('/api/cbt/ocr', {
+      method: 'POST',
+      body: { imageDataUrl: props.imageUrl }
+    })
+    emit('update:modelValue', props.modelValue + (props.modelValue.trim() ? '\n' : '') + extracted.text)
+    if (extracted.isRtl) emit('update:rtl', true)
+    extractionNote.value = extracted.reviewNote || 'Periksa kembali hasil ekstraksi sebelum menyimpan.'
+    emit('message', 'Teks berhasil diekstrak oleh Gemini. Periksa hasil sebelum menyimpan.')
   } catch (error) {
-    emit('message', error instanceof Error ? error.message : 'Teks pada gambar gagal diekstrak.')
+    const message = (error as any)?.data?.statusMessage || (error as any)?.statusMessage || 'Teks pada gambar gagal diekstrak.'
+    emit('message', message)
   } finally {
     extracting.value = false
   }
@@ -105,7 +103,8 @@ const extractImageText = async () => {
         <button type="button" class="editor-action" :disabled="extracting" @click="extractImageText">{{ extracting ? 'Mengekstrak…' : 'Ekstrak teks dari gambar' }}</button>
         <button type="button" class="editor-action text-[#C43232]" @click="emit('update:imageUrl', undefined)">Hapus gambar</button>
       </div>
-      <p class="mt-2 text-[11px] leading-relaxed text-[#667085]">Hasil ekstraksi wajib diperiksa. Rumus kompleks mungkin perlu ditulis ulang dengan KaTeX.</p>
+      <p class="mt-2 text-[11px] leading-relaxed text-[#667085]">Hasil Gemini masuk sebagai draf dan wajib diperiksa sebelum disimpan.</p>
+      <p v-if="extractionNote" class="mt-1 text-[11px] font-semibold text-[#A15C00]">{{ extractionNote }}</p>
     </div>
 
     <div v-if="modelValue.trim()" class="border-t border-[#E7EBF2] bg-[#FAFBFC] p-3">
