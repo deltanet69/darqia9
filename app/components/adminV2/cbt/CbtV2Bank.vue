@@ -1,0 +1,754 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import AdminV2Icon from '../AdminV2Icon.vue'
+import CbtV2BankForm from './CbtV2BankForm.vue'
+import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
+import {
+  INITIAL_PACKAGES,
+  BANK_CLASSES,
+  BANK_SUBJECTS
+} from './cbtV2Data'
+
+interface Props {
+  grade: GradeType
+}
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  (e: 'open-drawer', type: string, payload?: any): void
+  (e: 'toast', msg: string): void
+}>()
+
+// Navigation & Filters: 'classes' | 'subjects' | 'detail' | 'form'
+const bankMode = ref<'classes' | 'subjects' | 'detail' | 'form'>('classes')
+const selectedClass = ref('')
+const selectedPkgId = ref<string | null>(null)
+const searchQuery = ref('')
+const levelFilter = ref('all')
+const activeFormat = ref<'all' | 'PG' | 'Isian' | 'Esai' | 'Interaktif'>('all')
+
+// Master packages local reactive state
+const packages = ref<BankPackage[]>(JSON.parse(JSON.stringify(INITIAL_PACKAGES)))
+
+// Form State for CbtV2BankForm
+const formDraft = ref<BankPackage | null>(null)
+const isEditingForm = ref(false)
+
+// Import modal state
+const isImportModalOpen = ref(false)
+const importFormat = ref('Excel (.xlsx)')
+
+const currentGradePackages = computed(() => {
+  return packages.value.filter(p => p.grade === props.grade)
+})
+
+const allClasses = computed(() => {
+  return BANK_CLASSES[props.grade] || []
+})
+
+const allSubjects = computed(() => {
+  return BANK_SUBJECTS[props.grade] || []
+})
+
+const filteredClasses = computed(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  const lv = levelFilter.value
+  return allClasses.value.filter(c => {
+    const matchQ = !q || c.toLowerCase().includes(q)
+    const matchLv = lv === 'all' || c.includes(lv)
+    return matchQ && matchLv
+  })
+})
+
+const classStats = (cls: string) => {
+  const pks = currentGradePackages.value.filter(p => p.classroom === cls)
+  const countByType = (t: string) =>
+    pks.reduce((sum, p) => sum + p.questions.filter(q => q.type === t).length, 0)
+  const total = pks.reduce((sum, p) => sum + p.questions.length, 0)
+  return {
+    subjects: pks.length || 1,
+    total: total || 35,
+    pg: countByType('PG') || 25,
+    isian: countByType('Isian') || 5,
+    esai: countByType('Esai') || 3,
+    inter: countByType('Interaktif') || 2
+  }
+}
+
+// Current subject packages in selected class
+const subjectPackages = computed(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  return currentGradePackages.value.filter(p => {
+    const inCls = p.classroom === selectedClass.value
+    const matchQ = !q || p.subject.toLowerCase().includes(q) || p.teacherName.toLowerCase().includes(q)
+    return inCls && matchQ
+  })
+})
+
+// Current selected package
+const selectedPackage = computed(() => {
+  return packages.value.find(p => p.id === selectedPkgId.value) || null
+})
+
+// Filtered questions in package detail
+const displayedQuestions = computed(() => {
+  if (!selectedPackage.value) return []
+  if (activeFormat.value === 'all') return selectedPackage.value.questions
+  return selectedPackage.value.questions.filter(q => q.type === activeFormat.value)
+})
+
+// Actions
+const openClassSubjects = (cls: string) => {
+  selectedClass.value = cls
+  bankMode.value = 'subjects'
+  searchQuery.value = ''
+}
+
+const openPackageDetail = (pkgId: string) => {
+  selectedPkgId.value = pkgId
+  bankMode.value = 'detail'
+  activeFormat.value = 'all'
+}
+
+const startCreatePackage = (preselectedClass?: string) => {
+  const targetClass = preselectedClass || selectedClass.value || allClasses.value[0] || 'X RPL 1'
+  const targetSubject = allSubjects.value[0] || 'Informatika'
+  formDraft.value = {
+    id: `PKG-${Date.now()}`,
+    code: `${targetSubject.slice(0, 3).toUpperCase()}-${targetClass.replace(/\s+/g, '')}`,
+    classroom: targetClass,
+    subject: targetSubject,
+    grade: props.grade,
+    difficulty: 'Sedang',
+    teacherName: '',
+    updatedAt: 'Baru saja',
+    hasInteractive: false,
+    questions: [
+      {
+        id: `Q-${Date.now()}-1`,
+        number: 1,
+        type: 'PG',
+        difficulty: 'Sedang',
+        text: '',
+        key: 'A',
+        options: [
+          { key: 'A', text: '' },
+          { key: 'B', text: '' },
+          { key: 'C', text: '' },
+          { key: 'D', text: '' }
+        ]
+      }
+    ]
+  }
+  isEditingForm.value = false
+  bankMode.value = 'form'
+}
+
+const startEditPackage = (pkg: BankPackage) => {
+  formDraft.value = JSON.parse(JSON.stringify(pkg))
+  isEditingForm.value = true
+  bankMode.value = 'form'
+}
+
+const handleSavePackage = (updatedPkg: BankPackage) => {
+  const idx = packages.value.findIndex(p => p.id === updatedPkg.id)
+  if (idx !== -1) {
+    packages.value[idx] = updatedPkg
+  } else {
+    packages.value.unshift(updatedPkg)
+  }
+  selectedPkgId.value = updatedPkg.id
+  selectedClass.value = updatedPkg.classroom
+  bankMode.value = 'detail'
+  emit('toast', `Paket bank soal ${updatedPkg.subject} berhasil disimpan!`)
+}
+
+const handleCancelForm = () => {
+  if (selectedPkgId.value) {
+    bankMode.value = 'detail'
+  } else if (selectedClass.value) {
+    bankMode.value = 'subjects'
+  } else {
+    bankMode.value = 'classes'
+  }
+}
+
+const exportCsv = (pkg: BankPackage) => {
+  const rows = pkg.questions.map(q => {
+    const k = Array.isArray(q.key) ? q.key.join(', ') : (q.key || '-')
+    return [
+      q.number,
+      `"${q.type}"`,
+      `"${q.difficulty}"`,
+      `"${q.text.replace(/"/g, '""')}"`,
+      `"${String(k).replace(/"/g, '""')}"`,
+      `"${q.mediaUrl || '-'}"`
+    ].join(',')
+  })
+  const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [
+    'No,Tipe Format,Tingkat Kesulitan,Pertanyaan,Kunci / Rubrik Jawaban,Media Lampiran',
+    ...rows
+  ].join('\n')
+  const encodedUri = encodeURI(csvContent)
+  const link = document.createElement('a')
+  link.setAttribute('href', encodedUri)
+  link.setAttribute('download', `Bank_Soal_${pkg.subject}_${pkg.classroom}_contoh.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  emit('toast', `File CSV paket ${pkg.subject} berhasil diunduh.`)
+}
+
+const deleteQuestion = (qId: string) => {
+  if (!selectedPackage.value) return
+  if (confirm('Hapus butir soal ini dari paket contoh?')) {
+    selectedPackage.value.questions = selectedPackage.value.questions.filter(q => q.id !== qId)
+    selectedPackage.value.questions.forEach((q, i) => { q.number = i + 1 })
+    emit('toast', 'Butir soal contoh berhasil dihapus.')
+  }
+}
+
+const deletePackage = (pkgId: string) => {
+  if (confirm('Hapus seluruh paket bank soal ini dari preview?')) {
+    packages.value = packages.value.filter(p => p.id !== pkgId)
+    bankMode.value = 'subjects'
+    emit('toast', 'Paket bank soal berhasil dihapus.')
+  }
+}
+</script>
+
+<template>
+  <div class="space-y-4">
+    <!-- VIEW 4: FULL-PAGE PACKAGE BUILDER (vbt-v4) -->
+    <div v-if="bankMode === 'form' && formDraft">
+      <CbtV2BankForm
+        :pkg="formDraft"
+        :editing="isEditingForm"
+        :grade="grade"
+        :class-options="allClasses"
+        :subject-options="allSubjects"
+        @save="handleSavePackage"
+        @cancel="handleCancelForm"
+        @toast="(m) => emit('toast', m)"
+      />
+    </div>
+
+    <!-- VIEW 1: CLASSES GRID -->
+    <div v-else-if="bankMode === 'classes'" class="space-y-4">
+      <!-- Section Head -->
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
+        <div>
+          <h2 class="text-lg font-extrabold text-[#101828]">Bank Soal</h2>
+          <p class="text-xs text-[#667085] mt-0.5">Jelajahi rombel → paket mapel → rincian soal.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="px-4 py-2.5 rounded-full border border-[#E7EBF2] bg-white hover:bg-[#F3F5F9] text-xs font-extrabold text-[#344054] transition inline-flex items-center gap-1.5"
+            @click="isImportModalOpen = true"
+          >
+            <AdminV2Icon name="download" :size="14" />
+            <span>Import Word/Excel</span>
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
+            @click="startCreatePackage()"
+          >
+            <AdminV2Icon name="plus" :size="14" />
+            <span>Buat Paket Soal</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 KPIs (vbt-v4) -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <!-- 1. Paket Contoh -->
+        <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
+          <div class="flex items-center justify-between text-xs">
+            <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
+              <AdminV2Icon name="book" :size="16" />
+            </span>
+            <span class="text-[10px] font-extrabold text-[#667085]">Multi-Format</span>
+          </div>
+          <div class="my-2">
+            <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
+              {{ currentGradePackages.length }} Paket
+            </div>
+            <div class="text-xs text-[#667085] font-semibold mt-1">Paket contoh</div>
+          </div>
+        </article>
+
+        <!-- 2. Rombel Aktif -->
+        <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
+          <div class="flex items-center justify-between text-xs">
+            <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
+              <AdminV2Icon name="users" :size="16" />
+            </span>
+            <span class="text-[10px] font-extrabold text-[#667085]">{{ grade }}</span>
+          </div>
+          <div class="my-2">
+            <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
+              {{ allClasses.length }}
+            </div>
+            <div class="text-xs text-[#667085] font-semibold mt-1">Rombel aktif</div>
+          </div>
+        </article>
+
+        <!-- 3. Mata Pelajaran Siap -->
+        <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
+          <div class="flex items-center justify-between text-xs">
+            <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
+              <AdminV2Icon name="check" :size="16" />
+            </span>
+            <span class="text-[10px] font-extrabold text-[#667085]">Kurikulum</span>
+          </div>
+          <div class="my-2">
+            <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
+              {{ allSubjects.length }} Mapel
+            </div>
+            <div class="text-xs text-[#667085] font-semibold mt-1">Mata pelajaran siap</div>
+          </div>
+        </article>
+
+        <!-- 4. Format Soal -->
+        <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
+          <div class="flex items-center justify-between text-xs">
+            <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
+              <AdminV2Icon name="grid" :size="16" />
+            </span>
+            <span class="text-[10px] font-extrabold text-[#667085]">PG · Isian · Esai · Interaktif</span>
+          </div>
+          <div class="my-2">
+            <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
+              4 Format
+            </div>
+            <div class="text-xs text-[#667085] font-semibold mt-1">Format soal</div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Toolstrip Search + Level Filter -->
+      <section class="bg-white border border-[#E7EBF2] rounded-2xl p-3 shadow-xs flex flex-col sm:flex-row items-center gap-3">
+        <div class="relative flex-1 w-full">
+          <AdminV2Icon name="search" :size="15" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#98A2B3]" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Cari rombel, mis. X RPL 1, VII-A"
+            class="w-full bg-[#F9FAFC] border border-[#E7EBF2] rounded-xl pl-9 pr-3 py-2 text-xs text-[#101828] outline-none focus:bg-white focus:border-[#1B5FD9]"
+          >
+        </div>
+
+        <select
+          v-model="levelFilter"
+          class="border border-[#E7EBF2] rounded-xl px-3 py-2 text-xs font-bold text-[#344054] bg-white outline-none cursor-pointer w-full sm:w-auto"
+        >
+          <option value="all">Semua Tingkat</option>
+          <template v-if="grade === 'SMK'">
+            <option value="X">Kelas X</option>
+            <option value="XI">Kelas XI</option>
+            <option value="XII">Kelas XII</option>
+            <option value="RPL">Jurusan RPL</option>
+            <option value="TKJ">Jurusan TKJ</option>
+          </template>
+          <template v-else>
+            <option value="VII">Kelas VII</option>
+            <option value="VIII">Kelas VIII</option>
+            <option value="IX">Kelas IX</option>
+          </template>
+        </select>
+      </section>
+
+      <!-- 4-col Cards Grid -->
+      <div v-if="filteredClasses.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <article
+          v-for="c in filteredClasses"
+          :key="c"
+          role="button"
+          tabindex="0"
+          class="bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-[18px] p-4 sm:p-5 shadow-xs cursor-pointer transition hover:-translate-y-1 hover:shadow-md flex flex-col justify-between"
+          @click="openClassSubjects(c)"
+        >
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="w-9 h-9 rounded-xl bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
+                <AdminV2Icon name="book" :size="18" />
+              </span>
+              <span class="text-[10.5px] font-extrabold px-2 py-0.5 rounded-full bg-[#EFF2F7] text-[#344054]">
+                {{ grade }}
+              </span>
+            </div>
+            <h3 class="text-base font-extrabold text-[#101828]">{{ c }}</h3>
+            <p class="text-xs text-[#667085] mt-0.5 mb-3">
+              {{ classStats(c).subjects ? `${classStats(c).subjects} paket mapel tersedia` : 'Belum ada paket contoh' }}
+            </p>
+
+            <div class="flex items-center gap-4 text-xs mt-2">
+              <div>
+                <b class="text-sm font-extrabold text-[#101828] block">{{ classStats(c).total }}</b>
+                <span class="text-[10px] text-[#667085]">Total soal</span>
+              </div>
+              <div>
+                <b class="text-sm font-extrabold text-[#101828] block">4</b>
+                <span class="text-[10px] text-[#667085]">Jenis format</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-3 mt-4 border-t border-[#E7EBF2] text-xs font-bold text-[#1B5FD9]">
+            <span>Lihat paket mapel</span>
+            <AdminV2Icon name="arrow-right" :size="12" />
+          </div>
+        </article>
+      </div>
+      <div v-else class="bg-white border border-[#E7EBF2] rounded-2xl p-8 text-center text-xs text-[#667085]">
+        Rombel tidak ditemukan. Ubah kata kunci atau filter tingkat.
+      </div>
+    </div>
+
+    <!-- VIEW 2: SUBJECTS LIST -->
+    <div v-else-if="bankMode === 'subjects'" class="space-y-4">
+      <button
+        type="button"
+        class="text-xs font-bold text-[#667085] hover:text-[#101828] inline-flex items-center gap-1.5 transition"
+        @click="bankMode = 'classes'"
+      >
+        <AdminV2Icon name="arrow-left" :size="12" />
+        <span>Kembali ke daftar rombel</span>
+      </button>
+
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
+        <div>
+          <h2 class="text-lg font-extrabold text-[#101828]">
+            Bank Soal · {{ selectedClass }}
+          </h2>
+          <p class="text-xs text-[#667085] mt-0.5">
+            Paket mata pelajaran dan komposisi format untuk rombel ini.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
+          @click="startCreatePackage(selectedClass)"
+        >
+          <AdminV2Icon name="plus" :size="14" />
+          <span>Buat Paket Mapel Baru</span>
+        </button>
+      </div>
+
+      <!-- Search Toolstrip -->
+      <div class="relative w-full">
+        <AdminV2Icon name="search" :size="15" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#98A2B3]" />
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Cari mapel atau guru"
+          class="w-full bg-white border border-[#E7EBF2] rounded-xl pl-9 pr-3 py-2.5 text-xs text-[#101828] outline-none shadow-xs"
+        >
+      </div>
+
+      <!-- Table of Packages -->
+      <section class="bg-white border border-[#E7EBF2] rounded-2xl overflow-hidden shadow-xs">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs min-w-[700px]">
+            <thead class="bg-[#FAFBFC] border-b border-[#E7EBF2] text-[10px] uppercase font-extrabold text-[#667085] tracking-wider">
+              <tr>
+                <th class="py-3 px-4">Mata Pelajaran &amp; Kode</th>
+                <th class="py-3 px-4">Guru Penyusun</th>
+                <th class="py-3 px-4">Komposisi Format</th>
+                <th class="py-3 px-4">Kesulitan</th>
+                <th class="py-3 px-4">Total Soal</th>
+                <th class="py-3 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#EFF2F7]">
+              <tr v-for="p in subjectPackages" :key="p.id" class="hover:bg-[#FAFCFF] transition">
+                <td class="py-3 px-4">
+                  <strong class="block text-xs font-bold text-[#101828]">{{ p.subject }}</strong>
+                  <span class="block text-[10.5px] font-mono text-[#667085]">{{ p.code }}</span>
+                </td>
+                <td class="py-3 px-4 font-semibold text-[#344054]">{{ p.teacherName }}</td>
+                <td class="py-3 px-4">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      v-for="t in ['PG', 'Isian', 'Esai', 'Interaktif'].filter(fmt => p.questions.some(q => q.type === fmt))"
+                      :key="t"
+                      class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E8F0FE] text-[#1B5FD9]"
+                    >
+                      {{ p.questions.filter(q => q.type === t).length }} {{ t }}
+                    </span>
+                  </div>
+                </td>
+                <td class="py-3 px-4">
+                  <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#EFF2F7] text-[#344054]">
+                    {{ p.difficulty }}
+                  </span>
+                </td>
+                <td class="py-3 px-4 font-mono font-extrabold">{{ p.questions.length }}</td>
+                <td class="py-3 px-4 text-right whitespace-nowrap">
+                  <div class="inline-flex gap-1.5">
+                    <button
+                      type="button"
+                      class="px-3 py-1.5 rounded-xl border border-[#E7EBF2] text-xs font-bold hover:bg-[#F3F5F9] transition"
+                      @click="startEditPackage(p)"
+                    >
+                      Edit Paket
+                    </button>
+                    <button
+                      type="button"
+                      class="px-3 py-1.5 text-xs font-bold text-[#1B5FD9] hover:underline inline-flex items-center gap-1"
+                      @click="openPackageDetail(p.id)"
+                    >
+                      <span>Lihat Soal</span>
+                      <AdminV2Icon name="arrow-right" :size="12" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!subjectPackages.length">
+                <td colspan="6" class="py-8 text-center text-xs text-[#667085]">
+                  Belum ada paket sesuai pencarian. Buat paket mapel baru untuk kelas ini.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="p-3 border-t border-[#E7EBF2] bg-[#FAFBFC] text-xs text-[#667085]">
+          Menampilkan {{ subjectPackages.length }} paket contoh untuk {{ selectedClass }}.
+        </div>
+      </section>
+    </div>
+
+    <!-- VIEW 3: PACKAGE DETAIL -->
+    <div v-else-if="bankMode === 'detail' && selectedPackage" class="space-y-4">
+      <button
+        type="button"
+        class="text-xs font-bold text-[#667085] hover:text-[#101828] inline-flex items-center gap-1.5 transition"
+        @click="bankMode = 'subjects'"
+      >
+        <AdminV2Icon name="arrow-left" :size="12" />
+        <span>Kembali ke paket {{ selectedPackage.classroom }}</span>
+      </button>
+
+      <!-- Head & Actions -->
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
+        <div>
+          <h2 class="text-lg font-extrabold text-[#101828]">
+            {{ selectedPackage.subject }} · {{ selectedPackage.classroom }}
+          </h2>
+          <p class="text-xs text-[#667085] mt-0.5">
+            Penyusun: {{ selectedPackage.teacherName }} · {{ selectedPackage.questions.length }} butir soal contoh · {{ selectedPackage.code }}
+          </p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            class="px-3.5 py-2 rounded-full border border-[#E7EBF2] text-xs font-extrabold hover:bg-[#F3F5F9] inline-flex items-center gap-1.5 transition"
+            @click="exportCsv(selectedPackage)"
+          >
+            <AdminV2Icon name="download" :size="14" />
+            <span>Export CSV</span>
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold inline-flex items-center gap-1.5 transition"
+            @click="startEditPackage(selectedPackage)"
+          >
+            <span>Edit Paket Lengkap</span>
+          </button>
+          <button
+            type="button"
+            class="px-3.5 py-2 rounded-full border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-extrabold transition"
+            @click="deletePackage(selectedPackage.id)"
+          >
+            Hapus Paket
+          </button>
+        </div>
+      </div>
+
+      <!-- Format Filter Bar -->
+      <div class="bg-white border border-[#E7EBF2] rounded-xl p-2.5 shadow-xs overflow-x-auto">
+        <div class="flex items-center gap-1 text-xs font-bold min-w-max">
+          <button
+            v-for="fmt in ['all', 'PG', 'Isian', 'Esai', 'Interaktif'] as const"
+            :key="fmt"
+            type="button"
+            class="px-3 py-1.5 rounded-lg transition"
+            :class="activeFormat === fmt ? 'bg-[#1B5FD9] text-white' : 'text-[#667085] hover:bg-[#EFF2F7]'"
+            @click="activeFormat = fmt"
+          >
+            {{ fmt === 'all' ? `Semua Format (${selectedPackage.questions.length})` : `${fmt} (${selectedPackage.questions.filter(q => q.type === fmt).length})` }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Questions List -->
+      <div v-if="displayedQuestions.length" class="space-y-3">
+        <article
+          v-for="(q, qIdx) in displayedQuestions"
+          :key="q.id"
+          class="bg-white border border-[#E7EBF2] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3"
+        >
+          <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-[#E7EBF2] flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#EFF2F7] text-[#344054]">
+                Soal #{{ qIdx + 1 }}
+              </span>
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E8F0FE] text-[#1B5FD9]">
+                {{ q.type === 'PG' && q.isMultiSelect ? 'PG Kompleks' : q.type }}
+              </span>
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#FEF4E5] text-[#AD6504]">
+                {{ q.difficulty }}
+              </span>
+            </div>
+            <div class="inline-flex gap-1.5">
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg border border-[#E7EBF2] text-xs font-bold hover:bg-[#F3F5F9]"
+                @click="startEditPackage(selectedPackage)"
+              >
+                Edit Soal
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-bold"
+                @click="deleteQuestion(q.id)"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+
+          <!-- Question Text -->
+          <strong class="block text-xs sm:text-sm font-semibold text-[#101828] leading-relaxed">
+            {{ q.text }}
+          </strong>
+
+          <!-- PG Options preview with correct highlight -->
+          <div v-if="q.type === 'PG' && q.options" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <span
+              v-for="opt in q.options"
+              :key="opt.key"
+              class="p-2.5 rounded-xl border"
+              :class="Array.isArray(q.key) ? q.key.includes(opt.key) ? 'bg-[#E7F8F0] border-[#BDE7D0] text-[#087C52] font-bold' : 'bg-[#FAFBFC] border-[#E7EBF2] text-[#344054]' : q.key === opt.key ? 'bg-[#E7F8F0] border-[#BDE7D0] text-[#087C52] font-bold' : 'bg-[#FAFBFC] border-[#E7EBF2] text-[#344054]'"
+            >
+              {{ opt.key }}. {{ opt.text }}
+            </span>
+          </div>
+
+          <!-- Answer / Rubric Box -->
+          <div class="p-2.5 rounded-xl bg-[#EFF2F7] text-xs text-[#344054]">
+            <b class="text-[#101828]">{{ q.type === 'Esai' ? 'Rubrik: ' : q.type === 'Interaktif' ? 'Media & Kunci: ' : 'Kunci: ' }}</b>
+            <span>{{ q.rubric || (Array.isArray(q.key) ? q.key.join(', ') : q.key) || '—' }}</span>
+          </div>
+        </article>
+      </div>
+      <div v-else class="bg-white border border-[#E7EBF2] rounded-2xl p-8 text-center text-xs text-[#667085]">
+        Belum ada butir soal pada format ini.
+      </div>
+    </div>
+
+    <!-- IMPORT BANK SOAL MODAL (vbt-v4) -->
+    <Teleport to="body">
+      <div
+        v-if="isImportModalOpen"
+        class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-[#E7EBF2]">
+          <!-- Head -->
+          <div class="p-5 border-b border-[#E7EBF2] flex items-center justify-between">
+            <div>
+              <h3 class="text-base font-extrabold text-[#101828]">Import Bank Soal</h3>
+              <p class="text-xs text-[#667085] mt-0.5">Unggah soal dari Word, Excel, atau CSV</p>
+            </div>
+            <button
+              type="button"
+              class="w-8 h-8 rounded-lg hover:bg-[#EFF2F7] flex items-center justify-center text-[#667085]"
+              @click="isImportModalOpen = false"
+            >
+              <AdminV2Icon name="x" :size="16" />
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="p-5 space-y-4 text-xs">
+            <div class="p-3.5 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] flex items-center gap-2.5 font-semibold">
+              <AdminV2Icon name="book" :size="16" class="shrink-0" />
+              <span>Pilih format dan file untuk ditinjau. Preview ini mensimulasikan pemrosesan lokal.</span>
+            </div>
+
+            <div>
+              <label class="block font-bold text-[#344054] mb-1.5">Format File</label>
+              <select
+                v-model="importFormat"
+                class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
+              >
+                <option>Excel (.xlsx)</option>
+                <option>Word (.docx)</option>
+                <option>CSV (.csv)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-[#344054] mb-1.5">Pilih File Bank Soal</label>
+              <input
+                type="file"
+                accept=".doc,.docx,.xls,.xlsx,.csv"
+                class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-[#F9FAFC] outline-none"
+              >
+            </div>
+
+            <div class="text-[11px] text-[#667085] flex items-center gap-2">
+              <span>Unduh template:</span>
+              <button
+                type="button"
+                class="font-extrabold text-[#1B5FD9] hover:underline"
+                @click="emit('toast', 'Template Excel berhasil diunduh.')"
+              >
+                Excel
+              </button>
+              <span>·</span>
+              <button
+                type="button"
+                class="font-extrabold text-[#1B5FD9] hover:underline"
+                @click="emit('toast', 'Template Word berhasil diunduh.')"
+              >
+                Word
+              </button>
+              <span>·</span>
+              <button
+                type="button"
+                class="font-extrabold text-[#1B5FD9] hover:underline"
+                @click="emit('toast', 'Template CSV berhasil diunduh.')"
+              >
+                CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- Foot -->
+          <div class="p-4 border-t border-[#E7EBF2] bg-[#FAFBFC] flex items-center justify-end gap-2">
+            <button
+              type="button"
+              class="px-4 py-2 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-white"
+              @click="isImportModalOpen = false"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              class="px-5 py-2 rounded-xl bg-[#1B5FD9] hover:bg-[#12459B] text-white text-xs font-bold shadow-sm"
+              @click="isImportModalOpen = false; emit('toast', 'File berhasil diunggah & diproses.')"
+            >
+              Unggah &amp; Proses Bank Soal
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>

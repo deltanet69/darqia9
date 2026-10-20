@@ -1,0 +1,538 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import AdminV2Icon from '../AdminV2Icon.vue'
+import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
+
+interface Props {
+  pkg: BankPackage
+  editing: boolean
+  grade: GradeType
+  classOptions: string[]
+  subjectOptions: string[]
+}
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  (e: 'save', updatedPkg: BankPackage): void
+  (e: 'cancel'): void
+  (e: 'toast', msg: string): void
+}>()
+
+// Deep clone of package to edit without mutating directly
+const draft = ref<BankPackage>(JSON.parse(JSON.stringify(props.pkg)))
+
+// Current step: PG, Isian, Esai, Interaktif
+const currentStep = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>('PG')
+
+const countByType = (type: string) => {
+  return draft.value.questions.filter(q => q.type === type).length
+}
+
+const questionsInStep = computed(() => {
+  return draft.value.questions.filter(q => q.type === currentStep.value)
+})
+
+let questionCounter = 100
+
+const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuestionItem => {
+  questionCounter++
+  return {
+    id: `Q-${questionCounter}`,
+    number: draft.value.questions.length + 1,
+    type,
+    difficulty: 'Sedang',
+    text: '',
+    key: type === 'PG' ? 'A' : '',
+    options: type === 'PG' || type === 'Interaktif'
+      ? [
+          { key: 'A', text: '' },
+          { key: 'B', text: '' },
+          { key: 'C', text: '' },
+          { key: 'D', text: '' }
+        ]
+      : undefined,
+    isMultiSelect: false,
+    rubric: '',
+    mediaType: 'video',
+    mediaUrl: '',
+    interactiveAnswerType: 'Isian'
+  }
+}
+
+const addQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif') => {
+  const q = blankQuestion(type)
+  draft.value.questions.push(q)
+  emit('toast', `Butir soal ${type} baru ditambahkan.`)
+}
+
+const removeQuestion = (qId: string) => {
+  const currentCount = draft.value.questions.filter(q => q.type === currentStep.value).length
+  if (currentCount <= 1) {
+    emit('toast', `Sisakan minimal 1 butir soal ${currentStep.value}.`)
+    return
+  }
+  draft.value.questions = draft.value.questions.filter(q => q.id !== qId)
+  draft.value.questions.forEach((q, i) => { q.number = i + 1 })
+}
+
+const toggleInteractiveMode = () => {
+  draft.value.hasInteractive = !draft.value.hasInteractive
+  if (draft.value.hasInteractive && !draft.value.questions.some(q => q.type === 'Interaktif')) {
+    draft.value.questions.push(blankQuestion('Interaktif'))
+  }
+}
+
+// Math Symbol Insertion
+const insertSymbol = (q: BankQuestionItem, symbol: string) => {
+  q.text += symbol
+}
+
+// Toggle Option Correct Key for PG
+const toggleOptionKey = (q: BankQuestionItem, keyLetter: string) => {
+  if (q.isMultiSelect) {
+    const keys = Array.isArray(q.key) ? [...q.key] : [q.key].filter(Boolean)
+    if (keys.includes(keyLetter)) {
+      if (keys.length > 1) {
+        q.key = keys.filter(k => k !== keyLetter)
+      }
+    } else {
+      q.key = [...keys, keyLetter]
+    }
+  } else {
+    q.key = keyLetter
+  }
+}
+
+const isOptionSelected = (q: BankQuestionItem, keyLetter: string) => {
+  if (Array.isArray(q.key)) {
+    return q.key.includes(keyLetter)
+  }
+  return q.key === keyLetter
+}
+
+// Navigation Step Controls
+const nextStep = () => {
+  if (currentStep.value === 'PG') currentStep.value = 'Isian'
+  else if (currentStep.value === 'Isian') currentStep.value = 'Esai'
+  else if (currentStep.value === 'Esai') {
+    if (draft.value.hasInteractive) currentStep.value = 'Interaktif'
+    else submitForm()
+  } else if (currentStep.value === 'Interaktif') {
+    submitForm()
+  }
+}
+
+const prevStep = () => {
+  if (currentStep.value === 'Interaktif') currentStep.value = 'Esai'
+  else if (currentStep.value === 'Esai') currentStep.value = 'Isian'
+  else if (currentStep.value === 'Isian') currentStep.value = 'PG'
+}
+
+const submitForm = () => {
+  if (!draft.value.teacherName?.trim()) {
+    emit('toast', 'Nama guru penyusun wajib diisi.')
+    return
+  }
+  const validQuestions = draft.value.questions.filter(q => q.text.trim())
+  if (!validQuestions.some(q => q.type === 'PG')) {
+    currentStep.value = 'PG'
+    emit('toast', 'Isi minimal 1 pertanyaan Pilihan Ganda.')
+    return
+  }
+  draft.value.questions = validQuestions
+  draft.value.updatedAt = 'Baru saja'
+  emit('save', draft.value)
+}
+</script>
+
+<template>
+  <div class="max-w-5xl mx-auto space-y-4">
+    <!-- Top Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-1">
+      <div>
+        <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#E8F0FE] text-[#1B5FD9]">
+          {{ grade }} · {{ draft.classroom }}
+        </span>
+        <h2 class="text-xl sm:text-2xl font-extrabold text-[#101828] mt-1.5">
+          {{ editing ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal Baru' }}
+        </h2>
+        <p class="text-xs text-[#667085] mt-1">
+          Kelola seluruh format dalam satu paket. Perubahan tersimpan secara interaktif.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="px-4 py-2.5 rounded-full border border-[#E7EBF2] bg-white text-xs font-extrabold text-[#344054] hover:bg-[#F3F5F9] transition"
+          @click="emit('cancel')"
+        >
+          Batal
+        </button>
+        <button
+          type="button"
+          class="px-5 py-2.5 rounded-full bg-[#1B5FD9] hover:bg-[#12459B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
+          @click="submitForm"
+        >
+          <AdminV2Icon name="check" :size="14" />
+          <span>Simpan Paket</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CARD 1: Konfigurasi Identitas Paket -->
+    <section class="bg-white border border-[#E7EBF2] rounded-[18px] p-5 shadow-sm space-y-4">
+      <div class="flex items-start justify-between gap-3 border-b border-[#E7EBF2] pb-3">
+        <div>
+          <h3 class="text-sm font-extrabold text-[#101828]">Konfigurasi paket ujian</h3>
+          <p class="text-xs text-[#667085] mt-0.5">Tentukan identitas paket sebelum menyusun soal.</p>
+        </div>
+        <span class="text-xs font-bold text-[#667085] bg-[#EFF2F7] px-2.5 py-1 rounded-lg">
+          {{ draft.subject }} · {{ draft.classroom }}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div>
+          <label class="block text-xs font-bold text-[#344054] mb-1.5">Rombel / Kelas</label>
+          <select
+            v-model="draft.classroom"
+            class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+          >
+            <option v-for="c in classOptions" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#344054] mb-1.5">Mata Pelajaran</label>
+          <select
+            v-model="draft.subject"
+            class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+          >
+            <option v-for="s in subjectOptions" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#344054] mb-1.5">Kesulitan Umum</label>
+          <select
+            v-model="draft.difficulty"
+            class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+          >
+            <option value="Mudah">Mudah</option>
+            <option value="Sedang">Sedang</option>
+            <option value="Sukar">Sukar</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#344054] mb-1.5">Guru Penyusun</label>
+          <input
+            v-model="draft.teacherName"
+            type="text"
+            placeholder="Nama guru penyusun"
+            class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- CARD 2: Multi-Step Question Builder -->
+    <section class="bg-white border border-[#E7EBF2] rounded-[18px] overflow-hidden shadow-sm">
+      <!-- Step Navigation Bar -->
+      <div class="p-3 bg-[#F9FAFC] border-b border-[#E7EBF2] flex flex-wrap items-center justify-between gap-3">
+        <nav class="flex items-center gap-1.5 overflow-x-auto" aria-label="Langkah format soal">
+          <button
+            v-for="st in [
+              { id: 'PG', label: '1. Pilihan Ganda' },
+              { id: 'Isian', label: '2. Jawaban Singkat' },
+              { id: 'Esai', label: '3. Esai' },
+              { id: 'Interaktif', label: '4. Interaktif' }
+            ] as const"
+            :key="st.id"
+            type="button"
+            class="px-3.5 py-2 rounded-xl text-xs font-extrabold inline-flex items-center gap-2 transition"
+            :class="currentStep === st.id
+              ? 'bg-white text-[#0A2A5C] shadow-sm border border-[#E7EBF2]'
+              : 'text-[#667085] hover:bg-white'"
+            @click="currentStep = st.id"
+          >
+            <span>{{ st.label }}</span>
+            <span
+              class="px-1.5 py-0.5 rounded-md text-[10px]"
+              :class="currentStep === st.id ? 'bg-[#E8F0FE] text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#667085]'"
+            >
+              {{ countByType(st.id) }}
+            </span>
+          </button>
+        </nav>
+
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-xl border text-xs font-extrabold transition"
+          :class="draft.hasInteractive
+            ? 'bg-[#E8F0FE] border-[#B9D1F9] text-[#0A2A5C]'
+            : 'border-[#E7EBF2] bg-white text-[#667085]'"
+          @click="toggleInteractiveMode"
+        >
+          {{ draft.hasInteractive ? 'Interaktif Aktif' : 'Aktifkan Interaktif' }}
+        </button>
+      </div>
+
+      <!-- Question Content Area -->
+      <div class="p-5 space-y-4">
+        <!-- Step Header -->
+        <div class="flex items-start justify-between gap-3 pb-2 border-b border-[#E7EBF2]">
+          <div>
+            <h3 class="text-sm font-extrabold text-[#101828]">
+              {{ currentStep === 'PG' ? 'Butir Soal Pilihan Ganda'
+                : currentStep === 'Isian' ? 'Butir Soal Jawaban Singkat'
+                : currentStep === 'Esai' ? 'Butir Soal Esai'
+                : 'Butir Soal Interaktif (Audio / Video)' }}
+            </h3>
+            <p class="text-xs text-[#667085] mt-0.5">
+              {{ currentStep === 'PG' ? 'Pilih satu kunci atau aktifkan multi-select untuk PG kompleks.'
+                : currentStep === 'Isian' ? 'Isi pertanyaan dan kunci jawaban singkat.'
+                : currentStep === 'Esai' ? 'Siapkan rubrik serta skor maksimal untuk koreksi guru.'
+                : 'Pilih media dan jenis jawaban untuk setiap soal.' }}
+            </p>
+          </div>
+          <span class="text-xs font-extrabold px-2.5 py-1 rounded-full bg-[#E8F0FE] text-[#1B5FD9]">
+            {{ countByType(currentStep) }} butir
+          </span>
+        </div>
+
+        <!-- If Interactive not active -->
+        <div
+          v-if="currentStep === 'Interaktif' && !draft.hasInteractive"
+          class="p-8 text-center border-2 border-dashed border-[#CBD5E1] rounded-2xl bg-[#FAFBFE] space-y-2"
+        >
+          <h4 class="text-sm font-extrabold text-[#101828]">Format interaktif belum aktif</h4>
+          <p class="text-xs text-[#667085]">Aktifkan untuk soal video YouTube atau audio listening.</p>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-xl bg-[#1B5FD9] text-white text-xs font-extrabold shadow-sm mt-2"
+            @click="toggleInteractiveMode"
+          >
+            Aktifkan Format Interaktif
+          </button>
+        </div>
+
+        <!-- Questions List for Current Step -->
+        <div v-else class="space-y-4">
+          <article
+            v-for="(q, idx) in questionsInStep"
+            :key="q.id"
+            class="border border-[#E7EBF2] rounded-2xl overflow-hidden bg-white shadow-xs"
+          >
+            <!-- Question Top -->
+            <div class="bg-[#F9FAFC] p-3 border-b border-[#E7EBF2] flex items-center justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-extrabold font-mono px-2 py-0.5 rounded-lg bg-[#EFF2F7] text-[#344054]">
+                  Soal #{{ idx + 1 }}
+                </span>
+                <select
+                  v-model="q.difficulty"
+                  class="border border-[#E7EBF2] rounded-lg px-2 py-1 text-xs font-bold text-[#344054] bg-white outline-none"
+                >
+                  <option value="Mudah">Mudah</option>
+                  <option value="Sedang">Sedang</option>
+                  <option value="Sukar">Sukar</option>
+                </select>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  class="px-2.5 py-1 rounded-lg border text-xs font-bold transition"
+                  :class="(q as any).rtl ? 'bg-[#E8F0FE] border-[#1B5FD9] text-[#0A2A5C]' : 'border-[#E7EBF2] text-[#667085]'"
+                  @click="(q as any).rtl = !(q as any).rtl"
+                >
+                  عربي · RTL
+                </button>
+                <button
+                  type="button"
+                  class="px-2.5 py-1 rounded-lg border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-bold"
+                  @click="removeQuestion(q.id)"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+
+            <!-- Question Body -->
+            <div class="p-4 space-y-3">
+              <!-- Math Symbol Bar -->
+              <div class="flex items-center gap-1.5 p-1.5 bg-[#F9FAFC] border border-[#E7EBF2] rounded-xl text-xs overflow-x-auto">
+                <span class="text-[10px] font-extrabold uppercase text-[#667085] px-1">Simbol:</span>
+                <button
+                  v-for="sym in ['×', '÷', '√', '²', 'π']"
+                  :key="sym"
+                  type="button"
+                  class="px-2 py-0.5 bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-md font-mono font-bold text-xs"
+                  @click="insertSymbol(q, sym)"
+                >
+                  {{ sym }}
+                </button>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-[#344054] mb-1">Pertanyaan</label>
+                <textarea
+                  v-model="q.text"
+                  rows="3"
+                  :dir="(q as any).rtl ? 'rtl' : 'ltr'"
+                  placeholder="Tulis pertanyaan butir soal di sini..."
+                  class="w-full border border-[#E7EBF2] rounded-xl p-3 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                />
+              </div>
+
+              <!-- PG Specific Options -->
+              <div v-if="q.type === 'PG'">
+                <div class="flex items-center justify-between gap-3 mb-2">
+                  <span class="text-xs font-bold text-[#344054]">Opsi Jawaban &amp; Kunci Benar</span>
+                  <button
+                    type="button"
+                    class="text-xs font-bold text-[#1B5FD9] hover:underline"
+                    @click="q.isMultiSelect = !q.isMultiSelect"
+                  >
+                    {{ q.isMultiSelect ? 'Mode: PG Kompleks (Multi-Select)' : 'Mode: PG Biasa (Tunggal)' }}
+                  </button>
+                </div>
+
+                <div class="space-y-2">
+                  <div
+                    v-for="(opt, oIdx) in (q.options || [])"
+                    :key="opt.key"
+                    class="flex items-center gap-2"
+                  >
+                    <button
+                      type="button"
+                      class="w-9 h-9 rounded-xl font-extrabold text-xs shrink-0 border transition"
+                      :class="isOptionSelected(q, opt.key)
+                        ? 'bg-[#1B5FD9] text-white border-[#1B5FD9]'
+                        : 'bg-[#EFF2F7] text-[#667085] border-[#E7EBF2] hover:border-[#1B5FD9]'"
+                      @click="toggleOptionKey(q, opt.key)"
+                    >
+                      {{ opt.key }}
+                    </button>
+                    <input
+                      v-model="opt.text"
+                      type="text"
+                      :placeholder="`Teks opsi ${opt.key}`"
+                      class="flex-1 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Isian Specific -->
+              <div v-else-if="q.type === 'Isian'">
+                <label class="block text-xs font-bold text-[#344054] mb-1">Kunci Jawaban Singkat</label>
+                <input
+                  v-model="q.key as string"
+                  type="text"
+                  placeholder="Contoh: Cascading Style Sheets"
+                  class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                >
+              </div>
+
+              <!-- Esai Specific -->
+              <div v-else-if="q.type === 'Esai'" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
+                  <textarea
+                    v-model="q.rubric"
+                    rows="2"
+                    placeholder="Pedoman poin penilaian jawaban siswa..."
+                    class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-[#344054] mb-1">Skor Maksimal</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value="20"
+                    class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                  >
+                </div>
+              </div>
+
+              <!-- Interaktif Specific -->
+              <div v-else-if="q.type === 'Interaktif'" class="space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-[#344054] mb-1">Jenis Media</label>
+                    <select
+                      v-model="q.mediaType"
+                      class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
+                    >
+                      <option value="video">Video YouTube</option>
+                      <option value="audio">Audio Listening</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-[#344054] mb-1">URL Media Lampiran</label>
+                    <input
+                      v-model="q.mediaUrl"
+                      type="text"
+                      placeholder="Link video atau file audio"
+                      class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
+                    >
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-[#344054] mb-1">Kunci / Jawaban</label>
+                  <input
+                    v-model="q.key as string"
+                    type="text"
+                    placeholder="Kunci jawaban interaktif"
+                    class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
+                  >
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Add question button -->
+          <button
+            type="button"
+            class="w-full py-3 rounded-2xl border-2 border-dashed border-[#BBD0EC] bg-[#F8FBFF] hover:bg-[#E8F0FE] text-[#1B5FD9] font-extrabold text-xs flex items-center justify-center gap-2 transition"
+            @click="addQuestion(currentStep)"
+          >
+            <AdminV2Icon name="plus" :size="16" />
+            <span>Tambah Butir Soal {{ currentStep }}</span>
+          </button>
+        </div>
+
+        <!-- Bottom Step Navigation -->
+        <div class="pt-4 border-t border-[#E7EBF2] flex items-center justify-between gap-3 flex-wrap">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-[#F3F5F9] disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="currentStep === 'PG'"
+            @click="prevStep"
+          >
+            Sebelumnya
+          </button>
+
+          <span class="text-xs font-bold text-[#667085]">
+            {{ draft.questions.filter(q => q.text.trim()).length }} pertanyaan terisi
+          </span>
+
+          <button
+            type="button"
+            class="px-5 py-2.5 rounded-full bg-[#1B5FD9] hover:bg-[#12459B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
+            @click="nextStep"
+          >
+            <span>{{ currentStep === 'Interaktif' || (!draft.hasInteractive && currentStep === 'Esai') ? 'Simpan Seluruh Paket' : 'Lanjut' }}</span>
+            <AdminV2Icon name="arrow-right" :size="14" />
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>

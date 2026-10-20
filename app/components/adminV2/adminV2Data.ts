@@ -1,0 +1,174 @@
+export interface SchoolData {
+  label: string
+  heroValue: string
+  heroSub: string
+  guru: string
+  rombel: string
+  siswaHadir: string
+  siswaTotal: string
+  siswaPct: string
+  siswaBar: number
+  guruHadir: string
+  guruTotal: string
+  guruPct: string
+  guruBar: number
+  exams: {
+    harian: Array<[string, string, string, string, string, string]>
+    uts: Array<[string, string, string, string, string, string]>
+    uas: Array<[string, string, string, string, string, string]>
+  }
+}
+
+export interface GroupItem {
+  id: string
+  label: string
+  desc: string
+  items: Array<[string, string, string]>
+}
+
+export interface ActivityRow {
+  id: string
+  name: string
+  icon: string
+  amount: string
+  statusType: 'ok' | 'wait' | 'proc'
+  statusLabel: string
+  date: string
+}
+
+export const SCHOOL_DATA: Record<'smp' | 'smk', SchoolData> = {
+  smp: {
+    label: 'SMP IT Bina Cendekia Assalam',
+    heroValue: '842',
+    heroSub: 'SMP IT BCA &middot; TA 2026/2027',
+    guru: '64',
+    rombel: '24',
+    siswaHadir: '798',
+    siswaTotal: '/842',
+    siswaPct: '94,8%',
+    siswaBar: 94.8,
+    guruHadir: '60',
+    guruTotal: '/64',
+    guruPct: '93,8%',
+    guruBar: 93.8,
+    exams: {
+      harian: [
+        ['16', 'Okt', 'UH Matematika', 'Kelas VII A–C · 08:00', 'Terjadwal', 'on'],
+        ['17', 'Okt', 'UH IPA Terpadu', 'Kelas VIII A–B · 10:00', 'Terjadwal', 'on']
+      ],
+      uts: [
+        ['20', 'Okt', 'UTS Ganjil 2026', '20–25 Okt · 8 mapel · 842 peserta', 'Persiapan', 'wait']
+      ],
+      uas: [
+        ['8', 'Des', 'UAS Ganjil 2026', '8–13 Des · 9 mapel · 842 peserta', 'Draft', 'off']
+      ]
+    }
+  },
+  smk: {
+    label: 'SMK IT Attaqwa 9',
+    heroValue: '1.247',
+    heroSub: 'SMK IT Attaqwa 9 &middot; TA 2026/2027',
+    guru: '86',
+    rombel: '36',
+    siswaHadir: '1.180',
+    siswaTotal: '/1.247',
+    siswaPct: '94,6%',
+    siswaBar: 94.6,
+    guruHadir: '81',
+    guruTotal: '/86',
+    guruPct: '94,2%',
+    guruBar: 94.2,
+    exams: {
+      harian: [
+        ['16', 'Okt', 'UH Matematika', 'XII TKJ 1–3 · 08:00', 'Terjadwal', 'on'],
+        ['17', 'Okt', 'UH Produktif TKJ', 'XI TKJ 2 · 10:00', 'Terjadwal', 'on']
+      ],
+      uts: [
+        ['20', 'Okt', 'UTS Ganjil 2026', '20–25 Okt · 8 mapel · 1.247 peserta', 'Persiapan', 'wait']
+      ],
+      uas: [
+        ['8', 'Des', 'UAS Ganjil 2026', '8–13 Des · 9 mapel · 1.247 peserta', 'Draft', 'off']
+      ]
+    }
+  }
+}
+
+export const GROUPS: GroupItem[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    desc: 'Ringkasan aktivitas sekolah',
+    items: [['Dashboard', 'Ringkasan utama', 'i-grid']]
+  },
+  {
+    id: 'akademik',
+    label: 'Akademik',
+    desc: 'Data pembelajaran & kesiswaan',
+    items: [
+      ['Data siswa', 'Data induk siswa', 'i-users'],
+      ['Absensi siswa', 'Kehadiran harian', 'i-clock'],
+      ['Manajemen kelas', 'Rombel & wali kelas', 'i-layers'],
+      ['Jadwal pelajaran', 'Jadwal mingguan', 'i-cal'],
+      ['Master mapel', 'Mata pelajaran', 'i-book'],
+      ['Raport siswa', 'Nilai & raport', 'i-doc']
+    ]
+  },
+  {
+    id: 'kepegawaian',
+    label: 'Kepegawaian',
+    desc: 'Guru, staff & presensi',
+    items: [
+      ['Data guru & staff', 'Data induk pegawai', 'i-users'],
+      ['Absensi guru & staff', 'Presensi harian', 'i-clock'],
+      ['Jadwal mengajar', 'Jadwal mingguan', 'i-cal'],
+      ['Agenda mengajar', 'Agenda guru', 'i-book'],
+      ['Modul pembelajaran', 'Materi & modul', 'i-layers']
+    ]
+  },
+  {
+    id: 'keuangan',
+    label: 'Keuangan',
+    desc: 'Kas sekolah & tabungan',
+    items: [
+      ['Keuangan sekolah', 'Kas & anggaran', 'i-wallet'],
+      ['Tabungan siswa', 'Kelola tabungan', 'i-bank']
+    ]
+  },
+  {
+    id: 'aplikasi',
+    label: 'Aplikasi',
+    desc: 'Modul aplikasi Darqia 9',
+    items: [
+      ['Manajemen CBT', 'Ujian digital', 'i-grid'],
+      ['Konten Website', 'Kelola konten web', 'i-doc'],
+      ['SPMB', 'Penerimaan murid baru', 'i-plus'],
+      ['Perpustakaan digital', 'Katalog & sirkulasi', 'i-book']
+    ]
+  },
+  {
+    id: 'sistem',
+    label: 'Sistem Apps',
+    desc: 'Pengguna, akses & pengaturan',
+    items: [
+      ['Manajemen user', 'Akun pengguna', 'i-users'],
+      ['Hak Akses (RBAC)', 'Peran & izin', 'i-shield'],
+      ['Log Aktivitas', 'Audit trail', 'i-doc'],
+      ['Pengaturan', 'Konfigurasi', 'i-gear'],
+      ['Profil saya', 'Akun admin', 'i-users']
+    ]
+  }
+]
+
+export const ANNOUNCEMENTS: Array<[string, string, string, string]> = [
+  ['i-cal', 'Gladi bersih CBT kelas XII', 'Lab 1–4 · 20 Okt 2026, 07:00', '2 h'],
+  ['i-doc', 'Batas input nilai UTS', 'Maksimal 28 Okt 2026 via modul Akademik', '5 h'],
+  ['i-users', 'Rapat komite sekolah', 'Aula utama · 30 Okt 2026, 09:00', '1 mg']
+]
+
+export const ACTIVITIES: ActivityRow[] = [
+  { id: 'INV_00241', name: 'Pembayaran SPP', icon: 'i-wallet', amount: 'Rp 350.000', statusType: 'ok', statusLabel: 'Lunas', date: '14 Okt 2026 08:15' },
+  { id: 'INV_00240', name: 'Pendaftaran PPDB', icon: 'i-plus', amount: 'Rp 150.000', statusType: 'ok', statusLabel: 'Lunas', date: '13 Okt 2026 14:40' },
+  { id: 'INV_00239', name: 'Pengajuan Dana Kegiatan', icon: 'i-doc', amount: 'Rp 2.500.000', statusType: 'wait', statusLabel: 'Menunggu', date: '13 Okt 2026 11:02' },
+  { id: 'INV_00238', name: 'Gaji Guru Honorer', icon: 'i-users', amount: 'Rp 4.800.000', statusType: 'proc', statusLabel: 'Diproses', date: '12 Okt 2026 16:20' },
+  { id: 'INV_00237', name: 'Pembelian ATK', icon: 'i-layers', amount: 'Rp 1.150.000', statusType: 'ok', statusLabel: 'Lunas', date: '10 Okt 2026 09:45' }
+]
