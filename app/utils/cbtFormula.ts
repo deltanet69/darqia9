@@ -101,7 +101,7 @@ export const renderKaTeXHtml = (rawText: string): string => {
           displayMode: true,
           throwOnError: false
         })}</span>`
-        const token = `___KATEX_TOKEN_${tokenIndex++}___`
+        const token = `CBTKATEXTOKEN${tokenIndex++}PLACEHOLDER`
         tokens.push(rendered)
         return token
       } catch {
@@ -116,7 +116,7 @@ export const renderKaTeXHtml = (rawText: string): string => {
           displayMode: false,
           throwOnError: false
         })}</span>`
-        const token = `___KATEX_TOKEN_${tokenIndex++}___`
+        const token = `CBTKATEXTOKEN${tokenIndex++}PLACEHOLDER`
         tokens.push(rendered)
         return token
       } catch {
@@ -145,7 +145,7 @@ export const renderKaTeXHtml = (rawText: string): string => {
 
     // 5. Kembalikan token KaTeX yang sudah ter-render aman
     tokens.forEach((renderedHtml, idx) => {
-      withLineBreaks = withLineBreaks.replace(`___KATEX_TOKEN_${idx}___`, renderedHtml)
+      withLineBreaks = withLineBreaks.replace(`CBTKATEXTOKEN${idx}PLACEHOLDER`, renderedHtml)
     })
 
     return withLineBreaks
