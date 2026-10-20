@@ -43,7 +43,7 @@ const menuModules: Array<{ id: CbtTabId; label: string }> = [
     >
       <button
         type="button"
-        class="flex flex-col items-center gap-1 text-[10px] font-bold p-1 transition"
+        class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl transition touch-manipulation"
         :class="activeTab === 'summary' ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"
         @click="emit('update:activeTab', 'summary')"
       >
@@ -53,7 +53,7 @@ const menuModules: Array<{ id: CbtTabId; label: string }> = [
 
       <button
         type="button"
-        class="flex flex-col items-center gap-1 text-[10px] font-bold p-1 transition"
+        class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl transition touch-manipulation"
         :class="activeTab === 'exams' ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"
         @click="emit('update:activeTab', 'exams')"
       >
@@ -63,7 +63,7 @@ const menuModules: Array<{ id: CbtTabId; label: string }> = [
 
       <button
         type="button"
-        class="flex flex-col items-center gap-1 text-[10px] font-bold p-1 text-[#667085] hover:text-[#101828] transition"
+        class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl text-[#667085] hover:text-[#101828] active:bg-[#EFF2F7] transition touch-manipulation"
         @click="emit('toggle-menu')"
       >
         <AdminV2Icon name="menu" :size="20" />
@@ -72,7 +72,7 @@ const menuModules: Array<{ id: CbtTabId; label: string }> = [
 
       <button
         type="button"
-        class="flex flex-col items-center gap-1 text-[10px] font-bold p-1 transition"
+        class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl transition touch-manipulation"
         :class="activeTab === 'monitoring' ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"
         @click="emit('update:activeTab', 'monitoring')"
       >
@@ -82,7 +82,7 @@ const menuModules: Array<{ id: CbtTabId; label: string }> = [
 
       <button
         type="button"
-        class="flex flex-col items-center gap-1 text-[10px] font-bold p-1 transition"
+        class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl transition touch-manipulation"
         :class="activeTab === 'results' ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"
         @click="emit('update:activeTab', 'results')"
       >

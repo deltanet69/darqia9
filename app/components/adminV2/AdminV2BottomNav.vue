@@ -18,6 +18,13 @@ const emit = defineEmits<{
 
 const route = useRoute()
 
+const destinations: Record<string, string> = {
+  beranda: '/adminV2',
+  akademik: '/adminV2/siswa',
+  keuangan: '/admin/keuangan',
+  profil: '/admin/profile'
+}
+
 const activeTab = computed(() => {
   const p = (route.path || '').toLowerCase()
   if (p === '/adminv2' || p === '/adminv2/') return 'beranda'
@@ -32,7 +39,7 @@ const handleNav = (tab: string) => {
     emit('open-menu')
     return
   }
-  emit('nav-click', tab)
+  navigateTo(destinations[tab])
 }
 </script>
 

@@ -31,6 +31,32 @@ const emit = defineEmits<{
 const route = useRoute()
 const searchQuery = ref('')
 const openGroups = ref<Set<string>>(new Set(['dashboard']))
+const destinations: Record<string, string> = {
+  'Dashboard': '/adminV2',
+  'Data siswa': '/adminV2/siswa',
+  'Absensi siswa': '/adminV2/absensi',
+  'Manajemen kelas': '/adminV2/kelas',
+  'Jadwal pelajaran': '/admin/jadwal-pelajaran',
+  'Master mapel': '/adminV2/mapel',
+  'Raport siswa': '/adminV2/raport',
+  'Data guru & staff': '/adminV2/guru',
+  'Absensi guru & staff': '/adminV2/absensi-guru',
+  'Jadwal mengajar': '/admin/jadwal-mengajar',
+  'Agenda mengajar': '/admin/agenda-mengajar',
+  'Modul pembelajaran': '/admin/modul-ajar',
+  'Keuangan sekolah': '/admin/keuangan',
+  'Tabungan siswa': '/admin/tabungan',
+  'Manajemen CBT': '/adminV2/cbt',
+  'Konten Website': '/admin/konten',
+  'SPMB': '/spmb',
+  'Manajemen user': '/admin/users',
+  'Hak Akses (RBAC)': '/admin/rbac',
+  'Log Aktivitas': '/admin/log',
+  'Profil saya': '/admin/profile',
+  'Pengaturan': '/admin/profile'
+}
+
+const destinationFor = (title: string) => destinations[title]
 
 const isPageActive = (title: string) => {
   const t = title.toLowerCase()
@@ -106,8 +132,11 @@ const isGroupOpen = (id: string) => {
   return openGroups.value.has(id)
 }
 
-const handleItemClick = (title: string) => {
-  emit('select-item', title)
+const handleItemClick = (title: string, event: MouseEvent) => {
+  if (!destinationFor(title)) {
+    event.preventDefault()
+    return
+  }
   emit('close')
 }
 </script>
@@ -149,7 +178,7 @@ const handleItemClick = (title: string) => {
         </div>
         <button
           type="button"
-          class="w-9 h-9 rounded-xl flex items-center justify-center text-[#344054] hover:bg-[#EFF2F7] transition"
+          class="w-11 h-11 rounded-xl flex items-center justify-center text-[#344054] hover:bg-[#EFF2F7] active:bg-[#E7EBF2] transition touch-manipulation"
           aria-label="Tutup menu"
           @click="emit('close')"
         >
@@ -199,15 +228,18 @@ const handleItemClick = (title: string) => {
           </button>
 
           <div v-show="isGroupOpen(g.id)" class="px-2 pb-3 space-y-1">
-            <a
+            <NuxtLink
               v-for="([title, desc, icon], idx) in g.matchedItems"
               :key="idx"
-              href="#"
+              :to="destinationFor(title) || route.path"
               class="flex items-center gap-3 p-3 rounded-xl text-[13.5px] font-semibold transition"
-              :class="isPageActive(title)
-                ? (jenjang === 'smp' ? 'bg-[#E7F6ED] text-[#14532D] font-bold border border-[#A6E9C5]' : 'bg-[#EFF6FF] text-[#1B5FD9] font-bold border border-[#BFDBFE]')
-                : 'text-[#344054] hover:bg-[#EFF2F7] active:bg-[#EFF2F7]'"
-              @click.prevent="handleItemClick(title)"
+              :class="!destinationFor(title)
+                ? 'text-[#98A2B3] opacity-60 cursor-not-allowed'
+                : isPageActive(title)
+                  ? (jenjang === 'smp' ? 'bg-[#E7F6ED] text-[#14532D] font-bold border border-[#A6E9C5]' : 'bg-[#EFF6FF] text-[#1B5FD9] font-bold border border-[#BFDBFE]')
+                  : 'text-[#344054] hover:bg-[#EFF2F7] active:bg-[#EFF2F7]'"
+              :aria-disabled="!destinationFor(title)"
+              @click="handleItemClick(title, $event)"
             >
               <span
                 class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -230,7 +262,7 @@ const handleItemClick = (title: string) => {
                 </div>
                 <small class="block truncate text-[11px] font-medium text-[#98A2B3]">{{ desc }}</small>
               </span>
-            </a>
+            </NuxtLink>
           </div>
         </div>
 
