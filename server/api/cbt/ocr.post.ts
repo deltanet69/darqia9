@@ -32,8 +32,8 @@ const responseSchema = {
 export default defineEventHandler(async (event) => {
   limitRequest(event)
   const config = useRuntimeConfig(event)
-  if (!config.geminiApiKey) {
-    throw createError({ statusCode: 503, statusMessage: 'GEMINI_API_KEY belum tersedia di server.' })
+  if (!config.pecutMarketApiKey) {
+    throw createError({ statusCode: 503, statusMessage: 'PECUTMARKET_API_KEY belum tersedia di server.' })
   }
 
   const body = await readBody<{ imageDataUrl?: string }>(event)
@@ -57,39 +57,39 @@ export default defineEventHandler(async (event) => {
     'Jangan sertakan penjelasan di luar JSON yang diminta.'
   ].join(' ')
 
-  const response = await $fetch<any>('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
+  const response = await $fetch<any>('https://api.pecutmarket.my.id/v1/chat/completions', {
     method: 'POST',
     timeout: 60_000,
     headers: {
-      'x-goog-api-key': config.geminiApiKey,
+      authorization: 'Bearer ' + config.pecutMarketApiKey,
       'content-type': 'application/json'
     },
     body: {
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType, data: base64 } }
+      model: 'glm-5.3-flash',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + base64 } }
         ]
       }],
-      generationConfig: {
-        temperature: 0,
-        responseMimeType: 'application/json',
-        responseSchema
-      }
+      response_format: { type: 'json_object' },
+      temperature: 0,
+      max_tokens: 4_000
     }
   }).catch((error: any) => {
     const statusCode = error?.response?.status || error?.statusCode
     if (statusCode === 429 || statusCode === 503) {
-      throw createError({ statusCode: 429, statusMessage: 'Kuota Gemini sedang penuh. Coba lagi beberapa saat.' })
+      throw createError({ statusCode: 429, statusMessage: 'Layanan OCR sedang penuh. Coba lagi beberapa saat.' })
     }
     const providerMessage = error?.data?.error?.message || error?.response?._data?.error?.message
     if (statusCode === 400 && providerMessage) {
-      throw createError({ statusCode: 502, statusMessage: 'Gemini menolak gambar: ' + providerMessage })
+      throw createError({ statusCode: 502, statusMessage: 'Layanan OCR menolak gambar: ' + providerMessage })
     }
-    throw createError({ statusCode: 502, statusMessage: 'Gemini gagal mengekstrak gambar. Coba gunakan gambar yang lebih jelas.' })
+    throw createError({ statusCode: 502, statusMessage: 'Layanan OCR gagal mengekstrak gambar. Coba gunakan gambar yang lebih jelas.' })
   })
 
-  const rawText = response?.candidates?.[0]?.content?.parts?.map((part: any) => part.text || '').join('').trim()
+  const rawText = response?.choices?.[0]?.message?.content?.trim()
   if (!rawText) {
     throw createError({ statusCode: 422, statusMessage: 'Tidak ada teks yang dapat diekstrak dari gambar.' })
   }
@@ -104,6 +104,6 @@ export default defineEventHandler(async (event) => {
       reviewNote: typeof extracted.reviewNote === 'string' ? extracted.reviewNote : ''
     }
   } catch {
-    throw createError({ statusCode: 502, statusMessage: 'Format hasil Gemini tidak valid. Coba ekstrak kembali.' })
+    throw createError({ statusCode: 502, statusMessage: 'Format hasil OCR tidak valid. Coba ekstrak kembali.' })
   }
 })
