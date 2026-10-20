@@ -325,10 +325,10 @@ onMounted(async () => {
           <h2 class="text-lg font-extrabold text-[#101828]">Bank Soal</h2>
           <p class="text-xs text-[#667085] mt-0.5">Jelajahi rombel → paket mapel → rincian soal.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <button
             type="button"
-            class="px-4 py-2.5 rounded-full border border-[#E7EBF2] bg-white hover:bg-[#F3F5F9] text-xs font-extrabold text-[#344054] transition inline-flex items-center gap-1.5"
+            class="min-h-11 px-3 sm:px-4 rounded-xl border border-[#E7EBF2] bg-white hover:bg-[#F3F5F9] text-xs font-extrabold text-[#344054] transition inline-flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
             @click="isImportModalOpen = true"
           >
             <AdminV2Icon name="download" :size="14" />
@@ -336,7 +336,7 @@ onMounted(async () => {
           </button>
           <button
             type="button"
-            class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
+            class="min-h-11 px-3 sm:px-4 rounded-xl bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
             @click="startCreatePackage()"
           >
             <AdminV2Icon name="plus" :size="14" />
@@ -346,7 +346,7 @@ onMounted(async () => {
       </div>
 
       <!-- 4 KPIs (vbt-v4) -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="hidden lg:grid grid-cols-4 gap-3">
         <!-- 1. Paket Contoh -->
         <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
           <div class="flex items-center justify-between text-xs">
@@ -412,6 +412,12 @@ onMounted(async () => {
         </article>
       </div>
 
+      <div class="lg:hidden rounded-xl border border-[#E7EBF2] bg-white px-3.5 py-3 text-sm text-[#344054]">
+        <strong class="text-[#101828]">{{ currentGradePackages.length }}</strong> paket pada
+        <strong class="text-[#101828]">{{ allClasses.length }}</strong> rombel dan
+        <strong class="text-[#101828]">{{ allSubjects.length }}</strong> mata pelajaran.
+      </div>
+
       <!-- Toolstrip Search + Level Filter -->
       <section class="bg-white border border-[#E7EBF2] rounded-2xl p-3 shadow-xs flex flex-col sm:flex-row items-center gap-3">
         <div class="relative flex-1 w-full">
@@ -453,6 +459,8 @@ onMounted(async () => {
           tabindex="0"
           class="bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-[18px] p-4 sm:p-5 shadow-xs cursor-pointer transition hover:-translate-y-1 hover:shadow-md flex flex-col justify-between"
           @click="openClassSubjects(c)"
+          @keydown.enter.prevent="openClassSubjects(c)"
+          @keydown.space.prevent="openClassSubjects(c)"
         >
           <div>
             <div class="flex items-center justify-between mb-3">
@@ -533,7 +541,55 @@ onMounted(async () => {
       </div>
 
       <!-- Table of Packages -->
-      <section class="bg-white border border-[#E7EBF2] rounded-2xl overflow-hidden shadow-xs">
+      <div v-if="subjectPackages.length" class="space-y-3 md:hidden">
+        <article
+          v-for="p in subjectPackages"
+          :key="p.id"
+          class="rounded-2xl border border-[#E7EBF2] bg-white p-4 space-y-3"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="text-sm font-extrabold text-[#101828] break-words">{{ p.subject }}</h3>
+              <p class="mt-0.5 font-mono text-[11px] text-[#667085] break-all">{{ p.code }}</p>
+            </div>
+            <span class="shrink-0 rounded-lg bg-[#EFF2F7] px-2 py-1 text-[11px] font-bold text-[#344054]">{{ p.questions.length }} soal</span>
+          </div>
+
+          <p class="text-xs text-[#667085]">Guru penyusun: <strong class="text-[#344054]">{{ p.teacherName }}</strong></p>
+
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="t in ['PG', 'Isian', 'Esai', 'Interaktif'].filter(fmt => p.questions.some(q => q.type === fmt))"
+              :key="t"
+              class="rounded-lg bg-[#E8F0FE] px-2 py-1 text-[11px] font-bold text-[#1B5FD9]"
+            >
+              {{ p.questions.filter(q => q.type === t).length }} {{ t }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 border-t border-[#E7EBF2] pt-3">
+            <button
+              type="button"
+              class="min-h-11 rounded-xl border border-[#E7EBF2] px-3 text-xs font-bold text-[#344054] active:bg-[#F3F5F9]"
+              @click="startEditPackage(p)"
+            >
+              Edit Paket
+            </button>
+            <button
+              type="button"
+              class="min-h-11 rounded-xl bg-[#E8F0FE] px-3 text-xs font-bold text-[#0A2A5C] active:bg-[#D6E6FF]"
+              @click="openPackageDetail(p.id)"
+            >
+              Lihat Soal
+            </button>
+          </div>
+        </article>
+      </div>
+      <div v-else class="md:hidden rounded-2xl border border-[#E7EBF2] bg-white p-6 text-center text-sm text-[#667085]">
+        Belum ada paket sesuai pencarian. Buat paket mapel baru untuk kelas ini.
+      </div>
+
+      <section class="hidden md:block bg-white border border-[#E7EBF2] rounded-2xl overflow-hidden shadow-xs">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs min-w-[700px]">
             <thead class="bg-[#FAFBFC] border-b border-[#E7EBF2] text-[10px] uppercase font-extrabold text-[#667085] tracking-wider">
@@ -759,6 +815,7 @@ onMounted(async () => {
             </div>
             <button
               type="button"
+              aria-label="Tutup dialog import"
               class="w-8 h-8 rounded-lg hover:bg-[#EFF2F7] flex items-center justify-center text-[#667085]"
               @click="isImportModalOpen = false"
             >

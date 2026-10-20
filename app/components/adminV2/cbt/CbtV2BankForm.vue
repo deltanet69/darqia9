@@ -29,6 +29,14 @@ const draft = ref<BankPackage>(JSON.parse(JSON.stringify(props.pkg)))
 
 // Current step: PG, Isian, Esai, Interaktif
 const currentStep = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>(props.initialStep || 'PG')
+const isSettingsOpen = ref(!props.editing)
+const activeQuestionId = ref('')
+const questionSteps = [
+  { id: 'PG', label: 'Pilihan Ganda', shortLabel: 'PG' },
+  { id: 'Isian', label: 'Jawaban Singkat', shortLabel: 'Isian' },
+  { id: 'Esai', label: 'Esai', shortLabel: 'Esai' },
+  { id: 'Interaktif', label: 'Interaktif', shortLabel: 'Media' }
+] as const
 
 watch(draft, value => {
   emit('update-draft', JSON.parse(JSON.stringify(value)))
@@ -43,6 +51,20 @@ const countByType = (type: string) => {
 const questionsInStep = computed(() => {
   return draft.value.questions.filter(q => q.type === currentStep.value)
 })
+
+const activeQuestion = computed(() => {
+  return questionsInStep.value.find(q => q.id === activeQuestionId.value) || questionsInStep.value[0] || null
+})
+
+const activeQuestionIndex = computed(() => {
+  return activeQuestion.value ? questionsInStep.value.findIndex(q => q.id === activeQuestion.value?.id) + 1 : 0
+})
+
+watch(questionsInStep, questions => {
+  if (!questions.some(q => q.id === activeQuestionId.value)) {
+    activeQuestionId.value = questions[0]?.id || ''
+  }
+}, { immediate: true })
 
 let questionCounter = 100
 
@@ -74,6 +96,7 @@ const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuesti
 const addQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif') => {
   const q = blankQuestion(type)
   draft.value.questions.push(q)
+  activeQuestionId.value = q.id
   emit('toast', `Butir soal ${type} baru ditambahkan.`)
 }
 
@@ -83,8 +106,11 @@ const removeQuestion = (qId: string) => {
     emit('toast', `Sisakan minimal 1 butir soal ${currentStep.value}.`)
     return
   }
+  const removedIndex = questionsInStep.value.findIndex(q => q.id === qId)
   draft.value.questions = draft.value.questions.filter(q => q.id !== qId)
   draft.value.questions.forEach((q, i) => { q.number = i + 1 })
+  const remaining = draft.value.questions.filter(q => q.type === currentStep.value)
+  activeQuestionId.value = remaining[Math.min(removedIndex, remaining.length - 1)]?.id || ''
 }
 
 const toggleInteractiveMode = () => {
@@ -159,7 +185,7 @@ const submitForm = () => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto space-y-4">
+  <div class="max-w-5xl mx-auto space-y-4 pb-32 sm:pb-5">
     <!-- Top Header -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-1">
       <div>
@@ -174,17 +200,17 @@ const submitForm = () => {
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="hidden sm:flex items-center gap-2">
         <button
           type="button"
-          class="px-4 py-2.5 rounded-full border border-[#E7EBF2] bg-white text-xs font-extrabold text-[#344054] hover:bg-[#F3F5F9] transition"
+          class="min-h-11 px-4 rounded-xl border border-[#E7EBF2] bg-white text-sm font-bold text-[#344054] hover:bg-[#F3F5F9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9] transition"
           @click="emit('cancel')"
         >
           Batal
         </button>
         <button
           type="button"
-          class="px-5 py-2.5 rounded-full bg-[#1B5FD9] hover:bg-[#12459B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
+          class="min-h-11 px-5 rounded-xl bg-[#1B5FD9] hover:bg-[#12459B] text-white text-sm font-bold transition shadow-sm inline-flex items-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
           @click="submitForm"
         >
           <AdminV2Icon name="check" :size="14" />
@@ -200,12 +226,18 @@ const submitForm = () => {
           <h3 class="text-sm font-extrabold text-[#101828]">Konfigurasi paket ujian</h3>
           <p class="text-xs text-[#667085] mt-0.5">Tentukan identitas paket sebelum menyusun soal.</p>
         </div>
-        <span class="text-xs font-bold text-[#667085] bg-[#EFF2F7] px-2.5 py-1 rounded-lg">
+        <button
+          type="button"
+          aria-label="Ubah konfigurasi paket"
+          class="min-h-11 rounded-xl bg-[#EFF2F7] px-3 text-xs font-bold text-[#344054] hover:bg-[#E8F0FE] hover:text-[#0A2A5C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
+          :aria-expanded="isSettingsOpen"
+          @click="isSettingsOpen = !isSettingsOpen"
+        >
           {{ draft.subject }} · {{ draft.classroom }}
-        </span>
+        </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div v-show="isSettingsOpen" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div>
           <label class="block text-xs font-bold text-[#344054] mb-1.5">Rombel / Kelas</label>
           <select
@@ -253,24 +285,20 @@ const submitForm = () => {
     <!-- CARD 2: Multi-Step Question Builder -->
     <section class="bg-white border border-[#E7EBF2] rounded-[18px] overflow-hidden shadow-sm">
       <!-- Step Navigation Bar -->
-      <div class="p-3 bg-[#F9FAFC] border-b border-[#E7EBF2] flex flex-wrap items-center justify-between gap-3">
-        <nav class="flex items-center gap-1.5 overflow-x-auto" aria-label="Langkah format soal">
+      <div class="p-3 sm:p-4 bg-[#F9FAFC] border-b border-[#E7EBF2] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <nav class="grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-1.5" aria-label="Langkah format soal">
           <button
-            v-for="st in [
-              { id: 'PG', label: '1. Pilihan Ganda' },
-              { id: 'Isian', label: '2. Jawaban Singkat' },
-              { id: 'Esai', label: '3. Esai' },
-              { id: 'Interaktif', label: '4. Interaktif' }
-            ] as const"
+            v-for="st in questionSteps"
             :key="st.id"
             type="button"
-            class="px-3.5 py-2 rounded-xl text-xs font-extrabold inline-flex items-center gap-2 transition"
+            class="min-h-11 px-2 sm:px-3.5 rounded-xl text-xs font-extrabold inline-flex items-center justify-center gap-1.5 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
             :class="currentStep === st.id
               ? 'bg-white text-[#0A2A5C] shadow-sm border border-[#E7EBF2]'
               : 'text-[#667085] hover:bg-white'"
             @click="currentStep = st.id"
           >
-            <span>{{ st.label }}</span>
+            <span class="sm:hidden">{{ st.shortLabel }}</span>
+            <span class="hidden sm:inline">{{ st.label }}</span>
             <span
               class="px-1.5 py-0.5 rounded-md text-[10px]"
               :class="currentStep === st.id ? 'bg-[#E8F0FE] text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#667085]'"
@@ -282,7 +310,7 @@ const submitForm = () => {
 
         <button
           type="button"
-          class="px-3 py-1.5 rounded-xl border text-xs font-extrabold transition"
+          class="w-full sm:w-auto min-h-11 px-3 rounded-xl border text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
           :class="draft.hasInteractive
             ? 'bg-[#E8F0FE] border-[#B9D1F9] text-[#0A2A5C]'
             : 'border-[#E7EBF2] bg-white text-[#667085]'"
@@ -333,8 +361,25 @@ const submitForm = () => {
 
         <!-- Questions List for Current Step -->
         <div v-else class="space-y-4">
+          <nav
+            v-if="questionsInStep.length > 1"
+            class="flex gap-2 overflow-x-auto pb-1"
+            aria-label="Pilih butir soal"
+          >
+            <button
+              v-for="(item, itemIndex) in questionsInStep"
+              :key="item.id"
+              type="button"
+              class="min-h-11 shrink-0 rounded-xl border px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
+              :class="activeQuestionId === item.id ? 'border-[#1B5FD9] bg-[#E8F0FE] text-[#0A2A5C]' : 'border-[#E7EBF2] bg-white text-[#667085] hover:border-[#B9D1F9]'"
+              @click="activeQuestionId = item.id"
+            >
+              Soal {{ itemIndex + 1 }}
+            </button>
+          </nav>
+
           <article
-            v-for="(q, idx) in questionsInStep"
+            v-for="(q, idx) in activeQuestion ? [activeQuestion] : []"
             :key="q.id"
             class="border border-[#E7EBF2] rounded-2xl overflow-hidden bg-white shadow-xs"
           >
@@ -342,7 +387,7 @@ const submitForm = () => {
             <div class="bg-[#F9FAFC] p-3 border-b border-[#E7EBF2] flex items-center justify-between gap-3 flex-wrap">
               <div class="flex items-center gap-2">
                 <span class="text-xs font-extrabold font-mono px-2 py-0.5 rounded-lg bg-[#EFF2F7] text-[#344054]">
-                  Soal #{{ idx + 1 }}
+                  Soal #{{ activeQuestionIndex }}
                 </span>
                 <select
                   v-model="q.difficulty"
@@ -406,7 +451,7 @@ const submitForm = () => {
                   >
                     <button
                       type="button"
-                      class="w-9 h-9 rounded-xl font-extrabold text-xs shrink-0 border transition"
+                      class="w-11 h-11 rounded-xl font-extrabold text-xs shrink-0 border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
                       :class="isOptionSelected(q, opt.key)
                         ? 'bg-[#1B5FD9] text-white border-[#1B5FD9]'
                         : 'bg-[#EFF2F7] text-[#667085] border-[#E7EBF2] hover:border-[#1B5FD9]'"
@@ -509,7 +554,7 @@ const submitForm = () => {
         <div class="pt-4 border-t border-[#E7EBF2] flex items-center justify-between gap-3 flex-wrap">
           <button
             type="button"
-            class="px-4 py-2 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-[#F3F5F9] disabled:opacity-40 disabled:cursor-not-allowed"
+            class="min-h-11 px-4 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-[#F3F5F9] disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="currentStep === 'PG'"
             @click="prevStep"
           >
@@ -522,7 +567,7 @@ const submitForm = () => {
 
           <button
             type="button"
-            class="px-5 py-2.5 rounded-full bg-[#1B5FD9] hover:bg-[#12459B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
+            class="min-h-11 px-5 rounded-xl bg-[#1B5FD9] hover:bg-[#12459B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
             @click="nextStep"
           >
             <span>{{ currentStep === 'Interaktif' || (!draft.hasInteractive && currentStep === 'Esai') ? 'Simpan Seluruh Paket' : 'Lanjut' }}</span>
@@ -531,5 +576,24 @@ const submitForm = () => {
         </div>
       </div>
     </section>
+
+    <div class="fixed inset-x-0 bottom-[56px] z-20 border-t border-[#DCE2EA] bg-white/95 p-3 shadow-[0_-8px_20px_rgba(16,24,40,0.08)] backdrop-blur sm:hidden">
+      <div class="mx-auto grid max-w-lg grid-cols-2 gap-2">
+        <button
+          type="button"
+          class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-4 text-sm font-bold text-[#344054] active:bg-[#F3F5F9]"
+          @click="emit('cancel')"
+        >
+          Batal
+        </button>
+        <button
+          type="button"
+          class="min-h-11 rounded-xl bg-[#1B5FD9] px-4 text-sm font-bold text-white active:bg-[#12459B]"
+          @click="submitForm"
+        >
+          Simpan Paket
+        </button>
+      </div>
+    </div>
   </div>
 </template>
