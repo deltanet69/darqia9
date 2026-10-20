@@ -185,17 +185,17 @@ const submitForm = () => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto space-y-4 pb-32 sm:pb-5">
+  <div class="max-w-6xl mx-auto space-y-4 pb-32 sm:pb-6">
     <!-- Top Header -->
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-1">
-      <div>
-        <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#E8F0FE] text-[#1B5FD9]">
+    <div class="rounded-[22px] bg-[#0A2A5C] px-5 py-5 sm:px-6 sm:py-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 shadow-sm">
+      <div class="min-w-0">
+        <span class="inline-flex text-[10px] font-extrabold uppercase tracking-[0.12em] px-2.5 py-1 rounded-full bg-white/10 text-[#DCE9FF]">
           {{ grade }} · {{ draft.classroom }}
         </span>
-        <h2 class="text-xl sm:text-2xl font-extrabold text-[#101828] mt-1.5">
+        <h2 class="text-xl sm:text-2xl font-extrabold text-white mt-2">
           {{ editing ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal Baru' }}
         </h2>
-        <p class="text-xs text-[#667085] mt-1">
+        <p class="text-xs text-[#C7D7F2] mt-1 max-w-xl">
           Kelola seluruh format dalam satu paket. Perubahan tersimpan secara interaktif.
         </p>
       </div>
@@ -203,14 +203,14 @@ const submitForm = () => {
       <div class="hidden sm:flex items-center gap-2">
         <button
           type="button"
-          class="min-h-11 px-4 rounded-xl border border-[#E7EBF2] bg-white text-sm font-bold text-[#344054] hover:bg-[#F3F5F9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9] transition"
+          class="min-h-11 px-4 rounded-xl border border-white/20 bg-white/10 text-sm font-bold text-white hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition"
           @click="emit('cancel')"
         >
           Batal
         </button>
         <button
           type="button"
-          class="min-h-11 px-5 rounded-xl bg-[#1B5FD9] hover:bg-[#12459B] text-white text-sm font-bold transition shadow-sm inline-flex items-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
+          class="min-h-11 px-5 rounded-xl bg-white hover:bg-[#E8F0FE] text-[#0A2A5C] text-sm font-bold transition shadow-sm inline-flex items-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           @click="submitForm"
         >
           <AdminV2Icon name="check" :size="14" />
@@ -219,8 +219,8 @@ const submitForm = () => {
       </div>
     </div>
 
-    <!-- CARD 1: Konfigurasi Identitas Paket -->
-    <section class="bg-white border border-[#E7EBF2] rounded-[18px] p-5 shadow-sm space-y-4">
+    <div class="lg:grid lg:grid-cols-[264px_minmax(0,1fr)] lg:items-start lg:gap-5">
+    <aside class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 shadow-sm space-y-4 lg:sticky lg:top-5">
       <div class="flex items-start justify-between gap-3 border-b border-[#E7EBF2] pb-3">
         <div>
           <h3 class="text-sm font-extrabold text-[#101828]">Konfigurasi paket ujian</h3>
@@ -237,7 +237,7 @@ const submitForm = () => {
         </button>
       </div>
 
-      <div v-show="isSettingsOpen" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div v-show="isSettingsOpen" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
         <div>
           <label class="block text-xs font-bold text-[#344054] mb-1.5">Rombel / Kelas</label>
           <select
@@ -280,12 +280,34 @@ const submitForm = () => {
           >
         </div>
       </div>
-    </section>
+      <nav class="hidden lg:block border-t border-[#E7EBF2] pt-3" aria-label="Jenis soal">
+        <button
+          v-for="st in questionSteps"
+          :key="st.id"
+          type="button"
+          class="min-h-11 w-full rounded-xl px-3 text-left text-xs font-extrabold transition inline-flex items-center justify-between focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
+          :class="currentStep === st.id ? 'mb-1 bg-[#E8F0FE] text-[#0A2A5C]' : 'mb-1 text-[#667085] hover:bg-[#F7F9FC]'"
+          @click="currentStep = st.id"
+        >
+          <span>{{ st.label }}</span><span class="rounded-md px-1.5 py-0.5 text-[10px]" :class="currentStep === st.id ? 'bg-white text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#667085]'">{{ countByType(st.id) }}</span>
+        </button>
+        <button
+          type="button"
+          class="mt-2 min-h-11 w-full rounded-xl border px-3 text-xs font-extrabold transition"
+          :class="draft.hasInteractive ? 'bg-[#E8F0FE] border-[#B9D1F9] text-[#0A2A5C]' : 'border-[#E7EBF2] text-[#667085] hover:bg-[#F7F9FC]'"
+          @click="toggleInteractiveMode"
+        >
+          {{ draft.hasInteractive ? 'Interaktif aktif' : 'Aktifkan interaktif' }}
+        </button>
+      </nav>
+    </aside>
+
+    <!-- Area kerja soal -->
 
     <!-- CARD 2: Multi-Step Question Builder -->
-    <section class="bg-white border border-[#E7EBF2] rounded-[18px] overflow-hidden shadow-sm">
+    <section class="mt-4 lg:mt-0 bg-white border border-[#E7EBF2] rounded-[18px] overflow-hidden shadow-sm">
       <!-- Step Navigation Bar -->
-      <div class="p-3 sm:p-4 bg-[#F9FAFC] border-b border-[#E7EBF2] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="p-3 sm:p-4 bg-[#F9FAFC] border-b border-[#E7EBF2] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 lg:hidden">
         <nav class="grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-1.5" aria-label="Langkah format soal">
           <button
             v-for="st in questionSteps"
@@ -576,6 +598,7 @@ const submitForm = () => {
         </div>
       </div>
     </section>
+    </div>
 
     <div class="fixed inset-x-0 bottom-[56px] z-20 border-t border-[#DCE2EA] bg-white/95 p-3 shadow-[0_-8px_20px_rgba(16,24,40,0.08)] backdrop-blur sm:hidden">
       <div class="mx-auto grid max-w-lg grid-cols-2 gap-2">
