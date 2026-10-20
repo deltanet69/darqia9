@@ -15,7 +15,7 @@ import AbsensiV2Toolbar from '~/components/adminV2/absensi/AbsensiV2Toolbar.vue'
 import AbsensiV2Table from '~/components/adminV2/absensi/AbsensiV2Table.vue'
 import AbsensiV2DetailModal from '~/components/adminV2/absensi/AbsensiV2DetailModal.vue'
 import AbsensiV2ManualModal from '~/components/adminV2/absensi/AbsensiV2ManualModal.vue'
-import { GROUPS, type GroupItem } from '~/components/adminV2/adminV2Data'
+import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import {
   INITIAL_PRESENSI_SMK,
   INITIAL_PRESENSI_SMP,
@@ -296,16 +296,8 @@ const toggleMega = (g: GroupItem) => {
 const handleSelectModule = (title: string) => {
   isMegaOpen.value = false
   isMobileMenuOpen.value = false
-  const t = title.toLowerCase()
-  if (t === 'dashboard' || t === 'ringkasan utama') return navigateTo('/adminV2')
-  if (t.includes('absensi') && (t.includes('guru') || t.includes('staff'))) return navigateTo('/adminV2/absensi-guru')
-  if (t.includes('absensi')) return navigateTo('/adminV2/absensi')
-  if (t.includes('cbt') || t === 'manajemen cbt' || t === 'ujian digital') return navigateTo('/adminV2/cbt')
-  if (t.includes('siswa') && !t.includes('kelas') && !t.includes('raport') && !t.includes('rapor')) return navigateTo('/adminV2/siswa')
-  if (t.includes('kelas')) return navigateTo('/adminV2/kelas')
-  if (t.includes('mapel')) return navigateTo('/adminV2/mapel')
-  if (t.includes('raport') || t.includes('rapor')) return navigateTo('/adminV2/raport')
-  if (t.includes('guru') || t.includes('pegawai') || t.includes('staff')) return navigateTo('/adminV2/guru')
+  const dest = getAdminDestination(title)
+  if (dest) return navigateTo(dest)
   triggerToast(`${title} — modul demo`)
 }
 

@@ -6,9 +6,12 @@ interface Props {
   activeTab: CbtTabId
   grade: GradeType
   menuOpen: boolean
+  moduleName?: string
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  moduleName: 'Manajemen CBT'
+})
 
 const emit = defineEmits<{
   (e: 'update:activeTab', tab: CbtTabId): void
@@ -24,14 +27,14 @@ const navButtons: Array<{ id: CbtTabId; label: string; icon: string }> = [
   { id: 'results', label: 'Nilai', icon: 'users' }
 ]
 
-const menuModules: Array<{ id: CbtTabId; label: string }> = [
-  { id: 'summary', label: 'Manajemen CBT · Ringkasan' },
-  { id: 'bank', label: 'Manajemen CBT · Bank Soal' },
-  { id: 'monitoring', label: 'Manajemen CBT · Monitoring Ujian' },
-  { id: 'exams', label: 'Manajemen CBT · Daftar Ujian' },
-  { id: 'results', label: 'Manajemen CBT · Nilai Siswa' },
-  { id: 'management', label: 'Manajemen CBT · Manajemen Ujian' }
-]
+const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
+  { id: 'summary', label: `${props.moduleName} · Ringkasan` },
+  { id: 'bank', label: `${props.moduleName} · Bank Soal` },
+  { id: 'monitoring', label: `${props.moduleName} · Monitoring Ujian` },
+  { id: 'exams', label: `${props.moduleName} · Daftar Ujian` },
+  { id: 'results', label: `${props.moduleName} · Nilai Siswa` },
+  { id: 'management', label: `${props.moduleName} · Manajemen Ujian` }
+])
 </script>
 
 <template>

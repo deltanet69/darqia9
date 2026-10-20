@@ -1,6 +1,12 @@
 import { computed } from 'vue'
 import type { BankPackage, BankQuestionItem, ExamItem, GradeType } from '~/components/adminV2/cbt/cbtV2Data'
 
+export type AssessmentSource = 'cbt' | 'ujian_harian'
+
+const assessmentTables = (source: AssessmentSource) => source === 'ujian_harian'
+  ? { banks: 'ujian_harian_banks', questions: 'ujian_harian_questions', exams: 'ujian_harian', assignments: 'ujian_harian_assignments' }
+  : { banks: 'question_banks', questions: 'questions', exams: 'exams', assignments: 'exam_assignments' }
+
 export interface CbtClass {
   id: string
   name: string
@@ -56,15 +62,17 @@ const examStatus = (status: string, startsAt: string, duration: number): ExamIte
   return 'Terjadwal'
 }
 
-export const useAdminCbtData = () => {
+export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const client = useSupabaseClient()
-  const classes = useState<CbtClass[]>('cbt-master-classes', () => [])
-  const subjects = useState<CbtSubject[]>('cbt-master-subjects', () => [])
-  const bankPackages = useState<BankPackage[]>('cbt-bank-packages', () => [])
-  const exams = useState<ExamItem[]>('cbt-exams', () => [])
-  const loading = useState('cbt-data-loading', () => false)
-  const error = useState<string | null>('cbt-data-error', () => null)
-  const loaded = useState('cbt-data-loaded', () => false)
+  const tables = assessmentTables(source)
+  const stateKey = source === 'ujian_harian' ? 'ujian-harian' : 'cbt'
+  const classes = useState<CbtClass[]>(`${stateKey}-master-classes`, () => [])
+  const subjects = useState<CbtSubject[]>(`${stateKey}-master-subjects`, () => [])
+  const bankPackages = useState<BankPackage[]>(`${stateKey}-bank-packages`, () => [])
+  const exams = useState<ExamItem[]>(`${stateKey}-exams`, () => [])
+  const loading = useState(`${stateKey}-data-loading`, () => false)
+  const error = useState<string | null>(`${stateKey}-data-error`, () => null)
+  const loaded = useState(`${stateKey}-data-loaded`, () => false)
 
   const load = async (force = false) => {
     if (loading.value || (loaded.value && !force)) return
@@ -75,10 +83,10 @@ export const useAdminCbtData = () => {
       const [classResult, subjectResult, bankResult, questionResult, examResult, assignmentResult, studentResult, teacherResult] = await Promise.all([
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
-        client.from('question_banks').select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
-        client.from('questions').select('*').order('number'),
-        client.from('exams').select('*').order('starts_at', { ascending: false }),
-        client.from('exam_assignments').select('exam_id, status'),
+        client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
+        client.from(tables.questions).select('*').order('number'),
+        client.from(tables.exams).select('*').order('starts_at', { ascending: false }),
+        client.from(tables.assignments).select('exam_id, status'),
         client.from('students').select('class_id').eq('active', true),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true)
       ])
@@ -229,14 +237,14 @@ export const useAdminCbtData = () => {
     if (isUuid(pkg.id)) payload.id = pkg.id
 
     const { data, error: packageError } = await client
-      .from('question_banks')
+      .from(tables.banks)
       .upsert(payload, { onConflict: 'code' })
       .select('id')
       .single()
     if (packageError) throw packageError
 
     const bankId = data.id
-    const { error: deleteError } = await client.from('questions').delete().eq('bank_id', bankId)
+    const { error: deleteError } = await client.from(tables.questions).delete().eq('bank_id', bankId)
     if (deleteError) throw deleteError
 
     if (pkg.questions.length) {
@@ -257,7 +265,7 @@ export const useAdminCbtData = () => {
         media_file_name: question.mediaFileName ?? null,
         interactive_answer_type: question.interactiveAnswerType ?? null
       }))
-      const { error: questionError } = await client.from('questions').insert(rows)
+      const { error: questionError } = await client.from(tables.questions).insert(rows)
       if (questionError) throw questionError
     }
 
@@ -266,7 +274,7 @@ export const useAdminCbtData = () => {
   }
 
   const deleteBankPackage = async (id: string) => {
-    const { error: deleteError } = await client.from('question_banks').delete().eq('id', id)
+    const { error: deleteError } = await client.from(tables.banks).delete().eq('id', id)
     if (deleteError) throw deleteError
     await load(true)
   }
@@ -295,8 +303,8 @@ export const useAdminCbtData = () => {
     }
 
     const query = input.id
-      ? client.from('exams').update(payload).eq('id', input.id)
-      : client.from('exams').insert({ ...payload, status: 'terjadwal' })
+      ? client.from(tables.exams).update(payload).eq('id', input.id)
+      : client.from(tables.exams).insert({ ...payload, status: 'terjadwal' })
     const { error: saveError } = await query
     if (saveError) throw saveError
     await load(true)
@@ -304,7 +312,7 @@ export const useAdminCbtData = () => {
   }
 
   const deleteExam = async (id: string) => {
-    const { error: deleteError } = await client.from('exams').delete().eq('id', id)
+    const { error: deleteError } = await client.from(tables.exams).delete().eq('id', id)
     if (deleteError) throw deleteError
     await load(true)
   }

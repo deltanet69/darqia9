@@ -65,7 +65,7 @@ const detectedActiveGroupId = computed(() => {
   if (path.includes('/adminv2/siswa') || (path.includes('/adminv2/absensi') && !path.includes('/absensi-guru')) || path.includes('/adminv2/kelas') || path.includes('/adminv2/mapel') || path.includes('/adminv2/raport')) {
     return 'akademik'
   }
-  if (path.includes('/adminv2/cbt') || path.includes('/adminv2/spmb') || path.includes('/adminv2/perpustakaan')) {
+  if (path.includes('/adminv2/cbt') || path.includes('/adminv2/lms') || path.includes('/adminv2/spmb') || path.includes('/adminv2/perpustakaan')) {
     return 'aplikasi'
   }
   if (path.includes('/adminv2/keuangan') || path.includes('/adminv2/tabungan')) {
@@ -126,22 +126,41 @@ const isItemActive = (groupId: string) => {
 
       <!-- Center: Pill Navigation (Desktop) -->
       <nav class="hidden lg:flex items-center bg-[#EFF2F7] border border-[#E7EBF2] rounded-full p-1 gap-0.5 mx-auto" aria-label="Modul">
-        <button
-          v-for="group in visibleGroups"
-          :key="group.id"
-          type="button"
-          class="nav-pill-btn text-[13px] font-semibold py-2 px-3.5 xl:px-4 rounded-full transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer relative"
-          :class="isItemActive(group.id)
-            ? 'bg-[#101828] text-white font-bold shadow-xs'
-            : 'text-[#344054] hover:text-[#101828] hover:bg-white/60'"
-          @click="emit('toggle-mega', group)"
-        >
-          <span>{{ group.label }}</span>
-          <span
-            v-if="isItemActive(group.id)"
-            class="w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse"
-          />
-        </button>
+        <template v-for="group in visibleGroups" :key="group.id">
+          <!-- Dashboard: Langsung navigasi ke /adminV2 -->
+          <NuxtLink
+            v-if="group.id === 'dashboard'"
+            to="/adminV2"
+            class="nav-pill-btn text-[13px] font-semibold py-2 px-3.5 xl:px-4 rounded-full transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer relative"
+            :class="isItemActive('dashboard')
+              ? 'bg-[#101828] text-white font-bold shadow-xs'
+              : 'text-[#344054] hover:text-[#101828] hover:bg-white/60'"
+            @click="emit('toggle-mega', group)"
+          >
+            <span>{{ group.label }}</span>
+            <span
+              v-if="isItemActive('dashboard')"
+              class="w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse"
+            />
+          </NuxtLink>
+
+          <!-- Group Modul: Toggle Mega Panel -->
+          <button
+            v-else
+            type="button"
+            class="nav-pill-btn text-[13px] font-semibold py-2 px-3.5 xl:px-4 rounded-full transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer relative"
+            :class="isItemActive(group.id)
+              ? 'bg-[#101828] text-white font-bold shadow-xs'
+              : 'text-[#344054] hover:text-[#101828] hover:bg-white/60'"
+            @click="emit('toggle-mega', group)"
+          >
+            <span>{{ group.label }}</span>
+            <span
+              v-if="isItemActive(group.id)"
+              class="w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse"
+            />
+          </button>
+        </template>
       </nav>
 
       <!-- Right side: Top Actions (Pojok Kanan dengan margin) -->

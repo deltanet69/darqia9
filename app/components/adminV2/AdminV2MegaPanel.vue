@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AdminV2Icon from './AdminV2Icon.vue'
+import { getAdminDestination } from './adminV2Data'
 
 interface GroupItem {
   id: string
@@ -26,7 +27,7 @@ const emit = defineEmits<{
 const route = useRoute()
 
 const isPageActive = (title: string) => {
-  const t = title.toLowerCase()
+  const t = title.toLowerCase().trim()
   const p = (route.path || '').toLowerCase()
 
   if (t.includes('absensi') && (t.includes('guru') || t.includes('staff'))) {
@@ -50,18 +51,33 @@ const isPageActive = (title: string) => {
   if (t.includes('raport') || t.includes('rapor')) {
     return p.includes('/adminv2/raport')
   }
+  if (t === 'lms' || t.includes('ujian harian')) {
+    return p.includes('/adminv2/lms') || (p.includes('/adminv2/cbt') && route.query.mode === 'ujian_harian')
+  }
   if (t.includes('cbt') || t.includes('ujian digital')) {
-    return p.includes('/adminv2/cbt')
+    return p.includes('/adminv2/cbt') && route.query.mode !== 'ujian_harian' && !p.includes('/adminv2/lms')
   }
   if (t === 'dashboard' || t === 'ringkasan utama') {
     return p === '/adminv2' || p === '/adminv2/'
   }
   return false
 }
+
+const handleSelect = async (title: string, event?: Event) => {
+  if (event) {
+    event.preventDefault()
+  }
+  const dest = getAdminDestination(title)
+  emit('select-item', title)
+  if (dest) {
+    await navigateTo(dest)
+  }
+  emit('close')
+}
 </script>
 
 <template>
-  <div>
+  <div class="relative w-full">
     <!-- Backdrop: Klik di luar menu untuk menutup mega menu -->
     <Teleport to="body">
       <Transition
@@ -92,7 +108,7 @@ const isPageActive = (title: string) => {
     >
       <div
         v-if="open && group"
-        class="absolute top-full left-0 right-0 w-full z-50 bg-white border-b border-[#E7EBF2] shadow-[0_24px_48px_-24px_rgba(16,24,40,0.18)]"
+        class="absolute top-0 left-0 right-0 w-full z-50 bg-white border-b border-[#E7EBF2] shadow-[0_24px_48px_-24px_rgba(16,24,40,0.18)]"
         @click.stop
       >
         <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-5 lg:py-6">
@@ -122,12 +138,12 @@ const isPageActive = (title: string) => {
             <a
               v-for="([title, desc, icon], idx) in group.items"
               :key="idx"
-              href="#"
-              class="group flex items-center gap-3 p-3 border rounded-[14px] transition hover:shadow-xs relative"
+              :href="getAdminDestination(title)"
+              class="group flex items-center gap-3 p-3 border rounded-[14px] transition hover:shadow-xs relative cursor-pointer"
               :class="isPageActive(title)
                 ? (jenjang === 'smp' ? 'bg-[#E7F6ED] border-[#16A34A] text-[#14532D] shadow-xs ring-1 ring-[#16A34A]/30' : 'bg-[#EFF6FF] border-[#1B5FD9] text-[#1D4ED8] shadow-xs ring-1 ring-[#1B5FD9]/30')
                 : (jenjang === 'smp' ? 'bg-white border-[#E7EBF2] hover:border-[#16A34A] hover:bg-[#E7F6ED]' : 'bg-white border-[#E7EBF2] hover:border-[#1B5FD9] hover:bg-[#E8F0FE]')"
-              @click.prevent="emit('select-item', title)"
+              @click.prevent="handleSelect(title, $event)"
             >
               <span
                 class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition"

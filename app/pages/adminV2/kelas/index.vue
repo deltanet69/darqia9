@@ -12,7 +12,7 @@ import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import KelasV2OverviewTab from '~/components/adminV2/kelas/KelasV2OverviewTab.vue'
 import KelasV2DaftarTab, { type ClassRombel } from '~/components/adminV2/kelas/KelasV2DaftarTab.vue'
 import KelasV2CreateModal from '~/components/adminV2/kelas/KelasV2CreateModal.vue'
-import { GROUPS, type GroupItem } from '~/components/adminV2/adminV2Data'
+import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 
 definePageMeta({
@@ -168,16 +168,8 @@ const toggleMega = (g: GroupItem) => {
 
 const handleSelectModule = (title: string) => {
   closeAllModals()
-  const t = title.toLowerCase()
-  if (t === 'dashboard' || t === 'ringkasan utama') return router.push('/adminV2')
-  if (t.includes('absensi') && (t.includes('guru') || t.includes('staff'))) return router.push('/adminV2/absensi-guru')
-  if (t.includes('absensi')) return router.push('/adminV2/absensi')
-  if (t.includes('cbt') || t === 'manajemen cbt') return router.push('/adminV2/cbt')
-  if (t.includes('siswa') && !t.includes('kelas')) return router.push('/adminV2/siswa')
-  if (t.includes('kelas')) return router.push('/adminV2/kelas')
-  if (t.includes('mapel')) return router.push('/adminV2/mapel')
-  if (t.includes('raport') || t.includes('rapor')) return router.push('/adminV2/raport')
-  if (t.includes('guru') || t.includes('pegawai') || t.includes('staff')) return router.push('/adminV2/guru')
+  const dest = getAdminDestination(title)
+  if (dest) return router.push(dest)
   triggerToast(`${title} — modul demo`)
 }
 </script>

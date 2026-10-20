@@ -2,15 +2,16 @@
 import { ref, computed, onMounted } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
-import { useAdminCbtData } from '~/composables/useAdminCbtData'
+import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 
 interface Props {
   grade: GradeType
   exams: ExamItem[]
+  source?: AssessmentSource
 }
 
 const props = defineProps<Props>()
-const cbtData = useAdminCbtData()
+const cbtData = useAdminCbtData(props.source ?? 'cbt')
 
 const emit = defineEmits<{
   (e: 'switch-tab', tab: CbtTabId): void

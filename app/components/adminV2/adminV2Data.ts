@@ -140,6 +140,7 @@ export const GROUPS: GroupItem[] = [
     desc: 'Modul aplikasi Darqia 9',
     items: [
       ['Manajemen CBT', 'Ujian digital', 'i-grid'],
+      ['LMS', 'Ujian harian digital', 'i-book'],
       ['Konten Website', 'Kelola konten web', 'i-doc'],
       ['SPMB', 'Penerimaan murid baru', 'i-plus'],
       ['Perpustakaan digital', 'Katalog & sirkulasi', 'i-book']
@@ -172,3 +173,57 @@ export const ACTIVITIES: ActivityRow[] = [
   { id: 'INV_00238', name: 'Gaji Guru Honorer', icon: 'i-users', amount: 'Rp 4.800.000', statusType: 'proc', statusLabel: 'Diproses', date: '12 Okt 2026 16:20' },
   { id: 'INV_00237', name: 'Pembelian ATK', icon: 'i-layers', amount: 'Rp 1.150.000', statusType: 'ok', statusLabel: 'Lunas', date: '10 Okt 2026 09:45' }
 ]
+
+export const ADMIN_DESTINATIONS: Record<string, string> = {
+  'Dashboard': '/adminV2',
+  'Data siswa': '/adminV2/siswa',
+  'Absensi siswa': '/adminV2/absensi',
+  'Manajemen kelas': '/adminV2/kelas',
+  'Jadwal pelajaran': '/admin/jadwal-pelajaran',
+  'Master mapel': '/adminV2/mapel',
+  'Raport siswa': '/adminV2/raport',
+  'Data guru & staff': '/adminV2/guru',
+  'Absensi guru & staff': '/adminV2/absensi-guru',
+  'Jadwal mengajar': '/admin/jadwal-mengajar',
+  'Agenda mengajar': '/admin/agenda-mengajar',
+  'Modul pembelajaran': '/admin/modul-ajar',
+  'Keuangan sekolah': '/admin/keuangan',
+  'Tabungan siswa': '/admin/tabungan',
+  'Manajemen CBT': '/adminV2/cbt',
+  'LMS': '/adminV2/lms',
+  'Konten Website': '/admin/konten',
+  'SPMB': '/spmb',
+  'Perpustakaan digital': '/admin/modul-ajar',
+  'Manajemen user': '/admin/users',
+  'Hak Akses (RBAC)': '/admin/rbac',
+  'Log Aktivitas': '/admin/log',
+  'Profil saya': '/admin/profile',
+  'Pengaturan': '/admin/profile'
+}
+
+export const getAdminDestination = (title: string): string => {
+  if (ADMIN_DESTINATIONS[title]) return ADMIN_DESTINATIONS[title]
+  const t = title.toLowerCase().trim()
+  for (const [key, dest] of Object.entries(ADMIN_DESTINATIONS)) {
+    if (key.toLowerCase().trim() === t) return dest
+  }
+  if (t === 'lms' || t.includes('ujian harian')) return '/adminV2/lms'
+  if (t.includes('cbt') || t.includes('ujian digital')) return '/adminV2/cbt'
+  if (t.includes('siswa') && !t.includes('kelas') && !t.includes('raport') && !t.includes('rapor')) return '/adminV2/siswa'
+  if (t.includes('absensi') && (t.includes('guru') || t.includes('staff'))) return '/adminV2/absensi-guru'
+  if (t.includes('absensi')) return '/adminV2/absensi'
+  if (t.includes('kelas') || t.includes('rombel')) return '/adminV2/kelas'
+  if (t.includes('mapel') || t.includes('mata pelajaran')) return '/adminV2/mapel'
+  if (t.includes('raport') || t.includes('rapor')) return '/adminV2/raport'
+  if (t.includes('guru') || t.includes('pegawai') || t.includes('staff')) return '/adminV2/guru'
+  if (t.includes('keuangan')) return '/admin/keuangan'
+  if (t.includes('tabungan')) return '/admin/tabungan'
+  if (t.includes('konten')) return '/admin/konten'
+  if (t.includes('spmb') || t.includes('ppdb')) return '/spmb'
+  if (t.includes('perpustakaan')) return '/admin/modul-ajar'
+  if (t.includes('user') || t.includes('pengguna')) return '/admin/users'
+  if (t.includes('rbac') || t.includes('hak akses')) return '/admin/rbac'
+  if (t.includes('log') || t.includes('aktivitas')) return '/admin/log'
+  if (t.includes('profil') || t.includes('pengaturan')) return '/admin/profile'
+  return '/adminV2'
+}

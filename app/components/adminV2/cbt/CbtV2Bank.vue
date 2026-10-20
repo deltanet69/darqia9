@@ -3,16 +3,17 @@ import { ref, computed, onMounted } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2BankForm from './CbtV2BankForm.vue'
 import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
-import { useAdminCbtData } from '~/composables/useAdminCbtData'
+import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import { readWordBankTemplate, type WordBankPreview } from '~/utils/cbtWordBank'
 
 interface Props {
   grade: GradeType
+  source?: AssessmentSource
 }
 
 const props = defineProps<Props>()
-const cbtData = useAdminCbtData()
+const cbtData = useAdminCbtData(props.source ?? 'cbt')
 
 const emit = defineEmits<{
   (e: 'open-drawer', type: string, payload?: any): void
@@ -36,7 +37,7 @@ type QuestionStep = 'PG' | 'Isian' | 'Esai' | 'Interaktif'
 const formStep = ref<QuestionStep>('PG')
 const draftStorageFailed = ref(false)
 
-const draftStorageKey = () => `darqia:cbt-bank-draft:${props.grade}`
+const draftStorageKey = () => `darqia:${props.source || 'cbt'}-bank-draft:${props.grade}`
 
 const persistFormDraft = () => {
   if (typeof window === 'undefined' || !formDraft.value) return

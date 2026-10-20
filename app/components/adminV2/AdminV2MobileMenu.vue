@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminV2Icon from './AdminV2Icon.vue'
+import { getAdminDestination } from './adminV2Data'
 
 interface GroupItem {
   id: string
@@ -47,8 +48,10 @@ const destinations: Record<string, string> = {
   'Keuangan sekolah': '/admin/keuangan',
   'Tabungan siswa': '/admin/tabungan',
   'Manajemen CBT': '/adminV2/cbt',
+  'LMS': '/adminV2/lms',
   'Konten Website': '/admin/konten',
   'SPMB': '/spmb',
+  'Perpustakaan digital': '/admin/modul-ajar',
   'Manajemen user': '/admin/users',
   'Hak Akses (RBAC)': '/admin/rbac',
   'Log Aktivitas': '/admin/log',
@@ -56,10 +59,35 @@ const destinations: Record<string, string> = {
   'Pengaturan': '/admin/profile'
 }
 
-const destinationFor = (title: string) => destinations[title]
+const destinationFor = (title: string): string => {
+  if (destinations[title]) return destinations[title]
+  const t = title.toLowerCase().trim()
+  for (const [key, dest] of Object.entries(destinations)) {
+    if (key.toLowerCase().trim() === t) return dest
+  }
+  if (t === 'lms' || t.includes('ujian harian')) return '/adminV2/lms'
+  if (t.includes('cbt') || t.includes('ujian digital')) return '/adminV2/cbt'
+  if (t.includes('siswa') && !t.includes('kelas') && !t.includes('raport') && !t.includes('rapor')) return '/adminV2/siswa'
+  if (t.includes('absensi') && (t.includes('guru') || t.includes('staff'))) return '/adminV2/absensi-guru'
+  if (t.includes('absensi')) return '/adminV2/absensi'
+  if (t.includes('kelas') || t.includes('rombel')) return '/adminV2/kelas'
+  if (t.includes('mapel') || t.includes('mata pelajaran')) return '/adminV2/mapel'
+  if (t.includes('raport') || t.includes('rapor')) return '/adminV2/raport'
+  if (t.includes('guru') || t.includes('pegawai') || t.includes('staff')) return '/adminV2/guru'
+  if (t.includes('keuangan')) return '/admin/keuangan'
+  if (t.includes('tabungan')) return '/admin/tabungan'
+  if (t.includes('konten')) return '/admin/konten'
+  if (t.includes('spmb') || t.includes('ppdb')) return '/spmb'
+  if (t.includes('perpustakaan')) return '/admin/modul-ajar'
+  if (t.includes('user') || t.includes('pengguna')) return '/admin/users'
+  if (t.includes('rbac') || t.includes('hak akses')) return '/admin/rbac'
+  if (t.includes('log') || t.includes('aktivitas')) return '/admin/log'
+  if (t.includes('profil') || t.includes('pengaturan')) return '/admin/profile'
+  return '/adminV2'
+}
 
 const isPageActive = (title: string) => {
-  const t = title.toLowerCase()
+  const t = title.toLowerCase().trim()
   const p = (route.path || '').toLowerCase()
 
   if (t.includes('absensi') && (t.includes('guru') || t.includes('staff'))) return p.includes('/adminv2/absensi-guru')
@@ -69,7 +97,12 @@ const isPageActive = (title: string) => {
   if (t.includes('kelas') || t.includes('rombel')) return p.includes('/adminv2/kelas')
   if (t.includes('mapel') || t.includes('mata pelajaran')) return p.includes('/adminv2/mapel')
   if (t.includes('raport') || t.includes('rapor')) return p.includes('/adminv2/raport')
-  if (t.includes('cbt') || t.includes('ujian digital')) return p.includes('/adminv2/cbt')
+  if (t === 'lms' || t.includes('ujian harian')) {
+    return p.includes('/adminv2/lms') || (p.includes('/adminv2/cbt') && route.query.mode === 'ujian_harian')
+  }
+  if (t.includes('cbt') || t.includes('ujian digital')) {
+    return p.includes('/adminv2/cbt') && route.query.mode !== 'ujian_harian' && !p.includes('/adminv2/lms')
+  }
   if (t === 'dashboard' || t === 'ringkasan utama') return p === '/adminv2' || p === '/adminv2/'
   return false
 }
@@ -81,7 +114,7 @@ watch(() => props.open, (isOpen) => {
       openGroups.value = new Set(['kepegawaian'])
     } else if (p.includes('/siswa') || p.includes('/absensi') || p.includes('/kelas') || p.includes('/mapel') || p.includes('/raport')) {
       openGroups.value = new Set(['akademik'])
-    } else if (p.includes('/cbt')) {
+    } else if (p.includes('/cbt') || p.includes('/lms')) {
       openGroups.value = new Set(['aplikasi'])
     } else {
       openGroups.value = new Set(['dashboard'])
@@ -127,15 +160,25 @@ const toggleGroup = (id: string) => {
   }
 }
 
+const handleGroupHeaderClick = (group: GroupItem) => {
+  if (group.id === 'dashboard') {
+    handleItemClick('Dashboard')
+    return
+  }
+  toggleGroup(group.id)
+}
+
 const isGroupOpen = (id: string) => {
   if (searchQuery.value.trim()) return true
   return openGroups.value.has(id)
 }
 
-const handleItemClick = (title: string, event: MouseEvent) => {
-  if (!destinationFor(title)) {
-    event.preventDefault()
-    return
+const handleItemClick = async (title: string, event?: Event) => {
+  if (event) event.preventDefault()
+  const dest = getAdminDestination(title)
+  emit('select-item', title)
+  if (dest) {
+    await navigateTo(dest)
   }
   emit('close')
 }
@@ -207,7 +250,7 @@ const handleItemClick = (title: string, event: MouseEvent) => {
           <button
             type="button"
             class="w-full flex items-center gap-3 p-4 text-left font-bold text-sm text-[#101828] hover:bg-[#F8FAFD] transition"
-            @click="toggleGroup(g.id)"
+            @click="handleGroupHeaderClick(g)"
           >
             <span
               class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors"
@@ -220,6 +263,7 @@ const handleItemClick = (title: string, event: MouseEvent) => {
               <small class="block truncate text-[11px] font-medium text-[#667085] mt-0.5">{{ g.desc }}</small>
             </span>
             <AdminV2Icon
+              v-if="g.id !== 'dashboard'"
               name="chev"
               :size="17"
               class="text-[#98A2B3] transition-transform duration-200"
@@ -227,19 +271,16 @@ const handleItemClick = (title: string, event: MouseEvent) => {
             />
           </button>
 
-          <div v-show="isGroupOpen(g.id)" class="px-2 pb-3 space-y-1">
-            <NuxtLink
+          <div v-show="g.id !== 'dashboard' && isGroupOpen(g.id)" class="px-2 pb-3 space-y-1">
+            <a
               v-for="([title, desc, icon], idx) in g.matchedItems"
               :key="idx"
-              :to="destinationFor(title) || route.path"
-              class="flex items-center gap-3 p-3 rounded-xl text-[13.5px] font-semibold transition"
-              :class="!destinationFor(title)
-                ? 'text-[#98A2B3] opacity-60 cursor-not-allowed'
-                : isPageActive(title)
-                  ? (jenjang === 'smp' ? 'bg-[#E7F6ED] text-[#14532D] font-bold border border-[#A6E9C5]' : 'bg-[#EFF6FF] text-[#1B5FD9] font-bold border border-[#BFDBFE]')
-                  : 'text-[#344054] hover:bg-[#EFF2F7] active:bg-[#EFF2F7]'"
-              :aria-disabled="!destinationFor(title)"
-              @click="handleItemClick(title, $event)"
+              :href="getAdminDestination(title)"
+              class="w-full flex items-center gap-3 p-3 rounded-xl text-[13.5px] font-semibold transition text-left cursor-pointer touch-manipulation"
+              :class="isPageActive(title)
+                ? (jenjang === 'smp' ? 'bg-[#E7F6ED] text-[#14532D] font-bold border border-[#A6E9C5]' : 'bg-[#EFF6FF] text-[#1B5FD9] font-bold border border-[#BFDBFE]')
+                : 'text-[#344054] hover:bg-[#EFF2F7] active:bg-[#EFF2F7]'"
+              @click.prevent="handleItemClick(title, $event)"
             >
               <span
                 class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -262,7 +303,7 @@ const handleItemClick = (title: string, event: MouseEvent) => {
                 </div>
                 <small class="block truncate text-[11px] font-medium text-[#98A2B3]">{{ desc }}</small>
               </span>
-            </NuxtLink>
+            </a>
           </div>
         </div>
 
@@ -277,7 +318,7 @@ const handleItemClick = (title: string, event: MouseEvent) => {
         <button
           type="button"
           class="flex-1 flex flex-col items-center gap-1 text-[10.5px] font-semibold text-[#344054] py-2 px-1 rounded-xl hover:bg-[#EFF2F7] transition"
-          @click="emit('profile-click')"
+          @click="handleItemClick('Profil saya')"
         >
           <AdminV2Icon name="users" :size="20" />
           <span>Profil</span>
@@ -285,7 +326,7 @@ const handleItemClick = (title: string, event: MouseEvent) => {
         <button
           type="button"
           class="flex-1 flex flex-col items-center gap-1 text-[10.5px] font-semibold text-[#344054] py-2 px-1 rounded-xl hover:bg-[#EFF2F7] transition"
-          @click="emit('settings-click')"
+          @click="handleItemClick('Pengaturan')"
         >
           <AdminV2Icon name="gear" :size="20" />
           <span>Pengaturan</span>

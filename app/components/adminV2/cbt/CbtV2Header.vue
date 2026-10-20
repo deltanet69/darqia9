@@ -6,10 +6,14 @@ import { CBT_TABS } from './cbtV2Data'
 interface Props {
   grade: GradeType
   activeTab?: CbtTabId
+  moduleName?: string
+  moduleDescription?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  activeTab: 'summary'
+  activeTab: 'summary',
+  moduleName: 'Manajemen CBT',
+  moduleDescription: 'Ujian digital'
 })
 
 const emit = defineEmits<{
@@ -34,7 +38,7 @@ const activeTabLabel = computed(() => {
           Portal administrasi · V2
         </div>
         <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#101828]">
-          Manajemen CBT
+          {{ moduleName }}
         </h1>
         <p class="text-xs sm:text-[13px] text-[#667085] mt-1 font-medium">
           Ujian digital · {{ schoolName }} · Tahun Ajaran 2026/2027
