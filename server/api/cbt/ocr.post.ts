@@ -57,8 +57,9 @@ export default defineEventHandler(async (event) => {
     'Jangan sertakan penjelasan di luar JSON yang diminta.'
   ].join(' ')
 
-  const response = await $fetch<any>('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+  const response = await $fetch<any>('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', {
     method: 'POST',
+    timeout: 60_000,
     headers: {
       'x-goog-api-key': config.geminiApiKey,
       'content-type': 'application/json'
@@ -78,8 +79,12 @@ export default defineEventHandler(async (event) => {
     }
   }).catch((error: any) => {
     const statusCode = error?.response?.status || error?.statusCode
-    if (statusCode === 429) {
+    if (statusCode === 429 || statusCode === 503) {
       throw createError({ statusCode: 429, statusMessage: 'Kuota Gemini sedang penuh. Coba lagi beberapa saat.' })
+    }
+    const providerMessage = error?.data?.error?.message || error?.response?._data?.error?.message
+    if (statusCode === 400 && providerMessage) {
+      throw createError({ statusCode: 502, statusMessage: 'Gemini menolak gambar: ' + providerMessage })
     }
     throw createError({ statusCode: 502, statusMessage: 'Gemini gagal mengekstrak gambar. Coba gunakan gambar yang lebih jelas.' })
   })
