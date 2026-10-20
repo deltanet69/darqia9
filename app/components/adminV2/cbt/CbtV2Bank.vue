@@ -5,6 +5,7 @@ import CbtV2BankForm from './CbtV2BankForm.vue'
 import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
+import { readWordBankTemplate, type WordBankPreview } from '~/utils/cbtWordBank'
 
 interface Props {
   grade: GradeType
@@ -98,7 +99,10 @@ const restoreFormDraft = () => {
 
 // Import modal state
 const isImportModalOpen = ref(false)
-const importFormat = ref('Excel (.xlsx)')
+const importPreview = ref<WordBankPreview | null>(null)
+const importError = ref('')
+const isImporting = ref(false)
+const importFileName = ref('')
 
 const currentGradePackages = computed(() => {
   return packages.value.filter(p => p.grade === props.grade)
@@ -296,6 +300,50 @@ onMounted(async () => {
   restoreFormDraft()
 })
 
+const downloadWordTemplate = (grade: GradeType) => {
+  const link = document.createElement('a')
+  link.href = `/templates/Template_Import_Bank_Soal_${grade}.docx`
+  link.download = `Template_Import_Bank_Soal_${grade}.docx`
+  link.click()
+}
+
+const readImportFile = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  importPreview.value = null
+  importError.value = ''
+  importFileName.value = file?.name || ''
+  if (!file) return
+  try {
+    importPreview.value = await readWordBankTemplate(file, props.grade, allClasses.value, allSubjects.value)
+  } catch (error) {
+    importError.value = error instanceof Error ? error.message : 'Dokumen Word tidak dapat dibaca.'
+  }
+}
+
+const closeImport = () => {
+  isImportModalOpen.value = false
+  importPreview.value = null
+  importError.value = ''
+  importFileName.value = ''
+}
+
+const confirmImport = async () => {
+  if (!importPreview.value || isImporting.value) return
+  isImporting.value = true
+  try {
+    const savedId = await cbtData.saveBankPackage(importPreview.value.package)
+    selectedPkgId.value = savedId
+    selectedClass.value = importPreview.value.classroom
+    activeFormat.value = 'all'
+    bankMode.value = 'detail'
+    emit('toast', `${importPreview.value.questionCount} butir soal berhasil masuk ke Bank Soal.`)
+    closeImport()
+  } catch (error) {
+    importError.value = error instanceof Error ? error.message : 'Bank soal gagal disimpan.'
+  } finally {
+    isImporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -811,13 +859,13 @@ onMounted(async () => {
           <div class="p-5 border-b border-[#E7EBF2] flex items-center justify-between">
             <div>
               <h3 class="text-base font-extrabold text-[#101828]">Import Bank Soal</h3>
-              <p class="text-xs text-[#667085] mt-0.5">Unggah soal dari Word, Excel, atau CSV</p>
+              <p class="text-xs text-[#667085] mt-0.5">Unggah template Word .docx lalu konfirmasi metadata yang terdeteksi.</p>
             </div>
             <button
               type="button"
               aria-label="Tutup dialog import"
               class="w-8 h-8 rounded-lg hover:bg-[#EFF2F7] flex items-center justify-center text-[#667085]"
-              @click="isImportModalOpen = false"
+              @click="closeImport"
             >
               <AdminV2Icon name="x" :size="16" />
             </button>
@@ -825,75 +873,55 @@ onMounted(async () => {
 
           <!-- Body -->
           <div class="p-5 space-y-4 text-xs">
-            <div class="p-3.5 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] flex items-center gap-2.5 font-semibold">
-              <AdminV2Icon name="book" :size="16" class="shrink-0" />
-              <span>Pilih format dan file untuk ditinjau. Preview ini mensimulasikan pemrosesan lokal.</span>
+            <div class="p-3.5 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] flex items-start gap-2.5 font-semibold">
+              <AdminV2Icon name="book" :size="16" class="mt-0.5 shrink-0" />
+              <span>Gunakan template Word agar metadata kelas dan mata pelajaran dapat terdeteksi otomatis sebelum disimpan.</span>
+            </div>
+
+            <div class="rounded-xl border border-[#E7EBF2] bg-[#FAFBFC] p-3">
+              <p class="font-extrabold text-[#344054]">Template sesuai jenjang aktif: {{ props.grade }}</p>
+              <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">PG SMP berisi 4 pilihan A-D. PG SMK berisi 5 pilihan A-E. Template juga memuat Isian, Esai, Video YouTube, dan Audio.</p>
+              <button type="button" class="mt-2 min-h-10 rounded-lg bg-white px-3 font-extrabold text-[#1B5FD9] ring-1 ring-[#B9D1F9] hover:bg-[#E8F0FE]" @click="downloadWordTemplate(props.grade)">
+                Unduh Template Word {{ props.grade }}
+              </button>
             </div>
 
             <div>
-              <label class="block font-bold text-[#344054] mb-1.5">Format File</label>
-              <select
-                v-model="importFormat"
-                class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
-              >
-                <option>Excel (.xlsx)</option>
-                <option>Word (.docx)</option>
-                <option>CSV (.csv)</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block font-bold text-[#344054] mb-1.5">Pilih File Bank Soal</label>
+              <label class="block font-bold text-[#344054] mb-1.5">Unggah Template Bank Soal</label>
               <input
                 type="file"
-                accept=".doc,.docx,.xls,.xlsx,.csv"
-                class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-[#F9FAFC] outline-none"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-[#F9FAFC] outline-none focus:border-[#1B5FD9]"
+                @change="readImportFile"
               >
+              <p v-if="importFileName" class="mt-1.5 text-[11px] text-[#667085]">Dokumen: {{ importFileName }}</p>
             </div>
 
-            <div class="text-[11px] text-[#667085] flex items-center gap-2">
-              <span>Unduh template:</span>
-              <button
-                type="button"
-                class="font-extrabold text-[#1B5FD9] hover:underline"
-                @click="emit('toast', 'Template Excel berhasil diunduh.')"
-              >
-                Excel
-              </button>
-              <span>·</span>
-              <button
-                type="button"
-                class="font-extrabold text-[#1B5FD9] hover:underline"
-                @click="emit('toast', 'Template Word berhasil diunduh.')"
-              >
-                Word
-              </button>
-              <span>·</span>
-              <button
-                type="button"
-                class="font-extrabold text-[#1B5FD9] hover:underline"
-                @click="emit('toast', 'Template CSV berhasil diunduh.')"
-              >
-                CSV
-              </button>
+            <div v-if="importPreview" class="rounded-xl border border-[#B9D1F9] bg-[#F6F9FF] p-3 text-[#0A2A5C]">
+              <p class="font-extrabold">Data terdeteksi. Periksa sebelum disimpan.</p>
+              <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+                <div><dt class="text-[#667085]">Jenjang</dt><dd class="font-bold">{{ importPreview.package.grade }}</dd></div>
+                <div><dt class="text-[#667085]">Kelas</dt><dd class="font-bold">{{ importPreview.classroom }}</dd></div>
+                <div><dt class="text-[#667085]">Mata pelajaran</dt><dd class="font-bold">{{ importPreview.subject }}</dd></div>
+                <div><dt class="text-[#667085]">Butir soal</dt><dd class="font-bold">{{ importPreview.questionCount }} butir</dd></div>
+              </dl>
             </div>
+
+            <p v-if="importError" class="rounded-xl bg-[#FDECEA] p-3 text-[11px] font-semibold text-[#C43232]">{{ importError }}</p>
           </div>
 
           <!-- Foot -->
           <div class="p-4 border-t border-[#E7EBF2] bg-[#FAFBFC] flex items-center justify-end gap-2">
-            <button
-              type="button"
-              class="px-4 py-2 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-white"
-              @click="isImportModalOpen = false"
-            >
+            <button type="button" class="min-h-10 px-4 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-white" @click="closeImport">
               Batal
             </button>
             <button
               type="button"
-              class="px-5 py-2 rounded-xl bg-[#1B5FD9] hover:bg-[#12459B] text-white text-xs font-bold shadow-sm"
-              @click="isImportModalOpen = false; emit('toast', 'File berhasil diunggah & diproses.')"
+              class="min-h-10 px-4 rounded-xl bg-[#1B5FD9] hover:bg-[#12459B] disabled:bg-[#98A2B3] text-white text-xs font-bold shadow-sm"
+              :disabled="!importPreview || isImporting"
+              @click="confirmImport"
             >
-              Unggah &amp; Proses Bank Soal
+              {{ isImporting ? 'Menyimpan...' : 'Konfirmasi dan Simpan' }}
             </button>
           </div>
         </div>
