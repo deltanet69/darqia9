@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -19,6 +19,7 @@ import CbtV2MobileNav from '~/components/adminV2/cbt/CbtV2MobileNav.vue'
 import { GROUPS, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 import {
+  CBT_TABS,
   INITIAL_STUDENTS,
   type GradeType,
   type CbtTabId,
@@ -36,8 +37,17 @@ useHead({
   ]
 })
 
+const route = useRoute()
+const router = useRouter()
+const queryValue = (value: unknown) => Array.isArray(value) ? value[0] : value
+const initialGrade: GradeType = queryValue(route.query.jenjang) === 'smp' ? 'SMP' : 'SMK'
+const initialTab = queryValue(route.query.tab)
+const initialActiveTab: CbtTabId = CBT_TABS.some(tab => tab.id === initialTab)
+  ? initialTab as CbtTabId
+  : 'summary'
+
 // Unified Top Navigation & RBAC State
-const jenjang = ref<'smp' | 'smk'>('smk')
+const jenjang = ref<'smp' | 'smk'>(initialGrade === 'SMP' ? 'smp' : 'smk')
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
 
 const isMegaOpen = ref(false)
@@ -50,8 +60,8 @@ const isProfileOpen = ref(false)
 
 // Core CBT State
 const cbtData = useAdminCbtData()
-const grade = ref<GradeType>('SMK')
-const activeTab = ref<CbtTabId>('summary')
+const grade = ref<GradeType>(initialGrade)
+const activeTab = ref<CbtTabId>(initialActiveTab)
 const exams = computed(() => cbtData.exams.value)
 const students = ref<StudentScore[]>([...INITIAL_STUDENTS])
 
@@ -64,6 +74,27 @@ const drawerPayload = ref<any>(null)
 const toastMessage = ref('')
 const isToastVisible = ref(false)
 let toastTimeout: ReturnType<typeof setTimeout> | null = null
+
+const syncRoute = () => router.replace({
+  query: {
+    ...route.query,
+    tab: activeTab.value,
+    jenjang: jenjang.value
+  }
+})
+
+watch(() => route.query.tab, value => {
+  const tab = queryValue(value)
+  if (CBT_TABS.some(item => item.id === tab)) activeTab.value = tab as CbtTabId
+})
+
+watch(() => route.query.jenjang, value => {
+  const nextJenjang = queryValue(value)
+  if (nextJenjang === 'smp' || nextJenjang === 'smk') {
+    jenjang.value = nextJenjang
+    grade.value = nextJenjang === 'smp' ? 'SMP' : 'SMK'
+  }
+})
 
 const triggerToast = (msg: string) => {
   toastMessage.value = msg
@@ -78,6 +109,7 @@ const triggerToast = (msg: string) => {
 const setJenjang = (val: 'smp' | 'smk') => {
   jenjang.value = val
   grade.value = val === 'smp' ? 'SMP' : 'SMK'
+  syncRoute()
   triggerToast(`Beralih ke ${val === 'smp' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'}`)
 }
 
@@ -195,6 +227,7 @@ const liveExamCount = computed(() => {
 // Tab navigation handler
 const switchTab = (tab: CbtTabId) => {
   activeTab.value = tab
+  syncRoute()
   isMobileMenuOpen.value = false
   if (typeof window !== 'undefined') {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -367,6 +400,7 @@ const handleDocumentClick = (e: MouseEvent) => {
         <!-- 3. Bank Soal Panel -->
         <div v-else-if="activeTab === 'bank'" key="bank">
           <CbtV2Bank
+            :key="grade"
             :grade="grade"
             @open-drawer="openDrawer"
             @toast="triggerToast"

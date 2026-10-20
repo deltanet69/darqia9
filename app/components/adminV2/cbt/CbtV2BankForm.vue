@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtRichQuestionEditor from './CbtRichQuestionEditor.vue'
 import { validateLatexExpressions } from '~/utils/cbtFormula'
@@ -11,6 +11,7 @@ interface Props {
   grade: GradeType
   classOptions: string[]
   subjectOptions: string[]
+  initialStep?: 'PG' | 'Isian' | 'Esai' | 'Interaktif'
 }
 
 const props = defineProps<Props>()
@@ -19,13 +20,21 @@ const emit = defineEmits<{
   (e: 'save', updatedPkg: BankPackage): void
   (e: 'cancel'): void
   (e: 'toast', msg: string): void
+  (e: 'update-draft', draft: BankPackage): void
+  (e: 'update-step', step: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): void
 }>()
 
 // Deep clone of package to edit without mutating directly
 const draft = ref<BankPackage>(JSON.parse(JSON.stringify(props.pkg)))
 
 // Current step: PG, Isian, Esai, Interaktif
-const currentStep = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>('PG')
+const currentStep = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>(props.initialStep || 'PG')
+
+watch(draft, value => {
+  emit('update-draft', JSON.parse(JSON.stringify(value)))
+}, { deep: true, flush: 'sync' })
+
+watch(currentStep, step => emit('update-step', step))
 
 const countByType = (type: string) => {
   return draft.value.questions.filter(q => q.type === type).length

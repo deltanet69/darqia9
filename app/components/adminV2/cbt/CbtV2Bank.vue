@@ -31,6 +31,70 @@ const packages = computed(() => cbtData.bankPackages.value)
 // Form State for CbtV2BankForm
 const formDraft = ref<BankPackage | null>(null)
 const isEditingForm = ref(false)
+type QuestionStep = 'PG' | 'Isian' | 'Esai' | 'Interaktif'
+const formStep = ref<QuestionStep>('PG')
+const draftStorageFailed = ref(false)
+
+const draftStorageKey = () => `darqia:cbt-bank-draft:${props.grade}`
+
+const persistFormDraft = () => {
+  if (typeof window === 'undefined' || !formDraft.value) return
+  try {
+    window.sessionStorage.setItem(draftStorageKey(), JSON.stringify({
+      draft: formDraft.value,
+      editing: isEditingForm.value,
+      selectedClass: selectedClass.value,
+      selectedPkgId: selectedPkgId.value,
+      step: formStep.value
+    }))
+    draftStorageFailed.value = false
+  } catch {
+    if (!draftStorageFailed.value) {
+      draftStorageFailed.value = true
+      emit('toast', 'Draf terlalu besar untuk disimpan otomatis. Simpan paket sebelum menutup halaman.')
+    }
+  }
+}
+
+const clearFormDraft = () => {
+  if (typeof window !== 'undefined') window.sessionStorage.removeItem(draftStorageKey())
+}
+
+const updateFormDraft = (draft: BankPackage) => {
+  formDraft.value = draft
+  persistFormDraft()
+}
+
+const updateFormStep = (step: QuestionStep) => {
+  formStep.value = step
+  persistFormDraft()
+}
+
+const restoreFormDraft = () => {
+  if (typeof window === 'undefined') return
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(draftStorageKey()) || 'null') as {
+      draft?: BankPackage
+      editing?: boolean
+      selectedClass?: string
+      selectedPkgId?: string | null
+      step?: QuestionStep
+    } | null
+    if (!saved?.draft || saved.draft.grade !== props.grade || !Array.isArray(saved.draft.questions)) return
+
+    formDraft.value = saved.draft
+    isEditingForm.value = Boolean(saved.editing)
+    selectedClass.value = saved.selectedClass || saved.draft.classroom
+    selectedPkgId.value = saved.selectedPkgId || null
+    formStep.value = ['PG', 'Isian', 'Esai', 'Interaktif'].includes(saved.step || '')
+      ? saved.step as QuestionStep
+      : 'PG'
+    bankMode.value = 'form'
+    emit('toast', 'Draf Bank Soal dipulihkan.')
+  } catch {
+    clearFormDraft()
+  }
+}
 
 // Import modal state
 const isImportModalOpen = ref(false)
@@ -139,13 +203,17 @@ const startCreatePackage = (preselectedClass?: string) => {
     ]
   }
   isEditingForm.value = false
+  formStep.value = 'PG'
   bankMode.value = 'form'
+  persistFormDraft()
 }
 
 const startEditPackage = (pkg: BankPackage) => {
   formDraft.value = JSON.parse(JSON.stringify(pkg))
   isEditingForm.value = true
+  formStep.value = 'PG'
   bankMode.value = 'form'
+  persistFormDraft()
 }
 
 const handleSavePackage = async (updatedPkg: BankPackage) => {
@@ -154,6 +222,8 @@ const handleSavePackage = async (updatedPkg: BankPackage) => {
     selectedPkgId.value = savedId
     selectedClass.value = updatedPkg.classroom
     bankMode.value = 'detail'
+    formDraft.value = null
+    clearFormDraft()
     emit('toast', `Paket bank soal ${updatedPkg.subject} berhasil disimpan.`)
   } catch (saveError) {
     emit('toast', saveError instanceof Error ? saveError.message : 'Paket bank soal gagal disimpan.')
@@ -161,6 +231,8 @@ const handleSavePackage = async (updatedPkg: BankPackage) => {
 }
 
 const handleCancelForm = () => {
+  clearFormDraft()
+  formDraft.value = null
   if (selectedPkgId.value) {
     bankMode.value = 'detail'
   } else if (selectedClass.value) {
@@ -210,6 +282,7 @@ const deletePackage = async (pkgId: string) => {
   if (confirm('Hapus seluruh paket bank soal ini?')) {
     try {
       await cbtData.deleteBankPackage(pkgId)
+      clearFormDraft()
       bankMode.value = 'classes'
       emit('toast', 'Paket bank soal berhasil dihapus.')
     } catch (deleteError) {
@@ -218,7 +291,10 @@ const deletePackage = async (pkgId: string) => {
   }
 }
 
-onMounted(() => cbtData.load())
+onMounted(async () => {
+  await cbtData.load()
+  restoreFormDraft()
+})
 
 </script>
 
@@ -232,8 +308,11 @@ onMounted(() => cbtData.load())
         :grade="grade"
         :class-options="allClasses"
         :subject-options="allSubjects"
+        :initial-step="formStep"
         @save="handleSavePackage"
         @cancel="handleCancelForm"
+        @update-draft="updateFormDraft"
+        @update-step="updateFormStep"
         @toast="(m) => emit('toast', m)"
       />
     </div>
