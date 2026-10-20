@@ -160,7 +160,7 @@ export const renderKaTeXHtml = (rawText: string): string => {
  */
 export const compressImageToWebP = (
   file: File,
-  maxDimension = 1280
+  maxDimension = 1600
 ): Promise<{
   dataUrl: string
   originalSizeKB: number
@@ -211,12 +211,12 @@ export const compressImageToWebP = (
           isBlackboard = false
         }
 
-        let quality = 0.82
+        let quality = 0.92
         let dataUrl = canvas.toDataURL('image/webp', quality)
 
-        // Reduksi kualitas iteratif bila ukuran base64 > 200KB (200KB binary ~= 270KB base64)
-        while (dataUrl.length > 270 * 1024 && quality > 0.3) {
-          quality -= 0.15
+        // Jaga detail karakter kecil, indeks, dan pecahan agar tetap terbaca OCR.
+        while (dataUrl.length > 800 * 1024 && quality > 0.45) {
+          quality -= 0.1
           dataUrl = canvas.toDataURL('image/webp', quality)
         }
 

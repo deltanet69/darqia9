@@ -1,3 +1,5 @@
+import katex from 'katex'
+
 const requestWindows = new Map<string, { count: number; startedAt: number }>()
 const MAX_IMAGE_BYTES = 700 * 1024
 const MAX_REQUESTS_PER_MINUTE = 12
@@ -29,6 +31,21 @@ const responseSchema = {
   required: ['text', 'isRtl', 'containsFormula', 'reviewNote']
 }
 
+const hasValidFormula = (text: string) => {
+  const formulas = [...text.matchAll(/\$\$([\s\S]+?)\$\$|\$([^\n$]+?)\$/g)]
+  if (!formulas.length) return false
+  return formulas.every(match => {
+    try {
+      katex.renderToString((match[1] || match[2]).trim(), { throwOnError: true })
+      return true
+    } catch {
+      return false
+    }
+  })
+}
+
+const hasFormulaHint = (text: string) => /\\(?:frac|sqrt|sum|int)|[=^_√∑∫π]|\d\s*[=\/]\s*\d/.test(text)
+
 export default defineEventHandler(async (event) => {
   limitRequest(event)
   const config = useRuntimeConfig(event)
@@ -51,13 +68,15 @@ export default defineEventHandler(async (event) => {
     'Anda adalah OCR untuk bank soal sekolah Indonesia.',
     'Transkripsikan isi gambar dengan setia. Jangan menerjemahkan, memperbaiki, atau mengarang bagian yang tidak terbaca.',
     'Untuk teks Arab atau Al-Quran: pertahankan Unicode Arab beserta harakat dan tanda baca yang terlihat.',
-    'Untuk rumus matematika, fisika, kimia, atau biologi: tulis sebagai LaTeX valid dengan $...$ untuk rumus sebaris dan $$...$$ untuk rumus terpisah.',
+    'Untuk rumus matematika, fisika, kimia, atau biologi: JANGAN tulis sebagai teks biasa. Setiap rumus wajib menjadi LaTeX KaTeX valid di dalam $$...$$ pada baris terpisah.',
+    'Pertahankan struktur visual: pecahan horizontal menjadi \\frac{pembilang}{penyebut}, pangkat menjadi ^{...}, indeks menjadi _{...}, akar menjadi \\sqrt{...}, dan satuan atau nama zat gunakan \\text{...}.',
+    'Contoh gambar "Sₙ = n/2(a + Uₙ)" harus ditulis "$$S_n = \\frac{n}{2}(a + U_n)$$". Pastikan semua kurung kurawal dan penanda $$ berpasangan.',
     'Untuk kode program: gunakan blok kode Markdown dengan tiga tanda backtick.',
     'Jika satu bagian tidak terbaca, gunakan penanda [tidak terbaca].',
     'Jangan sertakan penjelasan di luar JSON yang diminta.'
   ].join(' ')
 
-  const response = await $fetch<any>('https://api.pecutmarket.my.id/v1/chat/completions', {
+  const extract = (instruction: string) => $fetch<any>('https://api.pecutmarket.my.id/v1/chat/completions', {
     method: 'POST',
     timeout: 60_000,
     headers: {
@@ -69,7 +88,7 @@ export default defineEventHandler(async (event) => {
       messages: [{
         role: 'user',
         content: [
-          { type: 'text', text: prompt },
+          { type: 'text', text: instruction },
           { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + base64 } }
         ]
       }],
@@ -89,12 +108,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 502, statusMessage: 'Layanan OCR gagal mengekstrak gambar. Coba gunakan gambar yang lebih jelas.' })
   })
 
-  const rawText = response?.choices?.[0]?.message?.content?.trim()
-  if (!rawText) {
-    throw createError({ statusCode: 422, statusMessage: 'Tidak ada teks yang dapat diekstrak dari gambar.' })
-  }
-
-  try {
+  const parseExtraction = (response: any) => {
+    const rawText = response?.choices?.[0]?.message?.content?.trim()
+    if (!rawText) throw createError({ statusCode: 422, statusMessage: 'Tidak ada teks yang dapat diekstrak dari gambar.' })
     const extracted = JSON.parse(rawText)
     if (typeof extracted.text !== 'string' || !extracted.text.trim()) throw new Error('empty')
     return {
@@ -103,7 +119,24 @@ export default defineEventHandler(async (event) => {
       containsFormula: extracted.containsFormula === true,
       reviewNote: typeof extracted.reviewNote === 'string' ? extracted.reviewNote : ''
     }
-  } catch {
-    throw createError({ statusCode: 502, statusMessage: 'Format hasil OCR tidak valid. Coba ekstrak kembali.' })
   }
+
+  const parseSafely = (response: any) => {
+    try {
+      return parseExtraction(response)
+    } catch {
+      throw createError({ statusCode: 502, statusMessage: 'Format hasil OCR tidak valid. Coba ekstrak kembali.' })
+    }
+  }
+
+  let extracted = parseSafely(await extract(prompt))
+  if ((extracted.containsFormula || hasFormulaHint(extracted.text)) && !hasValidFormula(extracted.text)) {
+    extracted = parseSafely(await extract([
+      prompt,
+      'Hasil OCR sebelumnya belum memenuhi format rumus:', extracted.text,
+      'Ulangi transkripsi dari gambar. Keluarkan JSON yang sama, dengan setiap rumus valid di dalam $$...$$. Jangan mengubah teks yang bukan rumus.'
+    ].join('\n')))
+  }
+
+  return extracted
 })
