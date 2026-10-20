@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
-import { BANK_CLASSES, BANK_SUBJECTS } from './cbtV2Data'
+import { useAdminCbtData } from '~/composables/useAdminCbtData'
 
 interface Props {
   grade: GradeType
@@ -10,6 +10,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const cbtData = useAdminCbtData()
 
 const emit = defineEmits<{
   (e: 'switch-tab', tab: CbtTabId): void
@@ -20,84 +21,119 @@ const emit = defineEmits<{
 
 const examView = ref<'classes' | 'detail'>('classes')
 const selectedClass = ref('')
-
-// Create Schedule Modal State
 const isCreateModalOpen = ref(false)
-const newExam = ref({
+
+const localDateTime = (date: Date) => {
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+const emptyExam = () => ({
+  id: '',
   name: '',
-  classroom: 'X RPL 1',
-  subject: 'Informatika',
-  date: '2026-10-10',
-  time: '08:00 – 09:30',
+  classId: '',
+  subjectId: '',
+  questionBankId: '',
+  startsAt: localDateTime(new Date(Date.now() + 86_400_000)),
   duration: 90,
-  supervisor: ''
+  token: ''
 })
 
-const groups = computed(() => {
-  if (props.grade === 'SMK') {
-    return [
-      { classroom: 'X RPL 1', students: 40, subjects: 4 },
-      { classroom: 'XII TKJ 1', students: 38, subjects: 5 },
-      { classroom: 'XI RPL 1', students: 40, subjects: 4 }
-    ]
-  }
-  return [
-    { classroom: 'IX-A', students: 44, subjects: 6 },
-    { classroom: 'VIII-B', students: 44, subjects: 6 },
-    { classroom: 'VII-A', students: 44, subjects: 4 }
-  ]
-})
+const newExam = ref(emptyExam())
+const currentExams = computed(() => props.exams.filter(exam => exam.grade === props.grade))
+const gradeClasses = computed(() => cbtData.classes.value.filter(item => item.grade === props.grade))
+const gradePackages = computed(() => cbtData.bankPackages.value.filter(item => item.grade === props.grade))
 
-const currentExams = computed(() => {
-  return props.exams.filter(e => ((e as any).grade === props.grade || e.g === props.grade))
-})
+const groups = computed(() => gradeClasses.value.map(classItem => ({
+  id: classItem.id,
+  classroom: classItem.name,
+  students: classItem.studentCount,
+  subjects: new Set(gradePackages.value.filter(pkg => pkg.classId === classItem.id).map(pkg => pkg.subjectId)).size
+})))
 
 const classExams = computed(() => {
   if (!selectedClass.value) return currentExams.value
-  return currentExams.value.filter(e => (e.classroom || (e as any).cls) === selectedClass.value)
+  return currentExams.value.filter(exam => exam.classroom === selectedClass.value)
 })
 
-const openDetail = (cls: string) => {
-  selectedClass.value = cls
+const availablePackages = computed(() =>
+  gradePackages.value.filter(pkg => !newExam.value.classId || pkg.classId === newExam.value.classId)
+)
+
+const availableSubjects = computed(() => {
+  const ids = new Set(availablePackages.value.map(pkg => pkg.subjectId))
+  return cbtData.subjects.value.filter(item => item.grade === props.grade && ids.has(item.id))
+})
+
+const openDetail = (classroom: string) => {
+  selectedClass.value = classroom
   examView.value = 'detail'
 }
 
-const openCreateSchedule = (cls?: string) => {
-  newExam.value.classroom = cls || selectedClass.value || groups.value[0]?.classroom || 'X RPL 1'
-  newExam.value.subject = BANK_SUBJECTS[props.grade][0] || 'Informatika'
-  newExam.value.supervisor = props.grade === 'SMK' ? 'Bpk. Budi Santoso, S.Kom' : 'Bpk. Ahmad Dahlan, S.Pd'
+const syncPackage = () => {
+  const matching = availablePackages.value.find(pkg => pkg.subjectId === newExam.value.subjectId)
+  newExam.value.questionBankId = matching?.id ?? ''
+}
+
+const openCreateSchedule = (classroom?: string) => {
+  const classItem = gradeClasses.value.find(item => item.name === classroom)
+    ?? gradeClasses.value.find(item => item.name === selectedClass.value)
+    ?? gradeClasses.value[0]
+  newExam.value = emptyExam()
+  newExam.value.classId = classItem?.id ?? ''
+  const firstPackage = gradePackages.value.find(pkg => pkg.classId === newExam.value.classId)
+  newExam.value.subjectId = firstPackage?.subjectId ?? ''
+  newExam.value.questionBankId = firstPackage?.id ?? ''
   isCreateModalOpen.value = true
 }
 
-const saveNewSchedule = () => {
+const openEditSchedule = (exam: ExamItem) => {
+  newExam.value = {
+    id: exam.id,
+    name: exam.name,
+    classId: exam.classId ?? '',
+    subjectId: exam.subjectId ?? '',
+    questionBankId: exam.questionBankId ?? '',
+    startsAt: exam.startsAt ? localDateTime(new Date(exam.startsAt)) : localDateTime(new Date()),
+    duration: exam.duration,
+    token: exam.token
+  }
+  isCreateModalOpen.value = true
+}
+
+const saveSchedule = async () => {
   if (!newExam.value.name.trim()) {
-    emit('toast', 'Nama ujian wajib diisi!')
+    emit('toast', 'Nama ujian wajib diisi.')
     return
   }
-  const subj = newExam.value.subject.trim() || 'Ujian'
-  const token = subj.slice(0, 3).toUpperCase() + Math.floor(100 + Math.random() * 900)
-  props.exams.push({
-    id: `E${Date.now()}`,
-    name: newExam.value.name.trim(),
-    subject: subj,
-    classroom: newExam.value.classroom,
-    grade: props.grade,
-    date: newExam.value.date,
-    time: newExam.value.time,
-    duration: Number(newExam.value.duration) || 90,
-    participants: 40,
-    status: 'Terjadwal',
-    average: 0,
-    kkm: 75,
-    token,
-    collected: 0,
-    doing: 0,
-    violations: 0,
-    supervisor: newExam.value.supervisor
-  })
-  isCreateModalOpen.value = false
-  emit('toast', `Jadwal ujian berhasil disimpan! Token: ${token}`)
+  if (!newExam.value.classId || !newExam.value.subjectId || !newExam.value.questionBankId) {
+    emit('toast', 'Pilih kelas, mata pelajaran, dan bank soal yang sesuai.')
+    return
+  }
+  try {
+    const token = await cbtData.saveExam({
+      ...newExam.value,
+      name: newExam.value.name.trim(),
+      token: newExam.value.token || undefined
+    })
+    isCreateModalOpen.value = false
+    emit('toast', `Jadwal ujian berhasil disimpan. Token: ${token}`)
+  } catch (saveError) {
+    emit('toast', saveError instanceof Error ? saveError.message : 'Jadwal ujian gagal disimpan.')
+  }
 }
+
+const removeSchedule = async (exam: ExamItem) => {
+  if (!confirm(`Hapus ujian ${exam.name}?`)) return
+  try {
+    await cbtData.deleteExam(exam.id)
+    emit('toast', 'Ujian berhasil dihapus.')
+  } catch (deleteError) {
+    emit('toast', deleteError instanceof Error ? deleteError.message : 'Ujian gagal dihapus.')
+  }
+}
+
+onMounted(() => cbtData.load())
 </script>
 
 <template>
@@ -254,14 +290,14 @@ const saveNewSchedule = () => {
                   </span>
                 </td>
                 <td class="py-3 px-4 text-right">
-                  <button
-                    type="button"
-                    class="text-xs font-bold text-[#1B5FD9] hover:underline inline-flex items-center gap-1"
-                    @click="emit('open-drawer', 'exam', e)"
-                  >
-                    <span>Detail</span>
-                    <AdminV2Icon name="arrow-right" :size="12" />
-                  </button>
+                  <div class="inline-flex items-center gap-3">
+                    <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">
+                      Ubah
+                    </button>
+                    <button type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">
+                      Hapus
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="!classExams.length">
@@ -287,7 +323,7 @@ const saveNewSchedule = () => {
           <div class="p-5 border-b border-[#E7EBF2] flex items-center justify-between">
             <div>
               <span class="text-[10px] font-extrabold uppercase text-[#1B5FD9] tracking-wider">Form Penjadwalan</span>
-              <h3 class="text-base font-extrabold text-[#101828] mt-0.5">Buat Jadwal Ujian</h3>
+              <h3 class="text-base font-extrabold text-[#101828] mt-0.5">{{ newExam.id ? 'Ubah Jadwal Ujian' : 'Buat Jadwal Ujian' }}</h3>
             </div>
             <button
               type="button"
@@ -318,39 +354,33 @@ const saveNewSchedule = () => {
               <div>
                 <label class="block font-bold text-[#344054] mb-1">Mata Pelajaran</label>
                 <select
-                  v-model="newExam.subject"
+                  v-model="newExam.subjectId"
+                  @change="syncPackage"
                   class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
                 >
-                  <option v-for="s in BANK_SUBJECTS[grade]" :key="s" :value="s">{{ s }}</option>
+                  <option value="" disabled>Pilih mata pelajaran</option>
+                  <option v-for="s in availableSubjects" :key="s.id" :value="s.id">{{ s.name }}</option>
                 </select>
               </div>
               <div>
                 <label class="block font-bold text-[#344054] mb-1">Rombel</label>
                 <select
-                  v-model="newExam.classroom"
+                  v-model="newExam.classId"
                   class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
+                  @change="newExam.subjectId = ''; newExam.questionBankId = ''"
                 >
-                  <option v-for="c in BANK_CLASSES[grade]" :key="c" :value="c">{{ c }}</option>
+                  <option value="" disabled>Pilih rombel</option>
+                  <option v-for="c in gradeClasses" :key="c.id" :value="c.id">{{ c.name }}</option>
                 </select>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label class="block font-bold text-[#344054] mb-1">Tanggal</label>
+                <label class="block font-bold text-[#344054] mb-1">Tanggal dan Waktu Mulai</label>
                 <input
-                  v-model="newExam.date"
-                  type="text"
-                  placeholder="10 Okt 2026"
-                  class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none"
-                >
-              </div>
-              <div>
-                <label class="block font-bold text-[#344054] mb-1">Waktu</label>
-                <input
-                  v-model="newExam.time"
-                  type="text"
-                  placeholder="08:00 – 09:30"
+                  v-model="newExam.startsAt"
+                  type="datetime-local"
                   class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none"
                 >
               </div>
@@ -359,19 +389,10 @@ const saveNewSchedule = () => {
                 <input
                   v-model="newExam.duration"
                   type="number"
+                  min="1"
                   class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none"
                 >
               </div>
-            </div>
-
-            <div>
-              <label class="block font-bold text-[#344054] mb-1">Guru Pengawas</label>
-              <input
-                v-model="newExam.supervisor"
-                type="text"
-                placeholder="Nama guru pengawas"
-                class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none"
-              >
             </div>
           </div>
 
@@ -386,7 +407,7 @@ const saveNewSchedule = () => {
             <button
               type="button"
               class="px-5 py-2 rounded-xl bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-bold shadow-sm"
-              @click="saveNewSchedule"
+              @click="saveSchedule"
             >
               Simpan Jadwal
             </button>

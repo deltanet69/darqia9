@@ -9,12 +9,8 @@ import type {
   StudentResult,
   ViolationLog
 } from './cbtV2Data'
-import {
-  INITIAL_PACKAGES,
-  INITIAL_RESULTS,
-  INITIAL_VIOLATIONS,
-  BANK_CLASSES
-} from './cbtV2Data'
+import { INITIAL_RESULTS, INITIAL_VIOLATIONS } from './cbtV2Data'
+import { useAdminCbtData } from '~/composables/useAdminCbtData'
 
 interface Props {
   grade: GradeType
@@ -22,6 +18,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const cbtData = useAdminCbtData()
 
 const emit = defineEmits<{
   (e: 'switch-tab', tab: CbtTabId): void
@@ -98,7 +95,7 @@ const uncorrectedEssays = computed(() => {
 })
 
 const bankClassCount = computed(() => {
-  return (BANK_CLASSES[props.grade] || []).length
+  return cbtData.classes.value.filter(item => item.grade === props.grade).length
 })
 
 const parseDateParts = (dateStr: string) => {

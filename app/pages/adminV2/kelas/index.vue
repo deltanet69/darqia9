@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -13,6 +13,7 @@ import KelasV2OverviewTab from '~/components/adminV2/kelas/KelasV2OverviewTab.vu
 import KelasV2DaftarTab, { type ClassRombel } from '~/components/adminV2/kelas/KelasV2DaftarTab.vue'
 import KelasV2CreateModal from '~/components/adminV2/kelas/KelasV2CreateModal.vue'
 import { GROUPS, type GroupItem } from '~/components/adminV2/adminV2Data'
+import { useAdminCbtData } from '~/composables/useAdminCbtData'
 
 definePageMeta({
   layout: false
@@ -26,6 +27,7 @@ useHead({
 })
 
 const router = useRouter()
+const cbtData = useAdminCbtData()
 
 /* ================= REACTIVE STATE ================= */
 const jenjang = ref<'smp' | 'smk'>('smk')
@@ -57,21 +59,19 @@ const triggerToast = (msg: string) => {
 export type SubmenuKey = 'overview' | 'daftar'
 const activeSubmenu = ref<SubmenuKey>('overview')
 
-// 12 Master Raw Classes (Identik 1:1 Versi Asli admin/kelas/index.vue)
-const rawClasses = ref<ClassRombel[]>([
-  { name: 'VII-A', level: 'SMP', major: '', room: 'Gedung A · R.101', teacher: 'Siti Aminah, S.Pd', teacherNip: '198204152008012003', students: 34, boys: 18, girls: 16, attendance: 94, average: 84.2 },
-  { name: 'VII-B', level: 'SMP', major: '', room: 'Gedung A · R.102', teacher: 'Rini Astuti, S.Pd', teacherNip: '199105102019032005', students: 36, boys: 19, girls: 17, attendance: 91, average: 82.8 },
-  { name: 'VIII-A', level: 'SMP', major: '', room: 'Gedung A · R.201', teacher: 'Ahmad Fauzi, S.Pd', teacherNip: '198703122011011002', students: 35, boys: 18, girls: 17, attendance: 95, average: 85.1 },
-  { name: 'VIII-B', level: 'SMP', major: '', room: 'Gedung A · R.202', teacher: 'Nurul Hidayati, S.Si', teacherNip: '198807142012012002', students: 35, boys: 17, girls: 18, attendance: 89, average: 81.5 },
-  { name: 'IX-A', level: 'SMP', major: '', room: 'Gedung A · R.301', teacher: 'Drs. H. Ahmad Dahlan', teacherNip: '197508122000031001', students: 34, boys: 16, girls: 18, attendance: 96, average: 86.4 },
-  { name: 'IX-B', level: 'SMP', major: '', room: 'Gedung A · R.302', teacher: 'Dewi Lestari, S.Pd', teacherNip: '199402182020122008', students: 36, boys: 20, girls: 16, attendance: 92, average: 83.7 },
-  { name: 'X RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B · Lab 1', teacher: 'Bambang Supriyanto, M.Kom', teacherNip: '198901202015041002', students: 36, boys: 24, girls: 12, attendance: 94, average: 85.5 },
-  { name: 'X RPL 2', level: 'SMK', major: 'RPL', room: 'Gedung B · Lab 2', teacher: 'Eko Prasetyo, S.Pd', teacherNip: '199009252016081003', students: 35, boys: 22, girls: 13, attendance: 90, average: 83.2 },
-  { name: 'XI RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B · Lab 3', teacher: 'Hendra Gunawan, S.Kom', teacherNip: '198711032014021004', students: 34, boys: 23, girls: 11, attendance: 95, average: 86.9 },
-  { name: 'XI TKJ 1', level: 'SMK', major: 'TKJ', room: 'Gedung B · Lab Jaringan', teacher: 'Rizky Wahyudi, S.T', teacherNip: '199208152018011003', students: 36, boys: 27, girls: 9, attendance: 93, average: 84.6 },
-  { name: 'XII RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B · R.301', teacher: 'Fajar Nugroho, S.Pd', teacherNip: '199304122021011005', students: 35, boys: 22, girls: 13, attendance: 97, average: 88.3 },
-  { name: 'XII TKJ 1', level: 'SMK', major: 'TKJ', room: 'Gedung B · R.302', teacher: 'Agus Setiawan, S.T', teacherNip: '198605202014031002', students: 34, boys: 26, girls: 8, attendance: 94, average: 85.8 }
-])
+const rawClasses = computed<ClassRombel[]>(() => cbtData.classes.value.map(item => ({
+  name: item.name,
+  level: item.grade,
+  major: item.major,
+  room: item.room,
+  teacher: item.teacher,
+  teacherNip: item.teacherNip,
+  students: item.studentCount,
+  boys: 0,
+  girls: 0,
+  attendance: 0,
+  average: 0
+})))
 
 // Navigation to Class Detail
 const goToClassDetail = (className: string) => {
@@ -92,25 +92,24 @@ const goToClassAttendance = (item: ClassRombel) => {
 // Create Class Modal State
 const isCreateModalOpen = ref(false)
 
-const handleClassCreated = (newClass: { name: string; level: 'SMP' | 'SMK'; major: string; room: string; teacher: string }) => {
-  rawClasses.value.unshift({
-    name: newClass.name,
-    level: newClass.level,
-    major: newClass.major,
-    room: newClass.room || 'Gedung Utama',
-    teacher: newClass.teacher,
-    teacherNip: '199001012020011001',
-    students: 34,
-    boys: 18,
-    girls: 16,
-    attendance: 95,
-    average: 85.0
-  })
-
-  isCreateModalOpen.value = false
-  activeSubmenu.value = 'daftar'
-  triggerToast(`Rombel kelas ${newClass.name} berhasil ditambahkan ke daftar.`)
+const handleClassCreated = async (newClass: { name: string; level: 'SMP' | 'SMK'; major: string; room: string; teacher: string }) => {
+  try {
+    await cbtData.createClass({
+      name: newClass.name,
+      grade: newClass.level,
+      major: newClass.major,
+      room: newClass.room,
+      teacher: newClass.teacher
+    })
+    isCreateModalOpen.value = false
+    activeSubmenu.value = 'daftar'
+    triggerToast(`Rombel kelas ${newClass.name} berhasil ditambahkan.`)
+  } catch (createError) {
+    triggerToast(createError instanceof Error ? createError.message : 'Rombel gagal ditambahkan.')
+  }
 }
+
+onMounted(() => cbtData.load(true))
 
 // Export CSV Function (1:1 Versi Asli)
 const exportClassesCsv = () => {

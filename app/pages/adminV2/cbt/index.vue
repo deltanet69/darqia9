@@ -17,12 +17,11 @@ import CbtV2Management from '~/components/adminV2/cbt/CbtV2Management.vue'
 import CbtV2Drawer from '~/components/adminV2/cbt/CbtV2Drawer.vue'
 import CbtV2MobileNav from '~/components/adminV2/cbt/CbtV2MobileNav.vue'
 import { GROUPS, type GroupItem } from '~/components/adminV2/adminV2Data'
+import { useAdminCbtData } from '~/composables/useAdminCbtData'
 import {
-  INITIAL_EXAMS,
   INITIAL_STUDENTS,
   type GradeType,
   type CbtTabId,
-  type ExamItem,
   type StudentScore
 } from '~/components/adminV2/cbt/cbtV2Data'
 
@@ -50,9 +49,10 @@ const isNotifOpen = ref(false)
 const isProfileOpen = ref(false)
 
 // Core CBT State
+const cbtData = useAdminCbtData()
 const grade = ref<GradeType>('SMK')
 const activeTab = ref<CbtTabId>('summary')
-const exams = ref<ExamItem[]>([...INITIAL_EXAMS])
+const exams = computed(() => cbtData.exams.value)
 const students = ref<StudentScore[]>([...INITIAL_STUDENTS])
 
 // Drawer State
@@ -249,6 +249,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 onMounted(() => {
+  cbtData.load(true)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('click', handleDocumentClick)
 })

@@ -1,19 +1,16 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2BankForm from './CbtV2BankForm.vue'
 import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
-import {
-  INITIAL_PACKAGES,
-  BANK_CLASSES,
-  BANK_SUBJECTS
-} from './cbtV2Data'
+import { useAdminCbtData } from '~/composables/useAdminCbtData'
 
 interface Props {
   grade: GradeType
 }
 
 const props = defineProps<Props>()
+const cbtData = useAdminCbtData()
 
 const emit = defineEmits<{
   (e: 'open-drawer', type: string, payload?: any): void
@@ -28,8 +25,7 @@ const searchQuery = ref('')
 const levelFilter = ref('all')
 const activeFormat = ref<'all' | 'PG' | 'Isian' | 'Esai' | 'Interaktif'>('all')
 
-// Master packages local reactive state
-const packages = ref<BankPackage[]>(JSON.parse(JSON.stringify(INITIAL_PACKAGES)))
+const packages = computed(() => cbtData.bankPackages.value)
 
 // Form State for CbtV2BankForm
 const formDraft = ref<BankPackage | null>(null)
@@ -44,11 +40,11 @@ const currentGradePackages = computed(() => {
 })
 
 const allClasses = computed(() => {
-  return BANK_CLASSES[props.grade] || []
+  return cbtData.classes.value.filter(item => item.grade === props.grade).map(item => item.name)
 })
 
 const allSubjects = computed(() => {
-  return BANK_SUBJECTS[props.grade] || []
+  return cbtData.subjects.value.filter(item => item.grade === props.grade).map(item => item.name)
 })
 
 const filteredClasses = computed(() => {
@@ -67,12 +63,12 @@ const classStats = (cls: string) => {
     pks.reduce((sum, p) => sum + p.questions.filter(q => q.type === t).length, 0)
   const total = pks.reduce((sum, p) => sum + p.questions.length, 0)
   return {
-    subjects: pks.length || 1,
-    total: total || 35,
-    pg: countByType('PG') || 25,
-    isian: countByType('Isian') || 5,
-    esai: countByType('Esai') || 3,
-    inter: countByType('Interaktif') || 2
+    subjects: pks.length,
+    total,
+    pg: countByType('PG'),
+    isian: countByType('Isian'),
+    esai: countByType('Esai'),
+    inter: countByType('Interaktif')
   }
 }
 
@@ -112,8 +108,8 @@ const openPackageDetail = (pkgId: string) => {
 }
 
 const startCreatePackage = (preselectedClass?: string) => {
-  const targetClass = preselectedClass || selectedClass.value || allClasses.value[0] || 'X RPL 1'
-  const targetSubject = allSubjects.value[0] || 'Informatika'
+  const targetClass = preselectedClass || selectedClass.value || allClasses.value[0] || ''
+  const targetSubject = allSubjects.value[0] || ''
   formDraft.value = {
     id: `PKG-${Date.now()}`,
     code: `${targetSubject.slice(0, 3).toUpperCase()}-${targetClass.replace(/\s+/g, '')}`,
@@ -151,17 +147,16 @@ const startEditPackage = (pkg: BankPackage) => {
   bankMode.value = 'form'
 }
 
-const handleSavePackage = (updatedPkg: BankPackage) => {
-  const idx = packages.value.findIndex(p => p.id === updatedPkg.id)
-  if (idx !== -1) {
-    packages.value[idx] = updatedPkg
-  } else {
-    packages.value.unshift(updatedPkg)
+const handleSavePackage = async (updatedPkg: BankPackage) => {
+  try {
+    const savedId = await cbtData.saveBankPackage(updatedPkg)
+    selectedPkgId.value = savedId
+    selectedClass.value = updatedPkg.classroom
+    bankMode.value = 'detail'
+    emit('toast', `Paket bank soal ${updatedPkg.subject} berhasil disimpan.`)
+  } catch (saveError) {
+    emit('toast', saveError instanceof Error ? saveError.message : 'Paket bank soal gagal disimpan.')
   }
-  selectedPkgId.value = updatedPkg.id
-  selectedClass.value = updatedPkg.classroom
-  bankMode.value = 'detail'
-  emit('toast', `Paket bank soal ${updatedPkg.subject} berhasil disimpan!`)
 }
 
 const handleCancelForm = () => {
@@ -200,22 +195,30 @@ const exportCsv = (pkg: BankPackage) => {
   emit('toast', `File CSV paket ${pkg.subject} berhasil diunduh.`)
 }
 
-const deleteQuestion = (qId: string) => {
+const deleteQuestion = async (qId: string) => {
   if (!selectedPackage.value) return
-  if (confirm('Hapus butir soal ini dari paket contoh?')) {
-    selectedPackage.value.questions = selectedPackage.value.questions.filter(q => q.id !== qId)
-    selectedPackage.value.questions.forEach((q, i) => { q.number = i + 1 })
-    emit('toast', 'Butir soal contoh berhasil dihapus.')
+  if (confirm('Hapus butir soal ini dari paket?')) {
+    const updated = structuredClone(selectedPackage.value)
+    updated.questions = updated.questions.filter(q => q.id !== qId)
+    updated.questions.forEach((q, i) => { q.number = i + 1 })
+    await handleSavePackage(updated)
   }
 }
 
-const deletePackage = (pkgId: string) => {
-  if (confirm('Hapus seluruh paket bank soal ini dari preview?')) {
-    packages.value = packages.value.filter(p => p.id !== pkgId)
-    bankMode.value = 'subjects'
-    emit('toast', 'Paket bank soal berhasil dihapus.')
+const deletePackage = async (pkgId: string) => {
+  if (confirm('Hapus seluruh paket bank soal ini?')) {
+    try {
+      await cbtData.deleteBankPackage(pkgId)
+      bankMode.value = 'classes'
+      emit('toast', 'Paket bank soal berhasil dihapus.')
+    } catch (deleteError) {
+      emit('toast', deleteError instanceof Error ? deleteError.message : 'Paket bank soal gagal dihapus.')
+    }
   }
 }
+
+onMounted(() => cbtData.load())
+
 </script>
 
 <template>

@@ -19,6 +19,11 @@ export const CBT_TABS: CbtTabDef[] = [
 
 export interface ExamItem {
   id: string
+  classId?: string
+  subjectId?: string
+  questionBankId?: string
+  startsAt?: string
+  bankCode?: string
   name: string
   subject: string
   classroom: string
@@ -56,6 +61,8 @@ export interface BankQuestionItem {
 
 export interface BankPackage {
   id: string
+  classId?: string
+  subjectId?: string
   code: string
   classroom: string
   subject: string
@@ -149,293 +156,9 @@ export interface ClassResultItem {
 
 export const KKM_DEFAULT = 75
 
-export const INITIAL_EXAMS: ExamItem[] = [
-  { id: 'E1', name: 'Penilaian Tengah Semester Informatika', subject: 'Informatika', classroom: 'X RPL 1', grade: 'SMK', date: '30 Sep 2026', time: '07:30 - 09:00', duration: 90, participants: 40, status: 'Berlangsung', average: 0, kkm: 75, token: 'INF930', collected: 26, doing: 9, violations: 2, supervisor: 'Bpk. Budi Santoso, S.Kom' },
-  { id: 'E2', name: 'Ujian Praktik Jaringan Komputer', subject: 'Jaringan Komputer', classroom: 'XII TKJ 1', grade: 'SMK', date: '30 Sep 2026', time: '09:30 - 11:30', duration: 120, participants: 38, status: 'Berlangsung', average: 0, kkm: 75, token: 'JAR930', collected: 21, doing: 12, violations: 0, supervisor: 'Ibu Siti Aminah, S.Pd' },
-  { id: 'E7', name: 'UAS Praktik Pemrograman Web', subject: 'Pemrograman Web', classroom: 'XI RPL 1', grade: 'SMK', date: '10 Okt 2026', time: '08:00 - 10:00', duration: 120, participants: 40, status: 'Terjadwal', average: 0, kkm: 75, token: 'WEB101', collected: 0, doing: 0, violations: 0, supervisor: 'Bpk. Budi Santoso, S.Kom' },
-  { id: 'E8', name: 'Ujian Teori Kejuruan Komputer', subject: 'Informatika', classroom: 'X RPL 1', grade: 'SMK', date: '12 Okt 2026', time: '08:00 - 09:30', duration: 90, participants: 40, status: 'Terjadwal', average: 0, kkm: 75, token: 'TKJ102', collected: 0, doing: 0, violations: 0, supervisor: 'Ibu Siti Aminah, S.Pd' },
-  { id: 'E6', name: 'Ujian Teori Basis Data', subject: 'Basis Data', classroom: 'XI RPL 1', grade: 'SMK', date: '25 Sep 2026', time: '08:00 - 09:30', duration: 90, participants: 40, status: 'Selesai', average: 79.2, kkm: 75, token: 'BDS925', collected: 40, doing: 0, violations: 3, supervisor: 'Bpk. Budi Santoso, S.Kom' },
-  { id: 'E9', name: 'Simulasi Try Out IPA Terpadu', subject: 'IPA Terpadu', classroom: 'IX-A', grade: 'SMP', date: '30 Sep 2026', time: '07:30 - 09:00', duration: 90, participants: 44, status: 'Berlangsung', average: 0, kkm: 75, token: 'IPA930', collected: 31, doing: 11, violations: 1, supervisor: 'Ibu Rina Marlina, M.Pd' },
-  { id: 'E3', name: 'Try Out Ujian Sekolah Matematika', subject: 'Matematika', classroom: 'IX-A', grade: 'SMP', date: '2 Okt 2026', time: '08:00 - 10:00', duration: 120, participants: 44, status: 'Terjadwal', average: 0, kkm: 75, token: 'MTK102', collected: 0, doing: 0, violations: 0, supervisor: 'Bpk. Ahmad Dahlan, S.Pd' },
-  { id: 'E4', name: 'Penilaian Akhir Semester Matematika', subject: 'Matematika', classroom: 'VIII-B', grade: 'SMP', date: '5 Okt 2026', time: '08:00 - 09:30', duration: 90, participants: 44, status: 'Terjadwal', average: 0, kkm: 75, token: 'MTK105', collected: 0, doing: 0, violations: 0, supervisor: 'Ibu Rina Marlina, M.Pd' },
-  { id: 'E5', name: 'UTS Pendidikan Agama Islam', subject: 'PAI', classroom: 'VII-A', grade: 'SMP', date: '27 Sep 2026', time: '07:30 - 08:30', duration: 60, participants: 44, status: 'Selesai', average: 84.5, kkm: 75, token: 'PAI927', collected: 44, doing: 0, violations: 1, supervisor: 'Ust. Hendra Gunawan, S.Pd.I' }
-]
+export const INITIAL_EXAMS: ExamItem[] = []
 
-export const INITIAL_PACKAGES: BankPackage[] = [
-  {
-    id: 'PKG-1',
-    code: 'INF-XRPL1',
-    classroom: 'X RPL 1',
-    subject: 'Informatika',
-    grade: 'SMK',
-    difficulty: 'Sedang',
-    teacherName: 'Bpk. Budi Santoso, S.Kom',
-    updatedAt: '30 Sep 2026',
-    hasInteractive: true,
-    questions: [
-      {
-        id: 'Q1',
-        number: 1,
-        type: 'PG',
-        difficulty: 'Mudah',
-        text: 'Perangkat keras komputer yang berfungsi sebagai unit pemrosesan pusat dan pengendali utama seluruh instruksi sistem adalah...',
-        isMultiSelect: false,
-        options: [
-          { key: 'A', text: 'RAM (Random Access Memory)' },
-          { key: 'B', text: 'CPU (Central Processing Unit)' },
-          { key: 'C', text: 'GPU (Graphics Processing Unit)' },
-          { key: 'D', text: 'Power Supply Unit' },
-          { key: 'E', text: 'Hard Disk Drive' }
-        ],
-        key: 'B'
-      },
-      {
-        id: 'Q2',
-        number: 2,
-        type: 'PG',
-        difficulty: 'Sedang',
-        text: 'Topologi jaringan di mana setiap node terhubung ke satu perangkat konsentrator sentral seperti switch atau hub disebut...',
-        isMultiSelect: false,
-        options: [
-          { key: 'A', text: 'Topologi Bus' },
-          { key: 'B', text: 'Topologi Ring' },
-          { key: 'C', text: 'Topologi Star' },
-          { key: 'D', text: 'Topologi Mesh' },
-          { key: 'E', text: 'Topologi Tree' }
-        ],
-        key: 'C'
-      },
-      {
-        id: 'Q3',
-        number: 3,
-        type: 'PG',
-        difficulty: 'Sedang',
-        text: 'Pilihlah protokol jaringan berikut yang berjalan pada Application Layer (OSI Layer 7)! (Pilih lebih dari satu jawaban yang benar)',
-        isMultiSelect: true,
-        options: [
-          { key: 'A', text: 'HTTP (Hypertext Transfer Protocol)' },
-          { key: 'B', text: 'TCP (Transmission Control Protocol)' },
-          { key: 'C', text: 'DNS (Domain Name System)' },
-          { key: 'D', text: 'IP (Internet Protocol)' },
-          { key: 'E', text: 'SMTP (Simple Mail Transfer Protocol)' }
-        ],
-        key: ['A', 'C', 'E']
-      },
-      {
-        id: 'Q4',
-        number: 4,
-        type: 'Isian',
-        difficulty: 'Sedang',
-        text: 'Sebutkan perintah terminal Linux untuk melihat alamat IP yang terkonfigurasi pada antarmuka jaringan!',
-        key: 'ip a atau ifconfig'
-      },
-      {
-        id: 'Q5',
-        number: 5,
-        type: 'Esai',
-        difficulty: 'Sukar',
-        text: 'Jelaskan perbedaan mendasar antara pemrograman berorientasi objek (OOP) dengan pemrograman prosedural, sertakan contoh kasus penggunaannya!',
-        key: 'OOP mengorganisasi kode dalam entitas objek dengan konsep enkapsulasi, pewarisan (inheritance), dan polimorfisme untuk mempermudah modularitas sistem besar. Sementara prosedural berfokus pada eksekusi runtutan fungsi langkah demi langkah.',
-        rubric: 'Menyebutkan konsep object, class, encapsulation, inheritance, dan perbandingan struktur modular vs runtutan langkah fungsional.'
-      },
-      {
-        id: 'Q6',
-        number: 6,
-        type: 'Interaktif',
-        difficulty: 'Sedang',
-        text: 'Dengarkan rekaman instruksi konfigurasi firewall berikut. Berdasarkan rekaman instruksi tersebut, port berapakah yang wajib dibuka untuk mengamankan protokol transfer data terenkripsi HTTPS?',
-        mediaType: 'audio',
-        mediaUrl: 'rekaman-firewall-https.mp3',
-        mediaCompressStatus: 'Terkompresi 64kbps (Optimal)',
-        interactiveAnswerType: 'Isian',
-        key: 'Port 443'
-      }
-    ]
-  },
-  {
-    id: 'PKG-2',
-    code: 'WEB-XIRPL1',
-    classroom: 'XI RPL 1',
-    subject: 'Pemrograman Web',
-    grade: 'SMK',
-    difficulty: 'Sedang',
-    teacherName: 'Bpk. Budi Santoso, S.Kom',
-    updatedAt: '28 Sep 2026',
-    hasInteractive: true,
-    questions: [
-      {
-        id: 'Q7',
-        number: 1,
-        type: 'PG',
-        difficulty: 'Mudah',
-        text: 'Tag HTML semantik yang digunakan untuk membungkus konten navigasi utama website adalah...',
-        isMultiSelect: false,
-        options: [
-          { key: 'A', text: '<header>' },
-          { key: 'B', text: '<nav>' },
-          { key: 'C', text: '<section>' },
-          { key: 'D', text: '<main>' },
-          { key: 'E', text: '<aside>' }
-        ],
-        key: 'B'
-      },
-      {
-        id: 'Q8',
-        number: 2,
-        type: 'Isian',
-        difficulty: 'Mudah',
-        text: 'Apa kepanjangan dari singkatan CSS dalam pengembangan antarmuka web?',
-        key: 'Cascading Style Sheets'
-      },
-      {
-        id: 'Q9',
-        number: 3,
-        type: 'Esai',
-        difficulty: 'Sedang',
-        text: 'Jelaskan konsep Reactivity System pada framework Vue.js / Nuxt dan bagaimana DOM diperbarui secara otomatis saat nilai state berubah!',
-        key: 'Reactivity pada Vue 3 menggunakan JavaScript Proxy untuk melacak get/set dependency secara otomatis dan menjadwalkan patch Virtual DOM.',
-        rubric: 'Menjelaskan mekanisme Proxy, ref/reactive tracking, dan re-rendering Virtual DOM yang efisien.'
-      }
-    ]
-  },
-  {
-    id: 'PKG-3',
-    code: 'JAR-XIITKJ1',
-    classroom: 'XII TKJ 1',
-    subject: 'Jaringan Komputer',
-    grade: 'SMK',
-    difficulty: 'Sukar',
-    teacherName: 'Ibu Siti Aminah, S.Pd',
-    updatedAt: '29 Sep 2026',
-    hasInteractive: true,
-    questions: [
-      {
-        id: 'Q10',
-        number: 1,
-        type: 'PG',
-        difficulty: 'Sedang',
-        text: 'Perangkat jaringan yang berfungsi menghubungkan dua atau lebih segmen jaringan dengan subnet IP yang berbeda adalah...',
-        isMultiSelect: false,
-        options: [
-          { key: 'A', text: 'Hub' },
-          { key: 'B', text: 'Switch Layer 2' },
-          { key: 'C', text: 'Router' },
-          { key: 'D', text: 'Access Point' },
-          { key: 'E', text: 'Repeater' }
-        ],
-        key: 'C'
-      },
-      {
-        id: 'Q11',
-        number: 2,
-        type: 'Isian',
-        difficulty: 'Sedang',
-        text: 'Berapakah subnet mask default dalam notasi desimal untuk prefix jaringan /24?',
-        key: '255.255.255.0'
-      },
-      {
-        id: 'Q12',
-        number: 3,
-        type: 'Esai',
-        difficulty: 'Sukar',
-        text: 'Uraikan langkah-langkah konfigurasi VLAN (Virtual Local Area Network) pada manageable switch dan keuntungan penggunaannya dalam jaringan enterprise!',
-        key: 'Langkah meliputi pembuatan database VLAN ID, penugasan port access, konfigurasi port trunking dengan enkapsulasi dot1q.',
-        rubric: 'Menyebutkan VLAN ID, Access port, Trunking 802.1Q, serta isolasi broadcast domain.'
-      }
-    ]
-  },
-  {
-    id: 'PKG-4',
-    code: 'PAI-VIIA',
-    classroom: 'VII-A',
-    subject: 'PAI',
-    grade: 'SMP',
-    difficulty: 'Mudah',
-    teacherName: 'Ust. Hendra Gunawan, S.Pd.I',
-    updatedAt: '26 Sep 2026',
-    hasInteractive: false,
-    questions: [
-      {
-        id: 'Q13',
-        number: 1,
-        type: 'PG',
-        difficulty: 'Mudah',
-        text: 'Rukun Islam yang ketiga yang wajib ditunaikan bagi umat muslim yang telah memenuhi nisab harta adalah...',
-        isMultiSelect: false,
-        options: [
-          { key: 'A', text: 'Membaca Dua Kalimat Syahadat' },
-          { key: 'B', text: 'Menunaikan Shalat Lima Waktu' },
-          { key: 'C', text: 'Membayar Zakat' },
-          { key: 'D', text: 'Berpuasa di Bulan Ramadhan' },
-          { key: 'E', text: 'Menunaikan Ibadah Haji' }
-        ],
-        key: 'C'
-      },
-      {
-        id: 'Q14',
-        number: 2,
-        type: 'Isian',
-        difficulty: 'Mudah',
-        text: 'Sebutkan nama malaikat yang bertugas menyampaikan wahyu kepada para nabi dan rasul!',
-        key: 'Malaikat Jibril'
-      },
-      {
-        id: 'Q15',
-        number: 3,
-        type: 'Esai',
-        difficulty: 'Sedang',
-        text: 'Jelaskan hikmah menuntut ilmu dalam pandangan Islam dan bagaimana penerapannya dalam kehidupan sehari-hari sebagai pelajar!',
-        key: 'Menuntut ilmu mengangkat derajat seorang mukmin di sisi Allah SWT dan menjadi bekal amal jariyah yang tidak terputus.',
-        rubric: 'Menyebutkan dalil kewajiban menuntut ilmu, pengangkatan derajat, dan contoh ketekunan belajar di sekolah.'
-      }
-    ]
-  },
-  {
-    id: 'PKG-5',
-    code: 'MTK-IXA',
-    classroom: 'IX-A',
-    subject: 'Matematika',
-    grade: 'SMP',
-    difficulty: 'Sedang',
-    teacherName: 'Ibu Rina Marlina, M.Pd',
-    updatedAt: '27 Sep 2026',
-    hasInteractive: true,
-    questions: [
-      {
-        id: 'Q16',
-        number: 1,
-        type: 'PG',
-        difficulty: 'Mudah',
-        text: 'Himpunan penyelesaian dari persamaan kuadrat x² - 5x + 6 = 0 adalah...',
-        isMultiSelect: false,
-        options: [
-          { key: 'A', text: 'x = 2 atau x = 3' },
-          { key: 'B', text: 'x = -2 atau x = -3' },
-          { key: 'C', text: 'x = 1 atau x = 6' },
-          { key: 'D', text: 'x = -1 atau x = -6' }
-        ],
-        key: 'A'
-      },
-      {
-        id: 'Q17',
-        number: 2,
-        type: 'Isian',
-        difficulty: 'Mudah',
-        text: 'Berapakah nilai dari 2 pangkat 5 (2⁵)?',
-        key: '32'
-      },
-      {
-        id: 'Q18',
-        number: 3,
-        type: 'Esai',
-        difficulty: 'Sedang',
-        text: 'Sebuah taman berbentuk persegi panjang memiliki keliling 48 meter dan panjangnya 4 meter lebih panjang dari lebarnya. Tentukan luas taman tersebut!',
-        key: 'Lebar = 10 meter, Panjang = 14 meter. Luas = 10 × 14 = 140 m².',
-        rubric: 'Menuliskan rumus keliling 2(p+l)=48, substitusi p=l+4, mencari nilai l=10, p=14, dan luas 140 m².'
-      }
-    ]
-  }
-]
+export const INITIAL_PACKAGES: BankPackage[] = []
 
 export const INITIAL_RESULTS: StudentResult[] = [
   {
@@ -673,4 +396,3 @@ export const BANK_SUBJECTS: Record<GradeType, string[]> = {
   SMK: ['Informatika', 'Pemrograman Web', 'Jaringan Komputer', 'Basis Data', 'Matematika', 'PAI', 'Bahasa Inggris'],
   SMP: ['PAI', 'Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 'IPA Terpadu', 'IPS Terpadu', 'Informatika']
 }
-

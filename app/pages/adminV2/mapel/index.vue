@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -11,6 +11,7 @@ import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import MapelV2Modal, { type SubjectItem } from '~/components/adminV2/mapel/MapelV2Modal.vue'
 import { GROUPS, type GroupItem } from '~/components/adminV2/adminV2Data'
+import { useAdminSubjects } from '~/composables/useAdminSubjects'
 
 definePageMeta({
   layout: false
@@ -24,6 +25,7 @@ useHead({
 })
 
 const router = useRouter()
+const subjectsStore = useAdminSubjects()
 
 // Reactive Jenjang & Role
 const jenjang = ref<'smp' | 'smk'>('smk')
@@ -54,34 +56,12 @@ const triggerToast = (msg: string) => {
   }, 2600)
 }
 
-// Master Subjects Data (Identik 1:1 Versi Asli admin/mapel/index.vue)
-const subjects = ref<SubjectItem[]>([
-  // SMP Subjects
-  { id: 'S-01', code: 'SMP-PAI', name: 'Pendidikan Agama Islam & Budi Pekerti', category: 'Keagamaan', kkm: 75, hoursPerWeek: 4, coordinator: 'Ust. H. Ahmad Fauzi, S.Pd.I', grade: 'SMP', status: 'Aktif' },
-  { id: 'S-02', code: 'SMP-TFZ', name: 'Tahfidz & Tahsin Al-Qur\'an', category: 'Keagamaan', kkm: 80, hoursPerWeek: 3, coordinator: 'Ust. M. Rizky, Lc', grade: 'SMP', status: 'Aktif' },
-  { id: 'S-03', code: 'SMP-BIN', name: 'Bahasa Indonesia', category: 'Umum', kkm: 75, hoursPerWeek: 4, coordinator: 'Rina Kurniawati, S.Pd', grade: 'SMP', status: 'Aktif' },
-  { id: 'S-04', code: 'SMP-MAT', name: 'Matematika', category: 'Umum', kkm: 75, hoursPerWeek: 5, coordinator: 'Aisyah Putri, M.Pd', grade: 'SMP', status: 'Aktif' },
-  { id: 'S-05', code: 'SMP-IPA', name: 'Ilmu Pengetahuan Alam (IPA Terpadu)', category: 'Umum', kkm: 75, hoursPerWeek: 5, coordinator: 'Budi Santoso, S.Si', grade: 'SMP', status: 'Aktif' },
-  { id: 'S-06', code: 'SMP-IPS', name: 'Ilmu Pengetahuan Sosial (IPS Terpadu)', category: 'Umum', kkm: 75, hoursPerWeek: 4, coordinator: 'Dra. Hj. Maryam, M.Pd', grade: 'SMP', status: 'Aktif' },
-  { id: 'S-07', code: 'SMP-BIG', name: 'Bahasa Inggris', category: 'Umum', kkm: 75, hoursPerWeek: 4, coordinator: 'Farhan Maulana, S.Pd', grade: 'SMP', status: 'Aktif' },
-  { id: 'S-08', code: 'SMP-INF', name: 'Informatika & Literasi Digital', category: 'Muatan Lokal', kkm: 75, hoursPerWeek: 2, coordinator: 'Dedi Prasetyo, S.Kom', grade: 'SMP', status: 'Aktif' },
-
-  // SMK Subjects
-  { id: 'S-09', code: 'SMK-PAI', name: 'Pendidikan Agama Islam & Budi Pekerti', category: 'Keagamaan', kkm: 75, hoursPerWeek: 3, coordinator: 'Ust. H. Ahmad Fauzi, S.Pd.I', grade: 'SMK', status: 'Aktif' },
-  { id: 'S-10', code: 'SMK-BIN', name: 'Bahasa Indonesia', category: 'Umum', kkm: 75, hoursPerWeek: 4, coordinator: 'Rina Kurniawati, S.Pd', grade: 'SMK', status: 'Aktif' },
-  { id: 'S-11', code: 'SMK-MAT', name: 'Matematika Terapan', category: 'Umum', kkm: 75, hoursPerWeek: 4, coordinator: 'Aisyah Putri, M.Pd', grade: 'SMK', status: 'Aktif' },
-  { id: 'S-12', code: 'SMK-PBO', name: 'Pemrograman Berorientasi Objek (PBO)', category: 'Kejuruan', kkm: 78, hoursPerWeek: 6, coordinator: 'Hendra Gunawan, M.Kom', grade: 'SMK', status: 'Aktif' },
-  { id: 'S-13', code: 'SMK-BD', name: 'Basis Data & SQL Lanjutan', category: 'Kejuruan', kkm: 78, hoursPerWeek: 4, coordinator: 'Siti Rahmawati, S.Kom', grade: 'SMK', status: 'Aktif' },
-  { id: 'S-14', code: 'SMK-AIJ', name: 'Administrasi Infrastruktur Jaringan (AIJ)', category: 'Kejuruan', kkm: 78, hoursPerWeek: 6, coordinator: 'Fajar Nugraha, S.T', grade: 'SMK', status: 'Aktif' },
-  { id: 'S-15', code: 'SMK-PKK', name: 'Produk Kreatif & Kewirausahaan (PKK)', category: 'Kejuruan', kkm: 75, hoursPerWeek: 5, coordinator: 'Irwan Setiawan, S.E', grade: 'SMK', status: 'Aktif' }
-])
-
 const searchQuery = ref('')
 const selectedCategory = ref('all')
 const isModalOpen = ref(false)
 
 const filteredSubjects = computed(() => {
-  return subjects.value.filter(s => {
+  return subjectsStore.subjects.value.filter(s => {
     if (s.grade !== grade.value) return false
     if (selectedCategory.value !== 'all' && s.category !== selectedCategory.value) return false
     if (searchQuery.value) {
@@ -122,21 +102,24 @@ const exportCsv = () => {
 }
 
 // Tambah Mapel Handler
-const handleSaveSubject = (data: Omit<SubjectItem, 'id' | 'grade' | 'status'>) => {
-  subjects.value.push({
-    id: `S-${Date.now()}`,
+const handleSaveSubject = async (data: Omit<SubjectItem, 'id' | 'grade' | 'status'>) => {
+  try {
+    await subjectsStore.create({
     code: data.code,
     name: data.name,
     category: data.category,
     kkm: data.kkm,
     hoursPerWeek: data.hoursPerWeek,
-    coordinator: data.coordinator,
-    grade: grade.value,
-    status: 'Aktif'
-  })
-  isModalOpen.value = false
-  triggerToast(`Mata pelajaran ${data.name} (${data.code}) berhasil ditambahkan.`)
+      grade: grade.value
+    })
+    isModalOpen.value = false
+    triggerToast(`Mata pelajaran ${data.name} (${data.code}) berhasil ditambahkan.`)
+  } catch (error) {
+    triggerToast(error instanceof Error ? error.message : 'Mata pelajaran gagal disimpan.')
+  }
 }
+
+onMounted(() => subjectsStore.load())
 
 // Global Nav & Mega Menu
 const closeAllModals = () => {
