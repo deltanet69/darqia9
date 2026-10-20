@@ -4,6 +4,7 @@ import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2BankForm from './CbtV2BankForm.vue'
 import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
+import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 
 interface Props {
   grade: GradeType
@@ -188,7 +189,7 @@ const exportCsv = (pkg: BankPackage) => {
   const encodedUri = encodeURI(csvContent)
   const link = document.createElement('a')
   link.setAttribute('href', encodedUri)
-  link.setAttribute('download', `Bank_Soal_${pkg.subject}_${pkg.classroom}_contoh.csv`)
+  link.setAttribute('download', `Bank_Soal_${pkg.subject}_${pkg.classroom}.csv`)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -279,7 +280,7 @@ onMounted(() => cbtData.load())
             <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
               {{ currentGradePackages.length }} Paket
             </div>
-            <div class="text-xs text-[#667085] font-semibold mt-1">Paket contoh</div>
+            <div class="text-xs text-[#667085] font-semibold mt-1">Paket tersimpan</div>
           </div>
         </article>
 
@@ -385,7 +386,7 @@ onMounted(() => cbtData.load())
             </div>
             <h3 class="text-base font-extrabold text-[#101828]">{{ c }}</h3>
             <p class="text-xs text-[#667085] mt-0.5 mb-3">
-              {{ classStats(c).subjects ? `${classStats(c).subjects} paket mapel tersedia` : 'Belum ada paket contoh' }}
+              {{ classStats(c).subjects ? `${classStats(c).subjects} paket mapel tersedia` : 'Belum ada paket soal' }}
             </p>
 
             <div class="flex items-center gap-4 text-xs mt-2">
@@ -519,7 +520,7 @@ onMounted(() => cbtData.load())
           </table>
         </div>
         <div class="p-3 border-t border-[#E7EBF2] bg-[#FAFBFC] text-xs text-[#667085]">
-          Menampilkan {{ subjectPackages.length }} paket contoh untuk {{ selectedClass }}.
+          Menampilkan {{ subjectPackages.length }} paket soal untuk {{ selectedClass }}.
         </div>
       </section>
     </div>
@@ -542,7 +543,7 @@ onMounted(() => cbtData.load())
             {{ selectedPackage.subject }} · {{ selectedPackage.classroom }}
           </h2>
           <p class="text-xs text-[#667085] mt-0.5">
-            Penyusun: {{ selectedPackage.teacherName }} · {{ selectedPackage.questions.length }} butir soal contoh · {{ selectedPackage.code }}
+            Penyusun: {{ selectedPackage.teacherName }} · {{ selectedPackage.questions.length }} butir soal · {{ selectedPackage.code }}
           </p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
@@ -625,9 +626,17 @@ onMounted(() => cbtData.load())
           </div>
 
           <!-- Question Text -->
-          <strong class="block text-xs sm:text-sm font-semibold text-[#101828] leading-relaxed">
-            {{ q.text }}
-          </strong>
+          <div
+            class="block overflow-x-auto text-xs sm:text-sm font-semibold text-[#101828] leading-relaxed"
+            :dir="q.isRtl || isArabicText(q.text) ? 'rtl' : 'ltr'"
+            v-html="renderKaTeXHtml(q.text)"
+          />
+          <img
+            v-if="q.imageUrl"
+            :src="q.imageUrl"
+            alt="Gambar pendukung soal"
+            class="max-h-64 rounded-xl border border-[#E7EBF2] object-contain"
+          >
 
           <!-- PG Options preview with correct highlight -->
           <div v-if="q.type === 'PG' && q.options" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -637,7 +646,8 @@ onMounted(() => cbtData.load())
               class="p-2.5 rounded-xl border"
               :class="Array.isArray(q.key) ? q.key.includes(opt.key) ? 'bg-[#E7F8F0] border-[#BDE7D0] text-[#087C52] font-bold' : 'bg-[#FAFBFC] border-[#E7EBF2] text-[#344054]' : q.key === opt.key ? 'bg-[#E7F8F0] border-[#BDE7D0] text-[#087C52] font-bold' : 'bg-[#FAFBFC] border-[#E7EBF2] text-[#344054]'"
             >
-              {{ opt.key }}. {{ opt.text }}
+              <b>{{ opt.key }}.</b>
+              <span class="overflow-x-auto" :dir="isArabicText(opt.text) ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(opt.text)" />
             </span>
           </div>
 

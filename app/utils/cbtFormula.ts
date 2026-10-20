@@ -39,6 +39,26 @@ export const isArabicText = (text: string): boolean => {
   return arabicRegex.test(text)
 }
 
+export const validateLatexExpressions = (text: string): string | null => {
+  let cursor = 0
+  while (cursor < text.length) {
+    const start = text.indexOf('$', cursor)
+    if (start < 0) break
+    const marker = text[start + 1] === '$' ? '$$' : '$'
+    const end = text.indexOf(marker, start + marker.length)
+    if (end < 0) return 'Tanda pembuka rumus belum ditutup.'
+    const expression = text.slice(start + marker.length, end).trim()
+    if (!expression) return 'Rumus tidak boleh kosong.'
+    try {
+      katex.renderToString(expression, { throwOnError: true })
+    } catch (error) {
+      return error instanceof Error ? error.message.replace('KaTeX parse error: ', '') : 'Rumus tidak valid.'
+    }
+    cursor = end + marker.length
+  }
+  return null
+}
+
 /**
  * Hitung jumlah kata dalam kalimat (kata = karakter dipisah spasi)
  */
@@ -46,6 +66,21 @@ export const countWords = (text: string): number => {
   if (!text) return 0
   return text.trim().split(/\s+/).filter(Boolean).length
 }
+
+const escapeHtml = (value: string) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;')
+
+const renderSimpleFormatting = (value: string) => value
+  .replace(/```([\s\S]*?)```/g, '<pre class="cbt-code"><code>$1</code></pre>')
+  .replace(/`([^`\n]+)`/g, '<code class="cbt-inline-code">$1</code>')
+  .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+  .replace(/_([^_\n]+)_/g, '<em>$1</em>')
+  .replace(/^### (.+)$/gm, '<strong class="cbt-subheading">$1</strong>')
+  .replace(/^[-*] (.+)$/gm, '<span class="cbt-list-item">$1</span>')
 
 /**
  * Render teks yang mengandung formula KaTeX ($...$ atau $$...$$) ke HTML.
@@ -103,7 +138,7 @@ export const renderKaTeXHtml = (rawText: string): string => {
 
     // 4. Normalisasi enter (newline) dan tag br manual:
     // Jika guru terbiasa mengetik enter, atau tidak sengaja mengetik tag <br/>, semuanya menjadi <br>
-    let withLineBreaks = textWithTokens
+    let withLineBreaks = renderSimpleFormatting(escapeHtml(textWithTokens))
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/&lt;br\s*\/?&gt;/gi, '\n')
       .replace(/\r\n|\n/g, '<br>')
@@ -115,7 +150,7 @@ export const renderKaTeXHtml = (rawText: string): string => {
 
     return withLineBreaks
   } catch {
-    return rawText.replace(/<br\s*\/?>/gi, '\n').replace(/\r\n|\n/g, '<br>')
+    return escapeHtml(rawText).replace(/\r\n|\n/g, '<br>')
   }
 }
 

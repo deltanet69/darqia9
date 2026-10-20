@@ -48,6 +48,8 @@ export interface BankQuestionItem {
   type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'
   difficulty: 'Mudah' | 'Sedang' | 'Sukar'
   text: string
+  imageUrl?: string
+  isRtl?: boolean
   isMultiSelect?: boolean
   options?: { key: string; text: string }[]
   key: string | string[]

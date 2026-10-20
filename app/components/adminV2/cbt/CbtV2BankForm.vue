@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
+import CbtRichQuestionEditor from './CbtRichQuestionEditor.vue'
+import { validateLatexExpressions } from '~/utils/cbtFormula'
 import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
 
 interface Props {
@@ -83,11 +85,6 @@ const toggleInteractiveMode = () => {
   }
 }
 
-// Math Symbol Insertion
-const insertSymbol = (q: BankQuestionItem, symbol: string) => {
-  q.text += symbol
-}
-
 // Toggle Option Correct Key for PG
 const toggleOptionKey = (q: BankQuestionItem, keyLetter: string) => {
   if (q.isMultiSelect) {
@@ -135,6 +132,12 @@ const submitForm = () => {
     return
   }
   const validQuestions = draft.value.questions.filter(q => q.text.trim())
+  const invalidFormula = validQuestions.find(q => validateLatexExpressions(q.text))
+  if (invalidFormula) {
+    currentStep.value = invalidFormula.type
+    emit('toast', 'Perbaiki rumus yang belum valid sebelum menyimpan.')
+    return
+  }
   if (!validQuestions.some(q => q.type === 'PG')) {
     currentStep.value = 'PG'
     emit('toast', 'Isi minimal 1 pertanyaan Pilihan Ganda.')
@@ -346,8 +349,8 @@ const submitForm = () => {
                 <button
                   type="button"
                   class="px-2.5 py-1 rounded-lg border text-xs font-bold transition"
-                  :class="(q as any).rtl ? 'bg-[#E8F0FE] border-[#1B5FD9] text-[#0A2A5C]' : 'border-[#E7EBF2] text-[#667085]'"
-                  @click="(q as any).rtl = !(q as any).rtl"
+                  :class="q.isRtl ? 'bg-[#E8F0FE] border-[#1B5FD9] text-[#0A2A5C]' : 'border-[#E7EBF2] text-[#667085]'"
+                  @click="q.isRtl = !q.isRtl"
                 >
                   عربي · RTL
                 </button>
@@ -363,28 +366,13 @@ const submitForm = () => {
 
             <!-- Question Body -->
             <div class="p-4 space-y-3">
-              <!-- Math Symbol Bar -->
-              <div class="flex items-center gap-1.5 p-1.5 bg-[#F9FAFC] border border-[#E7EBF2] rounded-xl text-xs overflow-x-auto">
-                <span class="text-[10px] font-extrabold uppercase text-[#667085] px-1">Simbol:</span>
-                <button
-                  v-for="sym in ['×', '÷', '√', '²', 'π']"
-                  :key="sym"
-                  type="button"
-                  class="px-2 py-0.5 bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-md font-mono font-bold text-xs"
-                  @click="insertSymbol(q, sym)"
-                >
-                  {{ sym }}
-                </button>
-              </div>
-
               <div>
                 <label class="block text-xs font-bold text-[#344054] mb-1">Pertanyaan</label>
-                <textarea
+                <CbtRichQuestionEditor
                   v-model="q.text"
-                  rows="3"
-                  :dir="(q as any).rtl ? 'rtl' : 'ltr'"
-                  placeholder="Tulis pertanyaan butir soal di sini..."
-                  class="w-full border border-[#E7EBF2] rounded-xl p-3 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                  v-model:image-url="q.imageUrl"
+                  v-model:rtl="q.isRtl"
+                  @message="emit('toast', $event)"
                 />
               </div>
 
