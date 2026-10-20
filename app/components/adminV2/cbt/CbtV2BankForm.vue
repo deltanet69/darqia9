@@ -185,7 +185,7 @@ const submitForm = () => {
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto space-y-4 pb-32 sm:pb-6">
+  <div class="w-full space-y-4 pb-32 sm:pb-6">
     <!-- Top Header -->
     <div class="rounded-[22px] bg-[#0A2A5C] px-5 py-5 sm:px-6 sm:py-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 shadow-sm">
       <div class="min-w-0">
