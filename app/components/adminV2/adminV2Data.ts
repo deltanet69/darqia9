@@ -179,26 +179,26 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'Data siswa': '/adminV2/siswa',
   'Absensi siswa': '/adminV2/absensi',
   'Manajemen kelas': '/adminV2/kelas',
-  'Jadwal pelajaran': '/admin/jadwal-pelajaran',
+  'Jadwal pelajaran': '#',
   'Master mapel': '/adminV2/mapel',
   'Raport siswa': '/adminV2/raport',
   'Data guru & staff': '/adminV2/guru',
   'Absensi guru & staff': '/adminV2/absensi-guru',
-  'Jadwal mengajar': '/admin/jadwal-mengajar',
-  'Agenda mengajar': '/admin/agenda-mengajar',
-  'Modul pembelajaran': '/admin/modul-ajar',
-  'Keuangan sekolah': '/admin/keuangan',
-  'Tabungan siswa': '/admin/tabungan',
+  'Jadwal mengajar': '#',
+  'Agenda mengajar': '#',
+  'Modul pembelajaran': '#',
+  'Keuangan sekolah': '#',
+  'Tabungan siswa': '#',
   'Manajemen CBT': '/adminV2/cbt',
   'LMS': '/adminV2/lms',
-  'Konten Website': '/admin/konten',
-  'SPMB': '/spmb',
-  'Perpustakaan digital': '/admin/modul-ajar',
-  'Manajemen user': '/admin/users',
-  'Hak Akses (RBAC)': '/admin/rbac',
-  'Log Aktivitas': '/admin/log',
-  'Profil saya': '/admin/profile',
-  'Pengaturan': '/admin/profile'
+  'Konten Website': '#',
+  'SPMB': '#',
+  'Perpustakaan digital': '#',
+  'Manajemen user': '#',
+  'Hak Akses (RBAC)': '#',
+  'Log Aktivitas': '#',
+  'Profil saya': '#',
+  'Pengaturan': '#'
 }
 
 export const getAdminDestination = (title: string): string => {
@@ -216,14 +216,5 @@ export const getAdminDestination = (title: string): string => {
   if (t.includes('mapel') || t.includes('mata pelajaran')) return '/adminV2/mapel'
   if (t.includes('raport') || t.includes('rapor')) return '/adminV2/raport'
   if (t.includes('guru') || t.includes('pegawai') || t.includes('staff')) return '/adminV2/guru'
-  if (t.includes('keuangan')) return '/admin/keuangan'
-  if (t.includes('tabungan')) return '/admin/tabungan'
-  if (t.includes('konten')) return '/admin/konten'
-  if (t.includes('spmb') || t.includes('ppdb')) return '/spmb'
-  if (t.includes('perpustakaan')) return '/admin/modul-ajar'
-  if (t.includes('user') || t.includes('pengguna')) return '/admin/users'
-  if (t.includes('rbac') || t.includes('hak akses')) return '/admin/rbac'
-  if (t.includes('log') || t.includes('aktivitas')) return '/admin/log'
-  if (t.includes('profil') || t.includes('pengaturan')) return '/admin/profile'
-  return '/adminV2'
+  return '#'
 }

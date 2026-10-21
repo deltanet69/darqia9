@@ -7,7 +7,7 @@
         <span>Ujian sedang dibekukan sementara oleh pengawas. Timer ujian dijeda.</span>
       </div>
 
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
         <!-- Subject Info -->
         <div class="flex items-center gap-3">
           <img src="/asset/logo.png" alt="Logo" class="w-9 h-9 sm:w-10 sm:h-10 object-contain">
@@ -63,7 +63,7 @@
           <!-- Mobile Simulation Single Trigger -->
           <button
             type="button"
-            class="md:hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
+            class="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
             title="Uji coba simulasi deteksi kecurangan"
             @click="$emit('simulate-violation')"
           >
@@ -144,8 +144,8 @@
             <!-- Question Text with KaTeX & Arabic RTL -->
             <div
               class="text-base sm:text-lg font-medium text-slate-900 leading-relaxed overflow-x-auto"
-              :dir="isArabicText(curQuestion.text) ? 'rtl' : 'ltr'"
-              :class="isArabicText(curQuestion.text) ? 'text-right font-serif text-xl sm:text-2xl leading-loose py-2 text-slate-950' : ''"
+              :dir="curQuestion.isRtl || isArabicText(curQuestion.text) ? 'rtl' : 'ltr'"
+              :class="curQuestion.isRtl || isArabicText(curQuestion.text) ? 'text-right font-serif text-xl sm:text-2xl leading-loose py-2 text-slate-950' : ''"
               v-html="renderKaTeXHtml(curQuestion.text)"
             />
 
@@ -164,6 +164,7 @@
               <div v-if="curQuestion.type === 'audio'" class="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-3">
                 <div class="flex items-center gap-3">
                   <button
+                    v-if="!curQuestion.mediaUrl"
                     type="button"
                     class="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-transform hover:scale-105"
                     @click="$emit('toggle-audio', curQuestion)"
@@ -171,6 +172,7 @@
                   >
                     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 20 12 7 20"/></svg>
                   </button>
+                  <audio v-if="curQuestion.mediaUrl" :src="curQuestion.mediaUrl" controls class="w-11 h-11 accent-blue-600" />
                   <div>
                     <div class="text-xs font-bold text-blue-950">{{ curQuestion.audioTitle || 'Audio Ujian' }}</div>
                     <div class="text-[11px] text-blue-700">{{ curQuestion.audioSub || 'Ketuk untuk mendengarkan' }}</div>
@@ -181,6 +183,9 @@
 
               <!-- Video card -->
               <div v-if="curQuestion.type === 'video'" class="p-4 rounded-2xl bg-slate-900 text-white space-y-2 text-center">
+                <iframe v-if="videoEmbedUrl(curQuestion.mediaUrl)" class="w-full aspect-video rounded-xl border border-white/10" :src="videoEmbedUrl(curQuestion.mediaUrl)" :title="curQuestion.videoTitle || 'Video Ujian'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
+                <div v-if="videoEmbedUrl(curQuestion.mediaUrl)" class="text-xs font-bold text-slate-300 text-left pt-2">{{ curQuestion.videoTitle || 'Video Ujian' }}</div>
+                <template v-else>
                 <div class="text-xs font-bold text-slate-300">{{ curQuestion.videoTitle || 'Video Ujian' }} &bull; Mode Demo</div>
                 <button
                   type="button"
@@ -189,6 +194,7 @@
                 >
                   <svg class="w-6 h-6 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 20 12 7 20"/></svg>
                 </button>
+                </template>
               </div>
 
               <!-- Options Grid -->
@@ -256,6 +262,7 @@
                   @input="$emit('text-input')"
                   :rows="curQuestion.type === 'essay' ? 6 : 3"
                   :placeholder="curQuestion.placeholder || 'Tulis jawabanmu di sini...'"
+                  :dir="curQuestion.isRtl || isArabicText(curQuestion.text) ? 'rtl' : 'ltr'"
                   class="w-full p-4 text-sm bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
                 ></textarea>
                 <div class="flex items-center justify-between text-xs text-slate-400 font-medium px-1">
@@ -267,7 +274,7 @@
           </article>
 
           <!-- Navigation Row (Bottom) -->
-          <div class="space-y-3">
+          <div class="sticky bottom-0 z-30 -mx-4 px-4 py-3 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] lg:static lg:mx-0 lg:px-0 lg:py-0 lg:bg-transparent lg:border-0 lg:shadow-none space-y-3">
             <div class="flex items-center justify-between gap-3">
               <button
                 type="button"
@@ -398,7 +405,12 @@
 
 <script setup lang="ts">
 import type { QuestionItem, SectionItem } from '~/composables/useCbtExam'
-import { renderKaTeXHtml, isArabicText } from '~/utils/cbtFormula'
+import { extractYouTubeId, renderKaTeXHtml, isArabicText } from '~/utils/cbtFormula'
+const videoEmbedUrl = (url?: string) => {
+  const id = extractYouTubeId(url || '')
+  return id ? 'https://www.youtube-nocookie.com/embed/' + id + '?rel=0&modestbranding=1' : ''
+}
+
 
 defineProps<{
   screen: string

@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { useAdminTeachers } from '~/composables/useAdminTeachers'
 import type { BankPackage, BankQuestionItem, ExamItem, GradeType } from '~/components/adminV2/cbt/cbtV2Data'
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
@@ -16,7 +17,15 @@ export interface CbtClass {
   academicYear: string
   studentCount: number
   teacher: string
+  homeroomTeacherId: string | null
   teacherNip: string
+}
+
+export interface CbtTeacher {
+  id: string
+  nip: string
+  name: string
+  grade: 'SMP' | 'SMK' | 'Yayasan'
 }
 
 export interface CbtSubject {
@@ -68,36 +77,59 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const stateKey = source === 'ujian_harian' ? 'ujian-harian' : 'cbt'
   const classes = useState<CbtClass[]>(`${stateKey}-master-classes`, () => [])
   const subjects = useState<CbtSubject[]>(`${stateKey}-master-subjects`, () => [])
+  const teachers = useState<CbtTeacher[]>('admin-master-teachers', () => [])
   const bankPackages = useState<BankPackage[]>(`${stateKey}-bank-packages`, () => [])
   const exams = useState<ExamItem[]>(`${stateKey}-exams`, () => [])
   const loading = useState(`${stateKey}-data-loading`, () => false)
   const error = useState<string | null>(`${stateKey}-data-error`, () => null)
   const loaded = useState(`${stateKey}-data-loaded`, () => false)
+  const questionsLoaded = useState(`${stateKey}-questions-loaded`, () => false)
 
+  const questionsLoading = useState(`${stateKey}-questions-loading`, () => false)
   const load = async (force = false) => {
     if (loading.value || (loaded.value && !force)) return
     loading.value = true
     error.value = null
 
     try {
-      const [classResult, subjectResult, bankResult, questionResult, examResult, assignmentResult, studentResult, teacherResult] = await Promise.all([
+      const [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult] = await Promise.all([
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
-        client.from(tables.questions).select('*').order('number'),
         client.from(tables.exams).select('*').order('starts_at', { ascending: false }),
         client.from(tables.assignments).select('exam_id, status'),
         client.from('students').select('class_id').eq('active', true),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true)
       ])
 
-      const firstError = [classResult, subjectResult, bankResult, questionResult, examResult, assignmentResult, studentResult, teacherResult]
+      const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult]
         .find(result => result.error)?.error
       if (firstError) throw firstError
 
       const classRows = classResult.data ?? []
       const subjectRows = subjectResult.data ?? []
-      const teacherById = new Map((teacherResult.data ?? []).map((row: any) => [row.id, row]))
+      let teacherRows = teacherResult.data ?? []
+      if (!teacherRows.length) {
+        const { staffList } = useAdminTeachers()
+        const fallbackTeachers = staffList.value
+          .filter(item => item.subject && !/(tendik|staf)/i.test(item.role))
+          .map(item => ({
+            nip: item.nip,
+            name: item.name,
+            grade: item.unit,
+            position: item.role,
+            employment_status: item.status,
+            phone: item.phone,
+            active: true
+          }))
+        const { data, error: seedError } = await client
+          .from('teachers')
+          .upsert(fallbackTeachers, { onConflict: 'nip' })
+          .select('id, nip, name, grade, active')
+        if (seedError) throw seedError
+        teacherRows = data ?? []
+      }
+      const teacherById = new Map(teacherRows.map((row: any) => [row.id, row]))
       const studentCounts = new Map<string, number>()
       for (const student of studentResult.data ?? []) {
         if (student.class_id) studentCounts.set(student.class_id, (studentCounts.get(student.class_id) ?? 0) + 1)
@@ -112,7 +144,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         academicYear: row.academic_year,
         studentCount: studentCounts.get(row.id) ?? 0,
         teacher: teacherById.get(row.homeroom_teacher_id)?.name ?? '',
+        homeroomTeacherId: row.homeroom_teacher_id ?? null,
         teacherNip: teacherById.get(row.homeroom_teacher_id)?.nip ?? ''
+      }))
+      teachers.value = teacherRows.map((row: any) => ({
+        id: row.id,
+        nip: row.nip,
+        name: row.name,
+        grade: row.grade
       }))
       subjects.value = subjectRows.map((row: any) => ({
         id: row.id,
@@ -124,28 +163,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
 
       const classById = new Map(classes.value.map(item => [item.id, item]))
       const subjectById = new Map(subjects.value.map(item => [item.id, item]))
-      const questionsByBank = new Map<string, BankQuestionItem[]>()
-      for (const row of questionResult.data ?? []) {
-        const list = questionsByBank.get(row.bank_id) ?? []
-        list.push({
-          id: row.id,
-          number: row.number,
-          type: row.type,
-          difficulty: row.difficulty,
-          text: row.text,
-          imageUrl: row.image_url ?? undefined,
-          isRtl: row.is_rtl ?? false,
-          isMultiSelect: row.is_multi_select,
-          options: row.options ?? undefined,
-          key: row.answer_key,
-          rubric: row.rubric ?? undefined,
-          mediaType: row.media_type ?? undefined,
-          mediaUrl: row.media_url ?? undefined,
-          mediaFileName: row.media_file_name ?? undefined,
-          interactiveAnswerType: row.interactive_answer_type ?? undefined
-        })
-        questionsByBank.set(row.bank_id, list)
-      }
+      const existingQuestionsByBank = new Map(bankPackages.value.map(item => [item.id, item.questions]))
 
       bankPackages.value = (bankResult.data ?? []).map((row: any) => ({
         id: row.id,
@@ -159,7 +177,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         teacherName: row.teacher_name,
         updatedAt: formatDate(row.updated_at),
         hasInteractive: row.has_interactive,
-        questions: questionsByBank.get(row.id) ?? []
+        questions: existingQuestionsByBank.get(row.id) ?? []
       }))
 
       const assignments = new Map<string, { total: number; doing: number; collected: number }>()
@@ -209,10 +227,52 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       error.value = loadError?.message ?? 'Data CBT gagal dimuat.'
       classes.value = []
       subjects.value = []
+      teachers.value = []
       bankPackages.value = []
       exams.value = []
     } finally {
       loading.value = false
+    }
+  }
+
+  const loadQuestions = async (force = false) => {
+    if (questionsLoading.value || (questionsLoaded.value && !force)) return
+    questionsLoading.value = true
+    try {
+      const { data, error: questionError } = await client
+        .from(tables.questions)
+        .select('id, bank_id, number, type, difficulty, text, image_url, is_rtl, is_multi_select, options, answer_key, rubric, media_type, media_url, media_file_name, interactive_answer_type')
+        .order('number')
+      if (questionError) throw questionError
+
+      const questionsByBank = new Map<string, BankQuestionItem[]>()
+      for (const row of data ?? []) {
+        const list = questionsByBank.get(row.bank_id) ?? []
+        list.push({
+          id: row.id,
+          number: row.number,
+          type: row.type,
+          difficulty: row.difficulty,
+          text: row.text,
+          imageUrl: row.image_url ?? undefined,
+          isRtl: row.is_rtl ?? false,
+          isMultiSelect: row.is_multi_select,
+          options: row.options ?? undefined,
+          key: row.answer_key,
+          rubric: row.rubric ?? undefined,
+          mediaType: row.media_type ?? undefined,
+          mediaUrl: row.media_url ?? undefined,
+          mediaFileName: row.media_file_name ?? undefined,
+          interactiveAnswerType: row.interactive_answer_type ?? undefined
+        })
+        questionsByBank.set(row.bank_id, list)
+      }
+      bankPackages.value = bankPackages.value.map(pkg => ({ ...pkg, questions: questionsByBank.get(pkg.id) ?? [] }))
+      questionsLoaded.value = true
+    } catch (loadError: any) {
+      error.value = loadError?.message ?? 'Isi bank soal gagal dimuat.'
+    } finally {
+      questionsLoading.value = false
     }
   }
 
@@ -270,6 +330,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
 
     await load(true)
+    await loadQuestions(true)
     return bankId
   }
 
@@ -317,25 +378,42 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     await load(true)
   }
 
-  const createClass = async (input: { name: string; grade: GradeType; major: string; room: string; teacher: string }) => {
-    const { data: teacherRows, error: teacherError } = await client
+  const saveClass = async (input: { id?: string; name: string; grade: GradeType; major: string; room: string; homeroomTeacherId: string }) => {
+    const { data: teacher, error: teacherError } = await client
       .from('teachers')
-      .select('id, name, grade')
+      .select('id')
+      .eq('id', input.homeroomTeacherId)
       .eq('active', true)
-      .eq('grade', input.grade)
+      .maybeSingle()
     if (teacherError) throw teacherError
-    const teacher = (teacherRows ?? []).find(row => row.name.trim().toLowerCase() === input.teacher.trim().toLowerCase())
-    if (input.teacher.trim() && !teacher) throw new Error('Wali kelas harus dipilih dari Data Guru.')
+    if (!teacher) throw new Error('Wali kelas harus dipilih dari Data Guru aktif.')
 
-    const { error: createError } = await client.from('classes').insert({
+    const payload = {
       name: input.name.trim(),
       grade: input.grade,
       major: input.major.trim() || null,
       room: input.room.trim() || null,
-      homeroom_teacher_id: teacher?.id ?? null,
-      academic_year: '2026/2027'
-    })
-    if (createError) throw createError
+      homeroom_teacher_id: teacher.id,
+      academic_year: '2026/2027',
+      updated_at: new Date().toISOString()
+    }
+    const query = input.id
+      ? client.from('classes').update(payload).eq('id', input.id)
+      : client.from('classes').insert(payload)
+    const { error: saveError } = await query
+    if (saveError) throw saveError
+    await load(true)
+  }
+
+  const archiveClass = async (id: string) => {
+    const classItem = classes.value.find(item => item.id === id)
+    if (classItem?.studentCount) throw new Error('Rombel yang masih memiliki siswa tidak dapat diarsipkan.')
+
+    const { error: archiveError } = await client
+      .from('classes')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (archiveError) throw archiveError
     await load(true)
   }
 
@@ -347,16 +425,20 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   return {
     classes,
     subjects,
+    teachers,
     bankPackages,
     exams,
     loading,
     error,
+    questionsLoading,
+    loadQuestions,
     load,
     saveBankPackage,
     deleteBankPackage,
     saveExam,
     deleteExam,
-    createClass,
+    saveClass,
+    archiveClass,
     gradeClasses,
     gradeSubjects,
     gradePackages,

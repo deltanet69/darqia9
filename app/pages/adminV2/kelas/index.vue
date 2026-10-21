@@ -11,7 +11,7 @@ import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import KelasV2OverviewTab from '~/components/adminV2/kelas/KelasV2OverviewTab.vue'
 import KelasV2DaftarTab, { type ClassRombel } from '~/components/adminV2/kelas/KelasV2DaftarTab.vue'
-import KelasV2CreateModal from '~/components/adminV2/kelas/KelasV2CreateModal.vue'
+import KelasV2CreateModal, { type ClassFormData } from '~/components/adminV2/kelas/KelasV2CreateModal.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 
@@ -59,11 +59,15 @@ const triggerToast = (msg: string) => {
 export type SubmenuKey = 'overview' | 'daftar'
 const activeSubmenu = ref<SubmenuKey>('overview')
 
-const rawClasses = computed<ClassRombel[]>(() => cbtData.classes.value.map(item => ({
+const rawClasses = computed<ClassRombel[]>(() => cbtData.classes.value
+  .filter(item => item.grade === jenjang.value.toUpperCase())
+  .map(item => ({
+  id: item.id,
   name: item.name,
   level: item.grade,
   major: item.major,
   room: item.room,
+  homeroomTeacherId: item.homeroomTeacherId,
   teacher: item.teacher,
   teacherNip: item.teacherNip,
   students: item.studentCount,
@@ -91,21 +95,39 @@ const goToClassAttendance = (item: ClassRombel) => {
 
 // Create Class Modal State
 const isCreateModalOpen = ref(false)
+const editingClass = ref<ClassFormData | null>(null)
 
-const handleClassCreated = async (newClass: { name: string; level: 'SMP' | 'SMK'; major: string; room: string; teacher: string }) => {
+const handleClassSaved = async (newClass: Required<Omit<ClassFormData, 'id'>> & { id?: string }) => {
   try {
-    await cbtData.createClass({
+    await cbtData.saveClass({
+      id: newClass.id,
       name: newClass.name,
       grade: newClass.level,
       major: newClass.major,
       room: newClass.room,
-      teacher: newClass.teacher
+      homeroomTeacherId: newClass.homeroomTeacherId
     })
     isCreateModalOpen.value = false
+    editingClass.value = null
     activeSubmenu.value = 'daftar'
-    triggerToast(`Rombel kelas ${newClass.name} berhasil ditambahkan.`)
-  } catch (createError) {
-    triggerToast(createError instanceof Error ? createError.message : 'Rombel gagal ditambahkan.')
+    triggerToast(`Rombel kelas ${newClass.name} berhasil disimpan.`)
+  } catch (saveError) {
+    triggerToast(saveError instanceof Error ? saveError.message : 'Rombel gagal disimpan.')
+  }
+}
+
+const editClass = (item: ClassRombel) => {
+  editingClass.value = item
+  isCreateModalOpen.value = true
+}
+
+const archiveClass = async (item: ClassRombel) => {
+  if (!window.confirm(`Arsipkan rombel ${item.name}?`)) return
+  try {
+    await cbtData.archiveClass(item.id)
+    triggerToast(`Rombel ${item.name} berhasil diarsipkan.`)
+  } catch (archiveError) {
+    triggerToast(archiveError instanceof Error ? archiveError.message : 'Rombel gagal diarsipkan.')
   }
 }
 
@@ -254,7 +276,7 @@ const handleSelectModule = (title: string) => {
           <button
             type="button"
             class="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-[#1B5FD9] hover:bg-[#154EBC] shadow-xs flex items-center gap-2 transition cursor-pointer"
-            @click="isCreateModalOpen = true"
+            @click="editingClass = null; isCreateModalOpen = true"
           >
             <AdminV2Icon name="plus" :size="14" />
             <span>Tambah Rombel</span>
@@ -308,6 +330,8 @@ const handleSelectModule = (title: string) => {
         v-else-if="activeSubmenu === 'daftar'"
         :classes="rawClasses"
         @select-class="goToClassDetail"
+        @edit-class="editClass"
+        @archive-class="archiveClass"
         @open-presensi="goToClassAttendance"
       />
     </main>
@@ -316,8 +340,10 @@ const handleSelectModule = (title: string) => {
     <KelasV2CreateModal
       :open="isCreateModalOpen"
       :default-level="jenjang.toUpperCase() as any"
-      @close="isCreateModalOpen = false"
-      @created="handleClassCreated"
+      :teachers="cbtData.teachers.value"
+      :classroom="editingClass"
+      @close="isCreateModalOpen = false; editingClass = null"
+      @saved="handleClassSaved"
     />
 
     <!-- BOTTOM BAR NAVIGATION (Mobile) -->

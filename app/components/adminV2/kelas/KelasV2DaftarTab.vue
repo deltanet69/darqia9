@@ -3,10 +3,12 @@ import { ref, computed, watch } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 
 export interface ClassRombel {
+  id: string
   name: string
   level: 'SMP' | 'SMK'
   major: string
   room: string
+  homeroomTeacherId: string | null
   teacher: string
   teacherNip: string
   students: number
@@ -24,6 +26,8 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'select-class', className: string): void
+  (e: 'edit-class', item: ClassRombel): void
+  (e: 'archive-class', item: ClassRombel): void
   (e: 'open-presensi', item: ClassRombel): void
 }>()
 
@@ -322,6 +326,20 @@ const badgeClass = (level: string, major: string) => {
           >
             <span>Detail Kelas</span>
             <span>&rarr;</span>
+          </button>
+          <button
+            type="button"
+            class="py-2 px-3 rounded-xl font-bold text-xs bg-[#F8FAFC] hover:bg-[#E2E8F0] text-[#344054] transition-colors border border-[#E2E8F0] cursor-pointer"
+            @click="emit('edit-class', item)"
+          >
+            Ubah
+          </button>
+          <button
+            type="button"
+            class="py-2 px-3 rounded-xl font-bold text-xs text-[#B42318] hover:bg-[#FEF3F2] transition-colors border border-[#FECDCA] cursor-pointer"
+            @click="emit('archive-class', item)"
+          >
+            Arsipkan
           </button>
           <button
             type="button"

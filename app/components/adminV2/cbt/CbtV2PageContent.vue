@@ -109,6 +109,12 @@ watch(() => route.query.jenjang, value => {
   }
 })
 
+watch([activeTab, () => cbtData.loading.value], ([tab, isLoading]) => {
+  if (tab === 'bank' && !isLoading) {
+    void cbtData.loadQuestions()
+  }
+})
+
 const triggerToast = (msg: string) => {
   toastMessage.value = msg
   isToastVisible.value = true
@@ -352,65 +358,84 @@ const handleDocumentClick = (e: MouseEvent) => {
       @update:active-tab="switchTab"
     />
 
-    <!-- TAB 1: SUMMARY TAB -->
-    <CbtV2Summary
-      v-if="activeTab === 'summary'"
-      :grade="grade"
-      :exams="exams"
-      :source="assessmentSource"
-      @open-drawer="openDrawer"
-      @switch-tab="switchTab"
-      @copy-token="copyToken"
-      @toast="triggerToast"
-    />
+    <main class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-8 lg:pb-10">
+      <!-- TAB 1: SUMMARY TAB -->
+      <div
+        v-if="cbtData.loading.value || cbtData.questionsLoading.value"
+        class="mb-4 rounded-xl border border-[#D9E2F0] bg-white px-4 py-3 text-xs font-semibold text-[#475467]"
+        role="status"
+      >
+        Memuat data {{ moduleName }}...
+      </div>
+      <div
+        v-else-if="cbtData.error.value"
+        class="mb-4 rounded-xl border border-[#F5C6C0] bg-[#FFFBFA] px-4 py-3 text-xs text-[#B42318]"
+        role="alert"
+      >
+        Data belum dapat dimuat. Struktur halaman tetap tersedia dan dapat dicoba kembali dengan memuat ulang halaman.
+      </div>
 
-    <!-- TAB 2: LIVE MONITORING TAB -->
-    <CbtV2Monitoring
-      v-else-if="activeTab === 'monitoring'"
-      :grade="grade"
-      :is-frozen="isFrozen"
-      @toggle-freeze="toggleFreeze"
-      @open-drawer="openDrawer"
-      @copy-token="copyToken"
-      @toast="triggerToast"
-    />
+      <CbtV2Summary
+        v-if="activeTab === 'summary'"
+        :grade="grade"
+        :exams="exams"
+        :source="assessmentSource"
+        @open-drawer="openDrawer"
+        @switch-tab="switchTab"
+        @copy-token="copyToken"
+        @toast="triggerToast"
+      />
 
-    <!-- TAB 3: QUESTION BANK TAB -->
-    <CbtV2Bank
-      v-else-if="activeTab === 'bank'"
-      :grade="grade"
-      :source="assessmentSource"
-      @open-drawer="openDrawer"
-      @toast="triggerToast"
-    />
+      <!-- TAB 2: LIVE MONITORING TAB -->
+      <CbtV2Monitoring
+        v-else-if="activeTab === 'monitoring'"
+        :grade="grade"
+        :is-frozen="isFrozen"
+        @toggle-freeze="toggleFreeze"
+        @open-drawer="openDrawer"
+        @copy-token="copyToken"
+        @toast="triggerToast"
+        :exams="exams"
+      />
 
-    <!-- TAB 4: EXAM SCHEDULE & LIST TAB -->
-    <CbtV2Exams
-      v-else-if="activeTab === 'exams'"
-      :grade="grade"
-      :source="assessmentSource"
-      @open-drawer="openDrawer"
-      @copy-token="copyToken"
-      @toast="triggerToast"
-    />
+      <!-- TAB 3: QUESTION BANK TAB -->
+      <CbtV2Bank
+        v-else-if="activeTab === 'bank'"
+        :grade="grade"
+        :source="assessmentSource"
+        @open-drawer="openDrawer"
+        @toast="triggerToast"
+      />
 
-    <!-- TAB 5: STUDENT RESULTS & GRADES TAB -->
-    <CbtV2Results
-      v-else-if="activeTab === 'results'"
-      :grade="grade"
-      :students="students"
-      @open-drawer="openDrawer"
-      @toast="triggerToast"
-    />
+      <!-- TAB 4: EXAM SCHEDULE & LIST TAB -->
+      <CbtV2Exams
+        v-else-if="activeTab === 'exams'"
+        :grade="grade"
+        :source="assessmentSource"
+        @open-drawer="openDrawer"
+        @copy-token="copyToken"
+        :exams="exams"
+        @toast="triggerToast"
+      />
 
-    <!-- TAB 6: SETTINGS & CBT MANAGEMENT TAB -->
-    <CbtV2Management
-      v-else-if="activeTab === 'management'"
-      :grade="grade"
-      :is-frozen="isFrozen"
-      @toggle-freeze="toggleFreeze"
-      @toast="triggerToast"
-    />
+      <!-- TAB 5: STUDENT RESULTS & GRADES TAB -->
+      <CbtV2Results
+        v-else-if="activeTab === 'results'"
+        :grade="grade"
+        :students="students"
+        @open-drawer="openDrawer"
+        @toast="triggerToast"
+      />
+
+      <!-- TAB 6: SETTINGS & CBT MANAGEMENT TAB -->
+      <CbtV2Management
+        v-else-if="activeTab === 'management'"
+        :grade="grade"
+        :is-frozen="isFrozen"
+        @toggle-freeze="toggleFreeze"
+        @toast="triggerToast"
+      />
+    </main>
 
     <!-- UNIFIED SIDE DRAWER (Create Exam, Bank Detail, Student Grade Detail, Token Display) -->
     <CbtV2Drawer

@@ -296,10 +296,7 @@ const deletePackage = async (pkgId: string) => {
   }
 }
 
-onMounted(async () => {
-  await cbtData.load()
-  restoreFormDraft()
-})
+onMounted(restoreFormDraft)
 
 const downloadWordTemplate = (grade: GradeType) => {
   const link = document.createElement('a')

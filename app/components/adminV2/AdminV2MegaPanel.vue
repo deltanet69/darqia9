@@ -25,6 +25,8 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const isAvailable = (title: string) => getAdminDestination(title) !== '#'
+
 
 const isPageActive = (title: string) => {
   const t = title.toLowerCase().trim()
@@ -68,10 +70,8 @@ const handleSelect = async (title: string, event?: Event) => {
     event.preventDefault()
   }
   const dest = getAdminDestination(title)
-  emit('select-item', title)
-  if (dest) {
-    await navigateTo(dest)
-  }
+  if (dest === '#') return
+  await navigateTo(dest)
   emit('close')
 }
 </script>
@@ -139,10 +139,14 @@ const handleSelect = async (title: string, event?: Event) => {
               v-for="([title, desc, icon], idx) in group.items"
               :key="idx"
               :href="getAdminDestination(title)"
-              class="group flex items-center gap-3 p-3 border rounded-[14px] transition hover:shadow-xs relative cursor-pointer"
-              :class="isPageActive(title)
+              :aria-disabled="!isAvailable(title)"
+              class="group flex items-center gap-3 p-3 border rounded-[14px] transition relative"
+              :class="[
+                isPageActive(title)
                 ? (jenjang === 'smp' ? 'bg-[#E7F6ED] border-[#16A34A] text-[#14532D] shadow-xs ring-1 ring-[#16A34A]/30' : 'bg-[#EFF6FF] border-[#1B5FD9] text-[#1D4ED8] shadow-xs ring-1 ring-[#1B5FD9]/30')
-                : (jenjang === 'smp' ? 'bg-white border-[#E7EBF2] hover:border-[#16A34A] hover:bg-[#E7F6ED]' : 'bg-white border-[#E7EBF2] hover:border-[#1B5FD9] hover:bg-[#E8F0FE]')"
+                : (isAvailable(title) ? (jenjang === 'smp' ? 'bg-white border-[#E7EBF2] hover:border-[#16A34A] hover:bg-[#E7F6ED] cursor-pointer hover:shadow-xs' : 'bg-white border-[#E7EBF2] hover:border-[#1B5FD9] hover:bg-[#E8F0FE] cursor-pointer hover:shadow-xs') : 'bg-white border-[#E7EBF2] text-[#98A2B3] opacity-60 cursor-not-allowed'),
+                !isAvailable(title) && 'pointer-events-none'
+              ]"
               @click.prevent="handleSelect(title, $event)"
             >
               <span

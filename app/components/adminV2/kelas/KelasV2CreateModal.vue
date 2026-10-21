@@ -1,79 +1,66 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
+import type { CbtTeacher } from '~/composables/useAdminCbtData'
+
+export interface ClassFormData {
+  id?: string
+  name: string
+  level: 'SMP' | 'SMK'
+  major: string
+  room: string
+  homeroomTeacherId: string | null
+}
 
 interface Props {
   open: boolean
   defaultLevel?: 'SMP' | 'SMK'
+  teachers: CbtTeacher[]
+  classroom?: ClassFormData | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  defaultLevel: 'SMK'
+  defaultLevel: 'SMK',
+  classroom: null
 })
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'created', newClassData: {
-    name: string
-    level: 'SMP' | 'SMK'
-    major: string
-    room: string
-    teacher: string
-  }): void
+  (e: 'saved', newClassData: Required<Omit<ClassFormData, 'id'>> & { id?: string }): void
 }>()
-
-const teacherOptions = [
-  'Bambang Supriyanto, M.Kom',
-  'Hendra Gunawan, S.Kom',
-  'Fajar Nugroho, S.Pd',
-  'Rizky Wahyudi, S.T',
-  'Eko Prasetyo, S.Pd',
-  'Siti Aminah, S.Pd',
-  'Dewi Lestari, S.Pd',
-  'Nurul Hidayati, S.Si',
-  'Drs. H. Ahmad Dahlan'
-]
 
 const form = ref({
   name: '',
   level: props.defaultLevel as 'SMP' | 'SMK',
   major: props.defaultLevel === 'SMK' ? 'RPL' : '',
   room: '',
-  teacher: ''
+  homeroomTeacherId: ''
 })
 
-watch(() => props.open, (val) => {
-  if (val) {
-    form.value = {
-      name: '',
-      level: props.defaultLevel,
-      major: props.defaultLevel === 'SMK' ? 'RPL' : '',
-      room: '',
-      teacher: ''
-    }
-  }
-})
-
-watch(() => form.value.level, (lvl) => {
-  if (lvl === 'SMP') {
-    form.value.major = ''
-  } else if (!form.value.major) {
-    form.value.major = 'RPL'
+watch(() => props.open, (open) => {
+  if (!open) return
+  form.value = {
+    name: props.classroom?.name ?? '',
+    level: props.classroom?.level ?? props.defaultLevel,
+    major: props.classroom?.major ?? (props.defaultLevel === 'SMK' ? 'RPL' : ''),
+    room: props.classroom?.room ?? '',
+    homeroomTeacherId: props.classroom?.homeroomTeacherId ?? ''
   }
 })
 
 const handleSubmit = () => {
-  if (!form.value.name.trim() || !form.value.teacher) {
+  if (!form.value.name.trim() || !form.value.homeroomTeacherId) {
     alert('Mohon lengkapi nama rombel dan wali kelas.')
     return
   }
 
-  emit('created', {
+  emit('saved', {
+    id: props.classroom?.id,
     name: form.value.name.trim(),
     level: form.value.level,
     major: form.value.major,
-    room: form.value.room.trim() || 'Gedung Utama · R. Kelas',
-    teacher: form.value.teacher
+    room: form.value.room.trim(),
+    homeroomTeacherId: form.value.homeroomTeacherId
   })
 }
 </script>
@@ -106,7 +93,7 @@ const handleSubmit = () => {
           <div>
             <label class="block font-bold text-[#344054] mb-1">Jenjang Sekolah</label>
             <select
-              v-model="form.level"
+              v-model="form.level" disabled
               class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] font-bold text-[#101828] outline-none focus:border-[#1B5FD9]"
             >
               <option value="SMK">SMK IT Attaqwa 9</option>
@@ -146,12 +133,13 @@ const handleSubmit = () => {
         <div>
           <label class="block font-bold text-[#344054] mb-1">Wali Kelas (Penanggung Jawab)</label>
           <select
-            v-model="form.teacher"
+            v-model="form.homeroomTeacherId" :disabled="teachers.length === 0"
             class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-bold text-[#101828] outline-none focus:border-[#1B5FD9]"
             required
           >
-            <option value="" disabled>-- Pilih Guru Pengajar --</option>
-            <option v-for="t in teacherOptions" :key="t" :value="t">{{ t }}</option>
+            <option v-if="!teachers.length" value="" disabled>Belum ada guru aktif di Data Guru</option>
+            <option v-else value="" disabled>-- Pilih Guru dari Data Guru --</option>
+            <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">{{ teacher.name }} - {{ teacher.nip }}</option>
           </select>
         </div>
 
@@ -178,7 +166,7 @@ const handleSubmit = () => {
             class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#1B5FD9] hover:bg-[#154EBC] transition shadow-xs cursor-pointer flex items-center gap-1.5"
           >
             <AdminV2Icon name="plus" :size="13" />
-            <span>Simpan Rombel</span>
+            <span>{{ classroom ? 'Simpan Perubahan' : 'Simpan Rombel' }}</span>
           </button>
         </div>
       </form>

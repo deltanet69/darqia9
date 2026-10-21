@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
@@ -134,7 +134,6 @@ const removeSchedule = async (exam: ExamItem) => {
   }
 }
 
-onMounted(() => cbtData.load())
 </script>
 
 <template>
@@ -213,6 +212,9 @@ onMounted(() => cbtData.load())
             <AdminV2Icon name="arrow-right" :size="12" />
           </div>
         </article>
+      </div>
+      <div v-if="!groups.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">
+        Belum ada rombel aktif untuk jenjang ini. Layout daftar ujian tetap siap digunakan.
       </div>
     </div>
 

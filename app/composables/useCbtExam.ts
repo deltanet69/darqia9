@@ -19,6 +19,13 @@ export interface QuestionItem {
   options?: string[]
   placeholder?: string
   minWords?: number
+  maxWords?: number
+  isRtl?: boolean
+  mediaUrl?: string
+  mediaFileName?: string
+  interactiveAnswerType?: 'PG' | 'PG_Multi' | 'Isian'
+  answerKey?: string | string[]
+  rubric?: string
   audioTitle?: string
   audioSub?: string
   audioScript?: string
@@ -196,10 +203,17 @@ export const useCbtExam = () => {
           options: options.length > 0 ? options : undefined,
           placeholder: q.type === 'Esai' ? 'Tulis jawaban essay-mu di sini…' : 'Ketik jawaban singkatmu…',
           minWords: q.wordCountMin || (q.type === 'Esai' ? 30 : undefined),
+          maxWords: q.wordCountMax,
+          isRtl: q.isRtl,
           imageUrl: q.imageUrl,
-          audioTitle: q.mediaFileName || 'Audio Ujian Terkompresi',
+          audioTitle: q.mediaFileName || 'Audio Ujian',
           audioSub: 'Dengarkan rekaman dengan saksama',
-          videoTitle: 'Video Materi Soal'
+          mediaUrl: q.mediaUrl,
+          mediaFileName: q.mediaFileName,
+          interactiveAnswerType: q.interactiveAnswerType,
+          answerKey: q.key,
+          rubric: q.rubric,
+          videoTitle: q.mediaFileName || 'Video Materi Soal'
         }
       })
     }
@@ -306,6 +320,7 @@ export const useCbtExam = () => {
     const a = answers[i]
     if (q.type === 'multiple') return Array.isArray(a) && a.length > 0
     if (q.type === 'single' || q.type === 'audio' || q.type === 'video') return typeof a === 'string' && a !== ''
+    if (q.type === 'essay' && q.minWords && countWords(a) < q.minWords) return false
     return typeof a === 'string' && a.trim().length > 0
   }
 
