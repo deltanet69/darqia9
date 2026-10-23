@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="space-y-6 animate-fadeUp">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
@@ -285,7 +285,7 @@
 
             <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:translate-x-0.5 transition-transform">
               <span>Buka Detail Kelas</span>
-              <span>→</span>
+              <span>?</span>
             </div>
           </div>
         </div>
@@ -341,7 +341,7 @@
               >
                 <option v-for="day in days" :key="day" :value="day">{{ day }}</option>
               </select>
-              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▾</span>
+              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
             </div>
 
             <!-- School Grade Switcher -->
@@ -354,7 +354,7 @@
                 <option value="SMK">SMK IT Attaqwa 9</option>
                 <option value="SMP">SMP IT Bina Cendekia</option>
               </select>
-              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▾</span>
+              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
             </div>
 
             <!-- Sort Selector -->
@@ -369,7 +369,7 @@
                 <option value="name-desc">Nama (Z-A)</option>
                 <option value="status">Status Presensi</option>
               </select>
-              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▾</span>
+              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
             </div>
 
             <!-- Search Box -->
@@ -386,7 +386,7 @@
                 type="button"
                 @click="searchQuery = ''"
               >
-                ✕
+                ?
               </button>
             </div>
           </div>
@@ -485,7 +485,7 @@
                 <!-- Jam Keluar -->
                 <td class="py-3.5 px-4 font-mono font-medium">
                   <span v-if="item.timeOut" class="font-bold text-slate-900">{{ item.timeOut }}</span>
-                  <span v-else class="text-slate-400 font-sans italic text-[11px]">—</span>
+                  <span v-else class="text-slate-400 font-sans italic text-[11px]">�</span>
                 </td>
 
                 <!-- Status Presensi -->
@@ -545,7 +545,7 @@
               type="button"
               @click="currentPage--"
             >
-              ‹ Sebelumnya
+              � Sebelumnya
             </button>
             <span class="px-3 py-1.5 rounded-xl bg-slate-200/60 font-mono font-bold text-slate-800">
               {{ currentPage }} / {{ totalPages }}
@@ -556,7 +556,7 @@
               type="button"
               @click="currentPage++"
             >
-              Berikutnya ›
+              Berikutnya �
             </button>
           </div>
         </div>
@@ -567,7 +567,7 @@
     <AdminSlideOver
       :open="Boolean(selectedStudent)"
       :title="selectedStudent?.name || 'Detail Presensi Siswa'"
-      :subtitle="`${selectedStudent?.classroom || ''} • NISN: ${selectedStudent?.nisn || ''}`"
+      :subtitle="`${selectedStudent?.classroom || ''} � NISN: ${selectedStudent?.nisn || ''}`"
       badge="Presensi RFID"
       badge-type="primary"
       width="xl"
@@ -609,7 +609,7 @@
           </div>
           <div class="text-left sm:text-right font-mono text-xs">
             <span class="text-[11px] font-sans font-semibold text-slate-500 block">Waktu Tap RFID:</span>
-            <b class="text-slate-900 text-sm font-bold">{{ selectedStudent.timeIn || '—' }}</b>
+            <b class="text-slate-900 text-sm font-bold">{{ selectedStudent.timeIn || '�' }}</b>
             <span v-if="selectedStudent.timeOut" class="text-slate-500 font-sans text-[11px]"> (Keluar: {{ selectedStudent.timeOut }})</span>
           </div>
         </div>
@@ -619,7 +619,7 @@
           <div class="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/80">
             <span class="text-[10.5px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">UID Kartu RFID</span>
             <b class="text-slate-900 font-mono text-xs">{{ selectedStudent.rfidUid }}</b>
-            <span class="text-[10px] text-emerald-600 font-bold block mt-1">● Status: Terdaftar Aktif</span>
+            <span class="text-[10px] text-emerald-600 font-bold block mt-1">? Status: Terdaftar Aktif</span>
           </div>
           <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/80">
             <span class="text-[10.5px] font-bold text-indigo-600 uppercase tracking-wider block mb-0.5">Gateway Reader</span>
@@ -707,7 +707,7 @@ definePageMeta({
 const activeGrade = useAdminGrade()
 
 const title = 'Absensi Siswa'
-const subtitle = 'Senin, 05 Okt 2026 · Rekap Presensi & Data Tap RFID Siswa Realtime'
+const subtitle = 'Senin, 05 Okt 2026 � Rekap Presensi & Data Tap RFID Siswa Realtime'
 
 // Submenu Navigation State
 const activeSubmenu = ref<'overview' | 'detail'>('overview')
@@ -733,7 +733,7 @@ const summaryCards = computed(() => [
   {
     label: 'Hadir Tepat Waktu',
     value: '294',
-    sub: '≤ 06:45',
+    sub: '= 06:45',
     note: 'Tap tepat waktu via RFID',
     rate: '93.0%'
   },
@@ -748,7 +748,7 @@ const summaryCards = computed(() => [
     label: 'Izin & Sakit',
     value: '6',
     sub: 'Surat Terlampir',
-    note: '4 Izin · 2 Sakit',
+    note: '4 Izin � 2 Sakit',
     rate: '1.9%'
   },
   {
@@ -854,7 +854,7 @@ interface StudentAttendance {
   rfidUid: string
   school: 'SMK' | 'SMP'
   classroom: string
-  gender: 'Laki-laki' | 'Perempuan'
+  gender: 'Laki laki' | 'Perempuan'
   status: 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Alpa'
   timeIn: string | null
   timeOut: string | null
@@ -864,18 +864,18 @@ interface StudentAttendance {
 
 // Student Attendance Mock Dataset
 const rawStudents = ref<StudentAttendance[]>([
-  { id: '1', name: 'Ahmad Wijaya', nisn: '0089281721', rfidUid: 'RFID-1001-A', school: 'SMK', classroom: 'X RPL 1', gender: 'Laki-laki', status: 'Hadir', timeIn: '06:24', timeOut: '15:30', gate: 'Gate 1 (Utama)' },
-  { id: '2', name: 'Budi Pratama', nisn: '0089281722', rfidUid: 'RFID-1002-B', school: 'SMK', classroom: 'X RPL 1', gender: 'Laki-laki', status: 'Hadir', timeIn: '06:31', timeOut: '15:30', gate: 'Gate 1 (Utama)' },
+  { id: '1', name: 'Ahmad Wijaya', nisn: '0089281721', rfidUid: 'RFID-1001-A', school: 'SMK', classroom: 'X RPL 1', gender: 'Laki laki', status: 'Hadir', timeIn: '06:24', timeOut: '15:30', gate: 'Gate 1 (Utama)' },
+  { id: '2', name: 'Budi Pratama', nisn: '0089281722', rfidUid: 'RFID-1002-B', school: 'SMK', classroom: 'X RPL 1', gender: 'Laki laki', status: 'Hadir', timeIn: '06:31', timeOut: '15:30', gate: 'Gate 1 (Utama)' },
   { id: '3', name: 'Citra Dewi Permata', nisn: '0089281723', rfidUid: 'RFID-1003-C', school: 'SMK', classroom: 'X RPL 1', gender: 'Perempuan', status: 'Terlambat', timeIn: '06:52', timeOut: '15:30', lateMinutes: 7, gate: 'Gate 2 (Lobi)' },
-  { id: '4', name: 'Dian Nugraha', nisn: '0089281724', rfidUid: 'RFID-1004-D', school: 'SMK', classroom: 'X RPL 2', gender: 'Laki-laki', status: 'Izin', timeIn: null, timeOut: null },
-  { id: '5', name: 'Eko Hidayatullah', nisn: '0089281725', rfidUid: 'RFID-1005-E', school: 'SMK', classroom: 'X RPL 2', gender: 'Laki-laki', status: 'Alpa', timeIn: null, timeOut: null },
+  { id: '4', name: 'Dian Nugraha', nisn: '0089281724', rfidUid: 'RFID-1004-D', school: 'SMK', classroom: 'X RPL 2', gender: 'Laki laki', status: 'Izin', timeIn: null, timeOut: null },
+  { id: '5', name: 'Eko Hidayatullah', nisn: '0089281725', rfidUid: 'RFID-1005-E', school: 'SMK', classroom: 'X RPL 2', gender: 'Laki laki', status: 'Alpa', timeIn: null, timeOut: null },
   { id: '6', name: 'Fitri Handayani', nisn: '0089281726', rfidUid: 'RFID-1006-F', school: 'SMK', classroom: 'XI RPL 1', gender: 'Perempuan', status: 'Hadir', timeIn: '06:18', timeOut: '15:30', gate: 'Gate 1 (Utama)' },
-  { id: '7', name: 'Gilang Ramadhan', nisn: '0089281727', rfidUid: 'RFID-1007-G', school: 'SMK', classroom: 'XI TKJ 1', gender: 'Laki-laki', status: 'Hadir', timeIn: '06:40', timeOut: '15:30', gate: 'Gate 2 (Lobi)' },
+  { id: '7', name: 'Gilang Ramadhan', nisn: '0089281727', rfidUid: 'RFID-1007-G', school: 'SMK', classroom: 'XI TKJ 1', gender: 'Laki laki', status: 'Hadir', timeIn: '06:40', timeOut: '15:30', gate: 'Gate 2 (Lobi)' },
   { id: '8', name: 'Hana Puspitasari', nisn: '0089281728', rfidUid: 'RFID-1008-H', school: 'SMK', classroom: 'XII RPL 1', gender: 'Perempuan', status: 'Sakit', timeIn: null, timeOut: null },
-  { id: '9', name: 'Irfan Hakim Maulana', nisn: '0098192011', rfidUid: 'RFID-2001-A', school: 'SMP', classroom: 'VII-A', gender: 'Laki-laki', status: 'Hadir', timeIn: '06:22', timeOut: '14:30', gate: 'Gate 1 (Utama)' },
-  { id: '10', name: 'Joko Susanto', nisn: '0098192012', rfidUid: 'RFID-2002-B', school: 'SMP', classroom: 'VIII-A', gender: 'Laki-laki', status: 'Alpa', timeIn: null, timeOut: null },
+  { id: '9', name: 'Irfan Hakim Maulana', nisn: '0098192011', rfidUid: 'RFID-2001-A', school: 'SMP', classroom: 'VII-A', gender: 'Laki laki', status: 'Hadir', timeIn: '06:22', timeOut: '14:30', gate: 'Gate 1 (Utama)' },
+  { id: '10', name: 'Joko Susanto', nisn: '0098192012', rfidUid: 'RFID-2002-B', school: 'SMP', classroom: 'VIII-A', gender: 'Laki laki', status: 'Alpa', timeIn: null, timeOut: null },
   { id: '11', name: 'Khadijah Zahra', nisn: '0089281729', rfidUid: 'RFID-1009-I', school: 'SMK', classroom: 'XI RPL 1', gender: 'Perempuan', status: 'Hadir', timeIn: '06:29', timeOut: '15:30', gate: 'Gate 1 (Utama)' },
-  { id: '12', name: 'Lukman Hakim', nisn: '0089281730', rfidUid: 'RFID-1010-J', school: 'SMK', classroom: 'XII TKJ 1', gender: 'Laki-laki', status: 'Terlambat', timeIn: '06:55', timeOut: '15:30', lateMinutes: 10, gate: 'Gate 1 (Utama)' }
+  { id: '12', name: 'Lukman Hakim', nisn: '0089281730', rfidUid: 'RFID-1010-J', school: 'SMK', classroom: 'XII TKJ 1', gender: 'Laki laki', status: 'Terlambat', timeIn: '06:55', timeOut: '15:30', lateMinutes: 10, gate: 'Gate 1 (Utama)' }
 ])
 
 // Dynamic Status Filter Options with Counts

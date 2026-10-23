@@ -206,10 +206,10 @@
                     <div class="grid grid-cols-2 gap-2.5">
                       <label
                         class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 cursor-pointer font-bold text-xs sm:text-sm transition-all"
-                        :class="form.s_jk === 'Laki-laki' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                        :class="form.s_jk === 'Laki laki' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
                       >
-                        <input type="radio" v-model="form.s_jk" value="Laki-laki" @change="clearErr('s_jk')" class="sr-only">
-                        <span>Laki-laki</span>
+                        <input type="radio" v-model="form.s_jk" value="Laki laki" @change="clearErr('s_jk')" class="sr-only">
+                        <span>Laki laki</span>
                       </label>
                       <label
                         class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 cursor-pointer font-bold text-xs sm:text-sm transition-all"

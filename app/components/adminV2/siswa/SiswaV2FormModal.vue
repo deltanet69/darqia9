@@ -200,7 +200,7 @@ const handleSave = () => {
               class="w-full bg-[#F8FAFD] border border-[#E7EBF2] rounded-xl px-3 py-2 text-[13px] text-[#101828] focus:bg-white focus:outline-none focus:border-[#1B5FD9] focus:ring-2 focus:ring-[#E8F0FE]"
               :class="jenjang === 'smp' ? 'focus:border-[#16A34A] focus:ring-[#E7F6ED]' : 'focus:border-[#1B5FD9] focus:ring-[#E8F0FE]'"
             >
-              <option value="L">Laki-laki (L)</option>
+              <option value="L">Laki laki (L)</option>
               <option value="P">Perempuan (P)</option>
             </select>
           </div>

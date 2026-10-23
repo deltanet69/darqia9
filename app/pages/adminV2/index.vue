@@ -330,7 +330,7 @@ const handleSelectModule = (title: string) => {
       @select-item="handleSelectModule"
       @profile-click="() => { isMobileMenuOpen = false; triggerToast('Profil Saya — demo') }"
       @settings-click="() => { isMobileMenuOpen = false; triggerToast('Pengaturan — demo') }"
-      @logout-click="() => { isMobileMenuOpen = false; triggerToast('Keluar — demo') }"
+      @logout-click="isMobileMenuOpen = false"
     />
 
     <!-- Popovers and Modals (Notif, Profile, Search) -->

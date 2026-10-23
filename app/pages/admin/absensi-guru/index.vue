@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="space-y-6 animate-fadeUp">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
@@ -284,7 +284,7 @@
 
             <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:translate-x-0.5 transition-transform">
               <span>Buka Detail Unit</span>
-              <span>→</span>
+              <span>?</span>
             </div>
           </div>
         </div>
@@ -340,7 +340,7 @@
               >
                 <option v-for="day in days" :key="day" :value="day">{{ day }}</option>
               </select>
-              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▾</span>
+              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
             </div>
 
             <!-- School Grade Switcher -->
@@ -353,7 +353,7 @@
                 <option value="SMK">SMK IT Attaqwa 9</option>
                 <option value="SMP">SMP IT Bina Cendekia</option>
               </select>
-              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▾</span>
+              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
             </div>
 
             <!-- Sort Selector -->
@@ -368,7 +368,7 @@
                 <option value="name-desc">Nama Guru (Z-A)</option>
                 <option value="status">Status Presensi</option>
               </select>
-              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▾</span>
+              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
             </div>
 
             <!-- Search Box -->
@@ -385,7 +385,7 @@
                 type="button"
                 @click="searchQuery = ''"
               >
-                ✕
+                ?
               </button>
             </div>
           </div>
@@ -484,7 +484,7 @@
                 <!-- Jam Keluar -->
                 <td class="py-3.5 px-4 font-mono font-medium">
                   <span v-if="item.timeOut" class="font-bold text-slate-900">{{ item.timeOut }}</span>
-                  <span v-else class="text-slate-400 font-sans italic text-[11px]">—</span>
+                  <span v-else class="text-slate-400 font-sans italic text-[11px]">�</span>
                 </td>
 
                 <!-- Status Presensi -->
@@ -544,7 +544,7 @@
               type="button"
               @click="currentPage--"
             >
-              ‹ Sebelumnya
+              � Sebelumnya
             </button>
             <span class="px-3 py-1.5 rounded-xl bg-slate-200/60 font-mono font-bold text-slate-800">
               {{ currentPage }} / {{ totalPages }}
@@ -555,7 +555,7 @@
               type="button"
               @click="currentPage++"
             >
-              Berikutnya ›
+              Berikutnya �
             </button>
           </div>
         </div>
@@ -566,7 +566,7 @@
     <AdminSlideOver
       :open="Boolean(selectedTeacher)"
       :title="selectedTeacher?.name || 'Detail Presensi Guru'"
-      :subtitle="`${selectedTeacher?.subject || ''} • NIP: ${selectedTeacher?.nip || ''}`"
+      :subtitle="`${selectedTeacher?.subject || ''} � NIP: ${selectedTeacher?.nip || ''}`"
       badge="Presensi RFID PTK"
       badge-type="primary"
       width="xl"
@@ -610,7 +610,7 @@
           </div>
           <div class="text-left sm:text-right font-mono text-xs">
             <span class="text-[11px] font-sans font-semibold text-slate-500 block">Waktu Tap RFID:</span>
-            <b class="text-slate-900 text-sm font-bold">{{ selectedTeacher.timeIn || '—' }}</b>
+            <b class="text-slate-900 text-sm font-bold">{{ selectedTeacher.timeIn || '�' }}</b>
             <span v-if="selectedTeacher.timeOut" class="text-slate-500 font-sans text-[11px]"> (Keluar: {{ selectedTeacher.timeOut }})</span>
           </div>
         </div>
@@ -620,7 +620,7 @@
           <div class="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/80">
             <span class="text-[10.5px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">UID Kartu RFID Guru</span>
             <b class="text-slate-900 font-mono text-xs">{{ selectedTeacher.rfidUid }}</b>
-            <span class="text-[10px] text-emerald-600 font-bold block mt-1">● Status: Terdaftar Aktif</span>
+            <span class="text-[10px] text-emerald-600 font-bold block mt-1">? Status: Terdaftar Aktif</span>
           </div>
           <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/80">
             <span class="text-[10.5px] font-bold text-indigo-600 uppercase tracking-wider block mb-0.5">Mata Pelajaran Binaan</span>
@@ -708,7 +708,7 @@ definePageMeta({
 const activeGrade = useAdminGrade()
 
 const title = 'Absensi Guru'
-const subtitle = 'Senin, 05 Okt 2026 · Rekap Presensi & Data Tap RFID Pendidik & Tenaga Kependidikan Realtime'
+const subtitle = 'Senin, 05 Okt 2026 � Rekap Presensi & Data Tap RFID Pendidik & Tenaga Kependidikan Realtime'
 
 // Submenu Navigation State
 const activeSubmenu = ref<'overview' | 'detail'>('overview')
@@ -734,7 +734,7 @@ const summaryCards = computed(() => [
   {
     label: 'Hadir Tepat Waktu',
     value: '38',
-    sub: '≤ 06:45',
+    sub: '= 06:45',
     note: 'Tap tepat waktu via RFID',
     rate: '90.5%'
   },
@@ -749,7 +749,7 @@ const summaryCards = computed(() => [
     label: 'Izin & Sakit / Cuti',
     value: '2',
     sub: 'Surat Terlampir',
-    note: '1 Izin Dinas · 1 Sakit',
+    note: '1 Izin Dinas � 1 Sakit',
     rate: '4.8%'
   },
   {
@@ -846,7 +846,7 @@ interface TeacherAttendance {
   school: 'SMK' | 'SMP'
   subject: string
   level: string
-  gender: 'Laki-laki' | 'Perempuan'
+  gender: 'Laki laki' | 'Perempuan'
   status: 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Alpa'
   timeIn: string | null
   timeOut: string | null
@@ -856,15 +856,15 @@ interface TeacherAttendance {
 
 // Teacher Attendance Dataset
 const rawTeachers = ref<TeacherAttendance[]>([
-  { id: '1', name: 'Drs. H. Ahmad Dahlan', nip: '197508122000031001', rfidUid: 'RFID-GUR-1001', school: 'SMK', subject: 'Pendidikan Agama Islam', level: 'Guru Utama', gender: 'Laki-laki', status: 'Hadir', timeIn: '06:18', timeOut: '15:45', gate: 'Ruang Guru' },
+  { id: '1', name: 'Drs. H. Ahmad Dahlan', nip: '197508122000031001', rfidUid: 'RFID-GUR-1001', school: 'SMK', subject: 'Pendidikan Agama Islam', level: 'Guru Utama', gender: 'Laki laki', status: 'Hadir', timeIn: '06:18', timeOut: '15:45', gate: 'Ruang Guru' },
   { id: '2', name: 'Siti Aminah, S.Pd', nip: '198204152008012003', rfidUid: 'RFID-GUR-1002', school: 'SMP', subject: 'Matematika', level: 'Wali Kelas VII-A', gender: 'Perempuan', status: 'Hadir', timeIn: '06:25', timeOut: '14:45', gate: 'Gerbang Utama' },
-  { id: '3', name: 'Bambang Supriyanto, M.Kom', nip: '198901202015041002', rfidUid: 'RFID-GUR-1003', school: 'SMK', subject: 'Pemrograman Web', level: 'Kaprog RPL', gender: 'Laki-laki', status: 'Terlambat', timeIn: '06:52', timeOut: '16:00', lateMinutes: 7, gate: 'Ruang Guru' },
+  { id: '3', name: 'Bambang Supriyanto, M.Kom', nip: '198901202015041002', rfidUid: 'RFID-GUR-1003', school: 'SMK', subject: 'Pemrograman Web', level: 'Kaprog RPL', gender: 'Laki laki', status: 'Terlambat', timeIn: '06:52', timeOut: '16:00', lateMinutes: 7, gate: 'Ruang Guru' },
   { id: '4', name: 'Rini Astuti, S.Pd', nip: '199105102019032005', rfidUid: 'RFID-GUR-1004', school: 'SMK', subject: 'Bahasa Indonesia', level: 'Guru Mapel', gender: 'Perempuan', status: 'Hadir', timeIn: '06:30', timeOut: '15:30', gate: 'Ruang Guru' },
-  { id: '5', name: 'Hendra Gunawan, S.Kom', nip: '198711032014021004', rfidUid: 'RFID-GUR-1005', school: 'SMK', subject: 'Jaringan Komputer', level: 'Kaprog TKJ', gender: 'Laki-laki', status: 'Izin', timeIn: null, timeOut: null },
+  { id: '5', name: 'Hendra Gunawan, S.Kom', nip: '198711032014021004', rfidUid: 'RFID-GUR-1005', school: 'SMK', subject: 'Jaringan Komputer', level: 'Kaprog TKJ', gender: 'Laki laki', status: 'Izin', timeIn: null, timeOut: null },
   { id: '6', name: 'Dewi Lestari, S.Pd', nip: '199402182020122008', rfidUid: 'RFID-GUR-1006', school: 'SMK', subject: 'Bahasa Inggris', level: 'Wali Kelas X RPL 1', gender: 'Perempuan', status: 'Hadir', timeIn: '06:22', timeOut: '15:30', gate: 'Ruang Guru' },
-  { id: '7', name: 'Eko Prasetyo, S.Pd', nip: '199009252016081003', rfidUid: 'RFID-GUR-1007', school: 'SMP', subject: 'Pendidikan Jasmani', level: 'Guru Mapel', gender: 'Laki-laki', status: 'Terlambat', timeIn: '06:58', timeOut: '14:30', lateMinutes: 13, gate: 'Gerbang Utama' },
+  { id: '7', name: 'Eko Prasetyo, S.Pd', nip: '199009252016081003', rfidUid: 'RFID-GUR-1007', school: 'SMP', subject: 'Pendidikan Jasmani', level: 'Guru Mapel', gender: 'Laki laki', status: 'Terlambat', timeIn: '06:58', timeOut: '14:30', lateMinutes: 13, gate: 'Gerbang Utama' },
   { id: '8', name: 'Nurul Hidayati, S.Si', nip: '198807142012012002', rfidUid: 'RFID-GUR-1008', school: 'SMP', subject: 'Ilmu Pengetahuan Alam', level: 'Wali Kelas VIII-B', gender: 'Perempuan', status: 'Sakit', timeIn: null, timeOut: null },
-  { id: '9', name: 'Fajar Nugroho, S.Pd', nip: '199304122021011005', rfidUid: 'RFID-GUR-1009', school: 'SMK', subject: 'Basis Data', level: 'Guru Mapel', gender: 'Laki-laki', status: 'Hadir', timeIn: '06:15', timeOut: '15:30', gate: 'Ruang Guru' },
+  { id: '9', name: 'Fajar Nugroho, S.Pd', nip: '199304122021011005', rfidUid: 'RFID-GUR-1009', school: 'SMK', subject: 'Basis Data', level: 'Guru Mapel', gender: 'Laki laki', status: 'Hadir', timeIn: '06:15', timeOut: '15:30', gate: 'Ruang Guru' },
   { id: '10', name: 'Kurniawati, S.E', nip: '198506192010012004', rfidUid: 'RFID-GUR-1010', school: 'SMK', subject: 'Administrasi Keuangan', level: 'Tendik', gender: 'Perempuan', status: 'Hadir', timeIn: '06:28', timeOut: '16:00', gate: 'Ruang TU' }
 ])
 

@@ -135,7 +135,7 @@ onMounted(() => cbtData.load(true))
 
 // Export CSV Function (1:1 Versi Asli)
 const exportClassesCsv = () => {
-  const headers = ['No', 'Nama Rombel', 'Jenjang', 'Jurusan', 'Wali Kelas', 'NIP Wali Kelas', 'Ruangan', 'Total Siswa', 'Laki-laki', 'Perempuan', 'Kehadiran (%)', 'Rata-rata Nilai']
+  const headers = ['No', 'Nama Rombel', 'Jenjang', 'Jurusan', 'Wali Kelas', 'NIP Wali Kelas', 'Ruangan', 'Total Siswa', 'Laki laki', 'Perempuan', 'Kehadiran (%)', 'Rata-rata Nilai']
   const rows = rawClasses.value.map((c, i) => [
     i + 1,
     `"${c.name}"`,

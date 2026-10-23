@@ -79,7 +79,7 @@ const filteredStudents = computed(() => {
         class="px-3 py-1.5 text-xs font-semibold bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[#344054] focus:outline-none cursor-pointer"
       >
         <option value="">Semua Gender</option>
-        <option value="L">Laki-laki (L)</option>
+        <option value="L">Laki laki (L)</option>
         <option value="P">Perempuan (P)</option>
       </select>
     </div>
@@ -118,7 +118,7 @@ const filteredStudents = computed(() => {
                 class="px-2 py-0.5 rounded-full text-[10px]"
                 :class="s.gender === 'L' ? 'bg-[#EFF4FF] text-[#1B5FD9]' : 'bg-[#FDF2FA] text-[#C11574]'"
               >
-                {{ s.gender === 'L' ? 'Laki-laki' : 'Perempuan' }}
+                {{ s.gender === 'L' ? 'Laki laki' : 'Perempuan' }}
               </span>
             </td>
             <td class="py-2.5 px-3 font-mono">

@@ -30,6 +30,7 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const supabase = useSupabaseClient()
 const searchQuery = ref('')
 const openGroups = ref<Set<string>>(new Set(['dashboard']))
 const isAvailable = (title: string) => getAdminDestination(title) !== '#'
@@ -51,6 +52,11 @@ const isPageActive = (title: string) => {
   if (t.includes('cbt') || t.includes('ujian digital')) {
     return p.includes('/adminv2/cbt') && route.query.mode !== 'ujian_harian' && !p.includes('/adminv2/lms')
   }
+  if (t.includes('manajemen user') || t.includes('manajemen pengguna')) return p.includes('/adminv2/users')
+  if (t.includes('hak akses') || t.includes('rbac')) return p.includes('/adminv2/rbac')
+  if (t.includes('log aktivitas')) return p.includes('/adminv2/log')
+  if (t === 'pengaturan') return p.includes('/adminv2/profil') && route.query.tab === 'pengaturan'
+  if (t.includes('profil saya')) return p.includes('/adminv2/profil') && route.query.tab !== 'pengaturan'
   if (t === 'dashboard' || t === 'ringkasan utama') return p === '/adminv2' || p === '/adminv2/'
   return false
 }
@@ -64,6 +70,8 @@ watch(() => props.open, (isOpen) => {
       openGroups.value = new Set(['akademik'])
     } else if (p.includes('/cbt') || p.includes('/lms')) {
       openGroups.value = new Set(['aplikasi'])
+    } else if (p.includes('/users') || p.includes('/rbac') || p.includes('/log') || p.includes('/profil') || p.includes('/pengaturan')) {
+      openGroups.value = new Set(['sistem'])
     } else {
       openGroups.value = new Set(['dashboard'])
     }
@@ -76,23 +84,14 @@ const visibleGroups = computed(() => {
 
 const filteredGroups = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) {
-    return visibleGroups.value.map(g => ({
-      ...g,
-      matchedItems: g.items
-    }))
-  }
 
   return visibleGroups.value
     .map(g => {
-      const matched = g.items.filter(([title, desc]) => {
-        const full = `${g.label} ${title} ${desc}`.toLowerCase()
-        return full.includes(q)
+      const matchedItems = g.items.filter(([title, desc]) => {
+        if (!isAvailable(title)) return false
+        return !q || `${g.label} ${title} ${desc}`.toLowerCase().includes(q)
       })
-      return {
-        ...g,
-        matchedItems: matched
-      }
+      return { ...g, matchedItems }
     })
     .filter(g => g.matchedItems.length > 0)
 })
@@ -121,12 +120,18 @@ const isGroupOpen = (id: string) => {
   return openGroups.value.has(id)
 }
 
-const handleItemClick = async (title: string, event?: Event) => {
-  if (event) event.preventDefault()
+const handleItemClick = async (title: string) => {
   const dest = getAdminDestination(title)
-  if (dest === '#') return
+  if (!isAvailable(title)) return
   await navigateTo(dest)
   emit('close')
+}
+
+const handleLogout = async () => {
+  await supabase.auth.signOut()
+  emit('logout-click')
+  emit('close')
+  await navigateTo('/adminV2/login')
 }
 </script>
 
@@ -219,11 +224,10 @@ const handleItemClick = async (title: string, event?: Event) => {
           </button>
 
           <div v-show="g.id !== 'dashboard' && isGroupOpen(g.id)" class="px-2 pb-3 space-y-1">
-            <a
+            <NuxtLink
               v-for="([title, desc, icon], idx) in g.matchedItems"
               :key="idx"
-              :href="getAdminDestination(title)"
-              :aria-disabled="!isAvailable(title)"
+              :to="getAdminDestination(title)"
               class="w-full flex items-center gap-3 p-3 rounded-xl text-[13.5px] font-semibold transition text-left"
               :class="[
                 isPageActive(title)
@@ -231,7 +235,7 @@ const handleItemClick = async (title: string, event?: Event) => {
                 : (isAvailable(title) ? 'text-[#344054] hover:bg-[#EFF2F7] active:bg-[#EFF2F7] cursor-pointer touch-manipulation' : 'text-[#98A2B3] opacity-60 cursor-not-allowed'),
                 !isAvailable(title) && 'pointer-events-none'
               ]"
-              @click.prevent="handleItemClick(title, $event)"
+              @click="emit('close')"
             >
               <span
                 class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -254,7 +258,7 @@ const handleItemClick = async (title: string, event?: Event) => {
                 </div>
                 <small class="block truncate text-[11px] font-medium text-[#98A2B3]">{{ desc }}</small>
               </span>
-            </a>
+            </NuxtLink>
           </div>
         </div>
 
@@ -285,7 +289,7 @@ const handleItemClick = async (title: string, event?: Event) => {
         <button
           type="button"
           class="flex-1 flex flex-col items-center gap-1 text-[10.5px] font-semibold text-[#344054] py-2 px-1 rounded-xl hover:bg-[#EFF2F7] transition"
-          @click="emit('logout-click')"
+          @click="handleLogout"
         >
           <AdminV2Icon name="out" :size="20" />
           <span>Keluar</span>

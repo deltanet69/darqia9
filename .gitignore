@@ -29,5 +29,6 @@ agents.md
 .vercel
 
 # Supabase
-supabase/migrations/
+supabase/migrations/*
+!supabase/migrations/0008_nip_opsional_guru.sql
 

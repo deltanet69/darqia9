@@ -1,4 +1,4 @@
-ï»¿<template>
+<template>
   <div class="space-y-6 animate-fadeUp">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-riseIn">
@@ -204,7 +204,7 @@
             @click="activeSubmenu = 'daftar'"
           >
             <span>Lihat Semua Rombel</span>
-            <span>â†’</span>
+            <span>?</span>
           </button>
         </div>
 
@@ -272,7 +272,7 @@
               <option value="SMK">SMK IT Attaqwa 9</option>
               <option value="SMP">SMP IT Bina Cendekia</option>
             </select>
-            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">â–¾</span>
+            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
           </div>
 
           <!-- Major / Jurusan Switcher -->
@@ -286,7 +286,7 @@
               <option value="TKJ">TKJ (Teknik Komputer Jaringan)</option>
               <option value="SMP">Reguler SMP</option>
             </select>
-            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">â–¾</span>
+            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
           </div>
 
           <!-- Sort Selector -->
@@ -301,7 +301,7 @@
               <option value="attendance-desc">Kehadiran Tertinggi</option>
               <option value="average-desc">Nilai Rata-rata Tertinggi</option>
             </select>
-            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">â–¾</span>
+            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">?</span>
           </div>
 
           <!-- Search Box -->
@@ -318,7 +318,7 @@
               type="button"
               @click="searchQuery = ''"
             >
-              âœ•
+              ?
             </button>
           </div>
 
@@ -392,7 +392,7 @@
                   class="px-2 py-0.5 rounded-full text-[10.5px] font-bold flex items-center gap-1 shadow-2xs"
                   :class="item.attendance >= 94 ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'"
                 >
-                  <span>â˜…</span>
+                  <span>?</span>
                   <span>{{ item.attendance }}%</span>
                 </span>
               </div>
@@ -412,7 +412,7 @@
               </div>
             </div>
 
-            <!-- 2. Wali Kelas & 3. Jumlah Siswa (Laki-laki / Perempuan) -->
+            <!-- 2. Wali Kelas & 3. Jumlah Siswa (Laki laki / Perempuan) -->
             <div class="space-y-1.5 py-3 border-t border-slate-100 text-xs text-slate-600">
               <div class="truncate">
                 <span class="text-slate-400 font-medium">Wali Kelas: </span>
@@ -421,7 +421,7 @@
               <div class="truncate">
                 <span class="text-slate-400 font-medium">Jumlah Siswa: </span>
                 <b class="text-slate-800 font-bold">{{ item.students }} Siswa</b>
-                <span class="text-slate-500 font-medium"> ({{ item.boys }} Laki-laki / {{ item.girls }} Perempuan)</span>
+                <span class="text-slate-500 font-medium"> ({{ item.boys }} Laki laki / {{ item.girls }} Perempuan)</span>
               </div>
             </div>
 
@@ -434,7 +434,7 @@
                 Jurusan {{ item.major }}
               </span>
               <span class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
-                {{ item.room.split('Â·')[0].trim() }}
+                {{ item.room.split('·')[0].trim() }}
               </span>
               <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
                 Aktif
@@ -475,7 +475,7 @@
                 <th class="py-3.5 px-4">Wali Kelas</th>
                 <th class="py-3.5 px-4">Ruangan</th>
                 <th class="py-3.5 px-4 font-mono">Siswa (L/P)</th>
-                <th class="py-3.5 px-4 font-mono">RataÂ² Nilai</th>
+                <th class="py-3.5 px-4 font-mono">Rata² Nilai</th>
                 <th class="py-3.5 px-4 font-mono">Kehadiran</th>
                 <th class="py-3.5 px-4 text-right">Aksi</th>
               </tr>
@@ -565,7 +565,7 @@
             type="button"
             @click="currentPage--"
           >
-            â€¹ Sebelumnya
+            ‹ Sebelumnya
           </button>
           <span class="px-3 py-1.5 rounded-xl bg-slate-200/60 font-mono font-bold text-slate-800">
             {{ currentPage }} / {{ totalPages }}
@@ -576,7 +576,7 @@
             type="button"
             @click="currentPage++"
           >
-            Berikutnya â€º
+            Berikutnya ›
           </button>
         </div>
       </div>
@@ -586,7 +586,7 @@
     <AdminSlideOver
       :open="Boolean(selected)"
       :title="selected?.name || 'Detail Rombel'"
-      :subtitle="`${selected?.level || ''} â€¢ ${selected?.room || ''}`"
+      :subtitle="`${selected?.level || ''} • ${selected?.room || ''}`"
       badge="Data Rombel"
       badge-type="primary"
       width="xl"
@@ -629,7 +629,7 @@
           <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
             <span class="text-slate-500 text-[10.5px] font-semibold block">Total Siswa Terdaftar</span>
             <b class="text-slate-900 font-mono text-base font-bold block mt-1">{{ selected.students }} Siswa</b>
-            <span class="text-[11px] text-slate-400 block mt-0.5 font-mono">({{ selected.boys }} Laki-laki &bull; {{ selected.girls }} Perempuan)</span>
+            <span class="text-[11px] text-slate-400 block mt-0.5 font-mono">({{ selected.boys }} Laki laki &bull; {{ selected.girls }} Perempuan)</span>
           </div>
           <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
             <span class="text-slate-500 text-[10.5px] font-semibold block">Tingkat Kehadiran</span>
@@ -671,7 +671,7 @@
     <AdminSlideOver
       :open="showCreateModal"
       title="Tambah Rombel Kelas Baru"
-      subtitle="Tahun Ajaran 2026/2027 â€¢ Semester Ganjil"
+      subtitle="Tahun Ajaran 2026/2027 • Semester Ganjil"
       badge="Form Rombel"
       badge-type="primary"
       width="lg"
@@ -782,15 +782,15 @@ const summaryCards = computed(() => [
     value: `${rawClasses.value.length}`,
     unit: 'Kelas',
     sub: 'T.A 2026/2027',
-    note: '6 SMK Â· 6 SMP',
+    note: '6 SMK · 6 SMP',
     rate: '100% Aktif'
   },
   {
     label: 'Total Kapasitas Siswa',
     value: '422',
     unit: 'Siswa',
-    sub: 'RataÂ² 35.2/kelas',
-    note: '241 Laki-laki Â· 181 Perempuan',
+    sub: 'Rata² 35.2/kelas',
+    note: '241 Laki laki · 181 Perempuan',
     rate: '98.5% Kuota'
   },
   {
@@ -878,18 +878,18 @@ interface ClassRombel {
 }
 
 const rawClasses = ref<ClassRombel[]>([
-  { name: 'VII-A', level: 'SMP', major: '', room: 'Gedung A Â· R.101', teacher: 'Siti Aminah, S.Pd', teacherNip: '198204152008012003', students: 34, boys: 18, girls: 16, attendance: 94, average: 84.2 },
-  { name: 'VII-B', level: 'SMP', major: '', room: 'Gedung A Â· R.102', teacher: 'Rini Astuti, S.Pd', teacherNip: '199105102019032005', students: 36, boys: 19, girls: 17, attendance: 91, average: 82.8 },
-  { name: 'VIII-A', level: 'SMP', major: '', room: 'Gedung A Â· R.201', teacher: 'Ahmad Fauzi, S.Pd', teacherNip: '198703122011011002', students: 35, boys: 18, girls: 17, attendance: 95, average: 85.1 },
-  { name: 'VIII-B', level: 'SMP', major: '', room: 'Gedung A Â· R.202', teacher: 'Nurul Hidayati, S.Si', teacherNip: '198807142012012002', students: 35, boys: 17, girls: 18, attendance: 89, average: 81.5 },
-  { name: 'IX-A', level: 'SMP', major: '', room: 'Gedung A Â· R.301', teacher: 'Drs. H. Ahmad Dahlan', teacherNip: '197508122000031001', students: 34, boys: 16, girls: 18, attendance: 96, average: 86.4 },
-  { name: 'IX-B', level: 'SMP', major: '', room: 'Gedung A Â· R.302', teacher: 'Dewi Lestari, S.Pd', teacherNip: '199402182020122008', students: 36, boys: 20, girls: 16, attendance: 92, average: 83.7 },
-  { name: 'X RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B Â· Lab 1', teacher: 'Bambang Supriyanto, M.Kom', teacherNip: '198901202015041002', students: 36, boys: 24, girls: 12, attendance: 94, average: 85.5 },
-  { name: 'X RPL 2', level: 'SMK', major: 'RPL', room: 'Gedung B Â· Lab 2', teacher: 'Eko Prasetyo, S.Pd', teacherNip: '199009252016081003', students: 35, boys: 22, girls: 13, attendance: 90, average: 83.2 },
-  { name: 'XI RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B Â· Lab 3', teacher: 'Hendra Gunawan, S.Kom', teacherNip: '198711032014021004', students: 34, boys: 23, girls: 11, attendance: 95, average: 86.9 },
-  { name: 'XI TKJ 1', level: 'SMK', major: 'TKJ', room: 'Gedung B Â· Lab Jaringan', teacher: 'Rizky Wahyudi, S.T', teacherNip: '199208152018011003', students: 36, boys: 27, girls: 9, attendance: 93, average: 84.6 },
-  { name: 'XII RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B Â· R.301', teacher: 'Fajar Nugroho, S.Pd', teacherNip: '199304122021011005', students: 35, boys: 22, girls: 13, attendance: 97, average: 88.3 },
-  { name: 'XII TKJ 1', level: 'SMK', major: 'TKJ', room: 'Gedung B Â· R.302', teacher: 'Agus Setiawan, S.T', teacherNip: '198605202014031002', students: 34, boys: 26, girls: 8, attendance: 94, average: 85.8 }
+  { name: 'VII-A', level: 'SMP', major: '', room: 'Gedung A · R.101', teacher: 'Siti Aminah, S.Pd', teacherNip: '198204152008012003', students: 34, boys: 18, girls: 16, attendance: 94, average: 84.2 },
+  { name: 'VII-B', level: 'SMP', major: '', room: 'Gedung A · R.102', teacher: 'Rini Astuti, S.Pd', teacherNip: '199105102019032005', students: 36, boys: 19, girls: 17, attendance: 91, average: 82.8 },
+  { name: 'VIII-A', level: 'SMP', major: '', room: 'Gedung A · R.201', teacher: 'Ahmad Fauzi, S.Pd', teacherNip: '198703122011011002', students: 35, boys: 18, girls: 17, attendance: 95, average: 85.1 },
+  { name: 'VIII-B', level: 'SMP', major: '', room: 'Gedung A · R.202', teacher: 'Nurul Hidayati, S.Si', teacherNip: '198807142012012002', students: 35, boys: 17, girls: 18, attendance: 89, average: 81.5 },
+  { name: 'IX-A', level: 'SMP', major: '', room: 'Gedung A · R.301', teacher: 'Drs. H. Ahmad Dahlan', teacherNip: '197508122000031001', students: 34, boys: 16, girls: 18, attendance: 96, average: 86.4 },
+  { name: 'IX-B', level: 'SMP', major: '', room: 'Gedung A · R.302', teacher: 'Dewi Lestari, S.Pd', teacherNip: '199402182020122008', students: 36, boys: 20, girls: 16, attendance: 92, average: 83.7 },
+  { name: 'X RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B · Lab 1', teacher: 'Bambang Supriyanto, M.Kom', teacherNip: '198901202015041002', students: 36, boys: 24, girls: 12, attendance: 94, average: 85.5 },
+  { name: 'X RPL 2', level: 'SMK', major: 'RPL', room: 'Gedung B · Lab 2', teacher: 'Eko Prasetyo, S.Pd', teacherNip: '199009252016081003', students: 35, boys: 22, girls: 13, attendance: 90, average: 83.2 },
+  { name: 'XI RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B · Lab 3', teacher: 'Hendra Gunawan, S.Kom', teacherNip: '198711032014021004', students: 34, boys: 23, girls: 11, attendance: 95, average: 86.9 },
+  { name: 'XI TKJ 1', level: 'SMK', major: 'TKJ', room: 'Gedung B · Lab Jaringan', teacher: 'Rizky Wahyudi, S.T', teacherNip: '199208152018011003', students: 36, boys: 27, girls: 9, attendance: 93, average: 84.6 },
+  { name: 'XII RPL 1', level: 'SMK', major: 'RPL', room: 'Gedung B · R.301', teacher: 'Fajar Nugroho, S.Pd', teacherNip: '199304122021011005', students: 35, boys: 22, girls: 13, attendance: 97, average: 88.3 },
+  { name: 'XII TKJ 1', level: 'SMK', major: 'TKJ', room: 'Gedung B · R.302', teacher: 'Agus Setiawan, S.T', teacherNip: '198605202014031002', students: 34, boys: 26, girls: 8, attendance: 94, average: 85.8 }
 ])
 
 // Filter & Search State
@@ -1088,7 +1088,7 @@ const badgeClass = (level: string, major: string) => {
 
 // Export CSV Function
 const exportClassesCsv = () => {
-  const headers = ['No', 'Nama Rombel', 'Jenjang', 'Jurusan', 'Wali Kelas', 'NIP Wali Kelas', 'Ruangan', 'Total Siswa', 'Laki-laki', 'Perempuan', 'Kehadiran (%)', 'Rata-rata Nilai']
+  const headers = ['No', 'Nama Rombel', 'Jenjang', 'Jurusan', 'Wali Kelas', 'NIP Wali Kelas', 'Ruangan', 'Total Siswa', 'Laki laki', 'Perempuan', 'Kehadiran (%)', 'Rata-rata Nilai']
   const rows = filteredClasses.value.map((c, i) => [
     i + 1,
     `"${c.name}"`,

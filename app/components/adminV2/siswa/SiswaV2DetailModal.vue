@@ -139,7 +139,7 @@ const statusChipClass = (status: string): string => {
           </div>
           <div class="flex items-center justify-between py-2.5">
             <span class="text-[#667085] font-semibold">Jenis Kelamin</span>
-            <span class="font-bold text-[#101828]">{{ student.gender === 'L' ? 'Laki-laki (L)' : 'Perempuan (P)' }}</span>
+            <span class="font-bold text-[#101828]">{{ student.gender === 'L' ? 'Laki laki (L)' : 'Perempuan (P)' }}</span>
           </div>
           <div class="flex items-center justify-between py-2.5">
             <span class="text-[#667085] font-semibold">NISN</span>

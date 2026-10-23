@@ -319,7 +319,7 @@ definePageMeta({ layout: 'smp' })
                 <svg class="w-6 h-6 stroke-current stroke-[2.2] fill-none" viewBox="0 0 24 24"><path d="M16 4h4v4M20 4l-6.5 6.5"/><circle cx="9.5" cy="14.5" r="5.5"/></svg>
               </div>
               <div>
-                <h3 class="text-[21px] font-black text-[#063826]">Kelas Khusus Laki-laki</h3>
+                <h3 class="text-[21px] font-black text-[#063826]">Kelas Khusus Laki laki</h3>
                 <span class="text-[13px] font-bold text-[#0E7A4E]">Fokus, Kepemimpinan &amp; Disiplin</span>
               </div>
             </div>

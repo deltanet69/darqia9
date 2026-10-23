@@ -1,10 +1,27 @@
 export default defineNuxtRouteMiddleware((to) => {
-  // Lindungi semua route /admin/** KECUALI /admin/login dan /adminV2
-  if (!to.path.startsWith('/admin') || to.path.startsWith('/adminV2') || to.path === '/admin/login') {
+  const path = to.path.toLowerCase()
+  const user = useSupabaseUser()
+
+  if (path.startsWith('/adminv2')) {
+    if (path === '/adminv2/login') {
+      if (user.value) return navigateTo('/adminV2')
+      return
+    }
+
+    if (!user.value) {
+      return navigateTo({
+        path: '/adminV2/login',
+        query: { redirect: to.fullPath }
+      })
+    }
     return
   }
 
-  const user = useSupabaseUser()
+  // Lindungi semua route /admin/** kecuali /admin/login.
+  if (!path.startsWith('/admin') || path === '/admin/login') {
+    return
+  }
+
   if (!user.value) {
     return navigateTo('/admin/login')
   }

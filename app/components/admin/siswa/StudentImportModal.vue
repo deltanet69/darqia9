@@ -125,7 +125,7 @@ const handleFileChange = (e: Event) => {
         const nisn = r['nisn'] || r['no nisn'] || String(Date.now()).slice(-10)
         const nis = r['nis'] || r['nomor induk'] || ''
         const rawGender = (r['gender'] || r['jk'] || r['jenis kelamin'] || 'L').toUpperCase()
-        const gender: 'L' | 'P' = rawGender.startsWith('P') || rawGender.startsWith('W') ? 'P' : 'L'
+        const gender: 'L' | 'P' = rawGender === 'PRIA' || rawGender.startsWith('L') ? 'L' : rawGender === 'WANITA' || rawGender.startsWith('P') || rawGender.startsWith('W') ? 'P' : 'L'
         const className = r['kelas'] || r['rombel'] || r['kelas / rombel'] || (props.grade === 'SMP' ? 'VII-A (Putra)' : 'X. TKJ 1')
 
         if (!name.trim()) {

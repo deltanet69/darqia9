@@ -59,6 +59,21 @@ const isPageActive = (title: string) => {
   if (t.includes('cbt') || t.includes('ujian digital')) {
     return p.includes('/adminv2/cbt') && route.query.mode !== 'ujian_harian' && !p.includes('/adminv2/lms')
   }
+  if (t.includes('manajemen user') || t.includes('manajemen pengguna')) {
+    return p.includes('/adminv2/users')
+  }
+  if (t.includes('hak akses') || t.includes('rbac')) {
+    return p.includes('/adminv2/rbac')
+  }
+  if (t.includes('log aktivitas')) {
+    return p.includes('/adminv2/log')
+  }
+  if (t === 'pengaturan') {
+    return p.includes('/adminv2/profil') && route.query.tab === 'pengaturan'
+  }
+  if (t.includes('profil saya')) {
+    return p.includes('/adminv2/profil') && route.query.tab !== 'pengaturan'
+  }
   if (t === 'dashboard' || t === 'ringkasan utama') {
     return p === '/adminv2' || p === '/adminv2/'
   }

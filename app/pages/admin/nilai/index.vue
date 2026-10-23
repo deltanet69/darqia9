@@ -1,4 +1,4 @@
-ï»¿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminSparkline from '~/components/admin/AdminSparkline.vue'
@@ -128,9 +128,9 @@ const subjectChartDatasets = computed(() => [
 ])
 
 const predicateDonutSegments = computed(() => [
-  { label: 'A (â‰¥90)', value: predicateCounts.value.A, color: '#16a34a' },
-  { label: 'B (80â€“89)', value: predicateCounts.value.B, color: '#2563eb' },
-  { label: 'C (75â€“79)', value: predicateCounts.value.C, color: '#d97706' },
+  { label: 'A (=90)', value: predicateCounts.value.A, color: '#16a34a' },
+  { label: 'B (80–89)', value: predicateCounts.value.B, color: '#2563eb' },
+  { label: 'C (75–79)', value: predicateCounts.value.C, color: '#d97706' },
   { label: 'D (<75)', value: predicateCounts.value.D, color: '#e11d48' }
 ])
 
@@ -306,7 +306,7 @@ const exportLedger = () => {
 
         <div class="py-2">
           <AdminBarChart
-            :labels="currentSubjects.map(s => s.length > 10 ? s.slice(0, 9) + 'â€¦' : s)"
+            :labels="currentSubjects.map(s => s.length > 10 ? s.slice(0, 9) + '…' : s)"
             :datasets="subjectChartDatasets"
           />
         </div>
@@ -370,7 +370,7 @@ const exportLedger = () => {
                   </span>
                   <div>
                     <b class="text-slate-900 text-xs font-bold block">{{ item.name }}</b>
-                    <span class="text-[11px] text-slate-400">{{ item.gender === 'L' ? 'Laki-laki' : 'Perempuan' }}</span>
+                    <span class="text-[11px] text-slate-400">{{ item.gender === 'L' ? 'Laki laki' : 'Perempuan' }}</span>
                   </div>
                 </div>
               </td>

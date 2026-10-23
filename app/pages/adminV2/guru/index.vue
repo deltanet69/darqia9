@@ -8,9 +8,13 @@ import AdminV2Popovers from '~/components/adminV2/AdminV2Popovers.vue'
 import AdminV2Toast from '~/components/adminV2/AdminV2Toast.vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
-import GuruV2Modal, { type StaffItem } from '~/components/adminV2/guru/GuruV2Modal.vue'
+import GuruV2Modal from '~/components/adminV2/guru/GuruV2Modal.vue'
+import GuruV2DetailModal from '~/components/adminV2/guru/GuruV2DetailModal.vue'
+import GuruV2UploadModal from '~/components/adminV2/guru/GuruV2UploadModal.vue'
+import GuruV2Table from '~/components/adminV2/guru/GuruV2Table.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
-import { useAdminTeachers } from '~/composables/useAdminTeachers'
+import { useAdminTeachers, type StaffItem } from '~/composables/useAdminTeachers'
+import { useAdminSystemStore } from '~/composables/useAdminSystemStore'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 
 definePageMeta({
@@ -18,16 +22,47 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Data Guru & Staff — Kepegawaian — Admin Portal Darqia 9',
+  title: 'Data Induk Guru & Staff — Kepegawaian — Admin Portal Darqia 9',
   meta: [
-    { name: 'description', content: 'Manajemen profil pendidik, penugasan, dan integrasi kartu absensi RFID ekosistem Darqia 9' }
+    { name: 'description', content: 'Manajemen data induk pendidik, penugasan, integrasi RFID, dan sinkronisasi akun portal ekosistem Darqia 9' }
   ]
 })
 
 /* ================= STORE & STATE TERINTEGRASI ================= */
 const grade = useAdminGrade()
 const teachersStore = useAdminTeachers()
-const { staffList, syncAttendanceFromStaff } = teachersStore
+const systemStore = useAdminSystemStore()
+const {
+  staffList,
+  syncAttendanceFromStaff,
+  fetchTeachersFromDb,
+  saveStaffToDb,
+  batchImportTeachersToDb,
+  syncTeacherAccounts,
+  deleteStaffFromDb,
+  isDbConnected
+} = teachersStore
+
+// Muat data dari Supabase saat halaman dibuka
+onMounted(async () => {
+  await fetchTeachersFromDb()
+})
+
+const isSyncingDb = ref(false)
+const syncAllToDatabase = async () => {
+  if (staffList.value.length === 0) {
+    triggerToast('Tidak ada data guru untuk disinkronkan ke database.')
+    return
+  }
+  isSyncingDb.value = true
+  const res = await batchImportTeachersToDb(staffList.value)
+  isSyncingDb.value = false
+  if (res.success) {
+    triggerToast(`Sukses! ${staffList.value.length} data guru berhasil tersimpan di tabel teachers Supabase.`)
+  } else {
+    triggerToast(`Gagal menyimpan ke Supabase: ${res.error || 'Cek RLS policy atau jalankan migrasi 0007'}`)
+  }
+}
 
 const jenjang = ref<'smp' | 'smk'>(grade.value.toLowerCase() as 'smp' | 'smk')
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
@@ -55,7 +90,13 @@ const filteredStaff = computed(() => {
     if (selectedStatus.value !== 'all' && s.status !== selectedStatus.value) return false
     if (searchQuery.value) {
       const q = searchQuery.value.toLowerCase()
-      return s.name.toLowerCase().includes(q) || s.nip.includes(q) || s.role.toLowerCase().includes(q)
+      return (
+        s.name.toLowerCase().includes(q) ||
+        s.nip.includes(q) ||
+        (s.nik && s.nik.includes(q)) ||
+        (s.email && s.email.toLowerCase().includes(q)) ||
+        s.role.toLowerCase().includes(q)
+      )
     }
     return true
   })
@@ -68,9 +109,12 @@ const resetFilter = () => {
   triggerToast('Filter berhasil direset.')
 }
 
-// Modal Form State
+// Modal States
 const isModalOpen = ref(false)
+const isDetailModalOpen = ref(false)
+const isUploadModalOpen = ref(false)
 const editingStaff = ref<StaffItem | null>(null)
+const viewingStaff = ref<StaffItem | null>(null)
 const deletingStaff = ref<StaffItem | null>(null)
 
 const openAddModal = () => {
@@ -83,14 +127,73 @@ const openEditModal = (s: StaffItem) => {
   isModalOpen.value = true
 }
 
-const handleSaveStaff = (data: Omit<StaffItem, 'id'> & { id?: string }) => {
+const openDetailModal = (s: StaffItem) => {
+  viewingStaff.value = s
+  isDetailModalOpen.value = true
+}
+
+// Sinkronisasi Guru ke User Management
+const syncStaffToUserManagement = (staff: StaffItem) => {
+  const username = staff.email || staff.nip
+  // Cek apakah akun sudah ada
+  const existingUser = systemStore.users.value.find(u => u.username === username)
+  if (!existingUser) {
+    systemStore.addUser(staff.name, username, 'Guru')
+    systemStore.addLog('Administrator', 'Super Admin', `membuat akun pengguna portal untuk ${staff.name}`, 'Pengguna')
+  }
+
+  // Tandai di profil guru
+  const target = staffList.value.find(s => s.id === staff.id)
+  if (target) {
+    target.isUserSynced = true
+  }
+  if (viewingStaff.value && viewingStaff.value.id === staff.id) {
+    viewingStaff.value.isUserSynced = true
+  }
+
+  triggerToast(`Akun portal untuk ${staff.name} berhasil dibuat di Manajemen Pengguna.`)
+}
+
+// Batch Sync Semua Guru ke User Management
+const syncAllToUserManagement = () => {
+  let count = 0
+  staffList.value.forEach((staff) => {
+    if (!staff.isUserSynced) {
+      const username = staff.email || staff.nip
+      const existing = systemStore.users.value.find(u => u.username === username)
+      if (!existing) {
+        systemStore.addUser(staff.name, username, 'Guru')
+      }
+      staff.isUserSynced = true
+      count++
+    }
+  })
+
+  if (count > 0) {
+    systemStore.addLog('Administrator', 'Super Admin', `sinkronisasi massal ${count} akun guru ke Manajemen Pengguna`, 'Pengguna')
+    triggerToast(`${count} akun guru berhasil disinkronkan ke Manajemen Pengguna.`)
+  } else {
+    triggerToast('Seluruh data guru sudah terhubung dengan Manajemen Pengguna.')
+  }
+}
+
+// Simpan Data Guru (Tambah / Edit)
+const handleSaveStaff = async (data: Omit<StaffItem, 'id'> & { id?: string; syncUser?: boolean }) => {
+  let targetStaff: StaffItem
   if (editingStaff.value) {
     const idx = staffList.value.findIndex(item => item.id === editingStaff.value?.id)
     if (idx !== -1) {
       const updated: StaffItem = { ...data, id: editingStaff.value.id }
       staffList.value[idx] = updated
       syncAttendanceFromStaff(updated)
-      triggerToast(`Data ${data.name} berhasil diperbarui.`)
+      targetStaff = updated
+
+      if (data.syncUser) {
+        syncStaffToUserManagement(updated)
+      }
+      triggerToast(`Data guru ${data.name} berhasil diperbarui.`)
+    } else {
+      return
     }
   } else {
     const newItem: StaffItem = {
@@ -99,49 +202,138 @@ const handleSaveStaff = (data: Omit<StaffItem, 'id'> & { id?: string }) => {
     }
     staffList.value.unshift(newItem)
     syncAttendanceFromStaff(newItem)
-    triggerToast(`Pendidik baru ${data.name} berhasil ditambahkan.`)
+    targetStaff = newItem
+
+    if (data.syncUser) {
+      syncStaffToUserManagement(newItem)
+    }
+    triggerToast(`Data guru baru ${data.name} berhasil ditambahkan.`)
   }
   isModalOpen.value = false
+
+  // Simpan langsung ke tabel Supabase teachers
+  const dbRes = await saveStaffToDb(targetStaff)
+  if (!dbRes.success) {
+    triggerToast(`Tersimpan lokal. Status database: ${dbRes.error || 'Perlu migrasi Supabase'}`)
+  }
 }
 
+// Impor Massal dari Berkas Excel / CSV
+const handleBatchImported = async (items: StaffItem[], syncUsers: boolean) => {
+  triggerToast(`Mengimpor ${items.length} data guru ke database...`)
+
+  // Sinkronisasi user management jika diminta
+  // Kirim langsung ke Supabase — staffList diisi ulang dari DB setelah selesai
+  const dbRes = await batchImportTeachersToDb(items)
+
+  if (dbRes.success) {
+    const importedCount = (dbRes as any).count || items.length
+    const failedCount = (dbRes as any).failed || 0
+    const importedItems = (dbRes as any).items || items
+
+    if (syncUsers) {
+      const accountRes = await syncTeacherAccounts(importedItems)
+      if (!accountRes.success) {
+        triggerToast(`${importedCount} guru tersimpan, tetapi akun gagal disinkronkan: ${accountRes.error}`)
+        return
+      }
+
+      accountRes.accounts.forEach((account) => {
+        const appliesToActiveGrade = account.scope === 'yayasan' || account.scope === grade.value.toLowerCase()
+        const exists = systemStore.users.value.some(user => user.username === account.email)
+        if (appliesToActiveGrade && !exists) systemStore.addUser(account.name, account.email, 'Guru')
+      })
+      systemStore.addLog('Administrator', 'Super Admin', `mengimpor ${importedCount} guru dan menyinkronkan ${accountRes.accounts.length} akun login`, 'Kepegawaian')
+      triggerToast(`${importedCount} guru tersimpan, ${accountRes.accounts.length} akun disinkronkan${failedCount ? `, ${failedCount} baris gagal` : ''}.`)
+    } else {
+      triggerToast(`${importedCount} guru berhasil diimpor${failedCount ? `, ${failedCount} baris gagal` : ''}.`)
+    }
+    // Sinkronisasi attendance dari staffList yang sudah diisi DB
+    staffList.value.forEach(s => syncAttendanceFromStaff(s))
+  } else {
+    triggerToast(`Import gagal: ${dbRes.error || 'Periksa koneksi Supabase & RLS'}`)
+  }
+}
+
+// Hapus Guru
 const confirmDelete = (s: StaffItem) => {
   deletingStaff.value = s
 }
 
-const executeDelete = () => {
+const executeDelete = async () => {
   if (deletingStaff.value) {
     const id = deletingStaff.value.id
+    const nip = deletingStaff.value.nip
     const name = deletingStaff.value.name
     staffList.value = staffList.value.filter(s => s.id !== id)
     teachersStore.attendanceList.value = teachersStore.attendanceList.value.filter(a => a.id !== id)
     triggerToast(`Data ${name} berhasil dihapus.`)
     deletingStaff.value = null
+
+    // Hapus dari database Supabase
+    await deleteStaffFromDb(id, nip)
   }
 }
 
-// Ekspor CSV
+// Ekspor seluruh data induk ke CSV
 const exportStaffCsv = () => {
-  const headers = ['No', 'NIP/NUPTK', 'Nama Lengkap', 'Jabatan/Tugas', 'Unit', 'Mapel Utama', 'No HP', 'Status', 'RFID UID']
+  const headers = [
+    'No',
+    'Nama Lengkap',
+    'NIK',
+    'No KK',
+    'NUPTK',
+    'NIP',
+    'No Telp/WA',
+    'Alamat Email',
+    'Tempat Lahir',
+    'Tgl Lahir',
+    'Alamat',
+    'Kelurahan',
+    'Kecamatan',
+    'Kab/Kota',
+    'Pendidikan Terakhir',
+    'Unit Sekolah',
+    'Jabatan & Tugas',
+    'Mapel Utama',
+    'Status Kepegawaian',
+    'RFID UID',
+    'Status Akun Portal'
+  ]
+
   const rows = filteredStaff.value.map((s, i) => [
     i + 1,
-    `"${s.nip}"`,
     `"${s.name}"`,
-    `"${s.role}"`,
+    `"${s.nik || '-'}"`,
+    `"${s.noKk || '-'}"`,
+    `"${s.nuptk || '-'}"`,
+    `"${s.nip}"`,
+    `"${s.phone || '-'}"`,
+    `"${s.email || '-'}"`,
+    `"${s.birthPlace || '-'}"`,
+    `"${s.birthDate || '-'}"`,
+    `"${s.address || '-'}"`,
+    `"${s.kelurahan || '-'}"`,
+    `"${s.kecamatan || '-'}"`,
+    `"${s.kabKota || '-'}"`,
+    `"${s.education || '-'}"`,
     s.unit,
+    `"${s.role}"`,
     `"${s.subject || '-'}"`,
-    `"${s.phone}"`,
     s.status,
-    `"${s.rfidUid}"`
+    `"${s.rfidUid}"`,
+    s.isUserSynced ? 'Terhubung' : 'Belum'
   ])
-  const csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.map(r => r.join(',')).join('\n')
+
+  const csvContent = '\uFEFF' + headers.join(',') + '\r\n' + rows.map(r => r.join(',')).join('\r\n')
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `data-guru-staff-${Date.now()}.csv`
+  a.download = `data-induk-guru-staff-${Date.now()}.csv`
   a.click()
   URL.revokeObjectURL(url)
-  triggerToast(`${filteredStaff.value.length} data guru diekspor ke CSV.`)
+  triggerToast(`${filteredStaff.value.length} data guru diekspor lengkap ke CSV.`)
 }
 
 // Header & Navigation States
@@ -152,7 +344,7 @@ const isSearchOpen = ref(false)
 const isNotifOpen = ref(false)
 const isProfileOpen = ref(false)
 
-// Toast
+// Toast State
 const toastMessage = ref('')
 const isToastVisible = ref(false)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
@@ -163,7 +355,7 @@ const triggerToast = (msg: string) => {
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => {
     isToastVisible.value = false
-  }, 2400)
+  }, 2600)
 }
 
 const closeAllModals = () => {
@@ -199,6 +391,8 @@ onMounted(() => {
     if (e.key === 'Escape') {
       closeAllModals()
       isModalOpen.value = false
+      isDetailModalOpen.value = false
+      isUploadModalOpen.value = false
       deletingStaff.value = null
     }
   })
@@ -227,12 +421,11 @@ onMounted(() => {
         @toggle-profile="isProfileOpen = !isProfileOpen"
       />
 
-      <!-- SUB NAVBAR KHUSUS BREADCRUMB (Desktop & Mobile: Sticky Sub-Navbar) -->
       <AdminV2Breadcrumb
         :items="[
           { label: 'Portal Admin', to: '/adminV2' },
           { label: 'Kepegawaian', to: '/adminV2/guru' },
-          { label: 'Data Guru & Staff' }
+          { label: 'Data Induk Guru & Staff' }
         ]"
         :badge="jenjang === 'smp' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'"
         :jenjang="jenjang"
@@ -249,76 +442,83 @@ onMounted(() => {
 
     <!-- MAIN PAGE CONTAINER -->
     <main class="max-w-[1440px] mx-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 space-y-6">
-      <!-- SUB-MODULE NAVIGATION SWITCHER -->
-      <div class="bg-white border border-[#E7EBF2] rounded-2xl p-1.5 shadow-xs flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
-        <NuxtLink
-          to="/adminV2/guru"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#1B5FD9] text-white shadow-xs shrink-0"
-        >
-          <AdminV2Icon name="users" :size="16" />
-          <span>Data Guru &amp; Staff</span>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/20 text-white">
-            {{ staffList.length }} Pendidik
-          </span>
-        </NuxtLink>
-        <NuxtLink
-          to="/adminV2/absensi-guru"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all text-[#475467] hover:text-[#101828] hover:bg-[#F2F4F7] shrink-0"
-        >
-          <AdminV2Icon name="check-circle" :size="16" />
-          <span>Presensi &amp; Absensi RFID</span>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
-            Live Reader
-          </span>
-        </NuxtLink>
-      </div>
-
-      <!-- PAGE HEAD & AKSI (Persis 1:1 Flow Admin Portal) -->
-      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <!-- PAGE HEAD & AKSI LENGKAP -->
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <div class="text-[10px] font-extrabold uppercase tracking-widest text-[#1B5FD9] mb-1">
             Portal Administrasi · Kepegawaian
           </div>
           <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#101828] flex items-center gap-2.5 flex-wrap">
-            <span>Data Guru &amp; Staff</span>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E8F0FE] text-[#12459B] border border-[#BFDBFE]">
-              Pendidik &amp; Tenaga Kependidikan
-            </span>
+            <span>Data Induk Guru &amp; Staff</span>
           </h1>
-          <p class="text-xs sm:text-[13px] text-[#667085] mt-1 font-medium">
-            Manajemen profil pendidik, penugasan, dan integrasi kartu absensi RFID &bull; {{ schoolName }} &bull; Yayasan Darqia
-          </p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Tombol Aksi Lengkap -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Tombol Sinkron Semua ke User Management -->
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#F3F5F9] text-[#344054] text-xs sm:text-sm font-bold rounded-xl border border-[#D0D5DD] shadow-xs hover:border-[#98A2B3] transition-all cursor-pointer"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#F0FDF4] hover:bg-[#DCFCE7] text-[#166534] text-xs font-bold rounded-xl border border-[#BBF7D0] shadow-2xs transition cursor-pointer"
+            title="Sinkronkan seluruh akun guru ke Manajemen Pengguna"
+            @click="syncAllToUserManagement"
+          >
+            <AdminV2Icon name="check" :size="15" />
+            <span>Sinkron ke Pengguna</span>
+          </button>
+
+          <!-- Tombol Sinkron ke Database Supabase -->
+          <!-- <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl border shadow-2xs transition cursor-pointer disabled:opacity-50"
+            :class="isDbConnected ? 'bg-[#EFF6FF] hover:bg-[#DBEAFE] text-[#1D4ED8] border-[#BFDBFE]' : 'bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#92400E] border-[#FCD34D]'"
+            :disabled="isSyncingDb"
+            title="Kirim dan simpan seluruh data guru ke tabel teachers Supabase"
+            @click="syncAllToDatabase"
+          >
+            <AdminV2Icon name="database" :size="15" />
+            <span>{{ isSyncingDb ? 'Menyimpan...' : 'Simpan ke Supabase' }}</span>
+          </button> -->
+
+          <!-- Tombol Unggah / Import Excel / CSV -->
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#F3F5F9] text-[#344054] text-xs font-bold rounded-xl border border-[#D0D5DD] shadow-2xs transition cursor-pointer"
+            @click="isUploadModalOpen = true"
+          >
+            <AdminV2Icon name="dl" :size="15" class="rotate-180 text-[#667085]" />
+            <span>Unggah Excel/CSV</span>
+          </button>
+
+          <!-- Tombol Ekspor CSV -->
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#F3F5F9] text-[#344054] text-xs font-bold rounded-xl border border-[#D0D5DD] shadow-2xs transition cursor-pointer"
             @click="exportStaffCsv"
           >
-            <AdminV2Icon name="dl" :size="16" class="text-[#667085]" />
-            <span>Ekspor CSV</span>
+            <AdminV2Icon name="dl" :size="15" class="text-[#667085]" />
+            <span>Ekspor Data</span>
           </button>
+
+          <!-- Tombol Tambah Guru Baru -->
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1B5FD9] hover:bg-[#154db0] text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1B5FD9] hover:bg-[#154db0] text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition cursor-pointer"
             @click="openAddModal"
           >
             <AdminV2Icon name="plus" :size="16" />
-            <span>Tambah Guru/Staff</span>
+            <span>Tambah Guru</span>
           </button>
         </div>
       </div>
 
-      <!-- 4 KPI CARDS (Data 1:1 dari admin/guru) -->
+      <!-- 4 KPI SUMMARY CARDS -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        <!-- 1. Total Guru & Staff -->
-        <div class="bg-white border border-[#E7EBF2] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.05)] hover:border-[#1B5FD9]/30 transition-all">
+        <div class="bg-white border border-[#E7EBF2] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.05)]">
           <div class="flex items-center justify-between">
             <div class="h-10 w-10 rounded-xl bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
               <AdminV2Icon name="users" :size="20" />
             </div>
-            <span class="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-[#F3F5F9] text-[#344054] border border-[#E7EBF2]">
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-[#F3F5F9] text-[#344054] border border-[#E7EBF2]">
               Yayasan
             </span>
           </div>
@@ -326,17 +526,16 @@ onMounted(() => {
             {{ staffList.length }} Orang
           </div>
           <div class="text-xs font-medium text-[#667085]">
-            Seluruh Unit Sekolah &amp; TU Terpadu
+            Total Guru &amp; Tenaga Kependidikan
           </div>
         </div>
 
-        <!-- 2. Guru SMP IT BCA -->
-        <div class="bg-white border border-[#E7EBF2] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.05)] hover:border-[#16A34A]/30 transition-all">
+        <div class="bg-white border border-[#E7EBF2] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.05)]">
           <div class="flex items-center justify-between">
             <div class="h-10 w-10 rounded-xl bg-[#ECFDF5] text-[#059669] flex items-center justify-center">
               <AdminV2Icon name="book" :size="20" />
             </div>
-            <span class="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
               SMP IT BCA
             </span>
           </div>
@@ -348,13 +547,12 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 3. Guru SMK IT Attaqwa 9 -->
-        <div class="bg-white border border-[#E7EBF2] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.05)] hover:border-[#1B5FD9]/30 transition-all">
+        <div class="bg-white border border-[#E7EBF2] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.05)]">
           <div class="flex items-center justify-between">
             <div class="h-10 w-10 rounded-xl bg-[#EFF6FF] text-[#1D4ED8] flex items-center justify-center">
               <AdminV2Icon name="layers" :size="20" />
             </div>
-            <span class="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
               SMK IT 9
             </span>
           </div>
@@ -366,39 +564,36 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 4. Kartu RFID Terdaftar -->
-        <div class="bg-white border border-[#E7EBF2] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.05)] hover:border-[#7c3aed]/30 transition-all">
+        <div class="bg-white border border-[#E7EBF2] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.05)]">
           <div class="flex items-center justify-between">
-            <div class="h-10 w-10 rounded-xl bg-[#F5F3FF] text-[#7C3AED] flex items-center justify-center">
-              <AdminV2Icon name="card" :size="20" />
+            <div class="h-10 w-10 rounded-xl bg-[#F0FDF4] text-[#16A34A] flex items-center justify-center">
+              <AdminV2Icon name="check" :size="20" />
             </div>
-            <span class="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-[#F5F3FF] text-[#7C3AED] border border-[#DDD6FE]">
-              RFID Active
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
+              User Synced
             </span>
           </div>
           <div class="text-3xl font-extrabold text-[#101828] tracking-tight mt-3 mb-1">
-            100%
+            {{ staffList.filter(s => s.isUserSynced).length }} / {{ staffList.length }}
           </div>
           <div class="text-xs font-medium text-[#667085]">
-            Semua guru memiliki kartu RFID
+            Akun login terhubung ke User Management
           </div>
         </div>
       </div>
 
-      <!-- FILTER & SEARCH BAR -->
+      <!-- SEARCH & FILTER BAR -->
       <div class="bg-white border border-[#E7EBF2] rounded-2xl p-4 shadow-xs">
         <div class="flex flex-wrap items-center gap-3">
-          <!-- Search Input -->
           <label class="flex items-center gap-2 px-3.5 py-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl flex-1 min-w-[240px] focus-within:bg-white focus-within:border-[#1B5FD9] focus-within:ring-4 focus-within:ring-[#1B5FD9]/10 transition-all">
             <AdminV2Icon name="search" :size="16" class="text-[#94A3B8] shrink-0" />
             <input
               v-model="searchQuery"
-              placeholder="Cari nama guru, NIP, atau jabatan..."
+              placeholder="Cari nama guru, NIP, NIK, atau email..."
               class="bg-transparent text-xs sm:text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none w-full font-medium"
             />
           </label>
 
-          <!-- Filter Unit -->
           <select
             v-model="selectedUnit"
             class="px-3.5 py-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-xs sm:text-sm font-semibold text-[#334155] focus:bg-white focus:outline-none focus:border-[#1B5FD9] transition-all cursor-pointer min-w-[160px]"
@@ -409,18 +604,15 @@ onMounted(() => {
             <option value="Yayasan">Yayasan / TU</option>
           </select>
 
-          <!-- Filter Status Kepegawaian -->
           <select
             v-model="selectedStatus"
             class="px-3.5 py-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-xs sm:text-sm font-semibold text-[#334155] focus:bg-white focus:outline-none focus:border-[#1B5FD9] transition-all cursor-pointer min-w-[150px]"
           >
             <option value="all">Semua Status</option>
-            <option value="GTY">GTY (Tetap Yayasan)</option>
-            <option value="GTT">GTT (Honorer)</option>
-            <option value="Staf Tetap">Staf Tetap Operasional</option>
+            <option value="Aktif">Aktif</option>
+            <option value="Tidak Aktif">Tidak Aktif</option>
           </select>
 
-          <!-- Reset Filter -->
           <button
             type="button"
             class="px-3.5 py-2.5 text-xs font-bold text-[#475467] hover:text-[#101828] bg-[#F2F4F7] hover:bg-[#E4E7EC] rounded-xl transition cursor-pointer"
@@ -432,131 +624,19 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- DATA TABLE (1:1 Flow & Function dari admin/guru) -->
-      <div class="bg-white border border-[#E7EBF2] rounded-2xl shadow-xs overflow-hidden">
-        <div class="px-5 py-4 border-b border-[#F2F4F7] flex items-center justify-between bg-white">
-          <h3 class="flex items-center gap-2.5 text-[15px] font-bold text-[#101828] before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-[#1B5FD9]">
-            Daftar Guru &amp; Tenaga Kependidikan &mdash; Ekosistem Attaqwa 9
-          </h3>
-          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#E8F0FE] text-[#12459B] border border-[#BFDBFE]">
-            {{ filteredStaff.length }} staf
-          </span>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm text-[#344054]">
-            <thead class="bg-[#F8FAFC] text-xs font-bold text-[#64748B] border-b border-[#E2E8F0] uppercase tracking-wider">
-              <tr>
-                <th class="px-4 py-3.5 w-12 text-center">No</th>
-                <th class="px-4 py-3.5">Nama &amp; Gelar</th>
-                <th class="px-4 py-3.5">NIP / NUPTK</th>
-                <th class="px-4 py-3.5">Jabatan &amp; Tugas</th>
-                <th class="px-4 py-3.5 text-center">Unit Sekolah</th>
-                <th class="px-4 py-3.5 text-center">Status</th>
-                <th class="px-4 py-3.5 text-center">RFID UID</th>
-                <th class="px-4 py-3.5 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[#F1F5F9]">
-              <tr v-if="filteredStaff.length === 0">
-                <td colspan="8" class="py-14 text-center text-[#94A3B8]">
-                  <div class="text-sm font-bold mb-1 text-[#334155]">Tidak ada data guru atau staff ditemukan</div>
-                  <div class="text-xs text-[#94A3B8]">Coba sesuaikan kata kunci pencarian atau filter yang dipilih.</div>
-                </td>
-              </tr>
-              <tr
-                v-for="(s, idx) in filteredStaff"
-                :key="s.id"
-                class="hover:bg-[#F8FAFC] transition"
-              >
-                <td class="px-4 py-3.5 text-xs text-[#94A3B8] font-mono text-center">{{ idx + 1 }}</td>
-                <td class="px-4 py-3.5">
-                  <div class="flex items-center gap-3">
-                    <span
-                      class="w-9 h-9 rounded-xl text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs"
-                      :class="s.unit === 'SMP' ? 'bg-[#059669]' : s.unit === 'SMK' ? 'bg-[#1B5FD9]' : 'bg-[#7C3AED]'"
-                    >
-                      {{ s.name.charAt(0) }}
-                    </span>
-                    <div>
-                      <button
-                        type="button"
-                        class="font-bold text-[#101828] text-left hover:text-[#1B5FD9] transition block text-[13.5px] leading-tight cursor-pointer"
-                        @click="openEditModal(s)"
-                      >
-                        {{ s.name }}
-                      </button>
-                      <div class="text-xs text-[#64748B] mt-0.5 font-mono">
-                        {{ s.phone }}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-4 py-3.5 font-mono text-xs text-[#334155] font-semibold">
-                  {{ s.nip }}
-                </td>
-                <td class="px-4 py-3.5 font-medium text-[#101828]">
-                  <div>{{ s.role }}</div>
-                  <div v-if="s.subject" class="text-xs text-[#64748B] mt-0.5 font-normal">
-                    Mapel: {{ s.subject }}
-                  </div>
-                </td>
-                <td class="px-4 py-3.5 text-center">
-                  <span
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold"
-                    :class="{
-                      'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]': s.unit === 'SMP',
-                      'bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]': s.unit === 'SMK',
-                      'bg-[#F5F3FF] text-[#7C3AED] border border-[#DDD6FE]': s.unit === 'Yayasan'
-                    }"
-                  >
-                    {{ s.unit === 'SMP' ? 'SMP IT BCA' : s.unit === 'SMK' ? 'SMK IT 9' : 'Yayasan / TU' }}
-                  </span>
-                </td>
-                <td class="px-4 py-3.5 text-center">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-[#F2F4F7] text-[#344054]">
-                    {{ s.status }}
-                  </span>
-                </td>
-                <td class="px-4 py-3.5 text-center">
-                  <span class="inline-flex items-center gap-1 font-mono text-xs text-[#1D4ED8] bg-[#EFF6FF] px-2 py-0.5 rounded border border-[#BFDBFE]">
-                    <AdminV2Icon name="card" :size="12" />
-                    {{ s.rfidUid }}
-                  </span>
-                </td>
-                <td class="px-4 py-3.5 text-right">
-                  <div class="flex items-center justify-end gap-1.5">
-                    <button
-                      type="button"
-                      class="p-1.5 rounded-lg text-[#64748B] hover:text-[#1B5FD9] hover:bg-[#EFF6FF] transition cursor-pointer"
-                      title="Ubah Data"
-                      @click="openEditModal(s)"
-                    >
-                      <AdminV2Icon name="pencil" :size="15" />
-                    </button>
-                    <button
-                      type="button"
-                      class="p-1.5 rounded-lg text-[#64748B] hover:text-[#E11D48] hover:bg-[#FFF1F2] transition cursor-pointer"
-                      title="Hapus"
-                      @click="confirmDelete(s)"
-                    >
-                      <AdminV2Icon name="trash" :size="15" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="px-5 py-3.5 border-t border-[#F1F5F9] flex items-center justify-between text-xs text-[#64748B] bg-[#F8FAFC]">
-          <span><b>{{ filteredStaff.length }}</b> dari total {{ staffList.length }} staf ditampilkan</span>
-          <span class="font-mono text-[11px] text-[#94A3B8]">Tahun Ajaran 2026/2027</span>
-        </div>
-      </div>
+      <!-- TABEL DATA INDUK GURU (Modular Component) -->
+      <GuruV2Table
+        :staff-list="filteredStaff"
+        @view="openDetailModal"
+        @edit="openEditModal"
+        @delete="confirmDelete"
+        @sync-user="syncStaffToUserManagement"
+        @add="openAddModal"
+        @upload="isUploadModalOpen = true"
+      />
     </main>
 
-    <!-- MODAL FORM TAMBAH / UBAH GURU & STAFF -->
+    <!-- MODAL FORM TAMBAH / UBAH GURU -->
     <GuruV2Modal
       :is-open="isModalOpen"
       :editing-staff="editingStaff"
@@ -565,7 +645,24 @@ onMounted(() => {
       @save="handleSaveStaff"
     />
 
-    <!-- MODAL KONFIRMASI HAPUS GURU / STAFF -->
+    <!-- MODAL DOSSIER DETAIL GURU LENGKAP -->
+    <GuruV2DetailModal
+      :is-open="isDetailModalOpen"
+      :staff="viewingStaff"
+      @close="isDetailModalOpen = false"
+      @edit="(s) => { isDetailModalOpen = false; openEditModal(s) }"
+      @sync-user="syncStaffToUserManagement"
+    />
+
+    <!-- MODAL UNGGAH DATA GURU & TEMPLATE EXCEL -->
+    <GuruV2UploadModal
+      :is-open="isUploadModalOpen"
+      :current-grade="grade"
+      @close="isUploadModalOpen = false"
+      @imported="handleBatchImported"
+    />
+
+    <!-- MODAL KONFIRMASI HAPUS GURU -->
     <Teleport to="body">
       <div v-if="deletingStaff" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="fixed inset-0 bg-[#0C111D]/60 backdrop-blur-xs" @click="deletingStaff = null" />
@@ -587,7 +684,7 @@ onMounted(() => {
       </div>
     </Teleport>
 
-    <!-- BOTTOM NAV (Mobile) -->
+    <!-- MOBILE NAVIGATION & POPOVERS -->
     <AdminV2BottomNav
       :role="role"
       :jenjang="jenjang"
@@ -595,7 +692,6 @@ onMounted(() => {
       @nav-click="handleSelectModule"
     />
 
-    <!-- MOBILE MENU DRAWER -->
     <AdminV2MobileMenu
       :open="isMobileMenuOpen"
       :role="role"
@@ -605,7 +701,6 @@ onMounted(() => {
       @select-item="handleSelectModule"
     />
 
-    <!-- POPOVERS & SEARCH OVERLAY -->
     <AdminV2Popovers
       :is-search-open="isSearchOpen"
       :is-notif-open="isNotifOpen"
@@ -616,7 +711,7 @@ onMounted(() => {
       @select-module="handleSelectModule"
     />
 
-    <!-- GLOBAL TOAST NOTIFICATION -->
+    <!-- TOAST NOTIFICATION -->
     <AdminV2Toast
       :show="isToastVisible"
       :message="toastMessage"

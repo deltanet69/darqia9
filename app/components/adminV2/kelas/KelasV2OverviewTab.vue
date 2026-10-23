@@ -29,7 +29,7 @@ const summaryCards = computed(() => [
     value: '422',
     unit: 'Siswa',
     sub: 'Rata² 35.2/kelas',
-    note: '241 Laki-laki · 181 Perempuan',
+    note: '241 Laki laki · 181 Perempuan',
     rate: '98.5% Kuota'
   },
   {

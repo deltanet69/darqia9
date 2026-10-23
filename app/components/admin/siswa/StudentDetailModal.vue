@@ -146,7 +146,7 @@ const initials = (name: string) => {
             </div>
             <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
               <span class="block text-slate-400 mb-0.5">Jenis Kelamin</span>
-              <b class="text-slate-800 text-sm font-semibold">{{ student.gender === 'L' ? 'Laki-laki (L)' : 'Perempuan (P)' }}</b>
+              <b class="text-slate-800 text-sm font-semibold">{{ student.gender === 'L' ? 'Laki laki (L)' : 'Perempuan (P)' }}</b>
             </div>
             <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
               <span class="block text-slate-400 mb-0.5">NISN</span>

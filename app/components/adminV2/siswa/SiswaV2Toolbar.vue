@@ -41,7 +41,7 @@ const jurusanOptions = computed(() => [
 
 const genderOptions = [
   { value: '', label: 'L/P' },
-  { value: 'L', label: 'Laki-laki' },
+  { value: 'L', label: 'Laki laki' },
   { value: 'P', label: 'Perempuan' }
 ]
 

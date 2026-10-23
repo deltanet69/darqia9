@@ -10,7 +10,7 @@ export interface TeacherAttendance {
   school: 'SMK' | 'SMP'
   subject: string
   level: string
-  gender: 'Laki-laki' | 'Perempuan'
+  gender: 'Laki laki' | 'Perempuan'
   status: 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Alpa'
   timeIn: string | null
   timeOut: string | null

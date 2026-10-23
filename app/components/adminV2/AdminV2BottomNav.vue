@@ -21,13 +21,14 @@ const route = useRoute()
 const destinations: Record<string, string> = {
   beranda: '/adminV2',
   akademik: '/adminV2/siswa',
-  keuangan: '#',
-  profil: '#'
+  keuangan: '/admin/keuangan',
+  profil: '/adminV2/profil'
 }
 
 const activeTab = computed(() => {
   const p = (route.path || '').toLowerCase()
   if (p === '/adminv2' || p === '/adminv2/') return 'beranda'
+  if (p.includes('/profil') || p.includes('/profile')) return 'profil'
   if (p.includes('/siswa') || (p.includes('/absensi') && !p.includes('/absensi-guru')) || p.includes('/kelas') || p.includes('/mapel') || p.includes('/raport')) return 'akademik'
   if (p.includes('/guru') || p.includes('/absensi-guru') || p.includes('/kepegawaian')) return 'menu'
   if (p.includes('/keuangan')) return 'keuangan'
@@ -40,7 +41,7 @@ const handleNav = (tab: string) => {
     return
   }
   const dest = destinations[tab]
-  if (dest !== '#') navigateTo(dest)
+  if (dest) navigateTo(dest)
 }
 </script>
 
@@ -86,8 +87,6 @@ const handleNav = (tab: string) => {
     <button
       v-if="role !== 'guru'"
       type="button"
-      :disabled="destinations.keuangan === '#'"
-      :aria-disabled="destinations.keuangan === '#'"
       class="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 min-h-[54px] text-[10px] font-semibold rounded-2xl transition whitespace-nowrap"
       :class="activeTab === 'keuangan'
         ? jenjang === 'smp' ? 'text-[#14532D] bg-[#E7F6ED]' : 'text-[#0A2A5C] bg-[#E8F0FE]'
@@ -100,8 +99,6 @@ const handleNav = (tab: string) => {
 
     <button
       type="button"
-      :disabled="destinations.profil === '#'"
-      :aria-disabled="destinations.profil === '#'"
       class="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 min-h-[54px] text-[10px] font-semibold rounded-2xl transition whitespace-nowrap"
       :class="activeTab === 'profil'
         ? jenjang === 'smp' ? 'text-[#14532D] bg-[#E7F6ED]' : 'text-[#0A2A5C] bg-[#E8F0FE]'

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminSparkline from '~/components/admin/AdminSparkline.vue'
@@ -159,7 +159,7 @@ const onEditFromDetail = (s: StudentItem) => {
         <!-- Filter Gender -->
         <select v-model="studentsStore.selectedGender.value" class="px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 focus:bg-white focus:outline-none focus:border-blue-500 transition-all">
           <option value="all">Semua Gender</option>
-          <option value="L">Laki-laki (L)</option>
+          <option value="L">Laki laki (L)</option>
           <option value="P">Perempuan (P)</option>
         </select>
 

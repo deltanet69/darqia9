@@ -337,7 +337,7 @@ onMounted(() => {
             class="px-3.5 py-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-xs sm:text-sm font-semibold text-[#334155] focus:bg-white focus:outline-none focus:border-[#1B5FD9] transition-all cursor-pointer"
           >
             <option value="all">Semua Gender</option>
-            <option value="L">Laki-laki (L)</option>
+            <option value="L">Laki laki (L)</option>
             <option value="P">Perempuan (P)</option>
           </select>
 

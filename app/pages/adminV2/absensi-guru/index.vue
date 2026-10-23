@@ -44,9 +44,6 @@ watch(activeGrade, (v) => {
 const title = 'Absensi Guru'
 const subtitle = 'Senin, 05 Okt 2026 · Rekap Presensi & Data Tap RFID Pendidik & Tenaga Kependidikan Realtime'
 
-// Submenu Navigation State
-const activeSubmenu = ref<'overview' | 'detail'>('overview')
-
 // Period Filter for Overview
 const selectedPeriod = ref<'harian' | 'mingguan' | 'bulanan'>('harian')
 const periodOptions = [
@@ -164,7 +161,7 @@ const roleSummaryMatrix = computed(() => {
 
 const selectRoleAndGoDetail = (roleName: string) => {
   selectedRole.value = roleName
-  activeSubmenu.value = 'detail'
+  document.getElementById('detail-kehadiran')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 // Chart Trend Data based on selectedPeriod (Proporsional dengan data aktual)
@@ -547,43 +544,11 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- SUBMENU NAVIGATION PILLS (Overview vs Detail Kehadiran) -->
-      <div class="bg-white border border-[#E7EBF2] rounded-2xl p-1.5 shadow-xs flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
-        <button
-          type="button"
-          class="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer shrink-0"
-          :class="activeSubmenu === 'overview'
-            ? 'bg-[#1B5FD9] text-white shadow-xs'
-            : 'text-[#475467] hover:text-[#101828] hover:bg-[#F2F4F7] font-semibold'"
-          @click="activeSubmenu = 'overview'"
-        >
-          <AdminV2Icon name="grid" :size="16" />
-          <span>Overview</span>
-        </button>
-
-        <button
-          type="button"
-          class="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer shrink-0"
-          :class="activeSubmenu === 'detail'
-            ? 'bg-[#1B5FD9] text-white shadow-xs'
-            : 'text-[#475467] hover:text-[#101828] hover:bg-[#F2F4F7] font-semibold'"
-          @click="activeSubmenu = 'detail'"
-        >
-          <AdminV2Icon name="user" :size="16" />
-          <span>Detail Kehadiran</span>
-          <span
-            class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold"
-            :class="activeSubmenu === 'detail' ? 'bg-white/20 text-white' : 'bg-[#F2F4F7] text-[#475467]'"
-          >
-            {{ totalTeachersCount }} Guru &amp; Tendik
-          </span>
-        </button>
-      </div>
 
       <!-- ============================================================= -->
-      <!-- TAB 1: OVERVIEW                                               -->
+      <!-- ANALITIK PRESENSI                                            -->
       <!-- ============================================================= -->
-      <div v-if="activeSubmenu === 'overview'" class="space-y-6">
+      <div class="space-y-6">
         <!-- Period & Unit Filter Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-[#E7EBF2] rounded-2xl p-3 sm:px-4 shadow-xs">
           <div class="flex items-center gap-2 flex-wrap">
@@ -742,9 +707,9 @@ onMounted(() => {
       </div>
 
       <!-- ============================================================= -->
-      <!-- TAB 2: DETAIL KEHADIRAN                                       -->
+      <!-- RINCIAN KEHADIRAN                                            -->
       <!-- ============================================================= -->
-      <div v-else class="space-y-4">
+      <div id="detail-kehadiran" class="space-y-4">
         <!-- Role / Unit Tab Navigator -->
         <div class="bg-white border border-[#E7EBF2] rounded-2xl p-2.5 shadow-xs space-y-2">
           <div class="flex items-center justify-between px-2 pt-0.5">

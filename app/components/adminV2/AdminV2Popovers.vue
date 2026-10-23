@@ -23,6 +23,23 @@ const emit = defineEmits<{
 // Search Overlay Logic
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const searchQuery = ref('')
+const supabase = useSupabaseClient()
+const authUser = useSupabaseUser()
+
+const profileName = computed(() => {
+  const metadata = authUser.value?.user_metadata
+  return metadata?.name || metadata?.full_name || authUser.value?.email || 'Administrator'
+})
+
+const profileEmail = computed(() => authUser.value?.email || 'Email tidak tersedia')
+const profileRole = computed(() => {
+  const rawRole = String(authUser.value?.app_metadata?.role || authUser.value?.user_metadata?.role || '').toLowerCase()
+  if (authUser.value?.email?.toLowerCase() === 'betadev94@gmail.com') return 'Superadmin Utama'
+  if (rawRole === 'superadmin' || rawRole === 'super_admin') return 'Superadmin'
+  if (rawRole === 'admin' || rawRole === 'admin_tu') return 'Admin TU'
+  if (rawRole === 'guru') return 'Guru'
+  return 'Pengguna'
+})
 
 const searchData: Array<[string, string]> = [
   ['Modul', 'Data Siswa'],
@@ -58,6 +75,28 @@ watch(
 const handleSearchSelect = (val: string) => {
   emit('item-click', val)
   emit('close-all')
+}
+
+const handleProfileAction = async (label: string) => {
+  emit('close-all')
+
+  if (label === 'Keluar') {
+    await supabase.auth.signOut()
+    await navigateTo('/adminV2/login')
+    return
+  }
+
+  if (label === 'Profil Saya') {
+    await navigateTo('/adminV2/profil')
+    return
+  }
+
+  if (label === 'Pengaturan') {
+    await navigateTo('/adminV2/profil?tab=pengaturan')
+    return
+  }
+
+  emit('item-click', label)
 }
 </script>
 
@@ -142,49 +181,21 @@ const handleSearchSelect = (val: string) => {
       @click.stop
     >
       <div class="px-4 py-3 border-b border-[#E7EBF2] flex justify-between items-center text-sm font-extrabold text-[#101828]">
-        <span>Administrator</span>
+        <span class="truncate">{{ profileName }}</span>
         <span class="text-[10.5px] font-bold py-0.5 px-2.5 rounded-full text-[#12B76A] bg-[#E7F8F0]">
           Aktif
         </span>
       </div>
 
-      <!-- Demo RBAC Mode Switcher -->
-      <div class="p-3 border-b border-[#EFF2F7] bg-[#FAFCFE]">
-        <div class="text-[10.5px] font-bold text-[#98A2B3] uppercase tracking-wider mb-2">
-          Mode peran (demo RBAC)
-        </div>
-        <div class="flex bg-[#EFF2F7] rounded-full p-0.5 gap-0.5">
-          <button
-            type="button"
-            class="flex-1 text-[11px] font-bold py-1 px-1.5 rounded-full transition whitespace-nowrap text-center"
-            :class="role === 'superadmin' ? 'bg-white text-[#101828] shadow-[0_1px_3px_rgba(16,24,40,0.12)]' : 'text-[#667085] hover:text-[#101828]'"
-            @click="emit('update:role', 'superadmin')"
-          >
-            Superadmin
-          </button>
-          <button
-            type="button"
-            class="flex-1 text-[11px] font-bold py-1 px-1.5 rounded-full transition whitespace-nowrap text-center"
-            :class="role === 'admin_tu' ? 'bg-white text-[#101828] shadow-[0_1px_3px_rgba(16,24,40,0.12)]' : 'text-[#667085] hover:text-[#101828]'"
-            @click="emit('update:role', 'admin_tu')"
-          >
-            Admin TU
-          </button>
-          <button
-            type="button"
-            class="flex-1 text-[11px] font-bold py-1 px-1.5 rounded-full transition whitespace-nowrap text-center"
-            :class="role === 'guru' ? 'bg-white text-[#101828] shadow-[0_1px_3px_rgba(16,24,40,0.12)]' : 'text-[#667085] hover:text-[#101828]'"
-            @click="emit('update:role', 'guru')"
-          >
-            Guru
-          </button>
-        </div>
+      <div class="px-4 py-2.5 border-b border-[#EFF2F7] bg-[#FAFCFE]">
+        <span class="text-[10.5px] font-bold text-[#667085]">
+          {{ profileRole }}
+        </span>
       </div>
-
       <div class="flex flex-col divide-y divide-[#EFF2F7]">
         <div
           class="flex items-center gap-3 px-4 py-2.5 hover:bg-[#F8FAFD] transition cursor-pointer"
-          @click="emit('item-click', 'Profil Saya')"
+          @click="handleProfileAction('Profil Saya')"
         >
           <span
             class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
@@ -194,13 +205,13 @@ const handleSearchSelect = (val: string) => {
           </span>
           <div class="flex-1 min-w-0">
             <b class="text-xs font-bold text-[#101828] block truncate">Profil Saya</b>
-            <span class="text-[11px] text-[#667085] block truncate">admin@darqia.sch.id</span>
+            <span class="text-[11px] text-[#667085] block truncate">{{ profileEmail }}</span>
           </div>
         </div>
 
         <div
           class="flex items-center gap-3 px-4 py-2.5 hover:bg-[#F8FAFD] transition cursor-pointer"
-          @click="emit('item-click', 'Pengaturan')"
+          @click="handleProfileAction('Pengaturan')"
         >
           <span
             class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
@@ -216,7 +227,7 @@ const handleSearchSelect = (val: string) => {
 
         <div
           class="flex items-center gap-3 px-4 py-2.5 hover:bg-[#F8FAFD] transition cursor-pointer"
-          @click="emit('item-click', 'Keluar')"
+          @click="handleProfileAction('Keluar')"
         >
           <span class="w-8 h-8 rounded-lg bg-[#EFF2F7] flex items-center justify-center text-[#344054] shrink-0">
             <AdminV2Icon name="out" :size="16" />

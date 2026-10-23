@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
@@ -25,20 +25,8 @@ type StaffItem = {
   rfidUid: string
 }
 
-const staffList = useState<StaffItem[]>('admin-staff-list', () => [
-  { id: 'T-01', nip: '198204122005011003', name: 'Drs. H. Ahmad Fauzi, M.Pd.I', role: 'Kepala Sekolah', unit: 'SMK', phone: '081288990011', status: 'GTY', rfidUid: 'E28068940001' },
-  { id: 'T-02', nip: '198506152009022004', name: 'Ust. H. Ahmad Fauzi, S.Pd.I', role: 'Waka Kurikulum / Guru PAI', unit: 'SMP', subject: 'PAI', phone: '081288990012', status: 'GTY', rfidUid: 'E28068940002' },
-  { id: 'T-03', nip: '199002102015011005', name: 'Hendra Gunawan, M.Kom', role: 'Kaprodi RPL / Guru Produktif', unit: 'SMK', subject: 'PBO & Web', phone: '081377889922', status: 'GTY', rfidUid: 'E28068940003' },
-  { id: 'T-04', nip: '199208222017011006', name: 'Fajar Nugraha, S.T', role: 'Kaprodi TKJ / Guru Produktif', unit: 'SMK', subject: 'Jaringan & AIJ', phone: '081377889923', status: 'GTY', rfidUid: 'E28068940004' },
-  { id: 'T-05', nip: '198811192014022007', name: 'Aisyah Putri, M.Pd', role: 'Guru Matematika', unit: 'SMP', subject: 'Matematika', phone: '081299881122', status: 'GTY', rfidUid: 'E28068940005' },
-  { id: 'T-06', nip: '199304052018022008', name: 'Rina Kurniawati, S.Pd', role: 'Guru Bahasa Indonesia', unit: 'SMP', subject: 'B. Indonesia', phone: '081299881123', status: 'GTT', rfidUid: 'E28068940006' },
-  { id: 'T-07', nip: '198703122012011009', name: 'Budi Santoso, S.Si', role: 'Guru IPA', unit: 'SMP', subject: 'IPA Terpadu', phone: '081299881124', status: 'GTY', rfidUid: 'E28068940007' },
-  { id: 'T-08', nip: '199507142020011010', name: 'Farhan Maulana, S.Pd', role: 'Guru Bahasa Inggris', unit: 'SMP', subject: 'B. Inggris', phone: '081299881125', status: 'GTT', rfidUid: 'E28068940008' },
-  { id: 'T-09', nip: '199109092016022011', name: 'Siti Rahmawati, S.Kom', role: 'Guru Basis Data', unit: 'SMK', subject: 'Basis Data', phone: '081377889924', status: 'GTY', rfidUid: 'E28068940009' },
-  { id: 'T-10', nip: '198401012008011012', name: 'Ust. M. Rizky, Lc', role: 'Guru Tahfidz', unit: 'SMP', subject: 'Tahfidz Al-Qur\'an', phone: '081288990013', status: 'GTY', rfidUid: 'E28068940010' },
-  { id: 'T-11', nip: '199405062019011013', name: 'Sulaeman, S.Kom', role: 'Kepala Tata Usaha', unit: 'Yayasan', phone: '081299881126', status: 'Staf Tetap', rfidUid: 'E28068940011' },
-  { id: 'T-12', nip: '199602032021022014', name: 'Fitri Handayani, A.Md', role: 'Staf Administrasi & Keuangan', unit: 'Yayasan', phone: '081299881127', status: 'Staf Tetap', rfidUid: 'E28068940012' }
-])
+const staffList = useState<StaffItem[]>('admin-staff-list', () => [])
+
 
 const filteredStaff = computed(() => {
   return staffList.value.filter(s => {
