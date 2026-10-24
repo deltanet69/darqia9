@@ -129,8 +129,8 @@ const subjectChartDatasets = computed(() => [
 
 const predicateDonutSegments = computed(() => [
   { label: 'A (=90)', value: predicateCounts.value.A, color: '#16a34a' },
-  { label: 'B (80–89)', value: predicateCounts.value.B, color: '#2563eb' },
-  { label: 'C (75–79)', value: predicateCounts.value.C, color: '#d97706' },
+  { label: 'B (80â€“89)', value: predicateCounts.value.B, color: '#2563eb' },
+  { label: 'C (75â€“79)', value: predicateCounts.value.C, color: '#d97706' },
   { label: 'D (<75)', value: predicateCounts.value.D, color: '#e11d48' }
 ])
 
@@ -306,7 +306,7 @@ const exportLedger = () => {
 
         <div class="py-2">
           <AdminBarChart
-            :labels="currentSubjects.map(s => s.length > 10 ? s.slice(0, 9) + '…' : s)"
+            :labels="currentSubjects.map(s => s.length > 10 ? s.slice(0, 9) + 'â€¦' : s)"
             :datasets="subjectChartDatasets"
           />
         </div>

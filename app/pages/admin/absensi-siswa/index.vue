@@ -485,7 +485,7 @@
                 <!-- Jam Keluar -->
                 <td class="py-3.5 px-4 font-mono font-medium">
                   <span v-if="item.timeOut" class="font-bold text-slate-900">{{ item.timeOut }}</span>
-                  <span v-else class="text-slate-400 font-sans italic text-[11px]">—</span>
+                  <span v-else class="text-slate-400 font-sans italic text-[11px]">â€”</span>
                 </td>
 
                 <!-- Status Presensi -->
@@ -545,7 +545,7 @@
               type="button"
               @click="currentPage--"
             >
-              ‹ Sebelumnya
+              â€¹ Sebelumnya
             </button>
             <span class="px-3 py-1.5 rounded-xl bg-slate-200/60 font-mono font-bold text-slate-800">
               {{ currentPage }} / {{ totalPages }}
@@ -556,7 +556,7 @@
               type="button"
               @click="currentPage++"
             >
-              Berikutnya ›
+              Berikutnya â€º
             </button>
           </div>
         </div>
@@ -567,7 +567,7 @@
     <AdminSlideOver
       :open="Boolean(selectedStudent)"
       :title="selectedStudent?.name || 'Detail Presensi Siswa'"
-      :subtitle="`${selectedStudent?.classroom || ''} • NISN: ${selectedStudent?.nisn || ''}`"
+      :subtitle="`${selectedStudent?.classroom || ''} â€¢ NISN: ${selectedStudent?.nisn || ''}`"
       badge="Presensi RFID"
       badge-type="primary"
       width="xl"
@@ -609,7 +609,7 @@
           </div>
           <div class="text-left sm:text-right font-mono text-xs">
             <span class="text-[11px] font-sans font-semibold text-slate-500 block">Waktu Tap RFID:</span>
-            <b class="text-slate-900 text-sm font-bold">{{ selectedStudent.timeIn || '—' }}</b>
+            <b class="text-slate-900 text-sm font-bold">{{ selectedStudent.timeIn || 'â€”' }}</b>
             <span v-if="selectedStudent.timeOut" class="text-slate-500 font-sans text-[11px]"> (Keluar: {{ selectedStudent.timeOut }})</span>
           </div>
         </div>
@@ -707,7 +707,7 @@ definePageMeta({
 const activeGrade = useAdminGrade()
 
 const title = 'Absensi Siswa'
-const subtitle = 'Senin, 05 Okt 2026 · Rekap Presensi & Data Tap RFID Siswa Realtime'
+const subtitle = 'Senin, 05 Okt 2026 Â· Rekap Presensi & Data Tap RFID Siswa Realtime'
 
 // Submenu Navigation State
 const activeSubmenu = ref<'overview' | 'detail'>('overview')
@@ -748,7 +748,7 @@ const summaryCards = computed(() => [
     label: 'Izin & Sakit',
     value: '6',
     sub: 'Surat Terlampir',
-    note: '4 Izin · 2 Sakit',
+    note: '4 Izin Â· 2 Sakit',
     rate: '1.9%'
   },
   {
