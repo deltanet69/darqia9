@@ -36,10 +36,10 @@ const emit = defineEmits<{
 }>()
 
 const form = ref({
-  kelas: props.currentClass || KELAS[props.jenjang][0].name,
+  kelas: props.currentClass || KELAS[props.jenjang][0]?.name || '',
   hari: props.simDayIdx as DayIndex,
-  mapel: MAPEL[props.jenjang][0].name,
-  guru: teachersOf(props.jenjang)[0],
+  mapel: MAPEL[props.jenjang][0]?.name || '',
+  guru: teachersOf(props.jenjang)[0] || '',
   jam: '07:00',
   ket: ''
 })
@@ -64,8 +64,8 @@ const handleSubmit = (force: boolean = false) => {
     return
   }
 
-  const parts = form.value.jam.split(':')
-  const jm = (+parts[0]) * 60 + (+parts[1])
+  const [hour = '0', minute = '0'] = form.value.jam.split(':')
+  const jm = (+hour) * 60 + (+minute)
   const si = SLOT_TIMES.findIndex((_, i) => slotMin(i)[0] === jm)
 
   if (si < 0) {
@@ -86,7 +86,7 @@ const handleSubmit = (force: boolean = false) => {
   }
 
   // Periksa apakah kelas sudah terisi pada jam itu
-  const currentCell = genGrid(props.jenjang, form.value.kelas, props.extraSchedules)[di][si]
+  const currentCell = genGrid(props.jenjang, form.value.kelas, props.extraSchedules)[di]?.[si]
   if (currentCell && !force) {
     isWarningReplace.value = true
     errorMessage.value = `Kelas ${form.value.kelas} sudah terisi ${currentCell.mapel} oleh ${currentCell.guru} pada jam ini. Klik "Ganti & Simpan Jadwal" untuk mengganti penugasan tersebut.`

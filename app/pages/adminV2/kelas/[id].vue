@@ -46,11 +46,13 @@ const classIdParam = computed(() => {
 })
 
 const allMockClasses = [...INITIAL_CLASSES_SMK, ...INITIAL_CLASSES_SMP]
+const defaultClass = INITIAL_CLASSES_SMK[0]
+if (!defaultClass) throw new Error('Data kelas awal tidak tersedia.')
 
 const currentClass = computed<ClassRombel>(() => {
   const param = classIdParam.value.toLowerCase()
   const found = allMockClasses.find(c => c.name.toLowerCase() === param || c.id.toLowerCase() === param)
-  return found || INITIAL_CLASSES_SMK[0]
+  return found || defaultClass
 })
 
 const jenjang = computed<'smp' | 'smk'>(() => {
@@ -204,13 +206,14 @@ const handleImportGradesDone = (fileName: string) => {
 // Export Student List to CSV (1:1 Versi Asli)
 const exportStudentList = () => {
   const headers = ['No', 'NISN', 'Nama Siswa', 'Gender', 'Presensi (%)', 'Nilai', 'Status']
+  const scores = new Map(gradesList.value.map(grade => [grade.studentId, grade.finalScore]))
   const rows = studentsList.value.map((s, idx) => [
     idx + 1,
     `"${s.nisn}"`,
     `"${s.name}"`,
     s.gender === 'L' ? 'Putra' : 'Putri',
-    s.attendanceRate,
-    s.avgScore,
+    s.attendancePct,
+    scores.get(s.id) ?? '-',
     'Aktif'
   ])
 
@@ -525,7 +528,7 @@ onMounted(() => {
 
     <!-- TOAST NOTIFICATION -->
     <AdminV2Toast
-      :show="isToastVisible"
+      :visible="isToastVisible"
       :message="toastMessage"
     />
   </div>

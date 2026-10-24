@@ -216,7 +216,7 @@ const toggleFreeze = () => {
 
 // Live exam count for current grade (for tab badge)
 const liveExamCount = computed(() => {
-  return exams.value.filter(e => ((e as any).grade === grade.value || e.g === grade.value) && e.status === 'Berlangsung').length
+  return exams.value.filter(e => e.grade === grade.value && e.status === 'Berlangsung').length
 })
 
 // Tab navigation handler
@@ -259,8 +259,8 @@ const saveStudentScore = (nisn: string, score: number) => {
   const target = students.value.find(s => s.nisn === nisn)
   if (target) {
     target.essayScore = score
-    target.finalScore = target.pgScore + score
-    target.status = target.finalScore >= 75 ? 'Lulus' : 'Remedial'
+    target.totalScore = target.pgScore + score
+    target.status = target.totalScore >= 75 ? 'Lulus' : 'Remedial'
     triggerToast('Nilai contoh esai berhasil disimpan')
     closeDrawer()
   }
@@ -439,12 +439,11 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- UNIFIED SIDE DRAWER (Create Exam, Bank Detail, Student Grade Detail, Token Display) -->
     <CbtV2Drawer
-      :is-open="isDrawerOpen"
-      :type="drawerType"
+      :open="isDrawerOpen"
+      :drawer-type="drawerType"
       :payload="drawerPayload"
       :grade="grade"
       :students="students"
-      :exams="exams"
       @close="closeDrawer"
       @switch-tab="switchTab"
       @copy-token="copyToken"

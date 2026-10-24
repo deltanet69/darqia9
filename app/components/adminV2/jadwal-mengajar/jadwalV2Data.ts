@@ -152,12 +152,12 @@ export const OVERRIDES: Array<{ level: Jenjang; kelas: string; di: DayIndex; si:
 ]
 
 export const slotMin = (si: number): [number, number] => {
-  const p = SLOT_TIMES[si].split('–')
+  const [start = '00:00', end = '00:00'] = (SLOT_TIMES[si] || '').split('–')
   const f = (s: string) => {
-    const a = s.split(':')
-    return (+a[0]) * 60 + (+a[1])
+    const [hour = '0', minute = '0'] = s.split(':')
+    return (+hour) * 60 + (+minute)
   }
-  return [f(p[0]), f(p[1])]
+  return [f(start), f(end)]
 }
 
 export const fmtMin = (m: number): string => {
@@ -183,16 +183,19 @@ export const genGrid = (
   DAYS.forEach((_, di) => {
     g[di] = SLOT_TIMES.map((_, si) => {
       const m = pool[(si * 3 + di + kIdx) % pool.length]
+      if (!m) return { mapel: '', guru: '', code: '' }
       return { mapel: m.name, guru: m.coord, code: m.code }
     })
   })
 
   OVERRIDES.filter(o => o.level === level && o.kelas === kelasName).forEach(o => {
-    g[o.di][o.si] = { mapel: o.mapel, guru: o.guru, code: '' }
+    const day = g[o.di]
+    if (day) day[o.si] = { mapel: o.mapel, guru: o.guru, code: '' }
   })
 
   extra.filter(e => e.level === level && e.kelas === kelasName).forEach(e => {
-    g[e.di][e.si] = { mapel: e.mapel, guru: e.guru, code: '', ket: e.ket, baru: true }
+    const day = g[e.di]
+    if (day) day[e.si] = { mapel: e.mapel, guru: e.guru, code: '', ket: e.ket, baru: true }
   })
 
   return g as Record<DayIndex, LessonSlot[]>
@@ -270,6 +273,7 @@ export const rosterOf = (level: Jenjang, kelasName: string): StudentRosterItem[]
   while (out.length < 14) {
     const nm = NAME_POOL[(kIdx * 3 + n * 5) % NAME_POOL.length]
     n++
+    if (!nm) break
     if (out.some(s => s.name === nm)) continue
     out.push({
       name: nm,

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { HTMLAttributes } from 'vue'
+
 interface Props {
   name: string
   size?: number | string
-  class?: string
+  class?: HTMLAttributes['class']
 }
 
 const props = withDefaults(defineProps<Props>(), {

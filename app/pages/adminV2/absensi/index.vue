@@ -222,17 +222,18 @@ const openEdit = (record: PresensiRecord) => {
 const handleSaveRecord = (payload: { id: string; status: PresensiRecord['status']; timeIn: string; note: string; gate: string }) => {
   const list = jenjang.value === 'smp' ? smpRecords.value : smkRecords.value
   const idx = list.findIndex(r => r.id === payload.id)
-  if (idx >= 0) {
-    list[idx].status = payload.status
-    list[idx].timeIn = payload.timeIn
-    list[idx].note = payload.note
-    list[idx].gate = payload.gate
+  const record = idx >= 0 ? list[idx] : undefined
+  if (record) {
+    record.status = payload.status
+    record.timeIn = payload.timeIn
+    record.note = payload.note
+    record.gate = payload.gate
     if (payload.status === 'Terlambat') {
-      list[idx].lateMinutes = 10
+      record.lateMinutes = 10
     } else {
-      list[idx].lateMinutes = 0
+      record.lateMinutes = 0
     }
-    triggerToast(`Status presensi ${list[idx].name} berhasil diubah ke ${payload.status}.`)
+    triggerToast(`Status presensi ${record.name} berhasil diubah ke ${payload.status}.`)
   }
   editingRecord.value = null
 }
@@ -777,37 +778,36 @@ onMounted(() => {
 
     <!-- BOTTOM NAV (Mobile) -->
     <AdminV2BottomNav
+      :role="role"
       :jenjang="jenjang"
       @open-menu="isMobileMenuOpen = true"
-      @action="triggerToast"
+      @nav-click="handleSelectModule"
     />
 
     <!-- MOBILE MENU DRAWER -->
     <AdminV2MobileMenu
       :open="isMobileMenuOpen"
+      :role="role"
       :groups="GROUPS"
       :jenjang="jenjang"
       @close="isMobileMenuOpen = false"
       @select-item="handleSelectModule"
-      @action="triggerToast"
     />
 
     <!-- POPOVERS & SEARCH OVERLAY -->
     <AdminV2Popovers
-      :notif-open="isNotifOpen"
-      :profile-open="isProfileOpen"
-      :search-open="isSearchOpen"
+      :is-notif-open="isNotifOpen"
+      :is-profile-open="isProfileOpen"
+      :is-search-open="isSearchOpen"
       :role="role"
       :jenjang="jenjang"
       @close-all="closeAllModals"
       @update:role="role = $event; triggerToast(`Peran diubah ke: ${$event}`)"
-      @action="triggerToast"
-      @select-module="handleSelectModule"
     />
 
     <!-- GLOBAL TOAST NOTIFICATION -->
     <AdminV2Toast
-      :show="isToastVisible"
+      :visible="isToastVisible"
       :message="toastMessage"
     />
   </div>

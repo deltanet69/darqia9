@@ -278,7 +278,7 @@ const removeSchedule = async (exam: ExamItem) => {
                   {{ e.supervisor || (e as any).teacher }}
                 </td>
                 <td class="py-3 px-4 text-center font-mono font-bold">
-                  {{ e.participants || e.total }}
+                  {{ e.participants }}
                 </td>
                 <td class="py-3 px-4">
                   <span

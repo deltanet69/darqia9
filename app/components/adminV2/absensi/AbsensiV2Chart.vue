@@ -62,14 +62,20 @@ const points = computed(() => {
 // Smooth cubic Bezier spline generator (Linear/Stripe style)
 function getSmoothPath(pts: { x: number; y: number }[]): string {
   if (pts.length === 0) return ''
-  if (pts.length === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
+  if (pts.length === 1) {
+    const point = pts[0]
+    return point ? `M ${point.x.toFixed(1)} ${point.y.toFixed(1)}` : ''
+  }
 
-  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
+  const start = pts[0]
+  if (!start) return ''
+  let d = `M ${start.x.toFixed(1)} ${start.y.toFixed(1)}`
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = pts[i === 0 ? 0 : i - 1]
     const p1 = pts[i]
     const p2 = pts[i + 1]
     const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1]
+    if (!p0 || !p1 || !p2 || !p3) continue
 
     const cp1x = p1.x + (p2.x - p0.x) / 6
     const cp1y = p1.y + (p2.y - p0.y) / 6
@@ -88,12 +94,13 @@ const smoothAreaString = computed(() => {
   if (!pts.length) return ''
   const first = pts[0]
   const last = pts[pts.length - 1]
+  if (!first || !last) return ''
   const bottomY = paddingTop + innerHeight
   return `${getSmoothPath(pts)} L ${last.x.toFixed(1)} ${bottomY} L ${first.x.toFixed(1)} ${bottomY} Z`
 })
 
 const activeData = computed<TrendDay>(() => {
-  return days[selectedIndex.value] || days[4]
+  return days[selectedIndex.value] || days[4] || days[0]!
 })
 
 const activePoint = computed(() => {

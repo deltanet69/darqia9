@@ -81,8 +81,8 @@ const handleProfileAction = async (label: string) => {
   emit('close-all')
 
   if (label === 'Keluar') {
-    await supabase.auth.signOut()
-    await navigateTo('/adminV2/login')
+    await supabase.auth.signOut({ scope: 'local' })
+    await navigateTo('/adminV2/login', { replace: true })
     return
   }
 

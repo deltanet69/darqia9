@@ -30,6 +30,7 @@ const emit = defineEmits<{
 const parsedSession = computed(() => {
   if (!props.sessionKey) return null
   const [level, kelas, diStr, siStr] = props.sessionKey.split('|')
+  if (!level || !kelas || diStr === undefined || siStr === undefined) return null
   const di = +diStr as DayIndex
   const si = +siStr
   const classMeta = KELAS[level as Jenjang]?.find(k => k.name === kelas) || { room: '-' }

@@ -40,7 +40,7 @@ export interface NotificationPrefs {
 export type AccessLevel = 'Penuh' | 'Kelola' | 'Lihat' | 'Tidak Ada'
 export type ProfileTabKey = 'overview' | 'dataprofil' | 'aplikasi' | 'pengaturan'
 
-export const PROFILES: Record<string, ProfileAccount> = {
+export const PROFILES = {
   ridwan: {
     id: 'ridwan',
     name: 'H. Muhammad Ridwan Hakim',
@@ -149,9 +149,9 @@ export const PROFILES: Record<string, ProfileAccount> = {
     akun: 'Aktif',
     lastLogin: 'Kamis, 23 Okt 2026 · 15:03 WIB · Chrome (Windows)'
   }
-}
+} satisfies Record<string, ProfileAccount>
 
-export const MODULES: string[] = [
+export const MODULES = [
   'Dashboard',
   'Absensi',
   'Kelas',
@@ -162,9 +162,11 @@ export const MODULES: string[] = [
   'Konten Web',
   'Pengguna',
   'Pengaturan'
-]
+] as const
 
-export const MODULE_INFO: Record<string, [string, string]> = {
+export type ProfileModule = typeof MODULES[number]
+
+export const MODULE_INFO: Record<ProfileModule, [string, string]> = {
   Dashboard: ['home', 'Ringkasan & statistik portal'],
   Absensi: ['check', 'Presensi siswa, guru & staff'],
   Kelas: ['users', 'Manajemen kelas & rombel'],
@@ -250,7 +252,7 @@ export const maskNum = (v: string): string => {
 }
 
 export const completeness = (p: ProfileAccount): ProfileCompleteness => {
-  const checks = [
+  const checks: Array<[string, string]> = [
     ['NIK', p.nik],
     ['No KK', p.kk],
     ['NUPTK', p.nuptk],

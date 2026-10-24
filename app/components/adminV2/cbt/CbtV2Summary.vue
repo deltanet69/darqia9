@@ -32,7 +32,7 @@ const emit = defineEmits<{
 const summaryFilter = ref<'all' | 'attention'>('all')
 
 const currentExams = computed(() => {
-  return props.exams.filter(e => ((e as any).grade === props.grade || e.g === props.grade))
+  return props.exams.filter(e => e.grade === props.grade)
 })
 
 const liveExams = computed(() => {
@@ -57,11 +57,11 @@ const gradeResults = computed<StudentResult[]>(() => {
 
 // Metrics for summary pulse
 const totalParticipants = computed(() => {
-  return liveExams.value.reduce((sum, e) => sum + (e.participants || e.total || 0), 0)
+  return liveExams.value.reduce((sum, e) => sum + e.participants, 0)
 })
 
 const submittedParticipants = computed(() => {
-  return liveExams.value.reduce((sum, e) => sum + (e.collected || e.done || 0), 0)
+  return liveExams.value.reduce((sum, e) => sum + e.collected, 0)
 })
 
 const doingParticipants = computed(() => {
@@ -338,7 +338,7 @@ const parseDateParts = (dateStr: string) => {
               <div class="flex items-baseline gap-4 my-3 text-xs">
                 <div>
                   <b class="text-sm font-extrabold text-[#101828]">
-                    {{ e.collected || (e as any).done || 0 }}/{{ e.participants || e.total }}
+                    {{ e.collected }}/{{ e.participants }}
                   </b>
                   <span class="text-[10px] text-[#667085] ml-1">selesai</span>
                 </div>
@@ -361,7 +361,7 @@ const parseDateParts = (dateStr: string) => {
                 <div
                   class="h-full bg-[#1B5FD9] rounded-full"
                   :style="{
-                    width: `${Math.round(((e.collected || (e as any).done || 0) / (e.participants || e.total)) * 100)}%`
+                    width: `${Math.round((e.collected / Math.max(1, e.participants)) * 100)}%`
                   }"
                 />
               </div>

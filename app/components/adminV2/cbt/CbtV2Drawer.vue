@@ -58,7 +58,7 @@ const sampleParticipants = computed(() => {
   if (props.drawerType !== 'exam' || !props.payload) return []
   const exam = props.payload as any
   const clsName = exam.classroom || exam.cls
-  return props.students.filter(s => (s.classroom || s.cls) === clsName).slice(0, 4)
+  return props.students.filter(s => s.classroom === clsName).slice(0, 4)
 })
 
 

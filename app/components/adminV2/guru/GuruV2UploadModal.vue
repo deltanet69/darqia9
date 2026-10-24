@@ -83,16 +83,14 @@ const downloadTemplate = () => {
 // Handler Pemilihan File
 const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    processFile(target.files[0])
-  }
+  const file = target.files?.item(0)
+  if (file) processFile(file)
 }
 
 const handleDrop = (e: DragEvent) => {
   isDragging.value = false
-  if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-    processFile(e.dataTransfer.files[0])
-  }
+  const file = e.dataTransfer?.files.item(0)
+  if (file) processFile(file)
 }
 
 const processFile = (file: File) => {
@@ -148,7 +146,7 @@ const parseCsv = (content: string) => {
     return result
   }
 
-  const normalizedHeaders = parseLine(lines[0]).map(header => header.replace('\uFEFF', '').trim().toLowerCase())
+  const normalizedHeaders = parseLine(lines[0] || '').map(header => header.replace('\uFEFF', '').trim().toLowerCase())
   const getColumn = (cols: string[], ...headers: string[]) => {
     const index = normalizedHeaders.findIndex(header => headers.includes(header))
     const value = index >= 0 ? (cols[index] || '').trim() : ''
@@ -159,7 +157,7 @@ const parseCsv = (content: string) => {
   const rowErrors: string[] = []
   const seenNips = new Set<string>()
   for (let i = 1; i < lines.length; i++) {
-    const cols = parseLine(lines[i])
+    const cols = parseLine(lines[i] || '')
     if (cols.length === 0) continue
 
     const name = getColumn(cols, 'nama guru', 'nama lengkap')

@@ -128,10 +128,10 @@ const handleItemClick = async (title: string) => {
 }
 
 const handleLogout = async () => {
-  await supabase.auth.signOut()
+  await supabase.auth.signOut({ scope: 'local' })
   emit('logout-click')
   emit('close')
-  await navigateTo('/adminV2/login')
+  await navigateTo('/adminV2/login', { replace: true })
 }
 </script>
 

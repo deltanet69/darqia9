@@ -1,28 +1,26 @@
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to) => {
   const path = to.path.toLowerCase()
-  const user = useSupabaseUser()
+  const isAdminV2 = path.startsWith('/adminv2')
+  const isAdminLegacy = path.startsWith('/admin') && !isAdminV2
 
-  if (path.startsWith('/adminv2')) {
-    if (path === '/adminv2/login') {
-      if (user.value) return navigateTo('/adminV2')
-      return
-    }
+  if (!isAdminV2 && !isAdminLegacy) return
+  if (path === '/adminv2/login' || path === '/admin/login') return
 
-    if (!user.value) {
-      return navigateTo({
-        path: '/adminV2/login',
-        query: { redirect: to.fullPath }
-      })
-    }
-    return
+  const supabase = useSupabaseClient()
+  const { data, error } = await supabase.auth.getUser()
+
+  if (!error && data.user) return
+
+  if (import.meta.client) {
+    await supabase.auth.signOut({ scope: 'local' })
   }
 
-  // Lindungi semua route /admin/** kecuali /admin/login.
-  if (!path.startsWith('/admin') || path === '/admin/login') {
-    return
+  if (isAdminV2) {
+    return navigateTo({
+      path: '/adminV2/login',
+      query: { redirect: to.fullPath }
+    }, { replace: true })
   }
 
-  if (!user.value) {
-    return navigateTo('/admin/login')
-  }
+  return navigateTo('/admin/login', { replace: true })
 })

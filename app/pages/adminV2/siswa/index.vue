@@ -598,7 +598,7 @@ onMounted(() => {
 
     <!-- GLOBAL TOAST NOTIFICATION -->
     <AdminV2Toast
-      :show="isToastVisible"
+      :visible="isToastVisible"
       :message="toastMessage"
     />
   </div>

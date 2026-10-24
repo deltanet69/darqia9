@@ -381,7 +381,7 @@ const handleSelectModule = (title: string) => {
 
     <!-- TOAST NOTIFICATION -->
     <AdminV2Toast
-      :show="isToastVisible"
+      :visible="isToastVisible"
       :message="toastMessage"
     />
   </div>

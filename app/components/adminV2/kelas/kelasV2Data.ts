@@ -29,6 +29,7 @@ export interface ClassScheduleItem {
   guruPresent: boolean
   isCurrentPeriod?: boolean
   classAttendanceDone?: boolean
+  alpaStudents?: string[]
 }
 
 export interface ClassStudentItem {
@@ -366,9 +367,10 @@ export const getTingkatLabel = (name: string, level: 'SMP' | 'SMK'): string => {
 
 export const getInitials = (name: string): string => {
   const parts = name.replace(/^(H\.|Hj\.|Drs\.|Dra\.|Ust\.|Ustzh\.)\s*/i, '').trim().split(/\s+/)
-  if (!parts.length) return 'WK'
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
-  return (parts[0][0] + parts[1][0]).toUpperCase()
+  const first = parts[0]
+  if (!first) return 'WK'
+  if (parts.length === 1) return first.substring(0, 2).toUpperCase()
+  return (first[0] + (parts[1]?.[0] || '')).toUpperCase()
 }
 
 export const getAvatarColor = (name: string): string => {
@@ -382,7 +384,7 @@ export const getAvatarColor = (name: string): string => {
   ]
   let sum = 0
   for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i)
-  return gradients[sum % gradients.length]
+  return gradients[sum % gradients.length] || gradients[0]!
 }
 
 export const generateMockSchedule = (className: string, level: 'SMP' | 'SMK'): ClassScheduleItem[] => {
@@ -423,6 +425,7 @@ export const generateMockSchedule = (className: string, level: 'SMP' | 'SMK'): C
   days.forEach((day, di) => {
     slots.forEach((slot, si) => {
       const sub = subjects[(di * 2 + si) % subjects.length]
+      if (!sub) return
       const isToday = day === 'Senin'
       const isCurrent = isToday && slot.session === 3
       items.push({

@@ -261,6 +261,12 @@ const handleLogin = async () => {
       return
     }
 
+    const { data: verifiedAuth, error: verificationError } = await supabase.auth.getUser()
+    if (verificationError || verifiedAuth.user?.id !== authData.user.id) {
+      await supabase.auth.signOut({ scope: 'local' })
+      throw new Error('Sesi login tidak dapat diverifikasi.')
+    }
+
     const metadata = authData.user.user_metadata
     successGreetingName.value = metadata?.name || metadata?.full_name || authData.user.email || email
     isSuccess.value = true
@@ -270,7 +276,7 @@ const handleLogin = async () => {
       ? redirectQuery
       : '/adminV2'
 
-    setTimeout(() => navigateTo(destination), 900)
+    setTimeout(() => navigateTo(destination, { replace: true }), 900)
   } catch {
     alertType.value = 'error'
     alertMsg.value = 'Koneksi ke layanan autentikasi gagal. Periksa jaringan, lalu coba lagi.'

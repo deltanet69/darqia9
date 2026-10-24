@@ -99,6 +99,7 @@ const editingClass = ref<ClassFormData | null>(null)
 
 const handleClassSaved = async (newClass: Required<Omit<ClassFormData, 'id'>> & { id?: string }) => {
   try {
+    if (!newClass.homeroomTeacherId) throw new Error('Wali kelas wajib dipilih.')
     await cbtData.saveClass({
       id: newClass.id,
       name: newClass.name,
@@ -377,7 +378,7 @@ const handleSelectModule = (title: string) => {
 
     <!-- TOAST NOTIFICATION -->
     <AdminV2Toast
-      :show="isToastVisible"
+      :visible="isToastVisible"
       :message="toastMessage"
     />
   </div>

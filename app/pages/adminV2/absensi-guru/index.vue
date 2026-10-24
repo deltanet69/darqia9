@@ -488,30 +488,6 @@ onMounted(() => {
 
     <!-- MAIN PAGE CONTAINER -->
     <main class="max-w-[1440px] mx-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 space-y-6">
-      <!-- SUB-MODULE NAVIGATION SWITCHER ANTAR HALAMAN KEPEGAWAIAN -->
-      <div class="bg-white border border-[#E7EBF2] rounded-2xl p-1.5 shadow-xs flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
-        <NuxtLink
-          to="/adminV2/guru"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all text-[#475467] hover:text-[#101828] hover:bg-[#F2F4F7] shrink-0"
-        >
-          <AdminV2Icon name="users" :size="16" />
-          <span>Data Guru &amp; Staff</span>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#F2F4F7] text-[#475467]">
-            {{ teachersStore.staffList.value.length }} Pendidik
-          </span>
-        </NuxtLink>
-        <NuxtLink
-          to="/adminV2/absensi-guru"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-[#1B5FD9] text-white shadow-xs shrink-0"
-        >
-          <AdminV2Icon name="check-circle" :size="16" />
-          <span>Presensi &amp; Absensi RFID</span>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/20 text-white">
-            Live Reader
-          </span>
-        </NuxtLink>
-      </div>
-
       <!-- PAGE HEAD & AKSI -->
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
@@ -1017,7 +993,7 @@ onMounted(() => {
 
     <!-- GLOBAL TOAST NOTIFICATION -->
     <AdminV2Toast
-      :show="isToastVisible"
+      :visible="isToastVisible"
       :message="toastMessage"
     />
   </div>

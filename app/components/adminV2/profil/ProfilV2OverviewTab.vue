@@ -145,7 +145,7 @@ const userActivities = computed(() => ACTIVITIES[props.profile.id] || [])
         Login Terakhir
       </span>
       <div class="my-1 text-[17px] font-bold text-[#101828] leading-tight">
-        {{ profile.lastLogin.split('·')[0].replace('Jumat, ', '').replace('Kamis, ', '').trim() }}
+        {{ (profile.lastLogin.split('·')[0] || '').replace('Jumat, ', '').replace('Kamis, ', '').trim() }}
       </div>
       <span class="text-[11px] font-semibold text-[#667085] leading-relaxed">
         {{ profile.lastLogin.split('·').slice(1).join('·').trim() }}

@@ -63,7 +63,7 @@ const activeHeroLesson = computed<LessonItem | null>(() => {
     todayLessons.value.find(l => getMulaiState(l) === 'live') ||
     todayLessons.value.find(l => getMulaiState(l) === 'window') ||
     todayLessons.value.find(l => getMulaiState(l) === 'early') ||
-    todayLessons.value[0]
+    todayLessons.value[0] || null
   )
 })
 

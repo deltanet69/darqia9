@@ -104,12 +104,14 @@ const currentPersona = computed(() => {
 
 // Sesi Aktif untuk LiveBar
 const activeLiveSession = computed(() => {
-  const activeKey = Object.keys(sessions.value).find(k => !sessions.value[k].done)
+  const activeKey = Object.keys(sessions.value).find(k => !sessions.value[k]?.done)
   if (!activeKey || !liveStartTime.value) return null
   const [level, kelas, diStr, siStr] = activeKey.split('|')
+  if (!level || !kelas || diStr === undefined || siStr === undefined) return null
   const grid = genGrid(level as Jenjang, kelas, extraSchedules.value)
-  const cell = grid[+diStr as DayIndex][+siStr]
+  const cell = grid[+diStr as DayIndex]?.[+siStr]
   const sess = sessions.value[activeKey]
+  if (!cell || !sess) return null
 
   return {
     key: activeKey,
@@ -207,7 +209,7 @@ const handleSimulateStart = () => {
 onMounted(() => {
   // Pastikan class terpilih sesuai jenjang awal
   if (!selectedClass.value[jenjang.value]) {
-    selectedClass.value[jenjang.value] = KELAS[jenjang.value][0].name
+    selectedClass.value[jenjang.value] = KELAS[jenjang.value][0]?.name || ''
   }
 })
 </script>

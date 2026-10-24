@@ -22,7 +22,7 @@ const emit = defineEmits<{
 }>()
 
 const liveExams = computed(() => {
-  return props.exams.filter(e => ((e as any).grade === props.grade || e.g === props.grade) && e.status === 'Berlangsung')
+  return props.exams.filter(e => e.grade === props.grade && e.status === 'Berlangsung')
 })
 
 // Selected session in rail
@@ -31,7 +31,7 @@ const selectedSessionId = ref<string>('')
 // Initialize or update selected session
 const activeExam = computed<ExamItem | null>(() => {
   if (!liveExams.value.length) return null
-  return liveExams.value.find(e => e.id === selectedSessionId.value) || liveExams.value[0]
+  return liveExams.value.find(e => e.id === selectedSessionId.value) || liveExams.value[0] || null
 })
 
 // Roster state
@@ -59,15 +59,15 @@ const filteredStudents = computed(() => {
 
 const pct = computed(() => {
   if (!activeExam.value) return 0
-  const total = activeExam.value.participants || activeExam.value.total || 1
-  const done = activeExam.value.collected || (activeExam.value as any).done || 0
+  const total = activeExam.value.participants || 1
+  const done = activeExam.value.collected || 0
   return Math.round((done / total) * 100)
 })
 
 const remainCount = computed(() => {
   if (!activeExam.value) return 0
-  const total = activeExam.value.participants || activeExam.value.total || 0
-  const done = activeExam.value.collected || (activeExam.value as any).done || 0
+  const total = activeExam.value.participants || 0
+  const done = activeExam.value.collected || 0
   const doing = activeExam.value.doing || 0
   return Math.max(0, total - done - doing)
 })
@@ -195,7 +195,7 @@ const exportRosterCsv = () => {
               {{ x.name }}
             </strong>
             <small class="block text-[10.5px] text-[#667085] mt-1 truncate">
-              {{ x.classroom || (x as any).cls }} · {{ x.time }} · {{ x.collected || (x as any).done || 0 }}/{{ x.participants || x.total }} selesai
+              {{ x.classroom }} · {{ x.time }} · {{ x.collected }}/{{ x.participants }} selesai
             </small>
             <!-- Progress bar -->
             <div class="w-full h-1 rounded-full bg-[#EFF2F7] overflow-hidden mt-2.5">
@@ -203,7 +203,7 @@ const exportRosterCsv = () => {
                 class="h-full rounded-full"
                 :class="grade === 'SMP' ? 'bg-[#16A34A]' : 'bg-[#1B5FD9]'"
                 :style="{
-                  width: `${Math.round(((x.collected || (x as any).done || 0) / (x.participants || x.total)) * 100)}%`
+                  width: `${Math.round((x.collected / Math.max(1, x.participants)) * 100)}%`
                 }"
               />
             </div>
@@ -266,7 +266,7 @@ const exportRosterCsv = () => {
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
               <div class="border-l-0 sm:border-l first:border-l-0 border-white/25 pl-0 sm:pl-3.5">
                 <b class="block text-2xl font-extrabold font-mono leading-none">
-                  {{ activeExam.participants || activeExam.total }}
+                  {{ activeExam.participants }}
                 </b>
                 <span class="block text-[10px] text-[#C4D8F4] mt-1">Total peserta</span>
               </div>

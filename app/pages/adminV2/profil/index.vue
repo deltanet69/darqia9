@@ -51,7 +51,7 @@ const isEditing = ref<boolean>(false)
 
 // State Profil Reaktif (Clone data untuk simulasi demo)
 const profilesState = reactive<Record<string, ProfileAccount>>({ ...PROFILES })
-const currentProfile = computed(() => profilesState[currentWho.value] || profilesState.budi)
+const currentProfile = computed<ProfileAccount>(() => profilesState[currentWho.value] || PROFILES.budi)
 
 // Form Edit Data Mandiri
 const editForm = reactive({
