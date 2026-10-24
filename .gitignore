@@ -31,4 +31,5 @@ agents.md
 # Supabase
 supabase/migrations/*
 !supabase/migrations/0008_nip_opsional_guru.sql
+!supabase/migrations/0009_agenda_mengajar.sql
 
