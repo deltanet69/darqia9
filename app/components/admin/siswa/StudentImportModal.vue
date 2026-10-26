@@ -109,16 +109,44 @@ const parseCSV = (text: string) => {
 }
 
 const hasHeader = (headers: string[], aliases: string[]) => aliases.some(alias => headers.includes(alias))
-const isValidDate = (value: string) => {
-  if (!value) return true
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  return new Date(value + 'T00:00:00').toISOString().slice(0, 10) === value
+const normalizeDate = (value: string) => {
+  const dateValue = value.trim()
+  if (!dateValue) return ''
+  const match = dateValue.match(/^(?:(\d{4})[-/](\d{1,2})[-/](\d{1,2})|(\d{1,2})[-/](\d{1,2})[-/](\d{4}))/)
+  if (!match) return null
+  const [, isoYear, isoMonth, isoDay, localDay, localMonth, localYear] = match
+  const year = Number(isoYear || localYear)
+  let month = Number(isoMonth || localMonth)
+  let day = Number(isoDay || localDay)
+  if (localYear && month > 12 && day <= 12) [month, day] = [day, month]
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null
+  return [year, String(month).padStart(2, '0'), String(day).padStart(2, '0')].join('-')
+}
+
+const normalizeAttendance = (value: string) => {
+  const attendanceValue = value.trim()
+  if (!attendanceValue) return 0
+  const attendance = Number(attendanceValue.replace('%', '').replace(',', '.'))
+  return Number.isFinite(attendance) && attendance >= 0 && attendance <= 100 ? attendance : null
 }
 
 const handleFileChange = (e: Event) => {
   const target = e.target as HTMLInputElement
-  const file = target.files?.[0]
+  handleFile(target.files?.[0])
+  target.value = ''
+}
+
+const handleDrop = (e: DragEvent) => {
+  handleFile(e.dataTransfer?.files[0])
+}
+
+const handleFile = (file?: File) => {
   if (!file) return
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    errorMessage.value = 'Berkas harus berformat CSV.'
+    return
+  }
 
   fileName.value = file.name
   errorMessage.value = ''
@@ -156,6 +184,9 @@ const handleFileChange = (e: Event) => {
         const gender: 'L' | 'P' = rawGender === 'PRIA' || rawGender.startsWith('L') ? 'L' : rawGender === 'WANITA' || rawGender.startsWith('P') || rawGender.startsWith('W') ? 'P' : 'L'
         const className = r['kelas'] || r['rombel'] || r['kelas / rombel'] || ''
         const normalizedNisn = nisn.replace(/\D/g, '')
+        const birthDate = normalizeDate(r['tanggallahir'] || r['tanggal lahir'] || '')
+        const entryDate = normalizeDate(r['tanggalmasuk'] || r['tanggal masuk'] || '')
+        const attendancePct = normalizeAttendance(r['presensi'] || r['kehadiran'] || '')
         const reasons: string[] = []
         if (!name.trim()) reasons.push('nama kosong')
         if (!nis.trim()) reasons.push('NIS kosong')
@@ -163,9 +194,9 @@ const handleFileChange = (e: Event) => {
         if (sourceGrade !== props.grade) reasons.push('jenjang harus ' + props.grade)
         if (!className.trim()) reasons.push('kelas kosong')
         if (!['L', 'P', 'PRIA', 'WANITA', 'LAKI-LAKI', 'LAKI LAKI', 'PEREMPUAN'].includes(rawGender)) reasons.push('gender harus L atau P')
-        if (!isValidDate(r['tanggallahir'] || r['tanggal lahir'] || '')) reasons.push('tanggal lahir harus YYYY-MM-DD')
-        if (!isValidDate(r['tanggalmasuk'] || r['tanggal masuk'] || '')) reasons.push('tanggal masuk harus YYYY-MM-DD')
-        if (r['presensi'] && (!Number.isFinite(Number(r['presensi'])) || Number(r['presensi']) < 0 || Number(r['presensi']) > 100)) reasons.push('presensi harus angka 0 sampai 100')
+        if (birthDate === null) reasons.push('tanggal lahir tidak valid')
+        if (entryDate === null) reasons.push('tanggal masuk tidak valid')
+        if (attendancePct === null) reasons.push('presensi harus angka 0 sampai 100')
         if (r['status'] && !['Aktif', 'Lulus', 'Pindah', 'Nonaktif'].includes(r['status'])) reasons.push('status tidak dikenali')
         if (seenNisn.has(normalizedNisn)) reasons.push('NISN duplikat di dalam berkas')
         if (reasons.length) {
@@ -186,7 +217,7 @@ const handleFileChange = (e: Event) => {
           className,
           major: r['jurusan'] || r['program keahlian'] || undefined,
           birthPlace: r['tempatlahir'] || r['tempat lahir'] || '',
-          birthDate: r['tanggallahir'] || r['tanggal lahir'] || '',
+          birthDate: birthDate || '',
           religion: r['agama'] || 'Islam',
           address: r['alamat'] || r['alamat lengkap'] || '',
           rt: r['rt'] || '',
@@ -224,9 +255,9 @@ const handleFileChange = (e: Event) => {
           rfidUid: r['rfid_uid'] || r['rfid'] || r['uid'] || undefined,
           hasRfid: !!(r['rfid_uid'] || r['rfid'] || r['uid']),
           status: (r['status'] === 'Lulus' || r['status'] === 'Pindah' || r['status'] === 'Nonaktif') ? r['status'] : 'Aktif',
-          attendancePct: Number(r['presensi'] || r['kehadiran']) || 0,
+          attendancePct: attendancePct || 0,
           entryYear: r['tahunangkatan'] || r['angkatan'] || '',
-          entryDate: r['tanggalmasuk'] || r['tanggal masuk'] || '',
+          entryDate: entryDate || '',
           notes: r['catatan'] || ''
         }
         valid.push(student)
@@ -314,11 +345,15 @@ const handleApplyImport = () => {
           <!-- BODY -->
           <div class="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4 text-slate-800 text-sm">
           <!-- STEP 1: UPLOAD & TEMPLATE -->
-          <div class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center">
+          <div
+            class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center"
+            @dragover.prevent
+            @drop.prevent="handleDrop"
+          >
             <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
               <AdminIcon name="dl" size="22" />
             </div>
-            <h4 class="text-sm font-bold text-slate-900 mb-1">Pilih File CSV Data Siswa</h4>
+            <h4 class="text-sm font-bold text-slate-900 mb-1">Tarik atau pilih file CSV data siswa</h4>
             <p class="text-xs text-slate-400 max-w-md mx-auto mb-4">
               Gunakan file format CSV (UTF-8). Pastikan kolom sesuai dengan format resmi Dapodik.
             </p>
