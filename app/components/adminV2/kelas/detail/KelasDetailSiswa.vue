@@ -135,6 +135,17 @@ const filteredStudents = computed(() => {
             <td class="py-2.5 px-3">
               <span class="block text-[11.5px] font-semibold text-[#101828]">{{ s.parentName }}</span>
               <span class="text-[11px] text-[#667085] font-mono">{{ s.parentPhone }}</span>
+              <details class="mt-1.5 text-[11px]">
+                <summary class="cursor-pointer font-bold text-[#1B5FD9] hover:underline">
+                  Detail orang tua
+                </summary>
+                <div class="mt-2 min-w-48 rounded-xl border border-[#E7EBF2] bg-[#F8FAFC] p-2.5 space-y-1">
+                  <p><b>Ayah:</b> {{ s.fatherName || 'Belum diisi' }}</p>
+                  <p><b>Kontak ayah:</b> {{ s.fatherPhone || 'Belum diisi' }}</p>
+                  <p><b>Ibu:</b> {{ s.motherName || 'Belum diisi' }}</p>
+                  <p><b>Kontak ibu:</b> {{ s.motherPhone || 'Belum diisi' }}</p>
+                </div>
+              </details>
             </td>
             <td class="py-2.5 px-3 text-right">
               <div class="flex items-center justify-end gap-1.5">

@@ -3,12 +3,15 @@ import { ref, reactive, watch, computed, onBeforeUnmount } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import type { StudentItem } from '~/composables/useAdminStudents'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   isOpen: boolean
   mode: 'add' | 'edit'
   grade: string
   initialData: Partial<StudentItem>
-}>()
+  classOptions?: string[]
+}>(), {
+  classOptions: () => []
+})
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -247,7 +250,10 @@ const handleSubmit = () => {
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
                   <label class="block font-semibold text-slate-700 mb-1">Kelas / Rombel <span class="text-rose-500">*</span></label>
-                  <input v-model="form.className" required class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: X. TKJ 1 / VII-A (Putra)" />
+                  <select v-model="form.className" required class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500">
+                    <option value="" disabled>Pilih kelas dari Manajemen Kelas</option>
+                    <option v-for="className in classOptions" :key="className" :value="className">{{ className }}</option>
+                  </select>
                 </div>
                 <div v-if="grade === 'SMK'">
                   <label class="block font-semibold text-slate-700 mb-1">Program Keahlian (Jurusan)</label>

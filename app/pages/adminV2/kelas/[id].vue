@@ -19,11 +19,10 @@ import KelasV2MoveStudentModal from '~/components/adminV2/kelas/KelasV2MoveStude
 import KelasDetailSlotModal from '~/components/adminV2/kelas/detail/KelasDetailSlotModal.vue'
 import KelasDetailImportModal from '~/components/adminV2/kelas/detail/KelasDetailImportModal.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
+import { useAdminCbtData } from '~/composables/useAdminCbtData'
+import { useAdminStudents } from '~/composables/useAdminStudents'
 import {
-  INITIAL_CLASSES_SMK,
-  INITIAL_CLASSES_SMP,
   generateMockSchedule,
-  generateMockStudents,
   generateMockAttendance,
   generateMockGrades,
   generateMockExams,
@@ -40,19 +39,45 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
+const cbtData = useAdminCbtData()
+const studentData = useAdminStudents()
 
 const classIdParam = computed(() => {
   return decodeURIComponent(String(route.params.id || ''))
 })
 
-const allMockClasses = [...INITIAL_CLASSES_SMK, ...INITIAL_CLASSES_SMP]
-const defaultClass = INITIAL_CLASSES_SMK[0]
-if (!defaultClass) throw new Error('Data kelas awal tidak tersedia.')
+const availableClasses = computed<ClassRombel[]>(() => cbtData.classes.value.map(item => {
+  const roster = studentData.students.value.filter(student => student.classId === item.id && student.status === 'Aktif')
+  return {
+    id: item.id,
+    name: item.name,
+    level: item.grade,
+    gradeLevel: (item.name.split(/[\s.-]/)[0] || (item.grade === 'SMP' ? 'VII' : 'X')) as ClassRombel['gradeLevel'],
+    major: item.major,
+    room: item.room,
+    capacity: 36,
+    studentsCount: roster.length,
+    boys: roster.filter(student => student.gender === 'L').length,
+    girls: roster.filter(student => student.gender === 'P').length,
+    teacher: item.teacher || 'Belum ditetapkan',
+    teacherNip: item.teacherNip,
+    teacherPhone: '',
+    teacherEmail: '',
+    attendance: 0,
+    average: 0,
+    status: 'Aktif'
+  }
+}))
+
+const emptyClass: ClassRombel = {
+  id: '', name: '', level: 'SMK', gradeLevel: 'X', major: '', room: '', capacity: 36,
+  studentsCount: 0, boys: 0, girls: 0, teacher: 'Belum ditetapkan', teacherNip: '',
+  teacherPhone: '', teacherEmail: '', attendance: 0, average: 0, status: 'Aktif'
+}
 
 const currentClass = computed<ClassRombel>(() => {
   const param = classIdParam.value.toLowerCase()
-  const found = allMockClasses.find(c => c.name.toLowerCase() === param || c.id.toLowerCase() === param)
-  return found || defaultClass
+  return availableClasses.value.find(item => item.name.toLowerCase() === param || item.id.toLowerCase() === param) ?? emptyClass
 })
 
 const jenjang = computed<'smp' | 'smk'>(() => {
@@ -94,20 +119,36 @@ const triggerToast = (msg: string) => {
 export type DetailSubmenuId = 'overview' | 'siswa' | 'absensi' | 'jadwal' | 'nilai' | 'ujian'
 const activeSubmenu = ref<DetailSubmenuId>('overview')
 
-const studentsList = ref<ClassStudentItem[]>([])
+const studentsList = computed<ClassStudentItem[]>(() => studentData.students.value
+  .filter(student => student.classId === currentClass.value.id && student.status === 'Aktif')
+  .map(student => ({
+    id: student.id,
+    nisn: student.nisn,
+    nis: student.nis,
+    name: student.name,
+    gender: student.gender,
+    className: currentClass.value.name,
+    phone: student.phone ?? '',
+    parentName: student.fatherName || student.motherName || 'Belum diisi',
+    parentPhone: student.fatherPhone || student.motherPhone || '',
+    fatherName: student.fatherName,
+    fatherPhone: student.fatherPhone ?? '',
+    motherName: student.motherName,
+    motherPhone: student.motherPhone ?? '',
+    hasRfid: student.hasRfid,
+    status: 'Aktif',
+    attendancePct: student.attendancePct
+  })))
 const attendanceList = ref<ClassAttendanceDaily[]>([])
 const gradesList = ref<ClassGradeItem[]>([])
 const examsList = ref<ClassExamItem[]>([])
 
 watch(
-  () => currentClass.value,
-  (val) => {
-    if (val) {
-      studentsList.value = generateMockStudents(val.name, val.level, val.studentsCount)
-      attendanceList.value = generateMockAttendance(studentsList.value)
-      gradesList.value = generateMockGrades(studentsList.value)
-      examsList.value = generateMockExams(val.name, val.level)
-    }
+  [studentsList, currentClass],
+  ([roster, cls]) => {
+    attendanceList.value = generateMockAttendance(roster)
+    gradesList.value = generateMockGrades(roster)
+    examsList.value = generateMockExams(cls.name, cls.level)
   },
   { immediate: true }
 )
@@ -134,12 +175,25 @@ const handleOpenMoveStudent = (student: ClassStudentItem) => {
   isMoveStudentModalOpen.value = true
 }
 
-const handleConfirmMoveStudent = (studentId: string, targetClass: string, reason: string) => {
+const handleConfirmMoveStudent = async (studentId: string, targetClass: string, reason: string) => {
+  const result = await studentData.updateStudentClass(studentId, targetClass)
   isMoveStudentModalOpen.value = false
+  if (!result.success) {
+    triggerToast(result.message)
+    return
+  }
+  await cbtData.load(true)
   triggerToast(`Peserta didik berhasil dipindahkan ke rombel ${targetClass}. (${reason})`)
 }
 
-const handleDeleteStudent = (student: ClassStudentItem) => {
+const handleDeleteStudent = async (student: ClassStudentItem) => {
+  if (!window.confirm('Nonaktifkan ' + student.name + ' dari rombel ini?')) return
+  const result = await studentData.deactivateStudent(student.id)
+  if (!result.success) {
+    triggerToast(result.message)
+    return
+  }
+  await cbtData.load(true)
   triggerToast(`Siswa ${student.name} dinonaktifkan dari rombel.`)
 }
 
@@ -261,7 +315,8 @@ const handleSelectModule = (title: string) => {
   triggerToast(`${title} — modul demo`)
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await Promise.all([cbtData.load(true), studentData.load()])
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeAllModals()
@@ -318,6 +373,15 @@ onMounted(() => {
 
     <!-- MAIN CONTAINER -->
     <main class="max-w-[1440px] mx-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 space-y-4">
+      <div
+        v-if="studentData.loading.value || cbtData.loading.value || studentData.error.value || cbtData.error.value"
+        class="rounded-2xl border px-4 py-3 text-xs font-semibold"
+        :class="studentData.error.value || cbtData.error.value ? 'border-[#F5C6C0] bg-[#FFF8F7] text-[#B42318]' : 'border-[#C9DCFB] bg-[#F5F8FF] text-[#12459B]'"
+        role="status"
+      >
+        {{ studentData.error.value || cbtData.error.value || 'Memuat data rombel, wali kelas, dan siswa dari Supabase…' }}
+      </div>
+
       <!-- Breadcrumb & Top Section -->
       <div class="bg-white border border-[#E7EBF2] rounded-3xl p-4 sm:p-5 shadow-xs">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -472,7 +536,7 @@ onMounted(() => {
       :open="isMoveStudentModalOpen"
       :student="movingStudent"
       :current-class="currentClass.name"
-      :available-classes="allMockClasses"
+      :available-classes="availableClasses"
       :jenjang="jenjang"
       @close="isMoveStudentModalOpen = false"
       @move="handleConfirmMoveStudent"

@@ -42,6 +42,10 @@ export interface ClassStudentItem {
   phone: string
   parentName: string
   parentPhone: string
+  fatherName: string
+  fatherPhone: string
+  motherName: string
+  motherPhone: string
   hasRfid: boolean
   status: 'Aktif' | 'Mutasi' | 'Lulus'
   attendancePct: number
@@ -482,6 +486,10 @@ export const generateMockStudents = (className: string, level: 'SMP' | 'SMK', co
       phone: `0812-98${String(10000 + i * 83).padStart(5, '0')}`,
       parentName: `Wali ${name.split(' ')[0]}`,
       parentPhone: `0813-88${String(10000 + i * 91).padStart(5, '0')}`,
+      fatherName: '',
+      fatherPhone: '',
+      motherName: '',
+      motherPhone: '',
       hasRfid: i % 7 !== 0,
       status: 'Aktif',
       attendancePct: Math.min(100, Math.round(90 + ((i * 13) % 11)))

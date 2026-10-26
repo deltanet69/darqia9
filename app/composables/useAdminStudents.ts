@@ -1,8 +1,7 @@
-import { ref, reactive, computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 
 export interface StudentItem {
-  // Data Pokok Siswa
   id: string
   nis: string
   nisn: string
@@ -11,24 +10,21 @@ export interface StudentItem {
   name: string
   gender: 'L' | 'P'
   level: 'SMP' | 'SMK'
+  classId?: string
   className: string
-  major?: string // TKJ, TSM/TBSM, AK/AKL, DKV, OTKP, TKR
+  major?: string
   birthPlace: string
   birthDate: string
   religion: string
-  
-  // Alamat & Tempat Tinggal
   address: string
   rt?: string
   rw?: string
-  village?: string // Kelurahan / Desa
-  district?: string // Kecamatan
-  city?: string // Kota / Kabupaten
-  livingType?: string // Bersama orang tua / Wali / Asrama
-  transportation?: string // Sepeda motor / Sepeda / Jalan kaki / Angkutan umum / Antar jemput
-  phone?: string // HP / WA Siswa
-  
-  // Data Ayah
+  village?: string
+  district?: string
+  city?: string
+  livingType?: string
+  transportation?: string
+  phone?: string
   fatherName: string
   fatherBirthYear?: string
   fatherEducation?: string
@@ -36,8 +32,6 @@ export interface StudentItem {
   fatherIncome?: string
   fatherNik?: string
   fatherPhone?: string
-  
-  // Data Ibu
   motherName: string
   motherBirthYear?: string
   motherEducation?: string
@@ -45,21 +39,17 @@ export interface StudentItem {
   motherIncome?: string
   motherNik?: string
   motherPhone?: string
-  
-  // Riwayat Pendidikan & Fisik
-  prevSchool?: string // Sekolah Asal (e.g. SMP IT BINA CENDEKIA ASSALAM, SMPN 21 BEKASI, etc.)
-  prevDiplomaNo?: string // No Seri Ijazah Sebelumnya
-  birthOrder?: number // Anak ke-berapa
-  siblingsCount?: number // Jumlah Saudara Kandung
-  weight?: number // Berat Badan (kg)
-  height?: number // Tinggi Badan (cm)
-  headCircumference?: number // Lingkar Kepala (cm)
-  distanceKm?: number // Jarak Rumah ke Sekolah (KM)
+  prevSchool?: string
+  prevDiplomaNo?: string
+  birthOrder?: number
+  siblingsCount?: number
+  weight?: number
+  height?: number
+  headCircumference?: number
+  distanceKm?: number
   hobby?: string
-  ambition?: string // Cita-cita
-  entryDate?: string // Tanggal Masuk
-  
-  // RFID & Status Sistem
+  ambition?: string
+  entryDate?: string
   rfidUid?: string
   hasRfid: boolean
   status: 'Aktif' | 'Lulus' | 'Pindah' | 'Nonaktif'
@@ -68,1037 +58,356 @@ export interface StudentItem {
   notes?: string
 }
 
+interface StudentClass {
+  id: string
+  name: string
+  grade: 'SMP' | 'SMK'
+  major: string
+}
+
+export interface StudentMutationResult {
+  success: boolean
+  message: string
+  successCount?: number
+  failedRows?: string[]
+}
+
+const clean = (value: unknown) => String(value ?? '').trim()
+const textOrNull = (value: unknown) => clean(value) || null
+const numberOrNull = (value: unknown) => {
+  if (value === '' || value === null || value === undefined) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export const useAdminStudents = () => {
   const grade = useAdminGrade()
+  const supabase = useSupabaseClient()
+  const students = useState<StudentItem[]>('admin-students', () => [])
+  const classes = useState<StudentClass[]>('admin-student-classes', () => [])
+  const loading = useState('admin-students-loading', () => false)
+  const error = useState<string | null>('admin-students-error', () => null)
+  const operationMessage = useState<string | null>('admin-students-operation-message', () => null)
 
-  // Real sample data langsung dari official spreadsheet sekolah
-  const officialSMKStudents: StudentItem[] = [
-    {
-      id: 'SMK-242510001',
-      nis: '242510001',
-      nisn: '3095100998',
-      nik: '3216020103090009',
-      noKk: '3216021203090001',
-      name: 'A. SAUQI NUR KAMIL',
-      gender: 'L',
-      level: 'SMK',
-      className: 'XII. TKJ 2',
-      major: 'TKJ',
-      birthPlace: 'BEKASI',
-      birthDate: '2009-03-01',
-      religion: 'Islam',
-      address: 'AL BARKAH',
-      rt: '06',
-      rw: '05',
-      village: 'Bahagia',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Angkutan umum/bus/pete-pete',
-      phone: '081299887701',
-      fatherName: 'H. RIDWAN KAMIL',
-      fatherBirthYear: '1980',
-      fatherEducation: 'SMA / sederajat',
-      fatherJob: 'Buruh',
-      fatherIncome: '< Rp1.000.000',
-      fatherNik: '3216021405800001',
-      fatherPhone: '082210823033',
-      motherName: 'NURJANAH',
-      motherBirthYear: '1982',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Tidak bekerja',
-      motherIncome: 'Tidak Berpenghasilan',
-      motherNik: '3216024711820001',
-      motherPhone: '082210823033',
-      prevSchool: 'SMP IT BINA CENDEKIA ASSALAM (BCA)',
-      birthOrder: 2,
-      siblingsCount: 2,
-      weight: 55,
-      height: 160,
-      distanceKm: 1,
-      rfidUid: 'E280-1170-0000-021B',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 96,
-      entryYear: '2024',
-      entryDate: '2024-07-15'
-    },
-    {
-      id: 'SMK-2526011001',
-      nis: '2526011001',
-      nisn: '3109254013',
-      nik: '3216020911100004',
-      noKk: '3216021203090002',
-      name: 'ABDU HAFIDL AHNAF BAIDHO',
-      gender: 'L',
-      level: 'SMK',
-      className: 'XI. TSM 1',
-      major: 'TBSM',
-      birthPlace: 'BEKASI',
-      birthDate: '2010-11-09',
-      religion: 'Islam',
-      address: 'UJUNG HARAPAN RT. 006/ 015',
-      rt: '07',
-      rw: '11',
-      village: 'Bahagia',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Sepeda',
-      phone: '085711223344',
-      fatherName: 'GIMAN ANDRIYANTO',
-      fatherBirthYear: '1980',
-      fatherEducation: 'SMA / sederajat',
-      fatherJob: 'Wiraswasta',
-      fatherIncome: '< Rp1.000.000',
-      fatherNik: '3216021405800002',
-      fatherPhone: '081398765432',
-      motherName: 'AWIT',
-      motherBirthYear: '1984',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Tidak bekerja',
-      motherIncome: 'Tidak Berpenghasilan',
-      motherNik: '3216024711840002',
-      motherPhone: '081398765432',
-      prevSchool: 'SMP IT BINA CENDEKIA ASSALAM (BCA)',
-      birthOrder: 3,
-      siblingsCount: 3,
-      weight: 55,
-      height: 160,
-      distanceKm: 1,
-      rfidUid: 'E280-1170-0000-021C',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 98,
-      entryYear: '2025',
-      entryDate: '2025-07-14'
-    },
-    {
-      id: 'SMK-26270120117',
-      nis: '26270120117',
-      nisn: '0103402655',
-      nik: '3275030806100007',
-      noKk: '3275031203090003',
-      name: 'ABDUL KHODIR JAELANI',
-      gender: 'L',
-      level: 'SMK',
-      className: 'X. TKJ 3',
-      major: 'TKJ',
-      birthPlace: 'Bekasi',
-      birthDate: '2010-06-08',
-      religion: 'Islam',
-      address: 'Taman Wisma Asri Blok T 27 No. 37',
-      rt: '01',
-      rw: '30',
-      village: 'Teluk Pucung',
-      district: 'Kec. Bekasi Utara',
-      city: 'Kota Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Sepeda motor',
-      phone: '087811223344',
-      fatherName: 'HERI YULI HANDOKO',
-      fatherBirthYear: '1980',
-      fatherEducation: 'SMP / sederajat',
-      fatherJob: 'Karyawan Swasta',
-      fatherIncome: 'Rp1.000.001 – Rp3.000.000',
-      fatherNik: '3275030507800039',
-      fatherPhone: '081287654321',
-      motherName: 'MIJIL SRI MURWANI',
-      motherBirthYear: '1983',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Tidak bekerja',
-      motherIncome: 'Tidak Berpenghasilan',
-      motherNik: '3275034711830003',
-      motherPhone: '081287654321',
-      prevSchool: 'SMP NEGERI 21 BEKASI',
-      birthOrder: 2,
-      siblingsCount: 2,
-      weight: 50,
-      height: 165,
-      distanceKm: 4,
-      rfidUid: 'E280-1170-0000-021D',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 92,
-      entryYear: '2026',
-      entryDate: '2026-07-13'
-    },
-    {
-      id: 'SMK-2526011174',
-      nis: '2526011174',
-      nisn: '3103138882',
-      nik: '3216020504100003',
-      noKk: '3216021203090004',
-      name: 'ABDUL MUSYAFA',
-      gender: 'L',
-      level: 'SMK',
-      className: 'XI. TKJ 1',
-      major: 'TKJ',
-      birthPlace: 'BEKASI',
-      birthDate: '2010-04-05',
-      religion: 'Islam',
-      address: 'KP. PULO TIMAHA',
-      rt: '08',
-      rw: '09',
-      village: 'Babelan Kota',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Jalan kaki',
-      phone: '089611223344',
-      fatherName: 'HERI YUNIANTO',
-      fatherBirthYear: '1980',
-      fatherEducation: 'SMA / sederajat',
-      fatherJob: 'Wiraswasta',
-      fatherIncome: '< Rp1.000.000',
-      fatherNik: '3216021405800004',
-      fatherPhone: '085212345678',
-      motherName: 'KOKOM KOMALASARI',
-      motherBirthYear: '1982',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Lainnya',
-      motherIncome: 'Tidak Berpenghasilan',
-      motherNik: '3216024711820004',
-      motherPhone: '085212345678',
-      prevSchool: 'SMP IT BINA CENDEKIA ASSALAM (BCA)',
-      birthOrder: 2,
-      siblingsCount: 2,
-      weight: 56,
-      height: 164,
-      distanceKm: 2,
-      rfidUid: 'E280-1170-0000-021E',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 95,
-      entryYear: '2025',
-      entryDate: '2025-07-14'
-    },
-    {
-      id: 'SMK-26270120082',
-      nis: '26270120082',
-      nisn: '3101157019',
-      nik: '3216021809100002',
-      noKk: '3216021203090005',
-      name: 'ABDUL SALIM ASSADZILI',
-      gender: 'L',
-      level: 'SMK',
-      className: 'X. TKJ 1',
-      major: 'TKJ',
-      birthPlace: 'BEKASI',
-      birthDate: '2010-09-18',
-      religion: 'Islam',
-      address: 'UJUNG HARAPAN',
-      rt: '03',
-      rw: '15',
-      village: 'Desa/Kel. Bahagia',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Sepeda',
-      phone: '081311223344',
-      fatherName: 'MARGONO',
-      fatherBirthYear: '1980',
-      fatherEducation: 'SMA / sederajat',
-      fatherJob: 'Karyawan Swasta',
-      fatherIncome: 'Rp1.000.001 – Rp3.000.000',
-      fatherNik: '3216021405700012',
-      fatherPhone: '081298761234',
-      motherName: 'NANY WAHYUNINGSIH',
-      motherBirthYear: '1976',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Tidak bekerja',
-      motherIncome: 'Tidak Berpenghasilan',
-      motherNik: '3216024711760010',
-      motherPhone: '081298761234',
-      prevSchool: 'SMP NEGERI 3 BABELAN',
-      birthOrder: 2,
-      siblingsCount: 2,
-      weight: 52,
-      height: 168,
-      distanceKm: 1,
-      hasRfid: false,
-      status: 'Aktif',
-      attendancePct: 91,
-      entryYear: '2026',
-      entryDate: '2026-07-13'
-    },
-    {
-      id: 'SMK-2526011011',
-      nis: '2526011011',
-      nisn: '0107676242',
-      nik: '3216025305100013',
-      noKk: '3216021203090006',
-      name: 'ALIFAH HUSNUL KHOTIMAH',
-      gender: 'P',
-      level: 'SMK',
-      className: 'XI. AK',
-      major: 'AKL',
-      birthPlace: 'BEKASI',
-      birthDate: '2010-05-13',
-      religion: 'Islam',
-      address: 'GREEN SWADAYA NO 36',
-      rt: '08',
-      rw: '04',
-      village: 'Bahagia',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Jalan kaki',
-      phone: '082111223344',
-      fatherName: 'MUJIANTO',
-      fatherBirthYear: '1980',
-      fatherEducation: 'SMA / sederajat',
-      fatherJob: 'Wirausaha',
-      fatherIncome: '< Rp1.000.000',
-      fatherNik: '3216021111770010',
-      fatherPhone: '081345678901',
-      motherName: 'SUPARNI',
-      motherBirthYear: '1977',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Tidak bekerja',
-      motherIncome: 'Tidak Berpenghasilan',
-      motherNik: '3216025908770005',
-      motherPhone: '081345678901',
-      prevSchool: 'SMP IT BINA CENDEKIA ASSALAM (BCA)',
-      birthOrder: 2,
-      siblingsCount: 2,
-      weight: 56,
-      height: 155,
-      distanceKm: 1,
-      hasRfid: false,
-      status: 'Aktif',
-      attendancePct: 97,
-      entryYear: '2025',
-      entryDate: '2025-07-14'
-    },
-    {
-      id: 'SMK-2526011012',
-      nis: '2526011012',
-      nisn: '3093953088',
-      nik: '3275035612090003',
-      noKk: '3275031203090007',
-      name: 'ALIFIA NURHAYATILLAH',
-      gender: 'P',
-      level: 'SMK',
-      className: 'XI. AK',
-      major: 'AKL',
-      birthPlace: 'BEKASI',
-      birthDate: '2009-12-16',
-      religion: 'Islam',
-      address: 'VGH NO. 28',
-      rt: '09',
-      rw: '11',
-      village: 'Bahagia',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Angkutan umum/bus/pete-pete',
-      phone: '085811223344',
-      fatherName: 'H. NURHAYAT',
-      fatherBirthYear: '1980',
-      fatherEducation: 'SMA / sederajat',
-      fatherJob: 'Buruh',
-      fatherIncome: '< Rp1.000.000',
-      fatherNik: '3275031405800007',
-      fatherPhone: '085876543210',
-      motherName: 'EMI NURAINI',
-      motherBirthYear: '1982',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Tidak bekerja',
-      motherIncome: 'Tidak Berpenghasilan',
-      motherNik: '3275034711820007',
-      motherPhone: '085876543210',
-      prevSchool: 'SMP ATTAQWA PUSAT',
-      birthOrder: 1,
-      siblingsCount: 2,
-      weight: 57,
-      height: 156,
-      distanceKm: 2,
-      rfidUid: 'E280-1170-0000-021F',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 94,
-      entryYear: '2025',
-      entryDate: '2025-07-14'
-    },
-    {
-      id: 'SMK-26270120031',
-      nis: '26270120031',
-      nisn: '3111944375',
-      nik: '3275036107110006',
-      noKk: '3275031203090008',
-      name: 'ALIYATUL SADIYAH',
-      gender: 'P',
-      level: 'SMK',
-      className: 'X. AK',
-      major: 'AKL',
-      birthPlace: 'BEKASI',
-      birthDate: '2011-07-21',
-      religion: 'Islam',
-      address: 'Kp. Irian No.8 Rt.013/004 Kel. Teluk Pucung Bekasi Utara',
-      rt: '13',
-      rw: '04',
-      village: 'Teluk Pucung',
-      district: 'Kec. Bekasi Utara',
-      city: 'Kota Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Mobil/bus antar jemput',
-      phone: '087711223344',
-      fatherName: 'ALI',
-      fatherBirthYear: '1980',
-      fatherEducation: 'SMA / sederajat',
-      fatherJob: 'Wiraswasta',
-      fatherIncome: '< Rp1.000.000',
-      fatherNik: '3275031405800008',
-      fatherPhone: '087798765432',
-      motherName: 'UNITA KARDILA',
-      motherBirthYear: '1988',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Pedagang Kecil',
-      motherIncome: '< Rp1.000.000',
-      motherNik: '3275034711880008',
-      motherPhone: '087798765432',
-      prevSchool: 'SMP ATTAQWA PUSAT',
-      birthOrder: 2,
-      siblingsCount: 2,
-      weight: 42,
-      height: 146,
-      distanceKm: 3,
-      rfidUid: 'E280-1170-0000-0220',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 99,
-      entryYear: '2026',
-      entryDate: '2026-07-13'
-    }
-  ]
-
-  // Data Siswa SMP IT Bina Cendekia Assalam (Kelas berbasis gender putra/putri)
-  const officialSMPStudents: StudentItem[] = [
-    {
-      id: 'SMP-2425001',
-      nis: '2425001',
-      nisn: '0089123456',
-      nik: '3216061004110001',
-      noKk: '3216061203090101',
-      name: 'MUHAMMAD FARHAN',
-      gender: 'L',
-      level: 'SMP',
-      className: 'IX-A (Putra)',
-      birthPlace: 'BEKASI',
-      birthDate: '2011-04-10',
-      religion: 'Islam',
-      address: 'Jl. Ujung Harapan Musholla Assalam RT 04/01',
-      rt: '04',
-      rw: '01',
-      village: 'Bahagia',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Jalan kaki',
-      phone: '081288887771',
-      fatherName: 'Ustadz Syamsul Huda',
-      fatherBirthYear: '1978',
-      fatherEducation: 'S1',
-      fatherJob: 'Guru / Pendidik',
-      fatherIncome: 'Rp3.000.001 – Rp5.000.000',
-      fatherNik: '3216061405780101',
-      fatherPhone: '082210823033',
-      motherName: 'MARYAM',
-      motherBirthYear: '1982',
-      motherEducation: 'SMA / sederajat',
-      motherJob: 'Ibu Rumah Tangga',
-      motherIncome: 'Tidak Berpenghasilan',
-      motherNik: '3216064711820101',
-      motherPhone: '082210823033',
-      prevSchool: 'SDIT ATTAQWA BABELAN',
-      birthOrder: 1,
-      siblingsCount: 3,
-      weight: 48,
-      height: 158,
-      distanceKm: 1,
-      rfidUid: 'E280-1170-0000-010A',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 97,
-      entryYear: '2024',
-      entryDate: '2024-07-15'
-    },
-    {
-      id: 'SMP-2425002',
-      nis: '2425002',
-      nisn: '0089123457',
-      nik: '3216061808110002',
-      noKk: '3216061203090102',
-      name: 'AISYAH HUMAIRA',
-      gender: 'P',
-      level: 'SMP',
-      className: 'IX-B (Putri)',
-      birthPlace: 'BEKASI',
-      birthDate: '2011-08-18',
-      religion: 'Islam',
-      address: 'Kp. Penggarutan RT 03/06',
-      rt: '03',
-      rw: '06',
-      village: 'Kebalen',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Sepeda',
-      phone: '085788887772',
-      fatherName: 'H. ABDULLAH',
-      fatherBirthYear: '1975',
-      fatherEducation: 'S1',
-      fatherJob: 'PNS',
-      fatherIncome: 'Rp5.000.001 – Rp10.000.000',
-      fatherNik: '3216061405750102',
-      fatherPhone: '081388889999',
-      motherName: 'KHADIJAH',
-      motherBirthYear: '1979',
-      motherEducation: 'S1',
-      motherJob: 'PNS',
-      motherIncome: 'Rp3.000.001 – Rp5.000.000',
-      motherNik: '3216064711790102',
-      motherPhone: '081388889999',
-      prevSchool: 'MI ATTAQWA 15',
-      birthOrder: 2,
-      siblingsCount: 2,
-      weight: 45,
-      height: 153,
-      distanceKm: 2,
-      rfidUid: 'E280-1170-0000-010B',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 99,
-      entryYear: '2024',
-      entryDate: '2024-07-15'
-    },
-    {
-      id: 'SMP-2526003',
-      nis: '2526003',
-      nisn: '0089123458',
-      nik: '3216062202120003',
-      noKk: '3216061203090103',
-      name: 'ABDULLAH AZZAM',
-      gender: 'L',
-      level: 'SMP',
-      className: 'VIII-A (Putra)',
-      birthPlace: 'JAKARTA',
-      birthDate: '2012-02-22',
-      religion: 'Islam',
-      address: 'Perumahan Graha Harapan Blok C',
-      rt: '02',
-      rw: '10',
-      village: 'Bahagia',
-      district: 'Kec. Babelan',
-      city: 'Kab. Bekasi',
-      livingType: 'Bersama orang tua',
-      transportation: 'Sepeda motor',
-      phone: '087888887773',
-      fatherName: 'Ir. Hendra Wijaya',
-      fatherBirthYear: '1976',
-      fatherEducation: 'S1',
-      fatherJob: 'Karyawan Swasta',
-      fatherIncome: 'Rp5.000.001 – Rp10.000.000',
-      fatherNik: '3216061405760103',
-      fatherPhone: '081211112222',
-      motherName: 'SRI MULYANI',
-      motherBirthYear: '1980',
-      motherEducation: 'D3',
-      motherJob: 'Wiraswasta',
-      motherIncome: 'Rp1.000.001 – Rp3.000.000',
-      motherNik: '3216064711800103',
-      motherPhone: '081211112222',
-      prevSchool: 'SDN BAHAGIA 04',
-      birthOrder: 1,
-      siblingsCount: 2,
-      weight: 50,
-      height: 156,
-      distanceKm: 2,
-      rfidUid: 'E280-1170-0000-010C',
-      hasRfid: true,
-      status: 'Aktif',
-      attendancePct: 94,
-      entryYear: '2025',
-      entryDate: '2025-07-14'
-    }
-  ]
-
-  const students = ref<StudentItem[]>([...officialSMKStudents, ...officialSMPStudents])
-
-  // Filter states
-  const searchQuery = ref<string>('')
-  const selectedClass = ref<string>('all')
-  const selectedMajor = ref<string>('all')
-  const selectedGender = ref<string>('all')
-  const selectedStatus = ref<string>('all')
-  const selectedRfid = ref<string>('all')
-
-  // Modals state
+  const searchQuery = ref('')
+  const selectedClass = ref('all')
+  const selectedMajor = ref('all')
+  const selectedGender = ref('all')
+  const selectedStatus = ref('all')
+  const selectedRfid = ref('all')
   const detailModalStudent = ref<StudentItem | null>(null)
-  const isFormModalOpen = ref<boolean>(false)
+  const isFormModalOpen = ref(false)
   const formModalMode = ref<'add' | 'edit'>('add')
   const formStudent = ref<Partial<StudentItem>>({})
   const deleteConfirmStudent = ref<StudentItem | null>(null)
+  const isImportModalOpen = ref(false)
 
-  // Current grade students (SMP or SMK)
-  const currentGradeStudents = computed<StudentItem[]>(() => {
-    return students.value.filter(s => s.level === grade.value)
+  const classById = computed(() => new Map(classes.value.map(item => [item.id, item])))
+  const mapRow = (row: any): StudentItem => {
+    const cls = classById.value.get(row.class_id)
+    return {
+      id: row.id, nis: row.nis ?? '', nisn: row.nisn ?? '', nik: row.nik ?? '',
+      noKk: row.family_card_number ?? '', name: row.name ?? '', gender: row.gender,
+      level: row.grade, classId: row.class_id ?? undefined, className: cls?.name ?? '',
+      major: cls?.major ?? '', birthPlace: row.birth_place ?? '', birthDate: row.birth_date ?? '',
+      religion: row.religion ?? '', address: row.address ?? '', rt: row.rt ?? '', rw: row.rw ?? '',
+      village: row.village ?? '', district: row.district ?? '', city: row.city ?? '',
+      livingType: row.living_type ?? '', transportation: row.transportation ?? '', phone: row.phone ?? '',
+      fatherName: row.father_name ?? '', fatherBirthYear: row.father_birth_year ? String(row.father_birth_year) : '',
+      fatherEducation: row.father_education ?? '', fatherJob: row.father_job ?? '',
+      fatherIncome: row.father_income ?? '', fatherNik: row.father_nik ?? '', fatherPhone: row.father_phone ?? '',
+      motherName: row.mother_name ?? '', motherBirthYear: row.mother_birth_year ? String(row.mother_birth_year) : '',
+      motherEducation: row.mother_education ?? '', motherJob: row.mother_job ?? '',
+      motherIncome: row.mother_income ?? '', motherNik: row.mother_nik ?? '', motherPhone: row.mother_phone ?? '',
+      prevSchool: row.previous_school ?? '', prevDiplomaNo: row.previous_diploma_number ?? '',
+      birthOrder: row.birth_order ?? undefined, siblingsCount: row.siblings_count ?? undefined,
+      weight: row.weight_kg ?? undefined, height: row.height_cm ?? undefined,
+      headCircumference: row.head_circumference_cm ?? undefined, distanceKm: row.distance_km ?? undefined,
+      hobby: row.hobby ?? '', ambition: row.ambition ?? '', entryDate: row.entry_date ?? '',
+      rfidUid: row.rfid_cards?.find((card: any) => card.active)?.uid ?? '',
+      hasRfid: Boolean(row.rfid_cards?.some((card: any) => card.active)),
+      status: row.student_status ?? (row.active ? 'Aktif' : 'Nonaktif'),
+      attendancePct: Number(row.attendance_pct ?? 0), entryYear: row.entry_year ? String(row.entry_year) : '',
+      notes: row.notes ?? ''
+    }
+  }
+
+  const findClass = (name: unknown, level: 'SMP' | 'SMK') => {
+    const target = clean(name).toLocaleLowerCase('id-ID')
+    return classes.value.find(item => item.grade === level && item.name.trim().toLocaleLowerCase('id-ID') === target)
+  }
+
+  const toPayload = (data: Partial<StudentItem>, cls: StudentClass) => ({
+    nis: textOrNull(data.nis), nisn: clean(data.nisn), nik: textOrNull(data.nik),
+    family_card_number: textOrNull(data.noKk), name: clean(data.name), gender: data.gender ?? 'L',
+    grade: data.level ?? grade.value, class_id: cls.id, birth_place: textOrNull(data.birthPlace),
+    birth_date: textOrNull(data.birthDate), religion: textOrNull(data.religion),
+    address: textOrNull(data.address), rt: textOrNull(data.rt), rw: textOrNull(data.rw),
+    village: textOrNull(data.village), district: textOrNull(data.district), city: textOrNull(data.city),
+    living_type: textOrNull(data.livingType), transportation: textOrNull(data.transportation),
+    phone: textOrNull(data.phone), father_name: textOrNull(data.fatherName),
+    father_birth_year: numberOrNull(data.fatherBirthYear), father_education: textOrNull(data.fatherEducation),
+    father_job: textOrNull(data.fatherJob), father_income: textOrNull(data.fatherIncome),
+    father_nik: textOrNull(data.fatherNik), father_phone: textOrNull(data.fatherPhone),
+    mother_name: textOrNull(data.motherName), mother_birth_year: numberOrNull(data.motherBirthYear),
+    mother_education: textOrNull(data.motherEducation), mother_job: textOrNull(data.motherJob),
+    mother_income: textOrNull(data.motherIncome), mother_nik: textOrNull(data.motherNik),
+    mother_phone: textOrNull(data.motherPhone), previous_school: textOrNull(data.prevSchool),
+    previous_diploma_number: textOrNull(data.prevDiplomaNo), birth_order: numberOrNull(data.birthOrder),
+    siblings_count: numberOrNull(data.siblingsCount), weight_kg: numberOrNull(data.weight),
+    height_cm: numberOrNull(data.height), head_circumference_cm: numberOrNull(data.headCircumference),
+    distance_km: numberOrNull(data.distanceKm), hobby: textOrNull(data.hobby),
+    ambition: textOrNull(data.ambition), entry_date: textOrNull(data.entryDate),
+    attendance_pct: numberOrNull(data.attendancePct) ?? 0,
+    student_status: data.status ?? 'Aktif', entry_year: numberOrNull(data.entryYear),
+    notes: textOrNull(data.notes), active: (data.status ?? 'Aktif') === 'Aktif'
   })
 
-  // Class options
-  const classOptions = computed<string[]>(() => {
-    const list = currentGradeStudents.value.map(s => s.className)
-    return Array.from(new Set(list))
-  })
+  const load = async () => {
+    if (loading.value) return
+    loading.value = true
+    error.value = null
+    try {
+      const [classResult, studentResult] = await Promise.all([
+        supabase.from('classes').select('id, name, grade, major, academic_year').eq('active', true)
+          .order('academic_year', { ascending: false }).order('name'),
+        supabase.from('students').select('*, rfid_cards(uid, active)').order('name')
+      ])
+      if (classResult.error) throw classResult.error
+      if (studentResult.error) throw studentResult.error
+      classes.value = (classResult.data ?? []).map((row: any) => ({
+        id: row.id, name: row.name, grade: row.grade, major: row.major ?? ''
+      }))
+      students.value = (studentResult.data ?? []).map(mapRow)
+    } catch (cause: any) {
+      students.value = []
+      classes.value = []
+      error.value = 'Data siswa gagal dimuat dari Supabase: ' + (cause?.message ?? 'kesalahan tidak diketahui')
+    } finally {
+      loading.value = false
+    }
+  }
 
-  // Major options (SMK only)
-  const majorOptions = computed<string[]>(() => {
-    if (grade.value === 'SMP') return []
-    return ['TKJ', 'AKL', 'OTKP', 'DKV', 'TBSM', 'TKR']
-  })
-
-  // Filtered students
-  const filteredStudents = computed<StudentItem[]>(() => {
-    return currentGradeStudents.value.filter(s => {
-      // Search query across name, NIS, NISN, NIK, class, village, parent
-      if (searchQuery.value.trim()) {
-        const q = searchQuery.value.toLowerCase()
-        const matchName = s.name.toLowerCase().includes(q)
-        const matchNis = s.nis.includes(q)
-        const matchNisn = s.nisn.includes(q)
-        const matchNik = s.nik.includes(q)
-        const matchClass = s.className.toLowerCase().includes(q)
-        const matchVillage = (s.village || '').toLowerCase().includes(q)
-        const matchParent = (s.fatherName || '').toLowerCase().includes(q) || (s.motherName || '').toLowerCase().includes(q)
-        if (!matchName && !matchNis && !matchNisn && !matchNik && !matchClass && !matchVillage && !matchParent) return false
-      }
-
-      // Filter Class
-      if (selectedClass.value !== 'all' && s.className !== selectedClass.value) return false
-
-      // Filter Major (SMK)
-      if (grade.value === 'SMK' && selectedMajor.value !== 'all' && s.major !== selectedMajor.value) return false
-
-      // Filter Gender
-      if (selectedGender.value !== 'all' && s.gender !== selectedGender.value) return false
-
-      // Filter Status
-      if (selectedStatus.value !== 'all' && s.status !== selectedStatus.value) return false
-
-      // Filter RFID
-      if (selectedRfid.value === 'yes' && !s.hasRfid) return false
-      if (selectedRfid.value === 'no' && s.hasRfid) return false
-
-      return true
-    })
-  })
-
-  // Statistics
+  const currentGradeStudents = computed(() => students.value.filter(item => item.level === grade.value))
+  const classOptions = computed(() => Array.from(new Set(classes.value.filter(item => item.grade === grade.value).map(item => item.name))))
+  const majorOptions = computed(() => grade.value === 'SMP' ? [] : Array.from(new Set(classes.value.filter(item => item.grade === 'SMK' && item.major).map(item => item.major))))
+  const filteredStudents = computed(() => currentGradeStudents.value.filter((item) => {
+    const query = searchQuery.value.trim().toLocaleLowerCase('id-ID')
+    if (query && ![item.name, item.nis, item.nisn, item.nik, item.className, item.village, item.fatherName, item.motherName]
+      .some(value => clean(value).toLocaleLowerCase('id-ID').includes(query))) return false
+    if (selectedClass.value !== 'all' && item.className !== selectedClass.value) return false
+    if (grade.value === 'SMK' && selectedMajor.value !== 'all' && item.major !== selectedMajor.value) return false
+    if (selectedGender.value !== 'all' && item.gender !== selectedGender.value) return false
+    if (selectedStatus.value !== 'all' && item.status !== selectedStatus.value) return false
+    if (selectedRfid.value === 'yes' && !item.hasRfid) return false
+    if (selectedRfid.value === 'no' && item.hasRfid) return false
+    return true
+  }))
   const stats = computed(() => {
     const list = currentGradeStudents.value
-    const total = list.length
-    const boys = list.filter(s => s.gender === 'L').length
-    const girls = list.filter(s => s.gender === 'P').length
-    const rfidCount = list.filter(s => s.hasRfid).length
-    const activeCount = list.filter(s => s.status === 'Aktif').length
-    const rfidPct = total > 0 ? Math.round((rfidCount / total) * 100) : 0
-
+    const active = list.filter(item => item.status === 'Aktif')
+    const rfidCount = active.filter(item => item.hasRfid).length
     return {
-      total,
-      boys,
-      girls,
-      rfidCount,
-      rfidPct,
-      activeCount,
-      totalClasses: classOptions.value.length
+      total: list.length, boys: list.filter(item => item.gender === 'L').length,
+      girls: list.filter(item => item.gender === 'P').length, rfidCount,
+      rfidPct: active.length ? Math.round(rfidCount / active.length * 100) : 0,
+      activeCount: active.length, totalClasses: classOptions.value.length
     }
   })
 
-  // Actions
-  const viewDetail = (student: StudentItem) => {
-    detailModalStudent.value = student
-  }
-
-  const closeDetail = () => {
-    detailModalStudent.value = null
-  }
-
+  const viewDetail = (item: StudentItem) => { detailModalStudent.value = item }
+  const closeDetail = () => { detailModalStudent.value = null }
   const openAddModal = () => {
     formModalMode.value = 'add'
     formStudent.value = {
-      level: grade.value,
-      gender: 'L',
-      religion: 'Islam',
-      livingType: 'Bersama orang tua',
-      transportation: 'Sepeda motor',
-      status: 'Aktif',
-      entryYear: '2026',
-      attendancePct: 100,
-      hasRfid: false,
-      city: 'Kab. Bekasi',
-      district: 'Kec. Babelan',
-      village: 'Bahagia'
+      level: grade.value, gender: 'L', religion: 'Islam', status: 'Aktif',
+      attendancePct: 100, hasRfid: false, entryYear: String(new Date().getFullYear())
     }
     isFormModalOpen.value = true
   }
-
-  const openEditModal = (student: StudentItem) => {
+  const openEditModal = (item: StudentItem) => {
     formModalMode.value = 'edit'
-    formStudent.value = JSON.parse(JSON.stringify(student))
+    formStudent.value = structuredClone(item)
     isFormModalOpen.value = true
   }
-
-  const closeFormModal = () => {
-    isFormModalOpen.value = false
-    formStudent.value = {}
+  const closeFormModal = () => { isFormModalOpen.value = false; formStudent.value = {} }
+  const validate = (data: Partial<StudentItem>) => {
+    const level = data.level ?? grade.value
+    if (!clean(data.name) || !clean(data.nis)) return { message: 'Nama lengkap dan NIS wajib diisi.' }
+    if (!/^\d{10}$/.test(clean(data.nisn))) return { message: 'NISN wajib terdiri dari tepat 10 digit.' }
+    const cls = findClass(data.className, level)
+    if (!cls) return { message: 'Kelas "' + (data.className || '-') + '" tidak ditemukan pada jenjang ' + level + '.' }
+    return { cls }
   }
 
-  const saveStudent = (data: Partial<StudentItem>) => {
-    if (formModalMode.value === 'add') {
-      const newStudent: StudentItem = {
-        id: `${grade.value}-${Date.now()}`,
-        nis: data.nis || String(Date.now()).slice(-8),
-        nisn: data.nisn || '',
-        nik: data.nik || '',
-        noKk: data.noKk || '',
-        name: data.name || '',
-        gender: data.gender || 'L',
-        level: grade.value,
-        className: data.className || (grade.value === 'SMP' ? 'VII-A (Putra)' : 'X. TKJ 1'),
-        major: data.major,
-        birthPlace: data.birthPlace || 'BEKASI',
-        birthDate: data.birthDate || '',
-        religion: data.religion || 'Islam',
-        address: data.address || '',
-        rt: data.rt || '01',
-        rw: data.rw || '01',
-        village: data.village || 'Bahagia',
-        district: data.district || 'Kec. Babelan',
-        city: data.city || 'Kab. Bekasi',
-        livingType: data.livingType || 'Bersama orang tua',
-        transportation: data.transportation || 'Sepeda motor',
-        phone: data.phone || '',
-        fatherName: data.fatherName || '',
-        fatherBirthYear: data.fatherBirthYear,
-        fatherEducation: data.fatherEducation,
-        fatherJob: data.fatherJob,
-        fatherIncome: data.fatherIncome,
-        fatherNik: data.fatherNik,
-        fatherPhone: data.fatherPhone,
-        motherName: data.motherName || '',
-        motherBirthYear: data.motherBirthYear,
-        motherEducation: data.motherEducation,
-        motherJob: data.motherJob,
-        motherIncome: data.motherIncome,
-        motherNik: data.motherNik,
-        motherPhone: data.motherPhone,
-        prevSchool: data.prevSchool,
-        prevDiplomaNo: data.prevDiplomaNo,
-        birthOrder: data.birthOrder,
-        siblingsCount: data.siblingsCount,
-        weight: data.weight,
-        height: data.height,
-        headCircumference: data.headCircumference,
-        distanceKm: data.distanceKm,
-        hobby: data.hobby,
-        ambition: data.ambition,
-        entryDate: data.entryDate,
-        rfidUid: data.rfidUid,
-        hasRfid: !!data.rfidUid,
-        status: data.status || 'Aktif',
-        attendancePct: data.attendancePct || 100,
-        entryYear: data.entryYear || '2026'
-      }
-      students.value.unshift(newStudent)
-    } else {
-      const idx = students.value.findIndex(s => s.id === data.id)
-      if (idx !== -1) {
-        students.value[idx] = {
-          ...students.value[idx],
-          ...data,
-          hasRfid: !!data.rfidUid
-        } as StudentItem
-      }
+  const syncRfid = async (studentId: string, uid: unknown) => {
+    const normalizedUid = clean(uid)
+    if (!normalizedUid) {
+      return supabase.from('rfid_cards').update({ active: false }).eq('student_id', studentId)
     }
+    return supabase.from('rfid_cards').upsert({
+      uid: normalizedUid,
+      student_id: studentId,
+      teacher_id: null,
+      active: true
+    }, { onConflict: 'uid' })
+  }
+
+  const saveStudent = async (data: Partial<StudentItem>): Promise<StudentMutationResult> => {
+    error.value = null
+    const checked = validate(data)
+    if (!checked.cls) {
+      error.value = checked.message ?? 'Data siswa tidak valid.'
+      return { success: false, message: error.value }
+    }
+    const payload = toPayload(data, checked.cls)
+    const result = formModalMode.value === 'add'
+      ? await supabase.from('students').insert(payload).select('id').single()
+      : await supabase.from('students').update(payload).eq('id', data.id).select('id').single()
+    if (result.error) {
+      error.value = 'Data siswa gagal disimpan: ' + result.error.message
+      return { success: false, message: error.value }
+    }
+    const rfidResult = await syncRfid(result.data.id, data.rfidUid)
+    if (rfidResult.error) {
+      error.value = 'Data siswa tersimpan, tetapi RFID gagal disinkronkan: ' + rfidResult.error.message
+      return { success: false, message: error.value }
+    }
+    await load()
     closeFormModal()
+    operationMessage.value = 'Data ' + data.name + ' berhasil disimpan dan tersambung ke kelas ' + checked.cls.name + '.'
+    return { success: true, message: operationMessage.value }
   }
 
-  const confirmDelete = (student: StudentItem) => {
-    deleteConfirmStudent.value = student
-  }
-
-  const cancelDelete = () => {
-    deleteConfirmStudent.value = null
-  }
-
-  const executeDelete = () => {
-    if (deleteConfirmStudent.value) {
-      students.value = students.value.filter(s => s.id !== deleteConfirmStudent.value?.id)
-      deleteConfirmStudent.value = null
+  const confirmDelete = (item: StudentItem) => { deleteConfirmStudent.value = item }
+  const cancelDelete = () => { deleteConfirmStudent.value = null }
+  const executeDelete = async (): Promise<StudentMutationResult> => {
+    const item = deleteConfirmStudent.value
+    if (!item) return { success: false, message: 'Siswa tidak ditemukan.' }
+    const result = await supabase.from('students').update({ active: false, student_status: 'Nonaktif' }).eq('id', item.id)
+    if (result.error) {
+      error.value = 'Siswa gagal dinonaktifkan: ' + result.error.message
+      return { success: false, message: error.value }
     }
+    deleteConfirmStudent.value = null
+    await load()
+    operationMessage.value = item.name + ' berhasil dinonaktifkan.'
+    return { success: true, message: operationMessage.value }
+  }
+
+  const importStudents = async (items: StudentItem[], mode: 'append' | 'replace' = 'append'): Promise<StudentMutationResult> => {
+    error.value = null
+    const failedRows: string[] = []
+    const payloads: Record<string, any>[] = []
+    const seen = new Set<string>()
+    const existing = new Set(students.value.filter(item => item.level === grade.value).map(item => item.nisn))
+    for (const [index, item] of items.entries()) {
+      const label = 'Baris ' + (index + 2) + (item.name ? ' (' + item.name + ')' : '')
+      if (!/^\d{10}$/.test(clean(item.nisn))) {
+        failedRows.push(label + ': NISN wajib tepat 10 digit.')
+        continue
+      }
+      if (seen.has(item.nisn) || (mode === 'append' && existing.has(item.nisn))) {
+        failedRows.push(label + ': NISN ' + item.nisn + ' duplikat pada jenjang ' + grade.value + '.')
+        continue
+      }
+      const checked = validate({ ...item, level: grade.value })
+      if (!checked.cls) {
+        failedRows.push(label + ': ' + checked.message)
+        continue
+      }
+      seen.add(item.nisn)
+      payloads.push(toPayload({ ...item, level: grade.value }, checked.cls))
+    }
+    if (!payloads.length) {
+      error.value = failedRows.join(' ') || 'Tidak ada baris valid untuk diimpor.'
+      return { success: false, message: error.value, successCount: 0, failedRows }
+    }
+    const rfidByNisn = new Map(items.map(item => [item.nisn, item.rfidUid]))
+    const result = mode === 'replace'
+      ? await supabase.from('students').upsert(payloads, { onConflict: 'nisn' }).select('id, nisn')
+      : await supabase.from('students').insert(payloads).select('id, nisn')
+    if (result.error) {
+      error.value = 'Impor gagal disimpan ke Supabase: ' + result.error.message
+      return { success: false, message: error.value, successCount: 0, failedRows }
+    }
+    for (const row of result.data ?? []) {
+      const rfidResult = await syncRfid(row.id, rfidByNisn.get(row.nisn))
+      if (rfidResult.error) failedRows.push('RFID NISN ' + row.nisn + ' gagal: ' + rfidResult.error.message)
+    }
+    if (mode === 'replace') {
+      const retained = payloads.map(item => item.nisn)
+      const staleIds = students.value.filter(item => item.level === grade.value && !retained.includes(item.nisn)).map(item => item.id)
+      if (staleIds.length) {
+        const staleResult = await supabase.from('students').update({ active: false, student_status: 'Nonaktif' }).in('id', staleIds)
+        if (staleResult.error) failedRows.push('Data lama gagal dinonaktifkan: ' + staleResult.error.message)
+      }
+    }
+    await load()
+    closeImportModal()
+    operationMessage.value = payloads.length + ' siswa berhasil diimpor.' + (failedRows.length ? ' ' + failedRows.length + ' baris ditolak: ' + failedRows.join(' ') : '')
+    return { success: true, message: operationMessage.value, successCount: payloads.length, failedRows }
+  }
+
+  const updateStudentClass = async (studentId: string, targetClassName: string): Promise<StudentMutationResult> => {
+    const student = students.value.find(item => item.id === studentId)
+    if (!student) return { success: false, message: 'Siswa tidak ditemukan.' }
+    const cls = findClass(targetClassName, student.level)
+    if (!cls) return { success: false, message: 'Kelas tujuan tidak ditemukan.' }
+    const result = await supabase.from('students').update({ class_id: cls.id }).eq('id', studentId)
+    if (result.error) return { success: false, message: 'Siswa gagal dipindahkan: ' + result.error.message }
+    await load()
+    return { success: true, message: student.name + ' berhasil dipindahkan ke ' + cls.name + '.' }
+  }
+  const deactivateStudent = async (studentId: string) => {
+    const student = students.value.find(item => item.id === studentId)
+    if (!student) return { success: false, message: 'Siswa tidak ditemukan.' }
+    deleteConfirmStudent.value = student
+    return executeDelete()
   }
 
   const resetFilters = () => {
-    searchQuery.value = ''
-    selectedClass.value = 'all'
-    selectedMajor.value = 'all'
-    selectedGender.value = 'all'
-    selectedStatus.value = 'all'
-    selectedRfid.value = 'all'
+    searchQuery.value = ''; selectedClass.value = 'all'; selectedMajor.value = 'all'
+    selectedGender.value = 'all'; selectedStatus.value = 'all'; selectedRfid.value = 'all'
   }
-
-  // Import modal state
-  const isImportModalOpen = ref<boolean>(false)
-
-  const openImportModal = () => {
-    isImportModalOpen.value = true
+  const openImportModal = () => { isImportModalOpen.value = true }
+  const closeImportModal = () => { isImportModalOpen.value = false }
+  const csvHeaders = ['NIS', 'NISN', 'NIK', 'NoKK', 'Nama', 'Gender', 'Jenjang', 'Kelas', 'Jurusan', 'TempatLahir', 'TanggalLahir', 'Agama', 'Alamat', 'RT', 'RW', 'Kelurahan', 'Kecamatan', 'Kota', 'JenisTinggal', 'Transportasi', 'NoHPSiswa', 'NamaAyah', 'NIKAyah', 'TahunLahirAyah', 'PendidikanAyah', 'PekerjaanAyah', 'PenghasilanAyah', 'NoHPAyah', 'NamaIbu', 'NIKIbu', 'TahunLahirIbu', 'PendidikanIbu', 'PekerjaanIbu', 'PenghasilanIbu', 'NoHPIbu', 'SekolahAsal', 'NoIjazah', 'AnakKe', 'JmlSaudara', 'TinggiBadan', 'BeratBadan', 'LingkarKepala', 'JarakKM', 'Hobi', 'CitaCita', 'Status', 'RFID_UID', 'Presensi', 'TahunAngkatan']
+  const saveCsv = (content: string, filename: string) => {
+    const url = URL.createObjectURL(new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' }))
+    const link = document.createElement('a')
+    link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url)
   }
-
-  const closeImportModal = () => {
-    isImportModalOpen.value = false
-  }
-
-  const importStudents = (imported: StudentItem[], mode: 'append' | 'replace' = 'append') => {
-    if (mode === 'replace') {
-      students.value = [
-        ...students.value.filter(s => s.level !== grade.value),
-        ...imported
-      ]
-    } else {
-      students.value = [...imported, ...students.value]
-    }
-    closeImportModal()
-  }
-
+  const quote = (value: unknown) => '"' + String(value ?? '').replaceAll('"', '""') + '"'
   const downloadTemplate = (targetGrade?: 'SMP' | 'SMK') => {
-    const lvl = targetGrade || grade.value
-    const headers = [
-      'NIS',
-      'NISN',
-      'NIK',
-      'NoKK',
-      'Nama',
-      'Gender',
-      'Jenjang',
-      'Kelas',
-      'Jurusan',
-      'TempatLahir',
-      'TanggalLahir',
-      'Agama',
-      'Alamat',
-      'RT',
-      'RW',
-      'Kelurahan',
-      'Kecamatan',
-      'Kota',
-      'JenisTinggal',
-      'Transportasi',
-      'NoHPSiswa',
-      'NamaAyah',
-      'NIKAyah',
-      'TahunLahirAyah',
-      'PendidikanAyah',
-      'PekerjaanAyah',
-      'PenghasilanAyah',
-      'NoHPAyah',
-      'NamaIbu',
-      'NIKIbu',
-      'TahunLahirIbu',
-      'PendidikanIbu',
-      'PekerjaanIbu',
-      'PenghasilanIbu',
-      'NoHPIbu',
-      'SekolahAsal',
-      'NoIjazah',
-      'AnakKe',
-      'JmlSaudara',
-      'TinggiBadan',
-      'BeratBadan',
-      'LingkarKepala',
-      'JarakKM',
-      'Hobi',
-      'CitaCita',
-      'Status',
-      'RFID_UID',
-      'Presensi',
-      'TahunAngkatan'
-    ].join(',')
-
-    const sampleRows = lvl === 'SMP'
-      ? [
-          `"2627001","0103402651","3216061004110001","3216061203090101","AHMAD FARID","L","SMP","VII-A (Putra)","","BEKASI","2013-05-12","Islam","Jl. Musholla Assalam","04","01","Bahagia","Kec. Babelan","Kab. Bekasi","Bersama orang tua","Jalan kaki","081299881122","H. SYAMSUL","3216061405780101","1978","S1","PNS","Rp5.000.001 – Rp10.000.000","082210823033","FATIMAH","3216064711820101","1982","SMA / sederajat","Ibu Rumah Tangga","Tidak Berpenghasilan","082210823033","SDIT ATTAQWA BABELAN","DN-01/D-SD/2026/001","1","3","152","45","53","1","Futsal","Ustadz / Guru","Aktif","E280-1170-0000-0301","100","2026"`,
-          `"2627002","0103402652","3216061808110002","3216061203090102","NURUL AZIZAH","P","SMP","VII-B (Putri)","","BEKASI","2013-08-20","Islam","Kp. Ujung Harapan RT 02/05","02","05","Bahagia","Kec. Babelan","Kab. Bekasi","Bersama orang tua","Sepeda","085799881133","H. ABDULLAH","3216061405750102","1975","S1","Wiraswasta","Rp3.000.001 – Rp5.000.000","081388889999","SITI AMINAH","3216064711790102","1979","SMA / sederajat","Pedagang","Rp1.000.001 – Rp3.000.000","081388889999","MI ATTAQWA 15","DN-01/D-MI/2026/002","2","2","148","40","52","2","Membaca","Dokter","Aktif","E280-1170-0000-0302","100","2026"`
-        ]
-      : [
-          `"26270120001","3109254001","3216020911100001","3216021203090001","ADITYA PRATAMA","L","SMK","X. TKJ 1","TKJ","BEKASI","2010-02-15","Islam","UJUNG HARAPAN RT. 006/ 015","06","15","Bahagia","Kec. Babelan","Kab. Bekasi","Bersama orang tua","Sepeda motor","081299887701","RIDWAN","3216021405800001","1980","SMA / sederajat","Karyawan Swasta","Rp3.000.001 – Rp5.000.000","082210823033","NURJANAH","3216024711820001","1982","SMA / sederajat","Tidak bekerja","Tidak Berpenghasilan","082210823033","SMP IT BINA CENDEKIA ASSALAM (BCA)","DN-01/D-SMP/2026/011","1","2","165","52","54","2","Coding","Network Engineer","Aktif","E280-1170-0000-0401","100","2026"`,
-          `"26270120002","3109254002","3216025305100002","3216021203090002","ANNISA RAHMAWATI","P","SMK","X. AK","AKL","BEKASI","2010-09-10","Islam","GREEN SWADAYA NO 12","08","04","Bahagia","Kec. Babelan","Kab. Bekasi","Bersama orang tua","Angkutan umum/bus/pete-pete","085811223344","BAMBANG","3216021111770002","1977","D3","Wiraswasta","Rp3.000.001 – Rp5.000.000","081345678901","SRI LESTARI","3216025908770002","1979","SMA / sederajat","Pedagang Kecil","Rp1.000.001 – Rp3.000.000","081345678901","SMP NEGERI 3 BABELAN","DN-01/D-SMP/2026/012","2","2","155","48","53","3","Menulis","Akuntan","Aktif","E280-1170-0000-0402","100","2026"`
-        ]
-
-    const csvContent = '\uFEFF' + headers + '\n' + sampleRows.join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `template-import-siswa-${lvl.toLowerCase()}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const level = targetGrade ?? grade.value
+    const cls = classes.value.find(item => item.grade === level)
+    const sample = ['0000001', '0000000001', '', '', 'SISWA CONTOH', 'L', level, cls?.name ?? 'NAMA KELAS SESUAI SISTEM', cls?.major ?? '', 'BEKASI', '2012-01-01', 'Islam', 'Alamat contoh', '', '', '', '', 'Kab. Bekasi', 'Bersama orang tua', '', '', 'AYAH CONTOH', '', '', '', '', '', '', 'IBU CONTOH', '', '', '', '', '', '', 'SEKOLAH CONTOH', '', '', '', '', '', '', '', '', '', 'Aktif', '', '100', String(new Date().getFullYear())]
+    saveCsv(csvHeaders.join(',') + '\n' + sample.map(quote).join(','), 'template-import-siswa-' + level.toLowerCase() + '.csv')
   }
-
   const exportStudentsCsv = (targetGrade?: 'SMP' | 'SMK') => {
-    const lvl = targetGrade || grade.value
-    const list = students.value.filter(s => s.level === lvl)
-
-    const headers = [
-      'ID',
-      'NIS',
-      'NISN',
-      'NIK',
-      'NoKK',
-      'Nama',
-      'Gender',
-      'Jenjang',
-      'Kelas',
-      'Jurusan',
-      'TempatLahir',
-      'TanggalLahir',
-      'Agama',
-      'Alamat',
-      'RT',
-      'RW',
-      'Kelurahan',
-      'Kecamatan',
-      'Kota',
-      'JenisTinggal',
-      'Transportasi',
-      'NoHPSiswa',
-      'NamaAyah',
-      'NIKAyah',
-      'TahunLahirAyah',
-      'PendidikanAyah',
-      'PekerjaanAyah',
-      'PenghasilanAyah',
-      'NoHPAyah',
-      'NamaIbu',
-      'NIKIbu',
-      'TahunLahirIbu',
-      'PendidikanIbu',
-      'PekerjaanIbu',
-      'PenghasilanIbu',
-      'NoHPIbu',
-      'SekolahAsal',
-      'NoIjazah',
-      'AnakKe',
-      'JmlSaudara',
-      'TinggiBadan',
-      'BeratBadan',
-      'LingkarKepala',
-      'JarakKM',
-      'Hobi',
-      'CitaCita',
-      'Status',
-      'RFID_UID',
-      'Presensi',
-      'TahunAngkatan'
-    ].join(',')
-
-    const rows = list.map(s => [
-      `"${s.id}"`,
-      `"${s.nis || ''}"`,
-      `"${s.nisn}"`,
-      `"${s.nik || ''}"`,
-      `"${s.noKk || ''}"`,
-      `"${s.name}"`,
-      `"${s.gender}"`,
-      `"${s.level}"`,
-      `"${s.className}"`,
-      `"${s.major || ''}"`,
-      `"${s.birthPlace || ''}"`,
-      `"${s.birthDate || ''}"`,
-      `"${s.religion || 'Islam'}"`,
-      `"${s.address || ''}"`,
-      `"${s.rt || ''}"`,
-      `"${s.rw || ''}"`,
-      `"${s.village || ''}"`,
-      `"${s.district || ''}"`,
-      `"${s.city || ''}"`,
-      `"${s.livingType || ''}"`,
-      `"${s.transportation || ''}"`,
-      `"${s.phone || ''}"`,
-      `"${s.fatherName || ''}"`,
-      `"${s.fatherNik || ''}"`,
-      `"${s.fatherBirthYear || ''}"`,
-      `"${s.fatherEducation || ''}"`,
-      `"${s.fatherJob || ''}"`,
-      `"${s.fatherIncome || ''}"`,
-      `"${s.fatherPhone || ''}"`,
-      `"${s.motherName || ''}"`,
-      `"${s.motherNik || ''}"`,
-      `"${s.motherBirthYear || ''}"`,
-      `"${s.motherEducation || ''}"`,
-      `"${s.motherJob || ''}"`,
-      `"${s.motherIncome || ''}"`,
-      `"${s.motherPhone || ''}"`,
-      `"${s.prevSchool || ''}"`,
-      `"${s.prevDiplomaNo || ''}"`,
-      `"${s.birthOrder || ''}"`,
-      `"${s.siblingsCount || ''}"`,
-      `"${s.height || ''}"`,
-      `"${s.weight || ''}"`,
-      `"${s.headCircumference || ''}"`,
-      `"${s.distanceKm || ''}"`,
-      `"${s.hobby || ''}"`,
-      `"${s.ambition || ''}"`,
-      `"${s.status}"`,
-      `"${s.rfidUid || ''}"`,
-      `"${s.attendancePct}"`,
-      `"${s.entryYear}"`
-    ].join(',')).join('\n')
-
-    const csvContent = '\uFEFF' + headers + '\n' + rows
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `data-induk-siswa-${lvl.toLowerCase()}-${Date.now()}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const level = targetGrade ?? grade.value
+    const rows = students.value.filter(item => item.level === level).map(item => [
+      item.nis, item.nisn, item.nik, item.noKk, item.name, item.gender, item.level, item.className, item.major,
+      item.birthPlace, item.birthDate, item.religion, item.address, item.rt, item.rw, item.village, item.district,
+      item.city, item.livingType, item.transportation, item.phone, item.fatherName, item.fatherNik,
+      item.fatherBirthYear, item.fatherEducation, item.fatherJob, item.fatherIncome, item.fatherPhone,
+      item.motherName, item.motherNik, item.motherBirthYear, item.motherEducation, item.motherJob,
+      item.motherIncome, item.motherPhone, item.prevSchool, item.prevDiplomaNo, item.birthOrder,
+      item.siblingsCount, item.height, item.weight, item.headCircumference, item.distanceKm, item.hobby,
+      item.ambition, item.status, item.rfidUid, item.attendancePct, item.entryYear
+    ].map(quote).join(','))
+    saveCsv([csvHeaders.join(','), ...rows].join('\n'), 'data-induk-siswa-' + level.toLowerCase() + '-' + new Date().toISOString().slice(0, 10) + '.csv')
   }
 
+  onMounted(load)
   return {
-    grade,
-    students,
-    currentGradeStudents,
-    filteredStudents,
-    classOptions,
-    majorOptions,
-    searchQuery,
-    selectedClass,
-    selectedMajor,
-    selectedGender,
-    selectedStatus,
-    selectedRfid,
-    detailModalStudent,
-    isFormModalOpen,
-    isImportModalOpen,
-    formModalMode,
-    formStudent,
-    deleteConfirmStudent,
-    stats,
-    viewDetail,
-    closeDetail,
-    openAddModal,
-    openEditModal,
-    closeFormModal,
-    openImportModal,
-    closeImportModal,
-    importStudents,
-    downloadTemplate,
-    exportStudentsCsv,
-    saveStudent,
-    confirmDelete,
-    cancelDelete,
-    executeDelete,
-    resetFilters
+    grade, students, currentGradeStudents, filteredStudents, classOptions, majorOptions, searchQuery,
+    selectedClass, selectedMajor, selectedGender, selectedStatus, selectedRfid, detailModalStudent,
+    isFormModalOpen, isImportModalOpen, formModalMode, formStudent, deleteConfirmStudent, stats,
+    loading, error, operationMessage, load, viewDetail, closeDetail, openAddModal, openEditModal,
+    closeFormModal, openImportModal, closeImportModal, importStudents, downloadTemplate,
+    exportStudentsCsv, saveStudent, confirmDelete, cancelDelete, executeDelete, updateStudentClass,
+    deactivateStudent, resetFilters
   }
 }

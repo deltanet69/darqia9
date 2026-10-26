@@ -18,6 +18,7 @@ const fileName = ref('')
 const parsedRows = ref<any[]>([])
 const validRows = ref<StudentItem[]>([])
 const invalidCount = ref(0)
+const invalidRows = ref<string[]>([])
 const errorMessage = ref('')
 const importMode = ref<'append' | 'replace'>('append')
 
@@ -44,6 +45,7 @@ const resetState = () => {
   parsedRows.value = []
   validRows.value = []
   invalidCount.value = 0
+  invalidRows.value = []
   errorMessage.value = ''
   importMode.value = 'append'
 }
@@ -104,6 +106,9 @@ const handleFileChange = (e: Event) => {
 
   fileName.value = file.name
   errorMessage.value = ''
+  validRows.value = []
+  invalidRows.value = []
+  invalidCount.value = 0
 
   const reader = new FileReader()
   reader.onload = (evt) => {
@@ -118,43 +123,49 @@ const handleFileChange = (e: Event) => {
       }
 
       const valid: StudentItem[] = []
-      let invalids = 0
-
+      const seenNisn = new Set<string>()
       rawRows.forEach((r, idx) => {
         const name = r['nama'] || r['nama lengkap'] || r['name'] || r['nama siswa'] || ''
-        const nisn = r['nisn'] || r['no nisn'] || String(Date.now()).slice(-10)
+        const nisn = r['nisn'] || r['no nisn'] || ''
         const nis = r['nis'] || r['nomor induk'] || ''
         const rawGender = (r['gender'] || r['jk'] || r['jenis kelamin'] || 'L').toUpperCase()
         const gender: 'L' | 'P' = rawGender === 'PRIA' || rawGender.startsWith('L') ? 'L' : rawGender === 'WANITA' || rawGender.startsWith('P') || rawGender.startsWith('W') ? 'P' : 'L'
-        const className = r['kelas'] || r['rombel'] || r['kelas / rombel'] || (props.grade === 'SMP' ? 'VII-A (Putra)' : 'X. TKJ 1')
-
-        if (!name.trim()) {
-          invalids++
+        const className = r['kelas'] || r['rombel'] || r['kelas / rombel'] || ''
+        const normalizedNisn = nisn.replace(/\D/g, '')
+        const reasons: string[] = []
+        if (!name.trim()) reasons.push('nama kosong')
+        if (!nis.trim()) reasons.push('NIS kosong')
+        if (!/^\d{10}$/.test(normalizedNisn)) reasons.push('NISN harus tepat 10 digit')
+        if (!className.trim()) reasons.push('kelas kosong')
+        if (seenNisn.has(normalizedNisn)) reasons.push('NISN duplikat di dalam berkas')
+        if (reasons.length) {
+          invalidRows.value.push('Baris ' + (idx + 2) + ': ' + reasons.join(', ') + '.')
           return
         }
+        seenNisn.add(normalizedNisn)
 
         const student: StudentItem = {
           id: `${props.grade}-${Date.now()}-${idx}`,
-          nis: nis || String(Date.now()).slice(-8),
-          nisn: nisn.replace(/\D/g, '').padEnd(10, '0').slice(0, 10),
+          nis,
+          nisn: normalizedNisn,
           nik: r['nik'] || r['nik siswa'] || '',
           noKk: r['nokk'] || r['no kk'] || r['kartu keluarga'] || '',
           name: name.toUpperCase(),
           gender,
           level: props.grade,
           className,
-          major: r['jurusan'] || r['program keahlian'] || (props.grade === 'SMK' ? 'TKJ' : undefined),
-          birthPlace: r['tempatlahir'] || r['tempat lahir'] || 'BEKASI',
-          birthDate: r['tanggallahir'] || r['tanggal lahir'] || '2010-01-01',
+          major: r['jurusan'] || r['program keahlian'] || undefined,
+          birthPlace: r['tempatlahir'] || r['tempat lahir'] || '',
+          birthDate: r['tanggallahir'] || r['tanggal lahir'] || '',
           religion: r['agama'] || 'Islam',
-          address: r['alamat'] || r['alamat lengkap'] || 'Kab. Bekasi',
-          rt: r['rt'] || '01',
-          rw: r['rw'] || '01',
-          village: r['kelurahan'] || r['desa'] || 'Bahagia',
-          district: r['kecamatan'] || 'Kec. Babelan',
-          city: r['kota'] || r['kabupaten'] || 'Kab. Bekasi',
-          livingType: r['jenistinggal'] || r['jenis tinggal'] || 'Bersama orang tua',
-          transportation: r['transportasi'] || 'Sepeda motor',
+          address: r['alamat'] || r['alamat lengkap'] || '',
+          rt: r['rt'] || '',
+          rw: r['rw'] || '',
+          village: r['kelurahan'] || r['desa'] || '',
+          district: r['kecamatan'] || '',
+          city: r['kota'] || r['kabupaten'] || '',
+          livingType: r['jenistinggal'] || r['jenis tinggal'] || '',
+          transportation: r['transportasi'] || '',
           phone: r['nohp'] || r['hp siswa'] || r['telepon'] || '',
           fatherName: r['namaayah'] || r['nama ayah'] || r['ayah'] || '',
           fatherNik: r['nikayah'] || r['nik ayah'] || '',
@@ -172,25 +183,25 @@ const handleFileChange = (e: Event) => {
           motherPhone: r['nohpibu'] || r['wa ibu'] || '',
           prevSchool: r['sekolahasal'] || r['sekolah asal'] || r['asal sekolah'] || '',
           prevDiplomaNo: r['noijazah'] || r['nomor seri ijazah'] || '',
-          birthOrder: Number(r['anakke'] || r['anak ke-'] || 1) || 1,
-          siblingsCount: Number(r['jmlsaudara'] || r['jumlah saudara'] || 1) || 1,
-          weight: Number(r['beratbadan'] || r['berat badan'] || 50) || 50,
-          height: Number(r['tinggibadan'] || r['tinggi badan'] || 160) || 160,
-          headCircumference: Number(r['lingkarkepala'] || r['lingkar kepala'] || 54) || 54,
-          distanceKm: Number(r['jarakkm'] || r['jarak km'] || 1) || 1,
+          birthOrder: Number(r['anakke'] || r['anak ke-']) || undefined,
+          siblingsCount: Number(r['jmlsaudara'] || r['jumlah saudara']) || undefined,
+          weight: Number(r['beratbadan'] || r['berat badan']) || undefined,
+          height: Number(r['tinggibadan'] || r['tinggi badan']) || undefined,
+          headCircumference: Number(r['lingkarkepala'] || r['lingkar kepala']) || undefined,
+          distanceKm: Number(r['jarakkm'] || r['jarak km']) || undefined,
           hobby: r['hobi'] || '',
           ambition: r['citacita'] || r['cita-cita'] || '',
           rfidUid: r['rfid_uid'] || r['rfid'] || r['uid'] || undefined,
           hasRfid: !!(r['rfid_uid'] || r['rfid'] || r['uid']),
           status: (r['status'] === 'Lulus' || r['status'] === 'Pindah' || r['status'] === 'Nonaktif') ? r['status'] : 'Aktif',
-          attendancePct: Number(r['presensi'] || r['kehadiran'] || 100) || 100,
-          entryYear: r['tahunangkatan'] || r['angkatan'] || '2026'
+          attendancePct: Number(r['presensi'] || r['kehadiran']) || 0,
+          entryYear: r['tahunangkatan'] || r['angkatan'] || ''
         }
         valid.push(student)
       })
 
       validRows.value = valid
-      invalidCount.value = invalids
+      invalidCount.value = invalidRows.value.length
     } catch (err: any) {
       errorMessage.value = `Gagal memproses file CSV: ${err.message || 'Format tidak valid'}`
     }
@@ -369,6 +380,12 @@ const handleApplyImport = () => {
           <div v-if="errorMessage" class="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center gap-2 text-rose-700 text-xs">
             <AdminIcon name="x" size="16" />
             <span>{{ errorMessage }}</span>
+          </div>
+          <div v-if="invalidRows.length" class="bg-rose-50 border border-rose-200 rounded-xl p-3 text-rose-700 text-xs">
+            <b class="block mb-1">Baris yang ditolak:</b>
+            <ul class="list-disc pl-4 space-y-0.5">
+              <li v-for="item in invalidRows" :key="item">{{ item }}</li>
+            </ul>
           </div>
         </div>
 

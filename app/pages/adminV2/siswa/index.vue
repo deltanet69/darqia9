@@ -81,6 +81,21 @@ const setJenjang = (j: 'smp' | 'smk') => {
   triggerToast(`Beralih ke jenjang ${j.toUpperCase()} (${j === 'smp' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'})`)
 }
 
+const handleSaveStudent = async (data: Partial<StudentItem>) => {
+  const result = await studentsStore.saveStudent(data)
+  triggerToast(result.message)
+}
+
+const handleImportStudents = async (payload: { students: StudentItem[]; mode: 'append' | 'replace' }) => {
+  const result = await studentsStore.importStudents(payload.students, payload.mode)
+  triggerToast(result.message)
+}
+
+const handleDeactivateStudent = async () => {
+  const result = await studentsStore.executeDelete()
+  triggerToast(result.message)
+}
+
 // Navigation & Global Modals
 const closeAllModals = () => {
   isMegaOpen.value = false
@@ -363,6 +378,15 @@ onMounted(() => {
         </div>
       </div>
 
+      <div
+        v-if="studentsStore.loading.value || studentsStore.error.value"
+        class="rounded-2xl border px-4 py-3 text-xs font-semibold"
+        :class="studentsStore.error.value ? 'border-[#F5C6C0] bg-[#FFF8F7] text-[#B42318]' : 'border-[#C9DCFB] bg-[#F5F8FF] text-[#12459B]'"
+        role="status"
+      >
+        {{ studentsStore.error.value || 'Memuat data siswa dari Supabase…' }}
+      </div>
+
       <!-- DATA TABLE (1:1 Flow & Function dari admin/siswa) -->
       <div class="bg-white border border-[#E7EBF2] rounded-2xl shadow-xs overflow-hidden">
         <div class="px-5 py-4 border-b border-[#F2F4F7] flex items-center justify-between bg-white">
@@ -532,8 +556,9 @@ onMounted(() => {
       :mode="studentsStore.formModalMode.value"
       :grade="studentsStore.grade.value"
       :initial-data="studentsStore.formStudent.value"
+      :class-options="studentsStore.classOptions.value"
       @close="studentsStore.closeFormModal"
-      @save="studentsStore.saveStudent"
+      @save="handleSaveStudent"
     />
 
     <!-- MODAL IMPORT CSV (Komponen Resmi 1:1) -->
@@ -541,7 +566,7 @@ onMounted(() => {
       :is-open="studentsStore.isImportModalOpen.value"
       :grade="studentsStore.grade.value"
       @close="studentsStore.closeImportModal"
-      @import="studentsStore.importStudents($event.students, $event.mode)"
+      @import="handleImportStudents"
       @download-template="studentsStore.downloadTemplate()"
     />
 
@@ -551,17 +576,17 @@ onMounted(() => {
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="studentsStore.cancelDelete" />
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden z-10 p-6 space-y-4">
           <div class="flex items-center justify-between">
-            <h3 class="text-base font-bold text-slate-900">Hapus Data Siswa?</h3>
+            <h3 class="text-base font-bold text-slate-900">Nonaktifkan Siswa?</h3>
             <button class="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer" type="button" aria-label="Tutup" @click="studentsStore.cancelDelete">
               <AdminV2Icon name="x" :size="18" />
             </button>
           </div>
           <p class="text-sm text-slate-600 leading-relaxed">
-            Apakah kamu yakin ingin menghapus data siswa <b class="text-slate-900">{{ studentsStore.deleteConfirmStudent.value.name }}</b> (NISN: {{ studentsStore.deleteConfirmStudent.value.nisn }})?
+            Siswa <b class="text-slate-900">{{ studentsStore.deleteConfirmStudent.value.name }}</b> (NISN: {{ studentsStore.deleteConfirmStudent.value.nisn }}) akan dinonaktifkan tanpa menghapus riwayat datanya.
           </p>
           <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
             <button class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition cursor-pointer" type="button" @click="studentsStore.cancelDelete">Batal</button>
-            <button class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-sm transition cursor-pointer" type="button" @click="studentsStore.executeDelete">Hapus Siswa</button>
+            <button class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-sm transition cursor-pointer" type="button" @click="handleDeactivateStudent">Nonaktifkan</button>
           </div>
         </div>
       </div>

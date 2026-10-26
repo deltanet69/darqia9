@@ -209,7 +209,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             time: formatTime(row.starts_at, row.duration_minutes),
             startsAt: row.starts_at,
             duration: row.duration_minutes,
-            participants: counts.total,
+            participants: classItem?.studentCount ?? counts.total,
             status: examStatus(row.status, row.starts_at, row.duration_minutes),
             average: 0,
             kkm: subjectItem?.kkm ?? 75,

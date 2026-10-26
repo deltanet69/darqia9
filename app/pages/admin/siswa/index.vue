@@ -300,6 +300,7 @@ const onEditFromDetail = (s: StudentItem) => {
       :mode="studentsStore.formModalMode.value"
       :grade="studentsStore.grade.value"
       :initial-data="studentsStore.formStudent.value"
+      :class-options="studentsStore.classOptions.value"
       @close="studentsStore.closeFormModal"
       @save="studentsStore.saveStudent"
     />
