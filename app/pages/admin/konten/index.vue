@@ -1,319 +1,68 @@
 ﻿<script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import AdminModal from '~/components/admin/AdminModal.vue'
-import AdminSparkline from '~/components/admin/AdminSparkline.vue'
 import AdminToast from '~/components/admin/AdminToast.vue'
+import { useAdminGrade } from '~/composables/useAdminGrade'
 
 definePageMeta({ layout: 'admin', name: 'admin-konten' })
 useHead({ title: 'Konten Website | Admin Portal' })
 
-type ContentKind = 'Berita' | 'Pengumuman' | 'Halaman'
-type ContentStatus = 'Publish' | 'Draft'
-type ContentItem = { id: string; title: string; kind: ContentKind; status: ContentStatus; date: string; author: string; views: number }
+type Jenjang = 'SMP' | 'SMK'
+type StatusBerita = 'Draft' | 'Review' | 'Terbit' | 'Terjadwal'
+type Berita = { id: string; jenjang: Jenjang; judul: string; kategori: string; status: StatusBerita; tanggal: string; penulis: string; ringkasan: string; isi: string; gambarUrl: string; featured: boolean; views: number }
+type Banner = { id: string; jenjang: Jenjang; judul: string; teks: string; warna: 'navy'|'green'|'amber'|'red'; situs: 'Semua'|'Yayasan'|'SMP'|'SMK'; mulai: string; selesai: string; aktif: boolean }
+type Informasi = { id: string; jenjang: Jenjang; judul: string; isi: string; target: 'Keduanya'|'Admin Portal'|'Parent Portal'; audiens: 'Semua'|'Orang Tua'|'Guru'|'Staff TU'; disematkan: boolean; status: 'Publish'|'Draft'; tanggal: string; penulis: string }
 
-const posts = useState<ContentItem[]>('admin-content-posts', () => [
-  { id: 'W1', title: 'Penerimaan Peserta Didik Baru 2027/2028', kind: 'Pengumuman', status: 'Draft', date: '28 Sep 2026', author: 'Humas', views: 0 },
-  { id: 'W2', title: 'Siswa SMK IT Attaqwa 9 Juara LKS Jaringan Tingkat Kota', kind: 'Berita', status: 'Publish', date: '24 Sep 2026', author: 'Humas', views: 1842 },
-  { id: 'W3', title: 'Jadwal UTS Ganjil 2026', kind: 'Pengumuman', status: 'Publish', date: '20 Sep 2026', author: 'Kurikulum', views: 3210 },
-  { id: 'W4', title: 'Profil Sekolah', kind: 'Halaman', status: 'Publish', date: '12 Sep 2026', author: 'Admin', views: 5630 },
-  { id: 'W5', title: 'Ekstrakurikuler Robotik Raih Medali Emas', kind: 'Berita', status: 'Publish', date: '8 Sep 2026', author: 'Humas', views: 2214 },
-  { id: 'W6', title: 'Kalender Akademik 2026/2027', kind: 'Halaman', status: 'Publish', date: '1 Sep 2026', author: 'Admin', views: 4102 },
-  { id: 'W7', title: 'Peringatan Maulid Nabi di Sekolah', kind: 'Berita', status: 'Draft', date: '29 Sep 2026', author: 'Humas', views: 0 },
-  { id: 'W8', title: 'Tata Tertib Peserta Didik', kind: 'Halaman', status: 'Publish', date: '15 Agu 2026', author: 'Kesiswaan', views: 2870 }
-])
-
+const grade = useAdminGrade()
+const tab = ref<'berita'|'banner'|'informasi'>('berita')
 const query = ref('')
-const status = ref<'all' | ContentStatus>('all')
-const modalOpen = ref(false)
-const editingId = ref<string | null>(null)
-const form = reactive<{ title: string; kind: ContentKind }>({ title: '', kind: 'Berita' })
+const statusFilter = ref<'Semua'|StatusBerita>('Semua')
+const sort = ref<'terbaru'|'terlama'|'terpopuler'|'judul'>('terbaru')
+const modal = ref<'berita'|'banner'|'informasi'|null>(null)
+const editing = ref<string | null>(null)
+const preview = ref<Berita | null>(null)
 const message = ref('')
-const messageKind = ref<'ok' | 'info'>('ok')
-let toastTimer: ReturnType<typeof setTimeout> | undefined
-
-const totalViews = computed(() => posts.value.reduce((acc, curr) => acc + curr.views, 0))
-const publishedCount = computed(() => posts.value.filter(p => p.status === 'Publish').length)
-const newsCount = computed(() => posts.value.filter(p => p.kind === 'Berita').length)
-const announcementCount = computed(() => posts.value.filter(p => p.kind === 'Pengumuman').length)
-
-const filteredPosts = computed(() => posts.value.filter(item =>
-  (status.value === 'all' || item.status === status.value)
-  && item.title.toLowerCase().includes(query.value.toLowerCase())))
-
-const typeClass = (kind: ContentKind) => ({
-  Berita: 'bg-blue-50 text-blue-700 border border-blue-200/80',
-  Pengumuman: 'bg-amber-50 text-amber-700 border border-amber-200/80',
-  Halaman: 'bg-purple-50 text-purple-700 border border-purple-200/80'
-})[kind]
-
-const showToast = (value: string, kind: 'ok' | 'info' = 'ok') => {
-  message.value = value
-  messageKind.value = kind
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { message.value = '' }, 2800)
-}
-
-const openAdd = () => {
-  editingId.value = null
-  Object.assign(form, { title: '', kind: 'Berita' })
-  modalOpen.value = true
-}
-
-const openEdit = (item: ContentItem) => {
-  editingId.value = item.id
-  Object.assign(form, { title: item.title, kind: item.kind })
-  modalOpen.value = true
-}
-
-const saveContent = () => {
-  const title = form.title.trim()
-  if (!title) {
-    showToast('Isi judul terlebih dahulu.', 'info')
-    return
-  }
-  if (editingId.value) {
-    const item = posts.value.find(post => post.id === editingId.value)
-    if (item) Object.assign(item, { title, kind: form.kind })
-    showToast('Perubahan konten tersimpan.')
-  } else {
-    posts.value.unshift({ id: `W${Date.now()}`, title, kind: form.kind, status: 'Draft', date: '3 Okt 2026', author: 'Administrator', views: 0 })
-    showToast('Konten tersimpan sebagai draft.')
-  }
-  modalOpen.value = false
-}
-
-const togglePublish = (item: ContentItem) => {
-  item.status = item.status === 'Publish' ? 'Draft' : 'Publish'
-  showToast(`“${item.title.slice(0, 30)}${item.title.length > 30 ? '…' : ''}” ${item.status === 'Publish' ? 'dipublikasikan' : 'menjadi draft'}.`)
-}
-
-const removeContent = (id: string) => {
-  posts.value = posts.value.filter(item => item.id !== id)
-  showToast('Konten dihapus.')
-}
-
-onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer) })
+const messageKind = ref<'ok'|'info'>('ok')
+const berita = useState<Berita[]>('konten-berita', () => [
+  { id:'B-001', jenjang:'SMK', judul:'Siswa SMK IT Attaqwa 9 Juara LKS Jaringan Tingkat Kota', kategori:'Prestasi', status:'Terbit', tanggal:'2026-09-24', penulis:'Humas', ringkasan:'Prestasi siswa pada kompetisi kejuruan tingkat kota.', isi:'Isi berita contoh pada tahap porting.', gambarUrl:'', featured:true, views:1842 },
+  { id:'B-002', jenjang:'SMK', judul:'Penerimaan Peserta Didik Baru 2027/2028', kategori:'Pengumuman', status:'Review', tanggal:'2026-09-28', penulis:'Panitia SPMB', ringkasan:'Informasi resmi penerimaan peserta didik baru.', isi:'Isi pengumuman contoh pada tahap porting.', gambarUrl:'', featured:false, views:0 },
+  { id:'B-003', jenjang:'SMP', judul:'Peringatan Maulid Nabi di Sekolah', kategori:'Keagamaan', status:'Terbit', tanggal:'2026-09-29', penulis:'Humas', ringkasan:'Kegiatan peringatan Maulid Nabi di lingkungan sekolah.', isi:'Isi berita contoh pada tahap porting.', gambarUrl:'', featured:false, views:756 }
+])
+const banner = useState<Banner[]>('konten-banner', () => [{ id:'PB-001', jenjang:'SMK', judul:'SPMB 2027/2028 Dibuka', teks:'Pendaftaran calon peserta didik baru telah dibuka.', warna:'navy', situs:'SMK', mulai:'2026-10-01', selesai:'2026-12-31', aktif:true }])
+const informasi = useState<Informasi[]>('konten-informasi', () => [{ id:'I-001', jenjang:'SMK', judul:'Jadwal UTS Ganjil 2026', isi:'Jadwal UTS ganjil telah tersedia untuk seluruh kelas.', target:'Keduanya', audiens:'Semua', disematkan:true, status:'Publish', tanggal:'2026-09-20', penulis:'Kurikulum' }])
+const beritaForm = reactive<Omit<Berita,'id'|'jenjang'|'views'>>({ judul:'', kategori:'Akademik', status:'Draft', tanggal:'', penulis:'', ringkasan:'', isi:'', gambarUrl:'', featured:false })
+const bannerForm = reactive<Omit<Banner,'id'|'jenjang'>>({ judul:'', teks:'', warna:'navy', situs:'Semua', mulai:'', selesai:'', aktif:false })
+const informasiForm = reactive<Omit<Informasi,'id'|'jenjang'>>({ judul:'', isi:'', target:'Keduanya', audiens:'Semua', disematkan:false, status:'Draft', tanggal:'', penulis:'' })
+const listBerita = computed(() => [...berita.value.filter(x => x.jenjang === grade.value && (statusFilter.value === 'Semua' || x.status === statusFilter.value) && x.judul.toLowerCase().includes(query.value.toLowerCase()))].sort((a,b) => sort.value === 'terlama' ? a.tanggal.localeCompare(b.tanggal) : sort.value === 'terpopuler' ? b.views-a.views : sort.value === 'judul' ? a.judul.localeCompare(b.judul,'id') : b.tanggal.localeCompare(a.tanggal)))
+const beritaAktif = computed(() => berita.value.filter(x => x.jenjang === grade.value))
+const jumlahTerbit = computed(() => beritaAktif.value.filter(x => x.status === 'Terbit').length)
+const jumlahUnggulan = computed(() => beritaAktif.value.filter(x => x.status === 'Terbit' && x.featured).length)
+const views = computed(() => beritaAktif.value.reduce((n,x) => n+x.views,0))
+const formatDate = (value:string) => value ? new Intl.DateTimeFormat('id-ID',{ day:'numeric', month:'short', year:'numeric' }).format(new Date(`${value}T00:00:00`)) : 'Belum ditentukan'
+const notice = (text:string, kind:'ok'|'info'='ok') => { message.value=text; messageKind.value=kind }
+const reset = () => { Object.assign(beritaForm,{ judul:'',kategori:'Akademik',status:'Draft',tanggal:'',penulis:'',ringkasan:'',isi:'',gambarUrl:'',featured:false }); Object.assign(bannerForm,{ judul:'',teks:'',warna:'navy',situs:'Semua',mulai:'',selesai:'',aktif:false }); Object.assign(informasiForm,{ judul:'',isi:'',target:'Keduanya',audiens:'Semua',disematkan:false,status:'Draft',tanggal:'',penulis:'' }) }
+const add = () => { editing.value=null; reset(); modal.value=tab.value }
+const edit = (item:Berita|Banner|Informasi, type:'berita'|'banner'|'informasi') => { editing.value=item.id; if(type==='berita') Object.assign(beritaForm,item); if(type==='banner') Object.assign(bannerForm,item); if(type==='informasi') Object.assign(informasiForm,item); modal.value=type }
+const saveBerita = () => { if(!beritaForm.judul.trim() || !beritaForm.penulis.trim()) return notice('Judul dan penulis wajib diisi.','info'); const wasFeatured=berita.value.find(x=>x.id===editing.value)?.featured; if(beritaForm.featured && beritaForm.status!=='Terbit') return notice('Bintang hanya untuk berita berstatus Terbit.','info'); if(beritaForm.featured && !wasFeatured && jumlahUnggulan.value>=5) return notice('Maksimal lima berita unggulan per jenjang.','info'); const data={...beritaForm,jenjang:grade.value}; if(editing.value) Object.assign(berita.value.find(x=>x.id===editing.value)!,data); else berita.value.unshift({...data,id:`B-${Date.now()}`,views:0}); modal.value=null; notice('Berita dan artikel tersimpan.') }
+const saveBanner = () => { if(!bannerForm.judul.trim() || !bannerForm.mulai || !bannerForm.selesai) return notice('Judul serta periode tayang wajib diisi.','info'); const data={...bannerForm,jenjang:grade.value}; if(editing.value) Object.assign(banner.value.find(x=>x.id===editing.value)!,data); else banner.value.unshift({...data,id:`PB-${Date.now()}`}); modal.value=null; notice('Popup banner tersimpan.') }
+const saveInformasi = () => { if(!informasiForm.judul.trim() || !informasiForm.isi.trim() || !informasiForm.penulis.trim()) return notice('Judul, isi, dan penulis wajib diisi.','info'); const data={...informasiForm,jenjang:grade.value}; if(editing.value) Object.assign(informasi.value.find(x=>x.id===editing.value)!,data); else informasi.value.unshift({...data,id:`I-${Date.now()}`}); modal.value=null; notice('Berita dan informasi tersimpan.') }
+const nextStatus=(item:Berita)=>{ item.status=item.status==='Draft'?'Review':item.status==='Review'?'Terbit':'Draft'; if(item.status!=='Terbit') item.featured=false; notice(`Status berubah menjadi ${item.status}.`) }
+const feature=(item:Berita)=>{ if(item.status!=='Terbit') return notice('Bintang hanya dapat dipasang pada berita Terbit.','info'); if(!item.featured && jumlahUnggulan.value>=5) return notice('Maksimal lima berita unggulan per jenjang.','info'); item.featured=!item.featured; notice(item.featured?'Berita masuk slider unggulan.':'Berita dihapus dari slider unggulan.') }
+const remove=(id:string,type:'berita'|'banner'|'informasi')=>{ if(!confirm('Hapus konten ini?')) return; if(type==='berita') berita.value=berita.value.filter(x=>x.id!==id); if(type==='banner') banner.value=banner.value.filter(x=>x.id!==id); if(type==='informasi') informasi.value=informasi.value.filter(x=>x.id!==id); notice('Konten dihapus.') }
 </script>
-
 <template>
-  <section class="space-y-6">
-    <!-- Page Head -->
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-      <div>
-        <h2 class="text-2xl font-bold tracking-tight text-slate-900">Konten Website</h2>
-        <p class="text-sm text-slate-500 mt-1">Kelola halaman, berita &amp; pengumuman web profile sekolah</p>
-      </div>
-      <button class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-semibold rounded-xl shadow-[0_6px_18px_-4px_rgba(37,99,235,0.5)] hover:shadow-[0_10px_24px_-4px_rgba(37,99,235,0.6)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200" type="button" @click="openAdd">
-        <AdminIcon name="plus" size="16" /> Tambah Konten
-      </button>
-    </div>
-
-    <!-- KPI Gradient Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-      <!-- Total Konten (k-blue) -->
-      <div class="relative overflow-hidden rounded-[20px] p-5 text-white cursor-pointer bg-gradient-to-br from-[#1e40af] via-[#2563eb] to-[#60a5fa] shadow-[0_14px_30px_-14px_rgba(2,8,23,0.45)] hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-[0_22px_42px_-14px_rgba(2,8,23,0.5)] transition-all duration-300 group before:pointer-events-none before:absolute before:-right-16 before:-top-20 before:h-52 before:w-52 before:rounded-full before:bg-[radial-gradient(circle,rgba(255,255,255,0.25),transparent_70%)] after:pointer-events-none after:absolute after:-bottom-16 after:-left-10 after:h-32 after:w-32 after:rounded-full after:border-[24px] after:border-white/10">
-        <div class="pointer-events-none absolute bottom-0 top-0 -left-24 w-20 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 ease-out group-hover:left-[140%]" />
-        <div class="relative z-10 flex items-center justify-between">
-          <div class="h-11 w-11 rounded-2xl bg-white/20 border border-white/30 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] flex items-center justify-center">
-            <AdminIcon name="globe" size="22" class="text-white" />
-          </div>
-          <span class="inline-flex items-center gap-1.5 text-xs font-bold bg-white/20 border border-white/30 px-3 py-1.5 rounded-full backdrop-blur-md whitespace-nowrap">
-            {{ publishedCount }} Tayang
-          </span>
-        </div>
-        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ posts.length }}</div>
-        <div class="relative z-10 text-xs font-medium text-white/85">Total Konten Terdata</div>
-        <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
-          <AdminSparkline :points="[10, 14, 18, 22, 28, 32]" color="#ffffff" />
-        </div>
-      </div>
-
-      <!-- Berita & Artikel (k-violet) -->
-      <div class="relative overflow-hidden rounded-[20px] p-5 text-white cursor-pointer bg-gradient-to-br from-[#5b21b6] via-[#7c3aed] to-[#a78bfa] shadow-[0_14px_30px_-14px_rgba(2,8,23,0.45)] hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-[0_22px_42px_-14px_rgba(2,8,23,0.5)] transition-all duration-300 group before:pointer-events-none before:absolute before:-right-16 before:-top-20 before:h-52 before:w-52 before:rounded-full before:bg-[radial-gradient(circle,rgba(255,255,255,0.25),transparent_70%)] after:pointer-events-none after:absolute after:-bottom-16 after:-left-10 after:h-32 after:w-32 after:rounded-full after:border-[24px] after:border-white/10">
-        <div class="pointer-events-none absolute bottom-0 top-0 -left-24 w-20 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 ease-out group-hover:left-[140%]" />
-        <div class="relative z-10 flex items-center justify-between">
-          <div class="h-11 w-11 rounded-2xl bg-white/20 border border-white/30 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] flex items-center justify-center">
-            <AdminIcon name="file" size="22" class="text-white" />
-          </div>
-          <span class="inline-flex items-center gap-1.5 text-xs font-bold bg-white/20 border border-white/30 px-3 py-1.5 rounded-full backdrop-blur-md whitespace-nowrap">
-            Aktif
-          </span>
-        </div>
-        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ newsCount }}</div>
-        <div class="relative z-10 text-xs font-medium text-white/85">Berita &amp; Artikel Sekolah</div>
-        <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
-          <AdminSparkline :points="[4, 6, 9, 12, 14, 18]" color="#ffffff" />
-        </div>
-      </div>
-
-      <!-- Pengumuman (k-amber) -->
-      <div class="relative overflow-hidden rounded-[20px] p-5 text-white cursor-pointer bg-gradient-to-br from-[#92400e] via-[#d97706] to-[#fbbf24] shadow-[0_14px_30px_-14px_rgba(2,8,23,0.45)] hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-[0_22px_42px_-14px_rgba(2,8,23,0.5)] transition-all duration-300 group before:pointer-events-none before:absolute before:-right-16 before:-top-20 before:h-52 before:w-52 before:rounded-full before:bg-[radial-gradient(circle,rgba(255,255,255,0.25),transparent_70%)] after:pointer-events-none after:absolute after:-bottom-16 after:-left-10 after:h-32 after:w-32 after:rounded-full after:border-[24px] after:border-white/10">
-        <div class="pointer-events-none absolute bottom-0 top-0 -left-24 w-20 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 ease-out group-hover:left-[140%]" />
-        <div class="relative z-10 flex items-center justify-between">
-          <div class="h-11 w-11 rounded-2xl bg-white/20 border border-white/30 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] flex items-center justify-center">
-            <AdminIcon name="alert" size="22" class="text-white" />
-          </div>
-          <span class="inline-flex items-center gap-1.5 text-xs font-bold bg-white/20 border border-white/30 px-3 py-1.5 rounded-full backdrop-blur-md whitespace-nowrap">
-            PPDB &amp; UTS
-          </span>
-        </div>
-        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ announcementCount }}</div>
-        <div class="relative z-10 text-xs font-medium text-white/85">Pengumuman Terbit</div>
-        <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
-          <AdminSparkline :points="[2, 3, 5, 4, 7, 8]" color="#ffffff" />
-        </div>
-      </div>
-
-      <!-- Total Views (k-green) -->
-      <div class="relative overflow-hidden rounded-[20px] p-5 text-white cursor-pointer bg-gradient-to-br from-[#065f46] via-[#059669] to-[#34d399] shadow-[0_14px_30px_-14px_rgba(2,8,23,0.45)] hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-[0_22px_42px_-14px_rgba(2,8,23,0.5)] transition-all duration-300 group before:pointer-events-none before:absolute before:-right-16 before:-top-20 before:h-52 before:w-52 before:rounded-full before:bg-[radial-gradient(circle,rgba(255,255,255,0.25),transparent_70%)] after:pointer-events-none after:absolute after:-bottom-16 after:-left-10 after:h-32 after:w-32 after:rounded-full after:border-[24px] after:border-white/10">
-        <div class="pointer-events-none absolute bottom-0 top-0 -left-24 w-20 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 ease-out group-hover:left-[140%]" />
-        <div class="relative z-10 flex items-center justify-between">
-          <div class="h-11 w-11 rounded-2xl bg-white/20 border border-white/30 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] flex items-center justify-center">
-            <AdminIcon name="eye" size="22" class="text-white" />
-          </div>
-          <span class="inline-flex items-center gap-1.5 text-xs font-bold bg-white/20 border border-white/30 px-3 py-1.5 rounded-full backdrop-blur-md whitespace-nowrap">
-            +18.4% bln ini
-          </span>
-        </div>
-        <div class="relative z-10 text-3xl font-bold tracking-tight mt-3.5 mb-1 drop-shadow-sm">{{ (totalViews / 1000).toFixed(1) }}k</div>
-        <div class="relative z-10 text-xs font-medium text-white/85">Total Kunjungan Publik</div>
-        <div class="absolute right-3.5 bottom-3 z-10 opacity-90 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
-          <AdminSparkline :points="[12, 16, 24, 28, 38, 46]" color="#ffffff" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content Card -->
-    <article class="bg-gradient-to-b from-white to-[#FCFEFF] border border-slate-200/80 rounded-[20px] shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06)] hover:shadow-[0_8px_30px_-4px_rgba(15,23,42,0.1)] transition-all duration-300 overflow-hidden">
-      <!-- Toolbar Header -->
-      <div class="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-white/50">
-        <div class="flex items-center gap-2.5">
-          <h3 class="flex items-center gap-2.5 text-[15px] font-bold text-slate-800 before:content-[''] before:w-1.5 before:h-5 before:rounded-full before:bg-gradient-to-b before:from-blue-500 before:to-violet-600 before:shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
-            Daftar Publikasi Konten
-          </h3>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60">{{ filteredPosts.length }} artikel</span>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <label class="flex items-center gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl flex-1 sm:w-64 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
-            <AdminIcon name="search" size="16" class="text-slate-400 shrink-0" />
-            <input v-model.trim="query" placeholder="Cari judul..." class="bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none w-full" />
-          </label>
-          <select v-model="status" class="px-3.5 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 focus:bg-white focus:outline-none focus:border-blue-500 transition-all" aria-label="Filter status">
-            <option value="all">Semua Status</option>
-            <option value="Publish">Publish</option>
-            <option value="Draft">Draft</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Table Section -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-slate-700">
-          <thead class="bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200/80">
-            <tr>
-              <th class="px-5 py-3.5">Judul &amp; Penulis</th>
-              <th class="px-4 py-3.5">Jenis</th>
-              <th class="px-4 py-3.5">Status</th>
-              <th class="px-4 py-3.5">Publish</th>
-              <th class="px-4 py-3.5">Tanggal</th>
-              <th class="px-4 py-3.5 text-right">Views</th>
-              <th class="px-5 py-3.5 text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="item in filteredPosts" :key="item.id" class="hover:bg-blue-50/30 transition-colors duration-150">
-              <td class="px-5 py-4 max-w-sm">
-                <b class="block font-bold text-slate-900 line-clamp-1 hover:text-blue-600 transition cursor-pointer" @click="openEdit(item)">{{ item.title }}</b>
-                <div class="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
-                  <span>oleh <strong class="text-slate-600 font-medium">{{ item.author }}</strong></span>
-                  <span>&bull;</span>
-                  <span class="font-mono text-[11px] text-slate-400">{{ item.id }}</span>
-                </div>
-              </td>
-              <td class="px-4 py-4">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold shadow-xs" :class="typeClass(item.kind)">
-                  {{ item.kind }}
-                </span>
-              </td>
-              <td class="px-4 py-4">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold" :class="item.status === 'Publish' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80' : 'bg-slate-100 text-slate-600 border border-slate-200/80'">
-                  <span class="w-1.5 h-1.5 rounded-full" :class="item.status === 'Publish' ? 'bg-emerald-500' : 'bg-slate-400'" />
-                  {{ item.status }}
-                </span>
-              </td>
-              <td class="px-4 py-4">
-                <button
-                  type="button"
-                  :aria-label="`Ubah status ${item.title}`"
-                  class="w-10 h-5.5 rounded-full transition-colors duration-200 relative focus:outline-none cursor-pointer shadow-inner"
-                  :class="item.status === 'Publish' ? 'bg-emerald-500' : 'bg-slate-300'"
-                  @click="togglePublish(item)"
-                >
-                  <span
-                    class="block w-4.5 h-4.5 bg-white rounded-full transition-transform duration-200 absolute top-0.5 shadow-sm"
-                    :class="item.status === 'Publish' ? 'left-[20px]' : 'left-0.5'"
-                  />
-                </button>
-              </td>
-              <td class="px-4 py-4 text-slate-500 text-xs font-medium whitespace-nowrap">{{ item.date }}</td>
-              <td class="px-4 py-4 text-right font-bold text-slate-800 text-xs">{{ item.views ? item.views.toLocaleString('id-ID') : '—' }}</td>
-              <td class="px-5 py-4 text-right whitespace-nowrap">
-                <div class="flex items-center justify-end gap-1.5">
-                  <button class="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-150" type="button" :aria-label="`Edit ${item.title}`" @click="openEdit(item)">
-                    <AdminIcon name="pencil" size="15" />
-                  </button>
-                  <button class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all duration-150" type="button" :aria-label="`Hapus ${item.title}`" @click="removeContent(item.id)">
-                    <AdminIcon name="trash" size="15" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="!filteredPosts.length">
-              <td colspan="7" class="py-14 text-center text-slate-400">
-                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-2 text-slate-400">
-                  <AdminIcon name="globe" size="24" />
-                </div>
-                <div class="text-sm font-semibold text-slate-600">Tidak ada konten yang cocok</div>
-                <div class="text-xs text-slate-400 mt-0.5">Coba ubah kata kunci pencarian atau filter status.</div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50">
-        <span>Menampilkan <b>{{ filteredPosts.length }}</b> dari total {{ posts.length }} konten</span>
-        <span class="font-medium text-slate-400">Pembaruan otomatis tersimpan</span>
-      </div>
-    </article>
-
-    <!-- Modal Form -->
-    <AdminModal :open="modalOpen" :title="editingId ? 'Edit Konten Website' : 'Tambah Konten Baru'" @close="modalOpen = false">
-      <div class="space-y-4">
-        <div>
-          <label for="content-title" class="block text-xs font-bold text-slate-700 mb-1.5">Judul Konten / Berita</label>
-          <input id="content-title" v-model="form.title" placeholder="Tulis judul artikel atau pengumuman..." class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all" />
-        </div>
-        <div>
-          <label for="content-kind" class="block text-xs font-bold text-slate-700 mb-1.5">Kategori / Jenis</label>
-          <select id="content-kind" v-model="form.kind" class="w-full px-4 py-2.5 text-sm font-medium bg-slate-50 border border-slate-200/80 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all">
-            <option value="Berita">Berita &amp; Artikel</option>
-            <option value="Pengumuman">Pengumuman Resmi</option>
-            <option value="Halaman">Halaman Statis Profil</option>
-          </select>
-        </div>
-      </div>
-      <template #footer>
-        <button class="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-800 transition" type="button" @click="modalOpen = false">Batal</button>
-        <button class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-bold rounded-xl shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] transition" type="button" @click="saveContent">
-          <AdminIcon name="check" size="14" /> {{ editingId ? 'Simpan Perubahan' : 'Simpan Draft' }}
-        </button>
-      </template>
-    </AdminModal>
-
-    <AdminToast :message="message" :kind="messageKind" />
-  </section>
+<section class="space-y-5">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h1 class="text-2xl font-bold tracking-tight text-slate-900">Konten Website</h1><p class="mt-1 text-sm text-slate-500">Satu pintu publikasi {{ grade === 'SMK' ? 'SMK IT Attaqwa 9' : 'SMP IT Bina Cendekia Assalam' }}.</p></div><button type="button" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200" @click="add"><AdminIcon name="plus" size="17"/>Tambah Konten</button></div>
+  <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><div v-for="item in [{label:'Total Berita',value:beritaAktif.length,color:'text-slate-900'},{label:'Sudah Terbit',value:jumlahTerbit,color:'text-emerald-700'},{label:'Berita Unggulan',value:`${jumlahUnggulan}/5`,color:'text-amber-600'},{label:'Total Dilihat',value:views.toLocaleString('id-ID'),color:'text-slate-900'}]" :key="item.label" class="rounded-2xl border border-slate-200 bg-white p-4"><p class="text-xs font-semibold text-slate-500">{{ item.label }}</p><p class="mt-1 text-2xl font-bold" :class="item.color">{{ item.value }}</p></div></div>
+  <div class="overflow-x-auto border-b border-slate-200"><div class="flex min-w-max gap-1"><button v-for="item in [{id:'berita',label:'Berita & Artikel'},{id:'banner',label:'Popup Banner'},{id:'informasi',label:'Berita & Informasi'}]" :key="item.id" type="button" class="min-h-11 border-b-2 px-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500" :class="tab===item.id?'border-blue-700 text-blue-700':'border-transparent text-slate-500'" @click="tab=item.id as typeof tab">{{ item.label }}</button></div></div>
+  <article v-if="tab==='berita'" class="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div class="flex flex-col gap-3 border-b border-slate-100 p-4 lg:flex-row lg:justify-between"><div class="flex flex-wrap gap-2"><button v-for="item in ['Semua','Draft','Review','Terbit','Terjadwal'] as const" :key="item" type="button" class="min-h-9 rounded-lg px-3 text-xs font-semibold" :class="statusFilter===item?'bg-blue-700 text-white':'bg-slate-100 text-slate-600'" @click="statusFilter=item">{{ item }}</button></div><div class="flex gap-2"><input v-model.trim="query" class="min-h-10 min-w-0 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="Cari judul berita"><select v-model="sort" class="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="terbaru">Terbaru</option><option value="terlama">Terlama</option><option value="terpopuler">Terpopuler</option><option value="judul">Judul A–Z</option></select></div></div><div v-if="listBerita.length" class="divide-y divide-slate-100"><div v-for="item in listBerita" :key="item.id" class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><button type="button" class="h-16 w-full shrink-0 rounded-xl sm:w-24" :class="item.gambarUrl?'bg-cover bg-center':'bg-blue-100'" :style="item.gambarUrl?{backgroundImage:`url(${item.gambarUrl})`}:undefined" :aria-label="`Pratinjau ${item.judul}`" @click="preview=item"/><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><button type="button" class="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold" @click="nextStatus(item)">{{ item.status }}</button><span class="text-xs text-slate-500">{{ item.kategori }} · {{ formatDate(item.tanggal) }}</span></div><button type="button" class="mt-1 block text-left text-sm font-bold text-slate-900 hover:text-blue-700" @click="preview=item">{{ item.judul }}</button><p class="mt-1 text-xs text-slate-500">oleh {{ item.penulis }} · {{ item.views.toLocaleString('id-ID') }} dilihat</p></div><div class="flex gap-1 self-end sm:self-auto"><button type="button" class="min-h-10 min-w-10 rounded-lg text-lg text-amber-600 hover:bg-amber-50" :aria-label="`Bintang ${item.judul}`" @click="feature(item)">{{ item.featured?'★':'☆' }}</button><button type="button" class="min-h-10 min-w-10 rounded-lg text-slate-600 hover:bg-slate-100" :aria-label="`Edit ${item.judul}`" @click="edit(item,'berita')"><AdminIcon name="pencil" size="16"/></button><button type="button" class="min-h-10 min-w-10 rounded-lg text-rose-600 hover:bg-rose-50" :aria-label="`Hapus ${item.judul}`" @click="remove(item.id,'berita')"><AdminIcon name="trash" size="16"/></button></div></div></div><div v-else class="p-10 text-center text-sm text-slate-500">Tidak ada berita yang sesuai.</div></article>
+  <article v-else-if="tab==='banner'" class="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div class="border-b border-slate-100 p-4"><h2 class="font-bold text-slate-900">Popup Banner</h2><p class="mt-1 text-sm text-slate-500">Tayang satu per kunjungan bila aktif, masih dalam periode, dan sesuai situs.</p></div><div v-if="banner.filter(x=>x.jenjang===grade).length" class="divide-y divide-slate-100"><div v-for="item in banner.filter(x=>x.jenjang===grade)" :key="item.id" class="flex gap-3 p-4"><div class="h-14 w-20 shrink-0 rounded-xl" :class="{navy:'bg-slate-800',green:'bg-emerald-700',amber:'bg-amber-500',red:'bg-rose-700'}[item.warna]"/><div class="min-w-0 flex-1"><div class="flex flex-wrap gap-2"><b>{{ item.judul }}</b><span class="rounded-md px-2 py-0.5 text-xs font-semibold" :class="item.aktif?'bg-emerald-50 text-emerald-700':'bg-slate-100 text-slate-600'">{{ item.aktif?'Aktif':'Tidak aktif' }}</span></div><p class="mt-1 text-xs text-slate-500">{{ item.situs }} · {{ formatDate(item.mulai) }} s.d. {{ formatDate(item.selesai) }}</p></div><button type="button" class="min-h-10 min-w-10 text-slate-600" @click="edit(item,'banner')"><AdminIcon name="pencil" size="16"/></button><button type="button" class="min-h-10 min-w-10 text-rose-600" @click="remove(item.id,'banner')"><AdminIcon name="trash" size="16"/></button></div></div><div v-else class="p-10 text-center text-sm text-slate-500">Belum ada popup banner untuk jenjang ini.</div></article>
+  <article v-else class="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div class="border-b border-slate-100 p-4"><h2 class="font-bold text-slate-900">Berita & Informasi</h2><p class="mt-1 text-sm text-slate-500">Khusus feed Admin Portal dan Parent Portal, bukan website publik.</p></div><div v-if="informasi.filter(x=>x.jenjang===grade).length" class="divide-y divide-slate-100"><div v-for="item in [...informasi.filter(x=>x.jenjang===grade)].sort((a,b)=>Number(b.disematkan)-Number(a.disematkan)||b.tanggal.localeCompare(a.tanggal))" :key="item.id" class="flex gap-3 p-4"><div class="min-w-0 flex-1"><div class="flex flex-wrap gap-2"><b>{{ item.judul }}</b><span v-if="item.disematkan" class="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">Disematkan</span><button type="button" class="rounded-md px-2 py-0.5 text-xs font-semibold" :class="item.status==='Publish'?'bg-emerald-50 text-emerald-700':'bg-slate-100 text-slate-600'" @click="item.status=item.status==='Publish'?'Draft':'Publish'">{{ item.status }}</button></div><p class="mt-1 text-xs text-slate-500">{{ item.target }} · {{ item.audiens }} · {{ formatDate(item.tanggal) }}</p></div><button type="button" class="min-h-10 min-w-10 text-slate-600" @click="edit(item,'informasi')"><AdminIcon name="pencil" size="16"/></button><button type="button" class="min-h-10 min-w-10 text-rose-600" @click="remove(item.id,'informasi')"><AdminIcon name="trash" size="16"/></button></div></div><div v-else class="p-10 text-center text-sm text-slate-500">Belum ada berita atau informasi untuk jenjang ini.</div></article>
+  <AdminModal :open="modal==='berita'" :title="editing?'Edit Berita & Artikel':'Tambah Berita & Artikel'" wide @close="modal=null"><div class="grid gap-4 sm:grid-cols-2"><label class="sm:col-span-2 text-sm font-semibold">Judul<input v-model="beritaForm.judul" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="text-sm font-semibold">Kategori<select v-model="beritaForm.kategori" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"><option v-for="x in ['Akademik','Prestasi','Kegiatan','Keagamaan','Olahraga','Pengumuman']" :key="x">{{ x }}</option></select></label><label class="text-sm font-semibold">Status<select v-model="beritaForm.status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"><option>Draft</option><option>Review</option><option>Terbit</option><option>Terjadwal</option></select></label><label class="text-sm font-semibold">Tanggal terbit<input v-model="beritaForm.tanggal" type="date" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="text-sm font-semibold">Penulis<input v-model="beritaForm.penulis" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="sm:col-span-2 text-sm font-semibold">Ringkasan<textarea v-model="beritaForm.ringkasan" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"/></label><label class="sm:col-span-2 text-sm font-semibold">Isi<textarea v-model="beritaForm.isi" rows="5" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"/></label><label class="sm:col-span-2 text-sm font-semibold">URL gambar<input v-model="beritaForm.gambarUrl" type="url" placeholder="https://" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="flex items-center gap-2 text-sm font-semibold"><input v-model="beritaForm.featured" type="checkbox"> Tampilkan sebagai unggulan</label></div><template #footer><button type="button" class="min-h-10 px-3 text-sm font-semibold" @click="modal=null">Batal</button><button type="button" class="min-h-10 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white" @click="saveBerita">Simpan</button></template></AdminModal>
+  <AdminModal :open="modal==='banner'" :title="editing?'Edit Popup Banner':'Tambah Popup Banner'" @close="modal=null"><div class="grid gap-4 sm:grid-cols-2"><label class="sm:col-span-2 text-sm font-semibold">Judul<input v-model="bannerForm.judul" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="sm:col-span-2 text-sm font-semibold">Teks<textarea v-model="bannerForm.teks" rows="3" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"/></label><label class="text-sm font-semibold">Warna<select v-model="bannerForm.warna" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"><option>navy</option><option>green</option><option>amber</option><option>red</option></select></label><label class="text-sm font-semibold">Situs<select v-model="bannerForm.situs" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"><option>Semua</option><option>Yayasan</option><option>SMP</option><option>SMK</option></select></label><label class="text-sm font-semibold">Mulai<input v-model="bannerForm.mulai" type="date" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="text-sm font-semibold">Selesai<input v-model="bannerForm.selesai" type="date" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="flex items-center gap-2 text-sm font-semibold"><input v-model="bannerForm.aktif" type="checkbox"> Aktif</label></div><template #footer><button type="button" class="min-h-10 px-3 text-sm font-semibold" @click="modal=null">Batal</button><button type="button" class="min-h-10 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white" @click="saveBanner">Simpan</button></template></AdminModal>
+  <AdminModal :open="modal==='informasi'" :title="editing?'Edit Berita & Informasi':'Tambah Berita & Informasi'" @close="modal=null"><div class="grid gap-4 sm:grid-cols-2"><label class="sm:col-span-2 text-sm font-semibold">Judul<input v-model="informasiForm.judul" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="sm:col-span-2 text-sm font-semibold">Isi<textarea v-model="informasiForm.isi" rows="4" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"/></label><label class="text-sm font-semibold">Target<select v-model="informasiForm.target" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"><option>Keduanya</option><option>Admin Portal</option><option>Parent Portal</option></select></label><label class="text-sm font-semibold">Audiens<select v-model="informasiForm.audiens" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"><option>Semua</option><option>Orang Tua</option><option>Guru</option><option>Staff TU</option></select></label><label class="text-sm font-semibold">Status<select v-model="informasiForm.status" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"><option>Draft</option><option>Publish</option></select></label><label class="text-sm font-semibold">Tanggal<input v-model="informasiForm.tanggal" type="date" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="sm:col-span-2 text-sm font-semibold">Penulis<input v-model="informasiForm.penulis" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal"></label><label class="flex items-center gap-2 text-sm font-semibold"><input v-model="informasiForm.disematkan" type="checkbox"> Sematkan informasi</label></div><template #footer><button type="button" class="min-h-10 px-3 text-sm font-semibold" @click="modal=null">Batal</button><button type="button" class="min-h-10 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white" @click="saveInformasi">Simpan</button></template></AdminModal>
+  <AdminModal :open="Boolean(preview)" title="Pratinjau Berita" wide @close="preview=null"><article v-if="preview" class="space-y-4"><p class="text-xs font-semibold text-blue-700">{{ preview.kategori }} · {{ formatDate(preview.tanggal) }}</p><h2 class="text-2xl font-bold text-slate-900">{{ preview.judul }}</h2><p class="text-sm text-slate-500">{{ preview.penulis }} · {{ preview.views.toLocaleString('id-ID') }} dilihat</p><p class="rounded-xl bg-slate-50 p-4 text-slate-700">{{ preview.ringkasan }}</p><p class="whitespace-pre-line leading-7 text-slate-700">{{ preview.isi }}</p></article></AdminModal>
+  <AdminToast :message="message" :kind="messageKind"/>
+</section>
 </template>
-

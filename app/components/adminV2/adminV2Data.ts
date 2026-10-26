@@ -1,4 +1,4 @@
-export interface SchoolData {
+﻿export interface SchoolData {
   label: string
   heroValue: string
   heroSub: string
@@ -53,14 +53,14 @@ export const SCHOOL_DATA: Record<'smp' | 'smk', SchoolData> = {
     guruBar: 93.8,
     exams: {
       harian: [
-        ['16', 'Okt', 'UH Matematika', 'Kelas VII A–C · 08:00', 'Terjadwal', 'on'],
-        ['17', 'Okt', 'UH IPA Terpadu', 'Kelas VIII A–B · 10:00', 'Terjadwal', 'on']
+        ['16', 'Okt', 'UH Matematika', 'Kelas VII Aâ€“C Â· 08:00', 'Terjadwal', 'on'],
+        ['17', 'Okt', 'UH IPA Terpadu', 'Kelas VIII Aâ€“B Â· 10:00', 'Terjadwal', 'on']
       ],
       uts: [
-        ['20', 'Okt', 'UTS Ganjil 2026', '20–25 Okt · 8 mapel · 842 peserta', 'Persiapan', 'wait']
+        ['20', 'Okt', 'UTS Ganjil 2026', '20â€“25 Okt Â· 8 mapel Â· 842 peserta', 'Persiapan', 'wait']
       ],
       uas: [
-        ['8', 'Des', 'UAS Ganjil 2026', '8–13 Des · 9 mapel · 842 peserta', 'Draft', 'off']
+        ['8', 'Des', 'UAS Ganjil 2026', '8â€“13 Des Â· 9 mapel Â· 842 peserta', 'Draft', 'off']
       ]
     }
   },
@@ -80,14 +80,14 @@ export const SCHOOL_DATA: Record<'smp' | 'smk', SchoolData> = {
     guruBar: 94.2,
     exams: {
       harian: [
-        ['16', 'Okt', 'UH Matematika', 'XII TKJ 1–3 · 08:00', 'Terjadwal', 'on'],
-        ['17', 'Okt', 'UH Produktif TKJ', 'XI TKJ 2 · 10:00', 'Terjadwal', 'on']
+        ['16', 'Okt', 'UH Matematika', 'XII TKJ 1â€“3 Â· 08:00', 'Terjadwal', 'on'],
+        ['17', 'Okt', 'UH Produktif TKJ', 'XI TKJ 2 Â· 10:00', 'Terjadwal', 'on']
       ],
       uts: [
-        ['20', 'Okt', 'UTS Ganjil 2026', '20–25 Okt · 8 mapel · 1.247 peserta', 'Persiapan', 'wait']
+        ['20', 'Okt', 'UTS Ganjil 2026', '20â€“25 Okt Â· 8 mapel Â· 1.247 peserta', 'Persiapan', 'wait']
       ],
       uas: [
-        ['8', 'Des', 'UAS Ganjil 2026', '8–13 Des · 9 mapel · 1.247 peserta', 'Draft', 'off']
+        ['8', 'Des', 'UAS Ganjil 2026', '8â€“13 Des Â· 9 mapel Â· 1.247 peserta', 'Draft', 'off']
       ]
     }
   }
@@ -161,9 +161,9 @@ export const GROUPS: GroupItem[] = [
 ]
 
 export const ANNOUNCEMENTS: Array<[string, string, string, string]> = [
-  ['i-cal', 'Gladi bersih CBT kelas XII', 'Lab 1–4 · 20 Okt 2026, 07:00', '2 h'],
+  ['i-cal', 'Gladi bersih CBT kelas XII', 'Lab 1â€“4 Â· 20 Okt 2026, 07:00', '2 h'],
   ['i-doc', 'Batas input nilai UTS', 'Maksimal 28 Okt 2026 via modul Akademik', '5 h'],
-  ['i-users', 'Rapat komite sekolah', 'Aula utama · 30 Okt 2026, 09:00', '1 mg']
+  ['i-users', 'Rapat komite sekolah', 'Aula utama Â· 30 Okt 2026, 09:00', '1 mg']
 ]
 
 export const ACTIVITIES: ActivityRow[] = [
@@ -191,7 +191,7 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'Tabungan siswa': '/admin/tabungan',
   'Manajemen CBT': '/adminV2/cbt',
   'LMS': '/adminV2/lms',
-  'Konten Website': '/admin/konten',
+  'Konten Website': '/adminV2/konten',
   'SPMB': '/spmb',
   'Perpustakaan digital': '#',
   'Manajemen user': '/adminV2/users',
@@ -219,3 +219,4 @@ export const getAdminDestination = (title: string): string => {
   if (t.includes('profil') || t.includes('profile')) return '/adminV2/profil'
   return '#'
 }
+
