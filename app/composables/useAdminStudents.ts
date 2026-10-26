@@ -84,6 +84,13 @@ const numberOrNull = (value: unknown) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
 }
+const mutationErrorMessage = (prefix: string, cause: any) => {
+  const message = cause?.message ?? 'kesalahan tidak diketahui'
+  if (cause?.code === 'PGRST204' || message.includes('schema cache')) {
+    return 'Skema Data Siswa di Supabase belum diperbarui. Jalankan migrasi 0011_students_profile.sql, lalu ulangi proses.'
+  }
+  return prefix + message
+}
 
 export const STUDENT_CSV_HEADERS = ['NIS', 'NISN', 'NIK', 'NoKK', 'Nama', 'Gender', 'Jenjang', 'Kelas', 'Jurusan', 'TempatLahir', 'TanggalLahir', 'Agama', 'Alamat', 'RT', 'RW', 'Kelurahan', 'Kecamatan', 'Kota', 'JenisTinggal', 'Transportasi', 'NoHPSiswa', 'NamaAyah', 'NIKAyah', 'TahunLahirAyah', 'PendidikanAyah', 'PekerjaanAyah', 'PenghasilanAyah', 'NoHPAyah', 'NamaIbu', 'NIKIbu', 'TahunLahirIbu', 'PendidikanIbu', 'PekerjaanIbu', 'PenghasilanIbu', 'NoHPIbu', 'SekolahAsal', 'NoIjazah', 'AnakKe', 'JmlSaudara', 'TinggiBadan', 'BeratBadan', 'LingkarKepala', 'JarakKM', 'Hobi', 'CitaCita', 'Status', 'RFID_UID', 'Presensi', 'TahunAngkatan', 'TanggalMasuk', 'Catatan']
 
@@ -273,7 +280,7 @@ export const useAdminStudents = () => {
       ? await supabase.from('students').insert(payload).select('id').single()
       : await supabase.from('students').update(payload).eq('id', data.id).select('id').single()
     if (result.error) {
-      error.value = 'Data siswa gagal disimpan: ' + result.error.message
+      error.value = mutationErrorMessage('Data siswa gagal disimpan: ', result.error)
       return { success: false, message: error.value }
     }
     const rfidResult = await syncRfid(result.data.id, data.rfidUid)
@@ -345,7 +352,7 @@ export const useAdminStudents = () => {
       ? await supabase.from('students').upsert(payloads, { onConflict: 'nisn' }).select('id, nisn')
       : await supabase.from('students').insert(payloads).select('id, nisn')
     if (result.error) {
-      error.value = 'Impor gagal disimpan ke Supabase: ' + result.error.message
+      error.value = mutationErrorMessage('Impor gagal disimpan ke Supabase: ', result.error)
       return { success: false, message: error.value, successCount: 0, failedRows }
     }
     for (const row of result.data ?? []) {
