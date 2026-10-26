@@ -80,6 +80,8 @@ const numberOrNull = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+export const STUDENT_CSV_HEADERS = ['NIS', 'NISN', 'NIK', 'NoKK', 'Nama', 'Gender', 'Jenjang', 'Kelas', 'Jurusan', 'TempatLahir', 'TanggalLahir', 'Agama', 'Alamat', 'RT', 'RW', 'Kelurahan', 'Kecamatan', 'Kota', 'JenisTinggal', 'Transportasi', 'NoHPSiswa', 'NamaAyah', 'NIKAyah', 'TahunLahirAyah', 'PendidikanAyah', 'PekerjaanAyah', 'PenghasilanAyah', 'NoHPAyah', 'NamaIbu', 'NIKIbu', 'TahunLahirIbu', 'PendidikanIbu', 'PekerjaanIbu', 'PenghasilanIbu', 'NoHPIbu', 'SekolahAsal', 'NoIjazah', 'AnakKe', 'JmlSaudara', 'TinggiBadan', 'BeratBadan', 'LingkarKepala', 'JarakKM', 'Hobi', 'CitaCita', 'Status', 'RFID_UID', 'Presensi', 'TahunAngkatan', 'TanggalMasuk', 'Catatan']
+
 export const useAdminStudents = () => {
   const grade = useAdminGrade()
   const supabase = useSupabaseClient()
@@ -372,18 +374,17 @@ export const useAdminStudents = () => {
   }
   const openImportModal = () => { isImportModalOpen.value = true }
   const closeImportModal = () => { isImportModalOpen.value = false }
-  const csvHeaders = ['NIS', 'NISN', 'NIK', 'NoKK', 'Nama', 'Gender', 'Jenjang', 'Kelas', 'Jurusan', 'TempatLahir', 'TanggalLahir', 'Agama', 'Alamat', 'RT', 'RW', 'Kelurahan', 'Kecamatan', 'Kota', 'JenisTinggal', 'Transportasi', 'NoHPSiswa', 'NamaAyah', 'NIKAyah', 'TahunLahirAyah', 'PendidikanAyah', 'PekerjaanAyah', 'PenghasilanAyah', 'NoHPAyah', 'NamaIbu', 'NIKIbu', 'TahunLahirIbu', 'PendidikanIbu', 'PekerjaanIbu', 'PenghasilanIbu', 'NoHPIbu', 'SekolahAsal', 'NoIjazah', 'AnakKe', 'JmlSaudara', 'TinggiBadan', 'BeratBadan', 'LingkarKepala', 'JarakKM', 'Hobi', 'CitaCita', 'Status', 'RFID_UID', 'Presensi', 'TahunAngkatan']
   const saveCsv = (content: string, filename: string) => {
     const url = URL.createObjectURL(new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' }))
     const link = document.createElement('a')
     link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url)
   }
-  const quote = (value: unknown) => '"' + String(value ?? '').replaceAll('"', '""') + '"'
+  const quote = (value: unknown) => '"' + String(value ?? '').replace(/\r\n|\n|\r/g, ' ').replaceAll('"', '""') + '"'
   const downloadTemplate = (targetGrade?: 'SMP' | 'SMK') => {
     const level = targetGrade ?? grade.value
     const cls = classes.value.find(item => item.grade === level)
-    const sample = ['0000001', '0000000001', '', '', 'SISWA CONTOH', 'L', level, cls?.name ?? 'NAMA KELAS SESUAI SISTEM', cls?.major ?? '', 'BEKASI', '2012-01-01', 'Islam', 'Alamat contoh', '', '', '', '', 'Kab. Bekasi', 'Bersama orang tua', '', '', 'AYAH CONTOH', '', '', '', '', '', '', 'IBU CONTOH', '', '', '', '', '', '', 'SEKOLAH CONTOH', '', '', '', '', '', '', '', '', '', 'Aktif', '', '100', String(new Date().getFullYear())]
-    saveCsv(csvHeaders.join(',') + '\n' + sample.map(quote).join(','), 'template-import-siswa-' + level.toLowerCase() + '.csv')
+    const sample = ['0000001', '0000000001', '', '', 'SISWA CONTOH', 'L', level, cls?.name ?? 'NAMA KELAS SESUAI SISTEM', cls?.major ?? '', 'BEKASI', '2012-01-01', 'Islam', 'Alamat contoh', '', '', '', '', 'Kab. Bekasi', 'Bersama orang tua', '', '', 'AYAH CONTOH', '', '', '', '', '', '', 'IBU CONTOH', '', '', '', '', '', '', 'SEKOLAH CONTOH', '', '', '', '', '', '', '', '', '', 'Aktif', '', '100', String(new Date().getFullYear()), '', '']
+    saveCsv(STUDENT_CSV_HEADERS.join(',') + '\n' + sample.map(quote).join(','), 'template-import-siswa-' + level.toLowerCase() + '.csv')
   }
   const exportStudentsCsv = (targetGrade?: 'SMP' | 'SMK') => {
     const level = targetGrade ?? grade.value
@@ -395,9 +396,9 @@ export const useAdminStudents = () => {
       item.motherName, item.motherNik, item.motherBirthYear, item.motherEducation, item.motherJob,
       item.motherIncome, item.motherPhone, item.prevSchool, item.prevDiplomaNo, item.birthOrder,
       item.siblingsCount, item.height, item.weight, item.headCircumference, item.distanceKm, item.hobby,
-      item.ambition, item.status, item.rfidUid, item.attendancePct, item.entryYear
+      item.ambition, item.status, item.rfidUid, item.attendancePct, item.entryYear, item.entryDate, item.notes
     ].map(quote).join(','))
-    saveCsv([csvHeaders.join(','), ...rows].join('\n'), 'data-induk-siswa-' + level.toLowerCase() + '-' + new Date().toISOString().slice(0, 10) + '.csv')
+    saveCsv([STUDENT_CSV_HEADERS.join(','), ...rows].join('\n'), 'data-induk-siswa-' + level.toLowerCase() + '-' + new Date().toISOString().slice(0, 10) + '.csv')
   }
 
   onMounted(load)

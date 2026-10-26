@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
-import type { StudentItem } from '~/composables/useAdminStudents'
+import { STUDENT_CSV_HEADERS, type StudentItem } from '~/composables/useAdminStudents'
 
 const props = defineProps<{
   isOpen: boolean
@@ -21,6 +21,15 @@ const invalidCount = ref(0)
 const invalidRows = ref<string[]>([])
 const errorMessage = ref('')
 const importMode = ref<'append' | 'replace'>('append')
+const requiredCsvHeaders = STUDENT_CSV_HEADERS.filter(header => ['NIS', 'NISN', 'Nama', 'Gender', 'Jenjang', 'Kelas'].includes(header))
+const headerAliases: Record<string, string[]> = {
+  NIS: ['nis', 'nomor induk'],
+  NISN: ['nisn', 'no nisn'],
+  Nama: ['nama', 'nama lengkap', 'name', 'nama siswa'],
+  Gender: ['gender', 'jk', 'jenis kelamin'],
+  Jenjang: ['jenjang'],
+  Kelas: ['kelas', 'rombel', 'kelas / rombel']
+}
 
 watch(
   () => props.isOpen,
@@ -58,7 +67,7 @@ const handleDownloadTemplate = () => {
 const parseCSV = (text: string) => {
   let cleanText = text.replace(/^\uFEFF/, '').trim()
   const lines = cleanText.split(/\r\n|\n|\r/)
-  if (lines.length < 2) return []
+  if (lines.length < 2) return { headers: [], rows: [] }
 
   const parseLine = (line: string): string[] => {
     const result: string[] = []
@@ -96,7 +105,14 @@ const parseCSV = (text: string) => {
     })
     rows.push(rowObj)
   }
-  return rows
+  return { headers, rows }
+}
+
+const hasHeader = (headers: string[], aliases: string[]) => aliases.some(alias => headers.includes(alias))
+const isValidDate = (value: string) => {
+  if (!value) return true
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  return new Date(value + 'T00:00:00').toISOString().slice(0, 10) === value
 }
 
 const handleFileChange = (e: Event) => {
@@ -114,8 +130,15 @@ const handleFileChange = (e: Event) => {
   reader.onload = (evt) => {
     try {
       const content = evt.target?.result as string
-      const rawRows = parseCSV(content)
+      const parsed = parseCSV(content)
+      const rawRows = parsed.rows
       parsedRows.value = rawRows
+
+      const missingHeaders = requiredCsvHeaders.filter(header => !hasHeader(parsed.headers, headerAliases[header]))
+      if (missingHeaders.length) {
+        errorMessage.value = 'Format CSV tidak sesuai. Kolom wajib belum ada: ' + missingHeaders.join(', ') + '. Gunakan template aplikasi.'
+        return
+      }
 
       if (rawRows.length === 0) {
         errorMessage.value = 'File CSV kosong atau tidak memiliki baris data.'
@@ -128,7 +151,8 @@ const handleFileChange = (e: Event) => {
         const name = r['nama'] || r['nama lengkap'] || r['name'] || r['nama siswa'] || ''
         const nisn = r['nisn'] || r['no nisn'] || ''
         const nis = r['nis'] || r['nomor induk'] || ''
-        const rawGender = (r['gender'] || r['jk'] || r['jenis kelamin'] || 'L').toUpperCase()
+        const sourceGrade = String(r['jenjang'] || '').trim().toUpperCase()
+        const rawGender = String(r['gender'] || r['jk'] || r['jenis kelamin'] || '').trim().toUpperCase()
         const gender: 'L' | 'P' = rawGender === 'PRIA' || rawGender.startsWith('L') ? 'L' : rawGender === 'WANITA' || rawGender.startsWith('P') || rawGender.startsWith('W') ? 'P' : 'L'
         const className = r['kelas'] || r['rombel'] || r['kelas / rombel'] || ''
         const normalizedNisn = nisn.replace(/\D/g, '')
@@ -136,7 +160,13 @@ const handleFileChange = (e: Event) => {
         if (!name.trim()) reasons.push('nama kosong')
         if (!nis.trim()) reasons.push('NIS kosong')
         if (!/^\d{10}$/.test(normalizedNisn)) reasons.push('NISN harus tepat 10 digit')
+        if (sourceGrade !== props.grade) reasons.push('jenjang harus ' + props.grade)
         if (!className.trim()) reasons.push('kelas kosong')
+        if (!['L', 'P', 'PRIA', 'WANITA', 'LAKI-LAKI', 'LAKI LAKI', 'PEREMPUAN'].includes(rawGender)) reasons.push('gender harus L atau P')
+        if (!isValidDate(r['tanggallahir'] || r['tanggal lahir'] || '')) reasons.push('tanggal lahir harus YYYY-MM-DD')
+        if (!isValidDate(r['tanggalmasuk'] || r['tanggal masuk'] || '')) reasons.push('tanggal masuk harus YYYY-MM-DD')
+        if (r['presensi'] && (!Number.isFinite(Number(r['presensi'])) || Number(r['presensi']) < 0 || Number(r['presensi']) > 100)) reasons.push('presensi harus angka 0 sampai 100')
+        if (r['status'] && !['Aktif', 'Lulus', 'Pindah', 'Nonaktif'].includes(r['status'])) reasons.push('status tidak dikenali')
         if (seenNisn.has(normalizedNisn)) reasons.push('NISN duplikat di dalam berkas')
         if (reasons.length) {
           invalidRows.value.push('Baris ' + (idx + 2) + ': ' + reasons.join(', ') + '.')
@@ -166,20 +196,20 @@ const handleFileChange = (e: Event) => {
           city: r['kota'] || r['kabupaten'] || '',
           livingType: r['jenistinggal'] || r['jenis tinggal'] || '',
           transportation: r['transportasi'] || '',
-          phone: r['nohp'] || r['hp siswa'] || r['telepon'] || '',
+          phone: r['nohpsiswa'] || r['nohp'] || r['hp siswa'] || r['telepon'] || '',
           fatherName: r['namaayah'] || r['nama ayah'] || r['ayah'] || '',
           fatherNik: r['nikayah'] || r['nik ayah'] || '',
           fatherBirthYear: r['tahunlahirayah'] || r['tahun lahir ayah'] || '',
-          fatherEducation: r['pendidikanayah'] || r['pendidikan ayah'] || 'SMA / sederajat',
-          fatherJob: r['pekerjaanayah'] || r['pekerjaan ayah'] || 'Wiraswasta',
-          fatherIncome: r['penghasilanayah'] || r['penghasilan ayah'] || 'Rp1.000.001 – Rp3.000.000',
+          fatherEducation: r['pendidikanayah'] || r['pendidikan ayah'] || '',
+          fatherJob: r['pekerjaanayah'] || r['pekerjaan ayah'] || '',
+          fatherIncome: r['penghasilanayah'] || r['penghasilan ayah'] || '',
           fatherPhone: r['nohpayah'] || r['wa ayah'] || '',
           motherName: r['namaibu'] || r['nama ibu'] || r['ibu'] || '',
           motherNik: r['nikibu'] || r['nik ibu'] || '',
           motherBirthYear: r['tahunlahiribu'] || r['tahun lahir ibu'] || '',
-          motherEducation: r['pendidikanibu'] || r['pendidikan ibu'] || 'SMA / sederajat',
-          motherJob: r['pekerjaanibu'] || r['pekerjaan ibu'] || 'Tidak bekerja',
-          motherIncome: r['penghasilanibu'] || r['penghasilan ibu'] || 'Tidak Berpenghasilan',
+          motherEducation: r['pendidikanibu'] || r['pendidikan ibu'] || '',
+          motherJob: r['pekerjaanibu'] || r['pekerjaan ibu'] || '',
+          motherIncome: r['penghasilanibu'] || r['penghasilan ibu'] || '',
           motherPhone: r['nohpibu'] || r['wa ibu'] || '',
           prevSchool: r['sekolahasal'] || r['sekolah asal'] || r['asal sekolah'] || '',
           prevDiplomaNo: r['noijazah'] || r['nomor seri ijazah'] || '',
@@ -195,7 +225,9 @@ const handleFileChange = (e: Event) => {
           hasRfid: !!(r['rfid_uid'] || r['rfid'] || r['uid']),
           status: (r['status'] === 'Lulus' || r['status'] === 'Pindah' || r['status'] === 'Nonaktif') ? r['status'] : 'Aktif',
           attendancePct: Number(r['presensi'] || r['kehadiran']) || 0,
-          entryYear: r['tahunangkatan'] || r['angkatan'] || ''
+          entryYear: r['tahunangkatan'] || r['angkatan'] || '',
+          entryDate: r['tanggalmasuk'] || r['tanggal masuk'] || '',
+          notes: r['catatan'] || ''
         }
         valid.push(student)
       })
