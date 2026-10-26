@@ -33,4 +33,5 @@ supabase/migrations/*
 !supabase/migrations/0008_nip_opsional_guru.sql
 !supabase/migrations/0009_agenda_mengajar.sql
 !supabase/migrations/0011_students_profile.sql
+!supabase/migrations/0012_students_nis_per_jenjang.sql
 

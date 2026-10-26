@@ -89,6 +89,9 @@ const mutationErrorMessage = (prefix: string, cause: any) => {
   if (cause?.code === 'PGRST204' || message.includes('schema cache')) {
     return 'Skema Data Siswa di Supabase belum diperbarui. Jalankan migrasi 0011_students_profile.sql, lalu ulangi proses.'
   }
+  if (cause?.code === '23505' && message.includes('students_nis_key')) {
+    return 'Constraint NIS Supabase masih memakai aturan lama. Jalankan migrasi 0012_students_nis_per_jenjang.sql, lalu ulangi impor.'
+  }
   return prefix + message
 }
 
@@ -314,8 +317,11 @@ export const useAdminStudents = () => {
     error.value = null
     const failedRows: string[] = []
     const payloads: Record<string, any>[] = []
-    const seen = new Set<string>()
-    const existing = new Set(students.value.filter(item => item.level === grade.value).map(item => item.nisn))
+    const seenNisn = new Set<string>()
+    const seenNis = new Set<string>()
+    const existingStudents = students.value.filter(item => item.level === grade.value)
+    const existingNisn = new Set(existingStudents.map(item => clean(item.nisn)))
+    const existingNis = new Map(existingStudents.map(item => [clean(item.nis), clean(item.nisn)]))
     const missingClasses = Array.from(new Set(
       items
         .map(item => clean(item.className))
@@ -331,8 +337,15 @@ export const useAdminStudents = () => {
         failedRows.push(label + ': NISN wajib tepat 10 digit.')
         continue
       }
-      if (seen.has(item.nisn) || (mode === 'append' && existing.has(item.nisn))) {
+      const normalizedNis = clean(item.nis)
+      const normalizedNisn = clean(item.nisn)
+      if (seenNisn.has(normalizedNisn) || (mode === 'append' && existingNisn.has(normalizedNisn))) {
         failedRows.push(label + ': NISN ' + item.nisn + ' duplikat pada jenjang ' + grade.value + '.')
+        continue
+      }
+      const nisOwner = existingNis.get(normalizedNis)
+      if (seenNis.has(normalizedNis) || (nisOwner && (mode === 'append' || nisOwner !== normalizedNisn))) {
+        failedRows.push(label + ': NIS ' + item.nis + ' sudah digunakan pada jenjang ' + grade.value + '.')
         continue
       }
       const checked = validate({ ...item, level: grade.value })
@@ -340,7 +353,8 @@ export const useAdminStudents = () => {
         failedRows.push(label + ': ' + checked.message)
         continue
       }
-      seen.add(item.nisn)
+      seenNisn.add(normalizedNisn)
+      seenNis.add(normalizedNis)
       payloads.push(toPayload({ ...item, level: grade.value }, checked.cls))
     }
     if (!payloads.length) {
