@@ -184,7 +184,7 @@ const onEditFromDetail = (s: StudentItem) => {
           Daftar Induk Siswa &mdash; {{ studentsStore.grade.value }}
         </h3>
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
-          {{ studentsStore.filteredStudents.value.length }} siswa
+          {{ studentsStore.totalStudents.value }} siswa
         </span>
       </div>
 
@@ -211,7 +211,7 @@ const onEditFromDetail = (s: StudentItem) => {
               </td>
             </tr>
             <tr v-for="(s, idx) in studentsStore.filteredStudents.value" :key="s.id" class="hover:bg-blue-50/40 transition">
-              <td class="px-4 py-3.5 text-xs text-slate-400 font-mono text-center">{{ idx + 1 }}</td>
+              <td class="px-4 py-3.5 text-xs text-slate-400 font-mono text-center">{{ studentsStore.pageStart.value + idx }}</td>
               <td class="px-4 py-3.5">
                 <div class="flex items-center gap-3">
                   <span
@@ -281,9 +281,23 @@ const onEditFromDetail = (s: StudentItem) => {
           </tbody>
         </table>
       </div>
-      <div class="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50">
-        <span><b>{{ studentsStore.filteredStudents.value.length }}</b> dari total {{ studentsStore.students.value.length }} siswa ditampilkan</span>
-        <span class="font-mono text-[11px] text-slate-400">Tahun Ajaran 2026/2027</span>
+      <div class="px-5 py-3.5 border-t border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 bg-slate-50/50">
+        <div class="flex flex-wrap items-center gap-2">
+          <span>Menampilkan <b>{{ studentsStore.pageStart.value }}–{{ studentsStore.pageEnd.value }}</b> dari <b>{{ studentsStore.totalStudents.value }}</b> siswa</span>
+          <label class="flex items-center gap-2">
+            <span>Per halaman</span>
+            <select v-model.number="studentsStore.pageSize.value" class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+          </label>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="h-8 rounded-lg border border-slate-200 bg-white px-2.5 font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50" :disabled="studentsStore.page.value === 1" @click="studentsStore.goToPage(studentsStore.page.value - 1)">Sebelumnya</button>
+          <span class="min-w-16 text-center font-semibold text-slate-600">Hal. {{ studentsStore.page.value }}/{{ studentsStore.totalPages.value }}</span>
+          <button type="button" class="h-8 rounded-lg border border-slate-200 bg-white px-2.5 font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50" :disabled="studentsStore.page.value === studentsStore.totalPages.value" @click="studentsStore.goToPage(studentsStore.page.value + 1)">Berikutnya</button>
+        </div>
       </div>
     </article>
 

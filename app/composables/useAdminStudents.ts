@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 
 export interface StudentItem {
@@ -113,6 +113,10 @@ export const useAdminStudents = () => {
   const selectedGender = ref('all')
   const selectedStatus = ref('all')
   const selectedRfid = ref('all')
+  const page = ref(1)
+  const pageSize = ref<20 | 50 | 100>(20)
+  const totalStudents = ref(0)
+  const summary = ref({ total: 0, boys: 0, girls: 0, activeCount: 0, rfidCount: 0 })
   const detailModalStudent = ref<StudentItem | null>(null)
   const isFormModalOpen = ref(false)
   const formModalMode = ref<'add' | 'edit'>('add')
@@ -181,55 +185,113 @@ export const useAdminStudents = () => {
     notes: textOrNull(data.notes), active: (data.status ?? 'Aktif') === 'Aktif'
   })
 
+  let requestVersion = 0
   const load = async () => {
-    if (loading.value) return
+    const version = ++requestVersion
     loading.value = true
     error.value = null
     try {
-      const [classResult, studentResult] = await Promise.all([
-        supabase.from('classes').select('id, name, grade, major, academic_year').eq('active', true)
-          .order('academic_year', { ascending: false }).order('name'),
-        supabase.from('students').select('*, rfid_cards(uid, active)').order('name')
-      ])
+      const classResult = await supabase.from('classes').select('id, name, grade, major, academic_year').eq('active', true)
+        .order('academic_year', { ascending: false }).order('name')
       if (classResult.error) throw classResult.error
-      if (studentResult.error) throw studentResult.error
       classes.value = (classResult.data ?? []).map((row: any) => ({
         id: row.id, name: row.name, grade: row.grade, major: row.major ?? ''
       }))
+      let rfidIds: string[] | null = null
+      if (selectedRfid.value !== 'all') {
+        const rfidResult = await supabase.from('rfid_cards').select('student_id').eq('active', true).not('student_id', 'is', null)
+        if (rfidResult.error) throw rfidResult.error
+        rfidIds = (rfidResult.data ?? []).map((item: any) => item.student_id).filter(Boolean)
+      }
+      let query: any = supabase.from('students').select('*, rfid_cards(uid, active)', { count: 'exact' })
+        .eq('grade', grade.value).order('name')
+      const keyword = clean(searchQuery.value).replace(/[,%_()]/g, ' ')
+      if (keyword) {
+        const pattern = '*' + keyword + '*'
+        query = query.or(['name', 'nis', 'nisn', 'nik', 'village', 'father_name', 'mother_name']
+          .map(column => column + '.ilike.' + pattern).join(','))
+      }
+      if (selectedClass.value !== 'all') {
+        const cls = findClass(selectedClass.value, grade.value)
+        if (!cls) {
+          students.value = []; totalStudents.value = 0
+          return
+        }
+        query = query.eq('class_id', cls.id)
+      }
+      if (selectedMajor.value !== 'all') {
+        const classIds = classes.value.filter(item => item.grade === grade.value && item.major === selectedMajor.value).map(item => item.id)
+        if (!classIds.length) {
+          students.value = []; totalStudents.value = 0
+          return
+        }
+        query = query.in('class_id', classIds)
+      }
+      if (selectedGender.value !== 'all') query = query.eq('gender', selectedGender.value)
+      if (selectedStatus.value !== 'all') query = query.eq('student_status', selectedStatus.value)
+      if (rfidIds) {
+        if (selectedRfid.value === 'yes') {
+          if (!rfidIds.length) {
+            students.value = []; totalStudents.value = 0
+            return
+          }
+          query = query.in('id', rfidIds)
+        } else if (rfidIds.length) {
+          query = query.not('id', 'in', '(' + rfidIds.join(',') + ')')
+        }
+      }
+      const [studentResult, totalResult, boysResult, girlsResult, activeResult] = await Promise.all([
+        query.range((page.value - 1) * pageSize.value, page.value * pageSize.value - 1),
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value),
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value).eq('gender', 'L'),
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value).eq('gender', 'P'),
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value).eq('student_status', 'Aktif')
+      ])
+      if (studentResult.error || totalResult.error || boysResult.error || girlsResult.error || activeResult.error) {
+        throw studentResult.error || totalResult.error || boysResult.error || girlsResult.error || activeResult.error
+      }
+      const activeRfidResult = rfidIds === null
+        ? await supabase.from('rfid_cards').select('student_id').eq('active', true).not('student_id', 'is', null)
+        : { data: rfidIds, error: null }
+      if (activeRfidResult.error) throw activeRfidResult.error
+      const activeRfidIds = (activeRfidResult.data ?? []).map((item: any) => typeof item === 'string' ? item : item.student_id).filter(Boolean)
+      const rfidCountResult = activeRfidIds.length
+        ? await supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value).eq('student_status', 'Aktif').in('id', activeRfidIds)
+        : { count: 0, error: null }
+      if (rfidCountResult.error) throw rfidCountResult.error
+      if (version !== requestVersion) return
       students.value = (studentResult.data ?? []).map(mapRow)
+      totalStudents.value = studentResult.count ?? 0
+      summary.value = {
+        total: totalResult.count ?? 0, boys: boysResult.count ?? 0, girls: girlsResult.count ?? 0,
+        activeCount: activeResult.count ?? 0, rfidCount: rfidCountResult.count ?? 0
+      }
     } catch (cause: any) {
+      if (version !== requestVersion) return
       students.value = []
       classes.value = []
+      totalStudents.value = 0
+      summary.value = { total: 0, boys: 0, girls: 0, activeCount: 0, rfidCount: 0 }
       error.value = 'Data siswa gagal dimuat dari Supabase: ' + (cause?.message ?? 'kesalahan tidak diketahui')
     } finally {
-      loading.value = false
+      if (version === requestVersion) loading.value = false
     }
   }
 
-  const currentGradeStudents = computed(() => students.value.filter(item => item.level === grade.value))
+  const currentGradeStudents = computed(() => students.value)
   const classOptions = computed(() => Array.from(new Set(classes.value.filter(item => item.grade === grade.value).map(item => item.name))))
   const majorOptions = computed(() => grade.value === 'SMP' ? [] : Array.from(new Set(classes.value.filter(item => item.grade === 'SMK' && item.major).map(item => item.major))))
-  const filteredStudents = computed(() => currentGradeStudents.value.filter((item) => {
-    const query = searchQuery.value.trim().toLocaleLowerCase('id-ID')
-    if (query && ![item.name, item.nis, item.nisn, item.nik, item.className, item.village, item.fatherName, item.motherName]
-      .some(value => clean(value).toLocaleLowerCase('id-ID').includes(query))) return false
-    if (selectedClass.value !== 'all' && item.className !== selectedClass.value) return false
-    if (grade.value === 'SMK' && selectedMajor.value !== 'all' && item.major !== selectedMajor.value) return false
-    if (selectedGender.value !== 'all' && item.gender !== selectedGender.value) return false
-    if (selectedStatus.value !== 'all' && item.status !== selectedStatus.value) return false
-    if (selectedRfid.value === 'yes' && !item.hasRfid) return false
-    if (selectedRfid.value === 'no' && item.hasRfid) return false
-    return true
-  }))
+  const filteredStudents = computed(() => students.value)
+  const totalPages = computed(() => Math.max(1, Math.ceil(totalStudents.value / pageSize.value)))
+  const pageStart = computed(() => totalStudents.value ? (page.value - 1) * pageSize.value + 1 : 0)
+  const pageEnd = computed(() => Math.min(page.value * pageSize.value, totalStudents.value))
   const stats = computed(() => {
-    const list = currentGradeStudents.value
-    const active = list.filter(item => item.status === 'Aktif')
-    const rfidCount = active.filter(item => item.hasRfid).length
+    const active = summary.value.activeCount
+    const rfidCount = summary.value.rfidCount
     return {
-      total: list.length, boys: list.filter(item => item.gender === 'L').length,
-      girls: list.filter(item => item.gender === 'P').length, rfidCount,
-      rfidPct: active.length ? Math.round(rfidCount / active.length * 100) : 0,
-      activeCount: active.length, totalClasses: classOptions.value.length
+      total: summary.value.total, boys: summary.value.boys, girls: summary.value.girls, rfidCount,
+      rfidPct: active ? Math.round(rfidCount / active * 100) : 0,
+      activeCount: active, totalClasses: classOptions.value.length
     }
   })
 
@@ -319,9 +381,13 @@ export const useAdminStudents = () => {
     const payloads: Record<string, any>[] = []
     const seenNisn = new Set<string>()
     const seenNis = new Set<string>()
-    const existingStudents = students.value.filter(item => item.level === grade.value)
-    const existingNisn = new Set(existingStudents.map(item => clean(item.nisn)))
-    const existingNis = new Map(existingStudents.map(item => [clean(item.nis), clean(item.nisn)]))
+    const existingResult = await supabase.from('students').select('id, nis, nisn').eq('grade', grade.value)
+    if (existingResult.error) {
+      return { success: false, message: 'Data siswa yang sudah ada gagal diperiksa: ' + existingResult.error.message }
+    }
+    const existingStudents = existingResult.data ?? []
+    const existingNisn = new Set(existingStudents.map((item: any) => clean(item.nisn)))
+    const existingNis = new Map(existingStudents.map((item: any) => [clean(item.nis), clean(item.nisn)]))
     const missingClasses = Array.from(new Set(
       items
         .map(item => clean(item.className))
@@ -375,7 +441,7 @@ export const useAdminStudents = () => {
     }
     if (mode === 'replace') {
       const retained = payloads.map(item => item.nisn)
-      const staleIds = students.value.filter(item => item.level === grade.value && !retained.includes(item.nisn)).map(item => item.id)
+      const staleIds = existingStudents.filter((item: any) => !retained.includes(item.nisn)).map((item: any) => item.id)
       if (staleIds.length) {
         const staleResult = await supabase.from('students').update({ active: false, student_status: 'Nonaktif' }).in('id', staleIds)
         if (staleResult.error) failedRows.push('Data lama gagal dinonaktifkan: ' + staleResult.error.message)
@@ -459,9 +525,14 @@ export const useAdminStudents = () => {
     const sample = ['0000001', '0000000001', '', '', 'SISWA CONTOH', 'L', level, cls?.name ?? 'NAMA KELAS SESUAI SISTEM', cls?.major ?? '', 'BEKASI', '2012-01-01', 'Islam', 'Alamat contoh', '', '', '', '', 'Kab. Bekasi', 'Bersama orang tua', '', '', 'AYAH CONTOH', '', '', '', '', '', '', 'IBU CONTOH', '', '', '', '', '', '', 'SEKOLAH CONTOH', '', '', '', '', '', '', '', '', '', 'Aktif', '', '100', String(new Date().getFullYear()), '', '']
     saveCsv(STUDENT_CSV_HEADERS.join(',') + '\n' + sample.map(quote).join(','), 'template-import-siswa-' + level.toLowerCase() + '.csv')
   }
-  const exportStudentsCsv = (targetGrade?: 'SMP' | 'SMK') => {
+  const exportStudentsCsv = async (targetGrade?: 'SMP' | 'SMK') => {
     const level = targetGrade ?? grade.value
-    const rows = students.value.filter(item => item.level === level).map(item => [
+    const result = await supabase.from('students').select('*, rfid_cards(uid, active)').eq('grade', level).order('name')
+    if (result.error) {
+      error.value = 'Ekspor data siswa gagal: ' + result.error.message
+      return
+    }
+    const rows = (result.data ?? []).map(mapRow).map(item => [
       item.nis, item.nisn, item.nik, item.noKk, item.name, item.gender, item.level, item.className, item.major,
       item.birthPlace, item.birthDate, item.religion, item.address, item.rt, item.rw, item.village, item.district,
       item.city, item.livingType, item.transportation, item.phone, item.fatherName, item.fatherNik,
@@ -474,11 +545,36 @@ export const useAdminStudents = () => {
     saveCsv([STUDENT_CSV_HEADERS.join(','), ...rows].join('\n'), 'data-induk-siswa-' + level.toLowerCase() + '-' + new Date().toISOString().slice(0, 10) + '.csv')
   }
 
+  const goToPage = (target: number) => {
+    const next = Math.min(Math.max(1, target), totalPages.value)
+    if (next === page.value) return
+    page.value = next
+    void load()
+  }
+  let filterTimer: ReturnType<typeof setTimeout> | null = null
+  const queueLoad = (delay = 0) => {
+    if (filterTimer) clearTimeout(filterTimer)
+    filterTimer = setTimeout(() => { void load() }, delay)
+  }
+  watch([grade, selectedClass, selectedMajor, selectedGender, selectedStatus, selectedRfid], () => {
+    page.value = 1
+    queueLoad()
+  })
+  watch(searchQuery, () => {
+    page.value = 1
+    queueLoad(250)
+  })
+  watch(pageSize, () => {
+    page.value = 1
+    queueLoad()
+  })
+
   onMounted(load)
   return {
     grade, students, currentGradeStudents, filteredStudents, classOptions, majorOptions, searchQuery,
     selectedClass, selectedMajor, selectedGender, selectedStatus, selectedRfid, detailModalStudent,
     isFormModalOpen, isImportModalOpen, formModalMode, formStudent, deleteConfirmStudent, stats,
+    page, pageSize, totalStudents, totalPages, pageStart, pageEnd, goToPage,
     loading, error, operationMessage, creatingClasses, load, viewDetail, closeDetail, openAddModal, openEditModal,
     closeFormModal, openImportModal, closeImportModal, importStudents, downloadTemplate,
     exportStudentsCsv, createRecommendedClasses, saveStudent, confirmDelete, cancelDelete, executeDelete, updateStudentClass,

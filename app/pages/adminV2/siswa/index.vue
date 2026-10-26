@@ -399,7 +399,7 @@ onMounted(() => {
             Daftar Induk Siswa &mdash; {{ studentsStore.grade.value }}
           </h3>
           <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#E8F0FE] text-[#12459B] border border-[#D0D5DD]">
-            {{ studentsStore.filteredStudents.value.length }} siswa
+            {{ studentsStore.totalStudents.value }} siswa
           </span>
         </div>
 
@@ -430,7 +430,7 @@ onMounted(() => {
                 :key="s.id"
                 class="hover:bg-[#F8FAFC] transition"
               >
-                <td class="px-4 py-3.5 text-xs text-[#94A3B8] font-mono text-center">{{ idx + 1 }}</td>
+                <td class="px-4 py-3.5 text-xs text-[#94A3B8] font-mono text-center">{{ studentsStore.pageStart.value + idx }}</td>
                 <td class="px-4 py-3.5">
                   <div class="flex items-center gap-3">
                     <span
@@ -541,9 +541,29 @@ onMounted(() => {
             </tbody>
           </table>
         </div>
-        <div class="px-5 py-3.5 border-t border-[#F1F5F9] flex items-center justify-between text-xs text-[#64748B] bg-[#F8FAFC]">
-          <span><b>{{ studentsStore.filteredStudents.value.length }}</b> dari total {{ studentsStore.students.value.length }} siswa ditampilkan</span>
-          <span class="font-mono text-[11px] text-[#94A3B8]">Tahun Ajaran 2026/2027</span>
+        <div class="px-5 py-3.5 border-t border-[#F1F5F9] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-[#64748B] bg-[#F8FAFC]">
+          <div class="flex flex-wrap items-center gap-2">
+            <span>Menampilkan <b>{{ studentsStore.pageStart.value }}–{{ studentsStore.pageEnd.value }}</b> dari <b>{{ studentsStore.totalStudents.value }}</b> siswa</span>
+            <label class="flex items-center gap-2">
+              <span class="text-[#64748B]">Per halaman</span>
+              <select v-model.number="studentsStore.pageSize.value" class="h-8 rounded-lg border border-[#D0D5DD] bg-white px-2 text-xs font-semibold text-[#344054] focus:outline-none focus:ring-2 focus:ring-[#1B5FD9]/20">
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+            </label>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" class="inline-flex h-8 items-center gap-1 rounded-lg border border-[#D0D5DD] bg-white px-2.5 font-semibold text-[#344054] transition hover:bg-[#F2F4F7] disabled:cursor-not-allowed disabled:opacity-50" :disabled="studentsStore.page.value === 1" @click="studentsStore.goToPage(studentsStore.page.value - 1)">
+              <AdminV2Icon name="arrow-left" :size="13" />
+              Sebelumnya
+            </button>
+            <span class="min-w-16 text-center font-semibold text-[#475467]">Hal. {{ studentsStore.page.value }}/{{ studentsStore.totalPages.value }}</span>
+            <button type="button" class="inline-flex h-8 items-center gap-1 rounded-lg border border-[#D0D5DD] bg-white px-2.5 font-semibold text-[#344054] transition hover:bg-[#F2F4F7] disabled:cursor-not-allowed disabled:opacity-50" :disabled="studentsStore.page.value === studentsStore.totalPages.value" @click="studentsStore.goToPage(studentsStore.page.value + 1)">
+              Berikutnya
+              <AdminV2Icon name="arrow-right" :size="13" />
+            </button>
+          </div>
         </div>
       </div>
     </main>
