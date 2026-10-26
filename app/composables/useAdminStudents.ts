@@ -303,6 +303,16 @@ export const useAdminStudents = () => {
     const payloads: Record<string, any>[] = []
     const seen = new Set<string>()
     const existing = new Set(students.value.filter(item => item.level === grade.value).map(item => item.nisn))
+    const missingClasses = Array.from(new Set(
+      items
+        .map(item => clean(item.className))
+        .filter(name => name && !findClass(name, grade.value))
+    ))
+    if (missingClasses.length) {
+      const message = 'Impor dibatalkan. ' + missingClasses.length + ' kelas belum terdaftar pada Manajemen Kelas: '
+        + missingClasses.join(', ') + '. Buat rombel tersebut terlebih dahulu, lalu ulangi impor.'
+      return { success: false, message, successCount: 0, failedRows: missingClasses }
+    }
     for (const [index, item] of items.entries()) {
       const label = 'Baris ' + (index + 2) + (item.name ? ' (' + item.name + ')' : '')
       if (!/^\d{10}$/.test(clean(item.nisn))) {
@@ -322,8 +332,8 @@ export const useAdminStudents = () => {
       payloads.push(toPayload({ ...item, level: grade.value }, checked.cls))
     }
     if (!payloads.length) {
-      error.value = failedRows.join(' ') || 'Tidak ada baris valid untuk diimpor.'
-      return { success: false, message: error.value, successCount: 0, failedRows }
+      const message = failedRows.join(' ') || 'Tidak ada baris valid untuk diimpor.'
+      return { success: false, message, successCount: 0, failedRows }
     }
     const rfidByNisn = new Map(items.map(item => [item.nisn, item.rfidUid]))
     const result = mode === 'replace'
