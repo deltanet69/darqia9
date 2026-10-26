@@ -126,7 +126,7 @@ const normalizeDate = (value: string) => {
 
 const normalizeAttendance = (value: string) => {
   const attendanceValue = value.trim()
-  if (!attendanceValue) return 0
+  if (!attendanceValue || attendanceValue.toUpperCase() === 'RFID') return 0
   const attendance = Number(attendanceValue.replace('%', '').replace(',', '.'))
   return Number.isFinite(attendance) && attendance >= 0 && attendance <= 100 ? attendance : null
 }
