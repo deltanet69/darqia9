@@ -11,7 +11,7 @@ import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import StudentDetailModal from '~/components/admin/siswa/StudentDetailModal.vue'
 import StudentFormModal from '~/components/admin/siswa/StudentFormModal.vue'
 import StudentImportModal from '~/components/admin/siswa/StudentImportModal.vue'
-import { useAdminStudents, type StudentItem } from '~/composables/useAdminStudents'
+import { useAdminStudents, type RecommendedStudentClass, type StudentItem } from '~/composables/useAdminStudents'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 
 definePageMeta({
@@ -88,6 +88,11 @@ const handleSaveStudent = async (data: Partial<StudentItem>) => {
 
 const handleImportStudents = async (payload: { students: StudentItem[]; mode: 'append' | 'replace' }) => {
   const result = await studentsStore.importStudents(payload.students, payload.mode)
+  triggerToast(result.message)
+}
+
+const handleCreateRecommendedClasses = async (classes: RecommendedStudentClass[]) => {
+  const result = await studentsStore.createRecommendedClasses(classes)
   triggerToast(result.message)
 }
 
@@ -566,8 +571,10 @@ onMounted(() => {
       :is-open="studentsStore.isImportModalOpen.value"
       :grade="studentsStore.grade.value"
       :available-classes="studentsStore.classOptions.value"
+      :is-creating-classes="studentsStore.creatingClasses.value"
       @close="studentsStore.closeImportModal"
       @import="handleImportStudents"
+      @create-classes="handleCreateRecommendedClasses"
       @download-template="studentsStore.downloadTemplate()"
     />
 

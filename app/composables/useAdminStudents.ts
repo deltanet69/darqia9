@@ -72,6 +72,11 @@ export interface StudentMutationResult {
   failedRows?: string[]
 }
 
+export interface RecommendedStudentClass {
+  name: string
+  major?: string
+}
+
 const clean = (value: unknown) => String(value ?? '').trim()
 const textOrNull = (value: unknown) => clean(value) || null
 const numberOrNull = (value: unknown) => {
@@ -90,6 +95,7 @@ export const useAdminStudents = () => {
   const loading = useState('admin-students-loading', () => false)
   const error = useState<string | null>('admin-students-error', () => null)
   const operationMessage = useState<string | null>('admin-students-operation-message', () => null)
+  const creatingClasses = ref(false)
 
   const searchQuery = ref('')
   const selectedClass = ref('all')
@@ -360,6 +366,43 @@ export const useAdminStudents = () => {
     return { success: true, message: operationMessage.value, successCount: payloads.length, failedRows }
   }
 
+  const createRecommendedClasses = async (recommendations: RecommendedStudentClass[]): Promise<StudentMutationResult> => {
+    if (creatingClasses.value) return { success: false, message: 'Pembuatan kelas sedang diproses.' }
+    const uniqueClasses = Array.from(new Map(
+      recommendations
+        .map(item => ({ name: clean(item.name), major: clean(item.major) }))
+        .filter(item => item.name)
+        .map(item => [item.name.toLocaleLowerCase('id-ID'), item])
+    ).values())
+    if (!uniqueClasses.length) return { success: false, message: 'Tidak ada rekomendasi kelas yang dapat dibuat.' }
+
+    creatingClasses.value = true
+    try {
+      const payloads = uniqueClasses.map(item => ({
+        name: item.name,
+        grade: grade.value,
+        major: item.major || null,
+        academic_year: '2026/2027',
+        active: true,
+        updated_at: new Date().toISOString()
+      }))
+      const result = await supabase
+        .from('classes')
+        .upsert(payloads, { onConflict: 'name,grade,academic_year' })
+        .select('id')
+      if (result.error) {
+        return { success: false, message: 'Kelas rekomendasi gagal dibuat: ' + result.error.message }
+      }
+      await load()
+      operationMessage.value = uniqueClasses.length + ' kelas rekomendasi berhasil dibuat. Data siswa siap diimpor.'
+      return { success: true, message: operationMessage.value, successCount: uniqueClasses.length }
+    } catch (cause: any) {
+      return { success: false, message: 'Kelas rekomendasi gagal dibuat: ' + (cause?.message ?? 'koneksi bermasalah') }
+    } finally {
+      creatingClasses.value = false
+    }
+  }
+
   const updateStudentClass = async (studentId: string, targetClassName: string): Promise<StudentMutationResult> => {
     const student = students.value.find(item => item.id === studentId)
     if (!student) return { success: false, message: 'Siswa tidak ditemukan.' }
@@ -415,9 +458,9 @@ export const useAdminStudents = () => {
     grade, students, currentGradeStudents, filteredStudents, classOptions, majorOptions, searchQuery,
     selectedClass, selectedMajor, selectedGender, selectedStatus, selectedRfid, detailModalStudent,
     isFormModalOpen, isImportModalOpen, formModalMode, formStudent, deleteConfirmStudent, stats,
-    loading, error, operationMessage, load, viewDetail, closeDetail, openAddModal, openEditModal,
+    loading, error, operationMessage, creatingClasses, load, viewDetail, closeDetail, openAddModal, openEditModal,
     closeFormModal, openImportModal, closeImportModal, importStudents, downloadTemplate,
-    exportStudentsCsv, saveStudent, confirmDelete, cancelDelete, executeDelete, updateStudentClass,
+    exportStudentsCsv, createRecommendedClasses, saveStudent, confirmDelete, cancelDelete, executeDelete, updateStudentClass,
     deactivateStudent, resetFilters
   }
 }

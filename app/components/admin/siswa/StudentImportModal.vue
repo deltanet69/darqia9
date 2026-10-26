@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
-import { STUDENT_CSV_HEADERS, type StudentItem } from '~/composables/useAdminStudents'
+import { STUDENT_CSV_HEADERS, type RecommendedStudentClass, type StudentItem } from '~/composables/useAdminStudents'
 
 const props = defineProps<{
   isOpen: boolean
   grade: 'SMP' | 'SMK'
   availableClasses?: string[]
+  isCreatingClasses?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'import', data: { students: StudentItem[]; mode: 'append' | 'replace' }): void
   (e: 'downloadTemplate'): void
+  (e: 'createClasses', classes: RecommendedStudentClass[]): void
 }>()
 
 const fileName = ref('')
@@ -31,13 +33,14 @@ const headerAliases: Record<string, string[]> = {
   Jenjang: ['jenjang'],
   Kelas: ['kelas', 'rombel', 'kelas / rombel']
 }
-const missingClasses = computed(() => {
+const missingClasses = computed<RecommendedStudentClass[]>(() => {
   const available = new Set((props.availableClasses ?? []).map(name => name.trim().toLocaleLowerCase('id-ID')))
-  return Array.from(new Set(
+  return Array.from(new Map(
     validRows.value
-      .map(item => item.className.trim())
-      .filter(name => name && !available.has(name.toLocaleLowerCase('id-ID')))
-  ))
+      .map(item => ({ name: item.className.trim(), major: item.major?.trim() }))
+      .filter(item => item.name && !available.has(item.name.toLocaleLowerCase('id-ID')))
+      .map(item => [item.name.toLocaleLowerCase('id-ID'), item])
+  ).values())
 })
 
 watch(
@@ -470,8 +473,18 @@ const handleApplyImport = () => {
             aria-live="polite"
           >
             <b class="block text-sm mb-1">{{ missingClasses.length }} kelas belum terdaftar</b>
-            <p class="leading-relaxed">Daftarkan kelas berikut di Manajemen Kelas sebelum mengimpor data siswa.</p>
-            <p class="mt-2 font-semibold leading-relaxed break-words">{{ missingClasses.join(', ') }}</p>
+            <p class="leading-relaxed">Buat daftar kelas rekomendasi dari data CSV agar setiap siswa terhubung ke rombel yang benar.</p>
+            <p class="mt-2 font-semibold leading-relaxed break-words">{{ missingClasses.map(item => item.name).join(', ') }}</p>
+            <p class="mt-2 leading-relaxed">Kelas dibuat untuk Tahun Ajaran 2026/2027 tanpa wali kelas. Wali kelas dapat ditetapkan kemudian melalui Manajemen Kelas.</p>
+            <button
+              class="mt-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-amber-900 px-4 py-2 font-bold text-white transition hover:bg-amber-950 disabled:cursor-wait disabled:opacity-60"
+              type="button"
+              :disabled="isCreatingClasses"
+              @click="$emit('createClasses', missingClasses)"
+            >
+              <AdminIcon name="plus" size="15" />
+              <span>{{ isCreatingClasses ? 'Membuat kelas…' : 'Buat ' + missingClasses.length + ' Kelas Rekomendasi' }}</span>
+            </button>
           </div>
         </div>
 

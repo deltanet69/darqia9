@@ -310,8 +310,10 @@ const onEditFromDetail = (s: StudentItem) => {
       :is-open="studentsStore.isImportModalOpen.value"
       :grade="studentsStore.grade.value"
       :available-classes="studentsStore.classOptions.value"
+      :is-creating-classes="studentsStore.creatingClasses.value"
       @close="studentsStore.closeImportModal"
       @import="studentsStore.importStudents($event.students, $event.mode)"
+      @create-classes="studentsStore.createRecommendedClasses($event)"
       @download-template="studentsStore.downloadTemplate()"
     />
 
