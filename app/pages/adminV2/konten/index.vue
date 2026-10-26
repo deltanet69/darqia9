@@ -23,7 +23,7 @@ const selectModule = async (title: string) => { isMegaOpen.value = false; isMobi
 <template>
   <div class="min-h-screen bg-[#F3F5F9] text-[#101828] font-sans antialiased pb-24 lg:pb-8">
     <div class="sticky top-0 z-50">
-      <AdminV2Header :jenjang="jenjang" :role="role" :groups="GROUPS" :active-group-id="activeMegaGroup?.id" :is-mega-open="isMegaOpen" @update:jenjang="jenjang = $event" @toggle-mega="group => { activeMegaGroup = group; isMegaOpen = !isMegaOpen }" @open-mobile-menu="isMobileMenuOpen = true" />
+      <AdminV2Header :jenjang="jenjang" :role="role" :groups="GROUPS" current-route="aplikasi" :active-group-id="activeMegaGroup?.id" :is-mega-open="isMegaOpen" @update:jenjang="jenjang = $event" @toggle-mega="group => { activeMegaGroup = group; isMegaOpen = !isMegaOpen }" @open-mobile-menu="isMobileMenuOpen = true" />
       <AdminV2Breadcrumb :items="[{ label: 'Portal Admin', to: '/adminV2' }, { label: 'Aplikasi' }, { label: 'Konten Website' }]" :badge="jenjang === 'smp' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'" :jenjang="jenjang" />
       <AdminV2MegaPanel :open="isMegaOpen" :group="activeMegaGroup" :jenjang="jenjang" @close="isMegaOpen = false" @select-item="selectModule" />
     </div>

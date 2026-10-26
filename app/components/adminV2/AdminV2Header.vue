@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed } from 'vue'
 import AdminV2Icon from './AdminV2Icon.vue'
 
@@ -21,7 +21,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   activeGroupId: null,
   isMegaOpen: false,
-  currentRoute: 'dashboard'
+  currentRoute: ''
 })
 
 const emit = defineEmits<{
@@ -65,7 +65,7 @@ const detectedActiveGroupId = computed(() => {
   if (path.includes('/adminv2/siswa') || (path.includes('/adminv2/absensi') && !path.includes('/absensi-guru')) || path.includes('/adminv2/kelas') || path.includes('/adminv2/mapel') || path.includes('/adminv2/raport')) {
     return 'akademik'
   }
-  if (path.includes('/adminv2/cbt') || path.includes('/adminv2/lms') || path.includes('/adminv2/spmb') || path.includes('/adminv2/perpustakaan')) {
+  if (path.includes('/adminv2/cbt') || path.includes('/adminv2/lms') || path.includes('/adminv2/konten') || path.includes('/adminv2/spmb') || path.includes('/adminv2/perpustakaan')) {
     return 'aplikasi'
   }
   if (path.includes('/adminv2/keuangan') || path.includes('/adminv2/tabungan')) {

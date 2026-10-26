@@ -13,7 +13,6 @@ import AgendaMengajarJournal from '~/components/adminV2/agenda-mengajar/AgendaMe
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import {
   calculateAgendaScore,
-  useAgendaMengajar,
   type AgendaAttendance,
   type AgendaBook,
   type AgendaMode,
@@ -24,6 +23,8 @@ import {
   type AttendanceStatus,
   type ScoreType
 } from '~/composables/useAgendaMengajar'
+// Untuk data real, ganti hanya import ini menjadi: import { useAgendaMengajar } from '~/composables/useAgendaMengajar'
+import { useAgendaMengajarDummy as useAgendaMengajar } from '~/composables/useAgendaMengajarDummy'
 
 definePageMeta({ layout: false, middleware: 'agenda-access' })
 useHead({ title: 'Agenda Mengajar (F.32) — Admin Portal Darqia 9' })

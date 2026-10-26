@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import AdminV2Icon from './AdminV2Icon.vue'
 import { getAdminDestination } from './adminV2Data'
 
@@ -58,6 +58,9 @@ const isPageActive = (title: string) => {
   }
   if (t.includes('cbt') || t.includes('ujian digital')) {
     return p.includes('/adminv2/cbt') && route.query.mode !== 'ujian_harian' && !p.includes('/adminv2/lms')
+  }
+  if (t.includes('konten website')) {
+    return p.includes('/adminv2/konten')
   }
   if (t.includes('manajemen user') || t.includes('manajemen pengguna')) {
     return p.includes('/adminv2/users')
