@@ -309,8 +309,7 @@ export const useAdminStudents = () => {
         .filter(name => name && !findClass(name, grade.value))
     ))
     if (missingClasses.length) {
-      const message = 'Impor dibatalkan. ' + missingClasses.length + ' kelas belum terdaftar pada Manajemen Kelas: '
-        + missingClasses.join(', ') + '. Buat rombel tersebut terlebih dahulu, lalu ulangi impor.'
+      const message = 'Impor dibatalkan: ' + missingClasses.length + ' kelas belum terdaftar di Manajemen Kelas.'
       return { success: false, message, successCount: 0, failedRows: missingClasses }
     }
     for (const [index, item] of items.entries()) {

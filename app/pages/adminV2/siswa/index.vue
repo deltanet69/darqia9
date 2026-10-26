@@ -565,6 +565,7 @@ onMounted(() => {
     <StudentImportModal
       :is-open="studentsStore.isImportModalOpen.value"
       :grade="studentsStore.grade.value"
+      :available-classes="studentsStore.classOptions.value"
       @close="studentsStore.closeImportModal"
       @import="handleImportStudents"
       @download-template="studentsStore.downloadTemplate()"

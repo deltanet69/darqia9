@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import AdminIcon from '~/components/admin/AdminIcon.vue'
 import { STUDENT_CSV_HEADERS, type StudentItem } from '~/composables/useAdminStudents'
 
 const props = defineProps<{
   isOpen: boolean
   grade: 'SMP' | 'SMK'
+  availableClasses?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -30,6 +31,14 @@ const headerAliases: Record<string, string[]> = {
   Jenjang: ['jenjang'],
   Kelas: ['kelas', 'rombel', 'kelas / rombel']
 }
+const missingClasses = computed(() => {
+  const available = new Set((props.availableClasses ?? []).map(name => name.trim().toLocaleLowerCase('id-ID')))
+  return Array.from(new Set(
+    validRows.value
+      .map(item => item.className.trim())
+      .filter(name => name && !available.has(name.toLocaleLowerCase('id-ID')))
+  ))
+})
 
 watch(
   () => props.isOpen,
@@ -273,7 +282,7 @@ const handleFile = (file?: File) => {
 }
 
 const handleApplyImport = () => {
-  if (validRows.value.length === 0) return
+  if (validRows.value.length === 0 || missingClasses.value.length) return
   emit('import', {
     students: validRows.value,
     mode: importMode.value
@@ -454,6 +463,16 @@ const handleApplyImport = () => {
               <li v-for="item in invalidRows" :key="item">{{ item }}</li>
             </ul>
           </div>
+          <div
+            v-if="missingClasses.length"
+            class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-amber-900 text-xs"
+            role="alert"
+            aria-live="polite"
+          >
+            <b class="block text-sm mb-1">{{ missingClasses.length }} kelas belum terdaftar</b>
+            <p class="leading-relaxed">Daftarkan kelas berikut di Manajemen Kelas sebelum mengimpor data siswa.</p>
+            <p class="mt-2 font-semibold leading-relaxed break-words">{{ missingClasses.join(', ') }}</p>
+          </div>
         </div>
 
         <!-- FOOTER STICKY (TOUCH FRIENDLY) -->
@@ -468,7 +487,7 @@ const handleApplyImport = () => {
           <button
             class="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] cursor-pointer"
             type="button"
-            :disabled="validRows.length === 0"
+            :disabled="validRows.length === 0 || missingClasses.length > 0"
             @click="handleApplyImport"
           >
             <AdminIcon name="plus" size="16" />
