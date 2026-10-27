@@ -8,7 +8,6 @@ import AdminV2Popovers from '~/components/adminV2/AdminV2Popovers.vue'
 import AdminV2Toast from '~/components/adminV2/AdminV2Toast.vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
-import StudentDetailModal from '~/components/admin/siswa/StudentDetailModal.vue'
 import StudentFormModal from '~/components/admin/siswa/StudentFormModal.vue'
 import StudentImportModal from '~/components/admin/siswa/StudentImportModal.vue'
 import { useAdminStudents, type RecommendedStudentClass, type StudentItem } from '~/composables/useAdminStudents'
@@ -27,6 +26,7 @@ useHead({
 
 /* ================= STORE & STATE ASLI 1:1 ================= */
 const studentsStore = useAdminStudents()
+const router = useRouter()
 
 // Sinkronisasi jenjang dengan store
 const jenjang = ref<'smp' | 'smk'>(studentsStore.grade.value.toLowerCase() as 'smp' | 'smk')
@@ -48,10 +48,7 @@ const initials = (name: string) => {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 }
 
-const onEditFromDetail = (s: StudentItem) => {
-  studentsStore.closeDetail()
-  studentsStore.openEditModal(s)
-}
+const openStudentDetail = (studentId: string) => router.push('/adminV2/siswa/' + encodeURIComponent(studentId))
 
 // Header popovers & mobile navigation
 const isMegaOpen = ref(false)
@@ -443,7 +440,7 @@ onMounted(() => {
                       <button
                         type="button"
                         class="font-bold text-[#101828] text-left hover:text-[#1B5FD9] transition block text-[13.5px] leading-tight cursor-pointer"
-                        @click="studentsStore.viewDetail(s)"
+                        @click="openStudentDetail(s.id)"
                       >
                         {{ s.name }}
                       </button>
@@ -515,7 +512,7 @@ onMounted(() => {
                       type="button"
                       class="p-1.5 rounded-lg text-[#64748B] hover:text-[#1B5FD9] hover:bg-[#EFF6FF] transition cursor-pointer"
                       title="Detail Siswa"
-                      @click="studentsStore.viewDetail(s)"
+                      @click="openStudentDetail(s.id)"
                     >
                       <AdminV2Icon name="eye" :size="15" />
                     </button>
@@ -567,13 +564,6 @@ onMounted(() => {
         </div>
       </div>
     </main>
-
-    <!-- MODAL DETAIL SISWA (Komponen Resmi 1:1) -->
-    <StudentDetailModal
-      :student="studentsStore.detailModalStudent.value"
-      @close="studentsStore.closeDetail"
-      @edit="onEditFromDetail"
-    />
 
     <!-- MODAL FORM SISWA: TAMBAH / EDIT (Komponen Resmi 1:1) -->
     <StudentFormModal
