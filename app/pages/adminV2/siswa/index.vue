@@ -48,7 +48,15 @@ const initials = (name: string) => {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 }
 
-const openStudentDetail = (studentId: string) => router.push('/adminV2/siswa/' + encodeURIComponent(studentId))
+const studentSlug = (name: string) => name
+  .normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase('id-ID')
+  .trim()
+  .replace(/[^\p{L}\p{N}]+/gu, '-')
+  .replace(/^-+|-+$/g, '')
+
+const openStudentDetail = (name: string) => router.push('/adminV2/siswa/' + encodeURIComponent(studentSlug(name)))
 
 // Header popovers & mobile navigation
 const isMegaOpen = ref(false)
@@ -440,7 +448,7 @@ onMounted(() => {
                       <button
                         type="button"
                         class="font-bold text-[#101828] text-left hover:text-[#1B5FD9] transition block text-[13.5px] leading-tight cursor-pointer"
-                        @click="openStudentDetail(s.id)"
+                        @click="openStudentDetail(s.name)"
                       >
                         {{ s.name }}
                       </button>
@@ -512,7 +520,7 @@ onMounted(() => {
                       type="button"
                       class="p-1.5 rounded-lg text-[#64748B] hover:text-[#1B5FD9] hover:bg-[#EFF6FF] transition cursor-pointer"
                       title="Detail Siswa"
-                      @click="openStudentDetail(s.id)"
+                      @click="openStudentDetail(s.name)"
                     >
                       <AdminV2Icon name="eye" :size="15" />
                     </button>
