@@ -46,9 +46,6 @@ const activeTabLabel = computed(() => {
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-[11px] font-medium text-[#667085] border border-dashed border-[#CDD5DF] bg-white rounded-full py-1.5 px-3">
-          Preview UI · data contoh dari repo
-        </span>
         <span
           class="text-[11px] font-extrabold rounded-full py-1.5 px-3.5"
           :class="grade === 'SMP' ? 'bg-[#E7F6ED] text-[#14532D]' : 'bg-[#E8F0FE] text-[#0A2A5C]'"

@@ -56,12 +56,20 @@ const currentExams = computed(() => props.exams.filter(exam => exam.grade === pr
 const gradeClasses = computed(() => cbtData.classes.value.filter(item => item.grade === props.grade))
 const gradePackages = computed(() => cbtData.bankPackages.value.filter(item => item.grade === props.grade))
 
-const groups = computed(() => gradeClasses.value.map(classItem => ({
+const groups = computed(() => gradeClasses.value.map(classItem => {
+  const scheduled = currentExams.value.filter(exam => exam.classId === classItem.id)
+  return {
   id: classItem.id,
   classroom: classItem.name,
   students: classItem.studentCount,
-  subjects: new Set(gradePackages.value.filter(pkg => pkg.classId === classItem.id).map(pkg => pkg.subjectId)).size
-})))
+  subjects: new Set(scheduled.map(exam => exam.subjectId)).size,
+  exams: scheduled.length,
+  violations: scheduled.reduce((sum, exam) => sum + exam.violations, 0),
+  status: scheduled.some(exam => exam.status === 'Berlangsung') ? 'Berlangsung'
+    : scheduled.some(exam => exam.status === 'Terjadwal') ? 'Terjadwal'
+    : scheduled.length ? 'Selesai' : '-'
+  }
+}))
 
 const classExams = computed(() => {
   if (!selectedClass.value) return currentExams.value
@@ -224,6 +232,8 @@ const removeSchedule = async (exam: ExamItem) => {
           tabindex="0"
           class="bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-[18px] p-5 shadow-xs cursor-pointer transition hover:-translate-y-1 hover:shadow-md flex flex-col justify-between"
           @click="openDetail(g.classroom)"
+          @keydown.enter.prevent="openDetail(g.classroom)"
+          @keydown.space.prevent="openDetail(g.classroom)"
         >
           <div>
             <div class="flex items-center justify-between mb-3.5">
@@ -232,35 +242,31 @@ const removeSchedule = async (exam: ExamItem) => {
               </span>
               <span
                 class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full"
-                :class="currentExams.filter(e => (e.classroom || (e as any).cls) === g.classroom).some(e => e.status === 'Berlangsung')
+                :class="g.status === 'Berlangsung'
                   ? 'bg-[#E7F8F0] text-[#087C52]'
-                  : currentExams.filter(e => (e.classroom || (e as any).cls) === g.classroom).some(e => e.status === 'Terjadwal')
+                  : g.status === 'Terjadwal'
                     ? 'bg-[#FEF4E5] text-[#AD6504]'
                     : 'bg-[#EFF2F7] text-[#344054]'"
               >
-                {{ currentExams.filter(e => (e.classroom || (e as any).cls) === g.classroom).some(e => e.status === 'Berlangsung')
-                  ? 'Berlangsung'
-                  : currentExams.filter(e => (e.classroom || (e as any).cls) === g.classroom).some(e => e.status === 'Terjadwal')
-                    ? 'Terjadwal'
-                    : 'Selesai' }}
+                {{ g.status }}
               </span>
             </div>
 
             <h3 class="text-base font-extrabold text-[#101828]">{{ g.classroom }}</h3>
             <p class="text-xs text-[#667085] mt-0.5 mb-3">
-              {{ g.students }} peserta · {{ g.subjects }} mapel
+              {{ g.students }} siswa aktif · {{ g.exams ? g.subjects : '-' }} mapel ujian
             </p>
 
             <div class="flex items-center gap-4 text-xs mt-3">
               <div>
                 <b class="text-sm font-extrabold text-[#101828] block">
-                  {{ currentExams.filter(e => (e.classroom || (e as any).cls) === g.classroom).length }}
+                  {{ g.exams || '-' }}
                 </b>
                 <span class="text-[10px] text-[#667085]">Jadwal tampil</span>
               </div>
               <div>
                 <b class="text-sm font-extrabold text-[#101828] block">
-                  {{ currentExams.filter(e => (e.classroom || (e as any).cls) === g.classroom).reduce((a, e) => a + (e.violations || (e as any).warn || 0), 0) }}
+                  {{ g.exams ? g.violations : '-' }}
                 </b>
                 <span class="text-[10px] text-[#667085]">Peringatan</span>
               </div>
@@ -365,7 +371,7 @@ const removeSchedule = async (exam: ExamItem) => {
               </tr>
               <tr v-if="!classExams.length">
                 <td colspan="6" class="py-8 text-center text-xs text-[#667085]">
-                  Belum ada ujian contoh di rombel ini.
+                  Belum ada ujian di rombel ini.
                 </td>
               </tr>
             </tbody>

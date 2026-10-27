@@ -5,6 +5,7 @@
   "pemilihanUrutanDanRpc": "LULUS (Supabase tiruan)",
   "pemuatanSiswa": "LULUS (respons server tiruan)",
   "pemisahanSumber": "LULUS (Supabase tiruan)",
+  "monitoringDanDataKosong": "LULUS (Supabase tiruan + SSR)",
   "kompatibilitasLama": "LULUS",
   "formulir": "LULUS",
   "evidence": [

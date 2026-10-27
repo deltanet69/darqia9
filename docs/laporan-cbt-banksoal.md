@@ -2,7 +2,7 @@
 
 Tanggal: 27 Oktober 2026. Acuan yang dibaca lengkap: `AGENTS.md` dan `docs/Admin Portal/CBT/cbt_banksoal.md` (berkas brief tidak berada langsung di `docs/`).
 
-Implementasi lokal tersedia, tanpa dependensi baru dan tanpa push. Penerimaan penuh masih menunggu migrasi Supabase dan pemeriksaan visual browser. Cabang cadangan: `backup/cbt-banksoal-20261027`, dari commit `383dfac`; commit penanda sebelum perubahan: `18c1f48`.
+Implementasi lokal tersedia, tanpa dependensi baru dan tanpa push. Migrasi Supabase sudah terdeteksi setelah diterapkan owner; pengujian transaksi dengan akun staf dan pemeriksaan visual browser masih belum terverifikasi. Cabang cadangan awal: `backup/cbt-banksoal-20261027`, dari commit `383dfac`; commit penanda sebelum perubahan: `18c1f48`. Sebelum tindak lanjut monitoring, seluruh pekerjaan awal disimpan dalam commit `13df833` dan cabang `backup/cbt-monitoring-20261027`.
 
 ## Perubahan
 
@@ -81,7 +81,30 @@ Berkas: [0014_pilihan_soal_ujian.sql](../supabase/migrations/0014_pilihan_soal_u
 | `save_assessment_bank(source, bank_data, question_data)` | RPC security invoker; upsert soal dengan UUID tetap, renumerasi aman untuk unique LMS, pertahankan Isian lama, tolak pembuatan Isian baru lewat RPC, serta rollback jika penghapusan melanggar relasi ujian. |
 | `load_student_exam_questions(student_nis, exam_code, target_grade, source)` | RPC security definer terbatas; validasi siswa aktif, token, rombel/jenjang dan waktu. Mengembalikan subset berurutan atau seluruh bank bila relasi kosong. Hasil tidak memuat `answer_key`, `rubric`, atau `rubric_score`. Dapat dipanggil anon/authenticated dengan NIS + token yang cocok. |
 
-Pemeriksaan Supabase pada sesi ini masih mengembalikan HTTP 404 / `PGRST202` untuk `load_student_exam_questions`. Owner menyatakan akan menerapkan migrasi; konfirmasi selesai belum diterima. Kunci yang tersedia di workspace berjenis `anon`, sehingga migrasi tidak dapat diterapkan dari sesi ini. Penyimpanan bank/jadwal baru memerlukan migrasi ini terlebih dahulu.
+Setelah owner menerapkan migrasi, pemeriksaan `load_student_exam_questions` tidak lagi mengembalikan `PGRST202`. Permintaan dengan NIS/token kosong ditolak HTTP 400 / `P0001`, sesuai validasi fungsi. Pengujian simpan subset dengan akun staf belum dilakukan; kunci workspace berjenis `anon`.
+
+## Tindak lanjut monitoring dan data asli
+
+Temuan tangkapan layar: rombel, jumlah siswa aktif, daftar bank, dan jadwal sudah dibaca dari Supabase. Label `Preview UI · data contoh dari repo`, angka tetap `4 Format`, dan status `Selesai` untuk rombel tanpa ujian masih menyesatkan. Monitoring juga masih mengisi peserta dari `INITIAL_LIVE_STUDENTS` dan menyembunyikan seluruh kerangka jika tidak ada ujian.
+
+Perbaikan:
+
+- Monitoring selalu menampilkan rel sesi, kartu ringkasan, dan tabel aktivitas. Tanpa ujian, nilainya `-`; status tidak menjadi `Berlangsung` atau `Selesai` secara otomatis.
+- Sesi yang tersimpan (terjadwal, berlangsung, atau selesai) dapat dipilih. Peserta diambil dari `exam_assignments` dan `students`. Jika belum ada penugasan, daftar memakai siswa aktif pada rombel ujian. LMS tetap memakai tabel `ujian_harian_*`.
+- Progres hanya menghitung jawaban tidak kosong pada soal ujian terpilih dari `exam_answers`. Jumlah pelanggaran berasal dari `exam_violations`. Aktivitas terakhir berasal dari waktu mulai, simpan jawaban, pengumpulan, atau pelanggaran yang benar-benar tersimpan.
+- Data diperbarui setiap 15 detik saat tab monitoring aktif. Pemuatan, kegagalan koneksi, dan data kosong dibedakan. Mengganti jenjang/sesi membersihkan peserta sesi sebelumnya; pembaruan sesi yang sama mempertahankan drawer rincian yang sedang dibuka.
+- Aksi buka kunci, kirim peringatan, dan paksa submit yang sebelumnya hanya mengubah state simulasi dihapus dari monitoring. Tidak ada pesan sukses palsu atau penulisan simulasi ke data asli.
+- Kartu daftar ujian memakai status/jumlah jadwal/mapel/pelanggaran yang tersimpan. Jumlah siswa aktif diberi label `siswa aktif`, bukan dianggap sebagai peserta suatu ujian yang belum ada.
+- Jumlah format bank dihitung dari jenis soal yang tersimpan, termasuk dukungan baca `Isian` lama; tanpa soal tampil `-`. Tidak ada angka `4` tetap. Label preview di header dihapus.
+- Fallback yang menyalin data contoh guru ke tabel `teachers` saat data kosong dihapus. Memuat halaman hanya membaca data.
+
+Progres monitoring mengikuti jawaban yang tersimpan di database. Perubahan ini tidak menambahkan autosave server pada player siswa; pekerjaan tersebut tetap mengikuti brief login/pengiriman jawaban yang terpisah.
+
+Uji tambahan melalui `node tests/cbt-banksoal.mjs` mencakup data peserta/progres/pelanggaran, jawaban kosong dan soal di luar pilihan, siswa rombel tanpa penugasan, kegagalan query, pergantian jenjang, status rombel kosong, serta jumlah format bank kosong/terisi. Data uji hanya berada di memori. [Bukti struktur monitoring kosong melalui SSR](bukti-cbt-banksoal/monitoring-kosong-render.html) memastikan kartu dan tabel tetap ada. Pemeriksaan visual browser tetap belum diklaim lulus.
+
+Uji manual tindak lanjut: buka `/adminV2/cbt?tab=monitoring&jenjang=smk`, pastikan kerangka tampil dengan `-` jika belum ada ujian; saat jadwal tersedia, pilih sesi dan cocokkan peserta/progres dengan data tersimpan. Buka `/adminV2/cbt?tab=exams` untuk memastikan rombel tanpa jadwal berstatus `-`, lalu `/adminV2/cbt?tab=bank` untuk memastikan jumlah format mengikuti isi bank. Ulangi untuk SMP dan `/adminV2/lms`. Pada lebar 360 px, periksa pembungkusan filter dan kartu peserta.
+
+Berkas tindak lanjut: `CbtV2Monitoring.vue`, `CbtV2Exams.vue`, `CbtV2Bank.vue`, `CbtV2Header.vue`, `CbtV2PageContent.vue`, dan `cbtV2Data.ts` di `app/components/adminV2/cbt/`; `app/composables/useAdminCbtData.ts`; `tests/cbt-banksoal.mjs`; laporan dan bukti SSR ini. Tidak ada migrasi atau dependensi tambahan.
 
 ## Definition of Done dan cara uji manual
 
@@ -92,7 +115,7 @@ Pemeriksaan Supabase pada sesi ini masih mengembalikan HTTP 404 / `PGRST202` unt
 | Sembunyikan Jawaban Singkat | Pemeriksaan form, parser, template, dan pembacaan lama lulus | Periksa pembuatan di `/adminV2/cbt?tab=bank`, `/adminV2/lms?tab=bank`, dan `/admin/cbt`. Tidak ada pilihan baru Jawaban Singkat/Isian. Unduh kedua template dan periksa isinya. Impor dokumen bertipe `Isian`/`Jawaban Singkat` harus ditolak. Buka paket lama bertipe `Isian` melalui rincian; soal dan jawabannya tetap terbaca pada siswa. |
 | Subset + urutan + kompatibilitas | Logika lokal/RPC tiruan lulus; database/RLS asli belum diuji | Setelah migrasi, buka `/adminV2/cbt?tab=exams`. Buat jadwal dari bank asli minimal 3 soal, atur mulai dalam waktu aktif, centang hanya dua soal, tukar urutan dengan Naik/Turun, simpan. Muat ulang, pilih Ubah, pastikan dua ID dan urutannya tetap. Buka `/cbt` dengan NIS/jenjang/rombel yang cocok: hanya dua soal dalam urutan itu. Periksa Pilih semua, pilihan kosong, dan kegagalan jaringan. Ujian lama tanpa baris `exam_questions` harus memuat seluruh bank. Edit teks bank: UUID dan pilihan ujian tidak berubah. Hapus soal yang masih dipilih: ditolak. |
 | Pemisahan sumber | Label dan namespace lokal lulus; transaksi asli belum diuji | Bandingkan header, tab, menu mobile, bank, dan penjadwalan pada `/adminV2/cbt` versus `/adminV2/lms`. Ulangi subset LMS di `/cbt?mode=ujian_harian`; soal CBT tidak boleh masuk ke LMS atau sebaliknya. |
-| Migrasi terlapor | SQL tersedia; penerapan eksternal belum terverifikasi | Jalankan SQL lengkap melalui Supabase SQL Editor. Pastikan dua tabel relasi, tiga RPC, trigger, dan RLS tersedia, lalu lakukan uji subset di atas memakai akun staf dan data siswa asli. |
+| Migrasi terlapor | RPC sudah terdeteksi setelah penerapan oleh owner; uji transaksi staf belum dilakukan | Pastikan dua tabel relasi, tiga RPC, trigger, dan RLS tersedia, lalu lakukan uji subset di atas memakai akun staf dan data siswa asli. |
 
 ## Berkas yang disentuh
 

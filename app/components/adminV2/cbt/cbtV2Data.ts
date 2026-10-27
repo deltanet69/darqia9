@@ -125,7 +125,7 @@ export interface LiveStudent {
   nisn: string
   progress: number
   total: number
-  status: 'Mengerjakan' | 'Selesai' | 'Terkunci (1x)'
+  status: 'Belum mulai' | 'Mengerjakan' | 'Selesai' | 'Terkunci' | 'Terkunci (1x)'
   violations: number
   lastActive: string
 }

@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { ExamItem, GradeType, LiveStudent } from './cbtV2Data'
-import { INITIAL_LIVE_STUDENTS } from './cbtV2Data'
+import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 
 interface Props {
   grade: GradeType
   exams: ExamItem[]
   isFrozen?: boolean
+  source?: AssessmentSource
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isFrozen: false
+  isFrozen: false,
+  source: 'cbt'
 })
+const cbtData = useAdminCbtData(props.source)
 
 const emit = defineEmits<{
   (e: 'copy-token', token: string): void
@@ -22,7 +25,9 @@ const emit = defineEmits<{
 }>()
 
 const liveExams = computed(() => {
-  return props.exams.filter(e => e.grade === props.grade && e.status === 'Berlangsung')
+  return props.exams.filter(e => e.grade === props.grade)
+    .sort((a, b) => Number(b.status === 'Berlangsung') - Number(a.status === 'Berlangsung')
+      || Number(b.status === 'Terjadwal') - Number(a.status === 'Terjadwal'))
 })
 
 // Selected session in rail
@@ -36,8 +41,44 @@ const activeExam = computed<ExamItem | null>(() => {
 
 // Roster state
 const searchQuery = ref('')
-const filterStatus = ref<'Semua' | 'Mengerjakan' | 'Terkunci' | 'Selesai'>('Semua')
-const students = ref<LiveStudent[]>([...INITIAL_LIVE_STUDENTS])
+const filterStatus = ref<'Semua' | 'Belum mulai' | 'Mengerjakan' | 'Terkunci' | 'Selesai'>('Semua')
+const students = ref<LiveStudent[]>([])
+const monitoringLoading = ref(false)
+const monitoringError = ref('')
+const updatedAt = ref('')
+let requestId = 0
+let rosterExamId = ''
+const rosterLoaded = ref(false)
+const refreshRoster = async () => {
+  const request = ++requestId
+  const exam = activeExam.value
+  monitoringError.value = ''
+  if (rosterExamId !== (exam?.id || '')) {
+    students.value = []
+    updatedAt.value = ''
+    rosterLoaded.value = false
+    rosterExamId = exam?.id || ''
+  }
+  monitoringLoading.value = !!exam
+  if (!exam) return
+  try {
+    const roster = await cbtData.loadMonitoring(exam)
+    if (request !== requestId) return
+    students.value = roster
+    rosterLoaded.value = true
+    if (selectedStudent.value) selectedStudent.value = roster.find(s => s.id === selectedStudent.value?.id) || null
+    updatedAt.value = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date())
+  } catch (error) {
+    if (request === requestId) monitoringError.value = error instanceof Error ? error.message : 'Aktivitas peserta gagal dimuat.'
+  } finally {
+    if (request === requestId) monitoringLoading.value = false
+  }
+}
+onUnmounted(() => { requestId++ })
+const collected = computed(() => students.value.filter(s => s.status === 'Selesai').length)
+const doing = computed(() => students.value.filter(s => s.status === 'Mengerjakan' || s.status.startsWith('Terkunci')).length)
+const warningCount = computed(() => students.value.reduce((sum, s) => sum + s.violations, 0))
+const displayCount = (value: number) => activeExam.value && rosterLoaded.value && !monitoringError.value ? value : '-'
 
 // Student Drawer State
 const selectedStudent = ref<LiveStudent | null>(null)
@@ -59,17 +100,12 @@ const filteredStudents = computed(() => {
 
 const pct = computed(() => {
   if (!activeExam.value) return 0
-  const total = activeExam.value.participants || 1
-  const done = activeExam.value.collected || 0
-  return Math.round((done / total) * 100)
+  return students.value.length ? Math.round((collected.value / students.value.length) * 100) : 0
 })
 
 const remainCount = computed(() => {
   if (!activeExam.value) return 0
-  const total = activeExam.value.participants || 0
-  const done = activeExam.value.collected || 0
-  const doing = activeExam.value.doing || 0
-  return Math.max(0, total - done - doing)
+  return students.value.filter(s => s.status === 'Belum mulai').length
 })
 
 const openStudentDrawer = (s: LiveStudent) => {
@@ -81,28 +117,13 @@ const closeStudentDrawer = () => {
   isStudentDrawerOpen.value = false
   selectedStudent.value = null
 }
-
-const unlockStudent = (s: LiveStudent) => {
-  s.status = 'Mengerjakan'
-  s.violations = 0
-  emit('toast', `Akun ${s.name} berhasil dibuka kuncinya.`)
-  closeStudentDrawer()
-}
-
-const warnStudent = (s: LiveStudent) => {
-  emit('toast', `Peringatan pengawas dikirim ke layar ${s.name}.`)
-  closeStudentDrawer()
-}
-
-const forceSubmit = (s: LiveStudent) => {
-  s.status = 'Selesai'
-  s.progress = s.total
-  emit('toast', `Ujian ${s.name} berhasil dikumpulkan oleh pengawas.`)
-  closeStudentDrawer()
-}
+watch(activeExam, (exam, previous) => {
+  if (exam?.id !== previous?.id) closeStudentDrawer()
+  void refreshRoster()
+}, { immediate: true })
 
 const exportRosterCsv = () => {
-  if (!activeExam.value) return
+  if (!activeExam.value || monitoringLoading.value || monitoringError.value) return
   const rows = filteredStudents.value.map(s => [
     s.nisn,
     `"${s.name.replace(/"/g, '""')}"`,
@@ -117,11 +138,11 @@ const exportRosterCsv = () => {
   const encodedUri = encodeURI(csvContent)
   const link = document.createElement('a')
   link.setAttribute('href', encodedUri)
-  link.setAttribute('download', `Monitoring_${activeExam.value.classroom || (activeExam.value as any).cls}_contoh.csv`)
+  link.setAttribute('download', `Monitoring_${activeExam.value.classroom}.csv`)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-  emit('toast', 'Snapshot peserta contoh berhasil diunduh.')
+  emit('toast', 'Data peserta berhasil diunduh.')
 }
 </script>
 
@@ -149,27 +170,29 @@ const exportRosterCsv = () => {
       <div>
         <h2 class="text-lg font-extrabold text-[#101828]">Monitoring Ujian</h2>
         <p class="text-xs text-[#667085] mt-0.5">
-          Pilih sesi, pantau progres, dan tangani peserta dari satu layar.
+          Pilih sesi dan pantau aktivitas peserta yang tersimpan.
         </p>
       </div>
-      <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-[#EFF2F7] text-[#344054] w-max shrink-0">
-        Snapshot data contoh · bukan real-time
-      </span>
+      <div class="flex flex-wrap items-center gap-2 text-xs text-[#667085]">
+        <span>{{ updatedAt ? `Diperbarui ${updatedAt}` : '-' }}</span>
+        <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-3 font-bold text-[#344054] disabled:opacity-50" :disabled="monitoringLoading || !activeExam" @click="refreshRoster">Muat ulang</button>
+      </div>
     </div>
 
     <!-- COMMAND CENTER LAYOUT: Left Rail + Right Main -->
-    <div v-if="liveExams.length" class="grid grid-cols-1 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] gap-3.5 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] gap-3.5 items-start">
       <!-- LEFT RAIL: Sesi Berjalan -->
       <aside class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 shadow-sm space-y-3">
         <div class="flex items-center justify-between pb-2 border-b border-[#E7EBF2]">
-          <h3 class="text-xs font-extrabold text-[#101828]">Sesi berjalan</h3>
+          <h3 class="text-xs font-extrabold text-[#101828]">Sesi ujian</h3>
           <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E7F8F0] text-[#087C52]">
-            {{ liveExams.length }} sesi
+            {{ liveExams.length || '-' }} sesi
           </span>
         </div>
 
         <!-- Session List in Rail -->
         <div class="space-y-2">
+          <p v-if="!liveExams.length" class="py-6 text-xs text-[#667085]">-<br>Belum ada sesi ujian.</p>
           <button
             v-for="x in liveExams"
             :key="x.id"
@@ -183,11 +206,11 @@ const exportRosterCsv = () => {
             <div class="flex items-center justify-between gap-2 mb-1.5">
               <span
                 class="text-[9.5px] font-extrabold px-2 py-0.5 rounded-full"
-                :class="(x.violations || (x as any).warn)
+                :class="x.violations
                   ? 'bg-[#FDECEA] text-[#C43232]'
                   : 'bg-[#E7F8F0] text-[#087C52]'"
               >
-                {{ (x.violations || (x as any).warn) ? `${x.violations || (x as any).warn} peringatan` : 'Aman' }}
+                {{ x.violations ? `${x.violations} peringatan` : 'Tanpa peringatan' }}
               </span>
               <AdminV2Icon name="arrow-right" :size="12" class="text-[#98A2B3] group-hover:text-[#101828] transition" />
             </div>
@@ -221,14 +244,14 @@ const exportRosterCsv = () => {
           <div class="min-w-0 flex-1">
             <b class="block text-[11px] font-extrabold">Log anti-cheat</b>
             <small class="block text-[10px] text-[#AD5950] mt-0.5">
-              {{ activeExam.violations || (activeExam as any).warn || 0 }} peringatan pada sesi terpilih · buka untuk tinjau
+              {{ activeExam.violations }} peringatan pada sesi terpilih · buka untuk tinjau
             </small>
           </div>
         </button>
       </aside>
 
       <!-- RIGHT MAIN: Focus Card + Roster -->
-      <div v-if="activeExam" class="space-y-3.5 min-w-0">
+      <div class="space-y-3.5 min-w-0">
         <!-- FOCUS CARD -->
         <section
           class="relative overflow-hidden rounded-[20px] p-5 sm:p-6 text-white shadow-xl"
@@ -245,18 +268,18 @@ const exportRosterCsv = () => {
           <div class="relative z-10 flex items-start justify-between gap-3">
             <div>
               <small class="text-[10px] font-extrabold uppercase tracking-wider text-[#B7D5FF]">
-                Sesi terpilih · {{ activeExam.classroom || (activeExam as any).cls }} · {{ activeExam.subject }}
+                Sesi terpilih · {{ activeExam?.classroom || '-' }} · {{ activeExam?.subject || '-' }}
               </small>
               <h3 class="text-xl sm:text-2xl font-extrabold tracking-tight mt-1 leading-tight">
-                {{ activeExam.name }}
+                {{ activeExam?.name || '-' }}
               </h3>
               <p class="text-xs text-[#C5D9F6] mt-1.5">
-                {{ activeExam.date }} · {{ activeExam.time }} · Pengawas: {{ activeExam.supervisor || (activeExam as any).teacher }}
+                {{ activeExam?.date || '-' }} · {{ activeExam?.time || '-' }} · Pengawas: {{ activeExam?.supervisor || '-' }}
               </p>
             </div>
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-white/15 border border-white/25 shrink-0">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#69DAA5] animate-ping" />
-              <span>Berlangsung</span>
+              <span v-if="activeExam?.status === 'Berlangsung'" class="w-1.5 h-1.5 rounded-full bg-[#69DAA5] animate-ping" />
+              <span>{{ activeExam?.status || '-' }}</span>
             </span>
           </div>
 
@@ -266,25 +289,25 @@ const exportRosterCsv = () => {
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
               <div class="border-l-0 sm:border-l first:border-l-0 border-white/25 pl-0 sm:pl-3.5">
                 <b class="block text-2xl font-extrabold font-mono leading-none">
-                  {{ activeExam.participants }}
+                  {{ displayCount(students.length) }}
                 </b>
                 <span class="block text-[10px] text-[#C4D8F4] mt-1">Total peserta</span>
               </div>
               <div class="border-l-0 sm:border-l border-white/25 pl-0 sm:pl-3.5">
                 <b class="block text-2xl font-extrabold font-mono leading-none">
-                  {{ activeExam.doing }}
+                  {{ displayCount(doing) }}
                 </b>
                 <span class="block text-[10px] text-[#C4D8F4] mt-1">Mengerjakan</span>
               </div>
               <div class="border-l-0 sm:border-l border-white/25 pl-0 sm:pl-3.5">
                 <b class="block text-2xl font-extrabold font-mono leading-none">
-                  {{ activeExam.collected || (activeExam as any).done || 0 }}
+                  {{ displayCount(collected) }}
                 </b>
                 <span class="block text-[10px] text-[#C4D8F4] mt-1">Selesai submit</span>
               </div>
               <div class="border-l-0 sm:border-l border-white/25 pl-0 sm:pl-3.5">
                 <b class="block text-2xl font-extrabold font-mono leading-none">
-                  {{ remainCount }}
+                  {{ displayCount(remainCount) }}
                 </b>
                 <span class="block text-[10px] text-[#C4D8F4] mt-1">Belum mulai</span>
               </div>
@@ -298,7 +321,7 @@ const exportRosterCsv = () => {
               }"
             >
               <div class="w-full h-full rounded-full bg-[#0A2A5C] flex flex-col items-center justify-center text-center">
-                <b class="text-xl sm:text-2xl font-extrabold font-mono leading-none">{{ pct }}%</b>
+                <b class="text-xl sm:text-2xl font-extrabold font-mono leading-none">{{ displayCount(pct) }}{{ displayCount(pct) === '-' ? '' : '%' }}</b>
                 <span class="text-[9px] text-[#C4D8F4] mt-0.5">selesai</span>
               </div>
             </div>
@@ -311,9 +334,10 @@ const exportRosterCsv = () => {
               <button
                 type="button"
                 class="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 border border-white/25 text-white font-mono font-extrabold inline-flex items-center gap-1.5 transition"
-                @click="emit('copy-token', activeExam.token)"
+                :disabled="!activeExam"
+                @click="activeExam && emit('copy-token', activeExam.token)"
               >
-                <span>{{ activeExam.token }}</span>
+                <span>{{ activeExam?.token || '-' }}</span>
                 <AdminV2Icon name="copy" :size="12" />
               </button>
             </div>
@@ -321,18 +345,20 @@ const exportRosterCsv = () => {
               <button
                 type="button"
                 class="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/30 text-white font-extrabold text-[10.5px] inline-flex items-center gap-1.5 transition"
+                :disabled="!activeExam"
                 @click="emit('switch-tab', 'management')"
               >
                 <AdminV2Icon name="alert" :size="13" />
-                <span>{{ activeExam.violations || (activeExam as any).warn || 0 }} peringatan</span>
+                <span>{{ displayCount(warningCount) }} peringatan</span>
               </button>
               <button
                 type="button"
                 class="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/30 text-white font-extrabold text-[10.5px] inline-flex items-center gap-1.5 transition"
                 @click="exportRosterCsv"
+                :disabled="!activeExam || monitoringLoading || !!monitoringError || !students.length"
               >
                 <AdminV2Icon name="download" :size="13" />
-                <span>Ekspor contoh</span>
+                <span>Ekspor peserta</span>
               </button>
             </div>
           </div>
@@ -346,22 +372,25 @@ const exportRosterCsv = () => {
               <div class="flex items-center gap-2 flex-wrap">
                 <h3 class="text-base font-extrabold text-[#101828]">Aktivitas peserta</h3>
                 <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E8F0FE] text-[#1B5FD9]">
-                  {{ filteredStudents.length }} data contoh
+                  {{ displayCount(filteredStudents.length) }} peserta
                 </span>
               </div>
               <p class="text-xs text-[#667085] mt-0.5">
-                Cari peserta, filter status, lalu buka rincian pengerjaan untuk aksi pengawas.
+                Cari peserta, filter status, lalu buka rincian pengerjaan.
               </p>
             </div>
             <span
               class="text-[10px] font-extrabold px-2.5 py-1 rounded-full shrink-0"
-              :class="(activeExam.violations || (activeExam as any).warn)
+              :class="warningCount
                 ? 'bg-[#FDECEA] text-[#C43232]'
                 : 'bg-[#E7F8F0] text-[#087C52]'"
             >
-              {{ (activeExam.violations || (activeExam as any).warn) ? `${activeExam.violations || (activeExam as any).warn} peringatan` : 'Tanpa peringatan' }}
+              {{ displayCount(warningCount) }} peringatan
             </span>
           </div>
+
+          <p v-if="monitoringLoading" class="mb-3 text-xs text-[#667085]" role="status">Memuat aktivitas peserta…</p>
+          <p v-else-if="monitoringError" class="mb-3 text-xs text-[#B42318]" role="alert">Aktivitas peserta gagal dimuat: {{ monitoringError }}</p>
 
           <!-- Roster Tools: Search & Filters -->
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -376,9 +405,9 @@ const exportRosterCsv = () => {
             </div>
 
             <!-- Filter Pills -->
-            <div class="flex items-center gap-1 p-1 bg-[#EFF2F7] rounded-xl text-xs font-bold">
+            <div class="flex flex-wrap items-center gap-1 p-1 bg-[#EFF2F7] rounded-xl text-xs font-bold">
               <button
-                v-for="f in (['Semua', 'Mengerjakan', 'Terkunci', 'Selesai'] as const)"
+                v-for="f in (['Semua', 'Belum mulai', 'Mengerjakan', 'Terkunci', 'Selesai'] as const)"
                 :key="f"
                 type="button"
                 class="px-3 py-1.5 rounded-lg transition"
@@ -428,7 +457,7 @@ const exportRosterCsv = () => {
                       <div class="w-16 h-1.5 rounded-full bg-[#EFF2F7] overflow-hidden">
                         <div
                           class="h-full bg-[#1B5FD9] rounded-full"
-                          :style="{ width: `${Math.round((s.progress / s.total) * 100)}%` }"
+                          :style="{ width: `${Math.round((s.progress / Math.max(1, s.total)) * 100)}%` }"
                         />
                       </div>
                     </div>
@@ -466,7 +495,7 @@ const exportRosterCsv = () => {
                 </tr>
                 <tr v-if="!filteredStudents.length">
                   <td colspan="6" class="text-center py-8 text-xs text-[#667085]">
-                    Tidak ada peserta sesuai pencarian atau filter.
+                    {{ !activeExam || monitoringLoading || monitoringError ? '-' : 'Tidak ada peserta sesuai pencarian atau filter.' }}
                   </td>
                 </tr>
               </tbody>
@@ -475,6 +504,7 @@ const exportRosterCsv = () => {
 
           <!-- Mobile Cards -->
           <div class="sm:hidden space-y-2.5">
+            <p v-if="!filteredStudents.length" class="py-6 text-center text-xs text-[#667085]">-</p>
             <div
               v-for="s in filteredStudents"
               :key="s.nisn"
@@ -501,9 +531,6 @@ const exportRosterCsv = () => {
           </div>
         </section>
       </div>
-    </div>
-    <div v-else class="bg-white border border-[#E7EBF2] rounded-[18px] p-8 text-center text-xs text-[#667085]">
-      Belum ada sesi ujian berstatus Berlangsung pada data contoh.
     </div>
 
     <!-- STUDENT INSPECTION SLIDE-OVER DRAWER -->
@@ -558,7 +585,7 @@ const exportRosterCsv = () => {
                   <div class="w-full h-2 rounded-full bg-[#EFF2F7] overflow-hidden">
                     <div
                       class="h-full bg-[#1B5FD9] rounded-full"
-                      :style="{ width: `${Math.round((selectedStudent.progress / selectedStudent.total) * 100)}%` }"
+                      :style="{ width: `${Math.round((selectedStudent.progress / Math.max(1, selectedStudent.total)) * 100)}%` }"
                     />
                   </div>
                 </div>
@@ -573,7 +600,7 @@ const exportRosterCsv = () => {
               </div>
 
               <div class="p-3 rounded-xl bg-[#EFF2F7] text-[#475467] text-[11px] leading-relaxed">
-                Aksi pengawas pada preview ini mensimulasikan tindakan pembukaan kunci, peringatan proctoring, dan paksa submit pada akun peserta.
+                Aktivitas ditampilkan sesuai status dan jawaban ujian yang tersimpan.
               </div>
             </div>
 
@@ -585,29 +612,6 @@ const exportRosterCsv = () => {
                 @click="closeStudentDrawer"
               >
                 Tutup
-              </button>
-              <button
-                v-if="selectedStudent.status.startsWith('Terkunci')"
-                type="button"
-                class="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#087C52] text-white hover:bg-[#066542]"
-                @click="unlockStudent(selectedStudent)"
-              >
-                Buka Kunci
-              </button>
-              <button
-                v-else
-                type="button"
-                class="px-3.5 py-2 rounded-xl text-xs font-bold border border-[#E7EBF2] hover:bg-white text-[#AD6504]"
-                @click="warnStudent(selectedStudent)"
-              >
-                Kirim Peringatan
-              </button>
-              <button
-                type="button"
-                class="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#101828] text-white hover:bg-[#1E293B]"
-                @click="forceSubmit(selectedStudent)"
-              >
-                Paksa Submit
               </button>
             </div>
           </div>

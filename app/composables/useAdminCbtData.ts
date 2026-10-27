@@ -1,13 +1,12 @@
 import { computed } from 'vue'
-import { useAdminTeachers } from '~/composables/useAdminTeachers'
-import type { BankPackage, BankQuestionItem, ExamItem, GradeType } from '~/components/adminV2/cbt/cbtV2Data'
+import type { BankPackage, BankQuestionItem, ExamItem, GradeType, LiveStudent } from '~/components/adminV2/cbt/cbtV2Data'
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
 const questionRequests = new Map<AssessmentSource, Promise<void>>()
 
 const assessmentTables = (source: AssessmentSource) => source === 'ujian_harian'
-  ? { banks: 'ujian_harian_banks', questions: 'ujian_harian_questions', exams: 'ujian_harian', assignments: 'ujian_harian_assignments' }
-  : { banks: 'question_banks', questions: 'questions', exams: 'exams', assignments: 'exam_assignments' }
+  ? { banks: 'ujian_harian_banks', questions: 'ujian_harian_questions', exams: 'ujian_harian', assignments: 'ujian_harian_assignments', answers: 'ujian_harian_answers', violations: 'ujian_harian_violations' }
+  : { banks: 'question_banks', questions: 'questions', exams: 'exams', assignments: 'exam_assignments', answers: 'exam_answers', violations: 'exam_violations' }
 
 export interface CbtClass {
   id: string
@@ -94,44 +93,25 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     error.value = null
 
     try {
-      const [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult] = await Promise.all([
+      const [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult] = await Promise.all([
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
         client.from(tables.exams).select('*').order('starts_at', { ascending: false }),
-        client.from(tables.assignments).select('exam_id, status'),
+        client.from(tables.assignments).select('id, exam_id, status'),
         client.from('students').select('class_id').eq('active', true),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
-        client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position')
+        client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
+        client.from(tables.violations).select('assignment_id')
       ])
 
-      const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult]
+      const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult]
         .find(result => result.error)?.error
       if (firstError) throw firstError
 
       const classRows = classResult.data ?? []
       const subjectRows = subjectResult.data ?? []
-      let teacherRows = teacherResult.data ?? []
-      if (!teacherRows.length) {
-        const { staffList } = useAdminTeachers()
-        const fallbackTeachers = staffList.value
-          .filter(item => item.subject && !/(tendik|staf)/i.test(item.role))
-          .map(item => ({
-            nip: item.nip,
-            name: item.name,
-            grade: item.unit,
-            position: item.role,
-            employment_status: item.status,
-            phone: item.phone,
-            active: true
-          }))
-        const { data, error: seedError } = await client
-          .from('teachers')
-          .upsert(fallbackTeachers, { onConflict: 'nip' })
-          .select('id, nip, name, grade, active')
-        if (seedError) throw seedError
-        teacherRows = data ?? []
-      }
+      const teacherRows = teacherResult.data ?? []
       const teacherById = new Map(teacherRows.map((row: any) => [row.id, row]))
       const studentCounts = new Map<string, number>()
       for (const student of studentResult.data ?? []) {
@@ -192,6 +172,12 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         assignments.set(row.exam_id, count)
       }
       const bankById = new Map(bankPackages.value.map(item => [item.id, item]))
+      const examByAssignment = new Map((assignmentResult.data ?? []).map((row: any) => [row.id, row.exam_id]))
+      const violationCounts = new Map<string, number>()
+      for (const row of violationResult.data ?? []) {
+        const examId = examByAssignment.get(row.assignment_id)
+        if (examId) violationCounts.set(examId, (violationCounts.get(examId) ?? 0) + 1)
+      }
 
       exams.value = (examResult.data ?? [])
         .filter((row: any) => row.status !== 'draf' && row.status !== 'dibatalkan')
@@ -215,14 +201,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             time: formatTime(row.starts_at, row.duration_minutes),
             startsAt: row.starts_at,
             duration: row.duration_minutes,
-            participants: classItem?.studentCount ?? counts.total,
+            participants: counts.total || classItem?.studentCount || 0,
             status: examStatus(row.status, row.starts_at, row.duration_minutes),
             average: 0,
             kkm: subjectItem?.kkm ?? 75,
             token: row.code,
             collected: counts.collected,
             doing: counts.doing,
-            violations: 0,
+            violations: violationCounts.get(row.id) ?? 0,
             supervisor: teacherById.get(row.supervisor_id)?.name ?? '',
             bankCode: bankById.get(row.question_bank_id)?.code ?? ''
           } as ExamItem
@@ -239,6 +225,50 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     } finally {
       loading.value = false
     }
+  }
+
+  const loadMonitoring = async (exam: ExamItem): Promise<LiveStudent[]> => {
+    const { data: assignments, error: assignmentError } = await client.from(tables.assignments)
+      .select('id, student_id, status, started_at, submitted_at').eq('exam_id', exam.id)
+    if (assignmentError) throw new Error(assignmentError.message)
+    const sessions = assignments ?? []
+    let rosterQuery = client.from('students').select('id, name, nisn').eq('grade', exam.grade)
+    rosterQuery = sessions.length
+      ? rosterQuery.in('id', sessions.map((row: any) => row.student_id))
+      : rosterQuery.eq('class_id', exam.classId).eq('active', true)
+    const [roster, questions] = await Promise.all([
+      rosterQuery.order('name'),
+      client.from(tables.questions).select('id').eq('bank_id', exam.questionBankId)
+    ])
+    if (roster.error || questions.error) throw new Error((roster.error || questions.error)!.message)
+    const questionIds = new Set<string>(exam.questionIds ?? (questions.data ?? []).map((row: any) => row.id))
+    const assignmentIds = sessions.map((row: any) => row.id)
+    const [answers, violations] = assignmentIds.length ? await Promise.all([
+      client.from(tables.answers).select('assignment_id, question_id, answer, saved_at').in('assignment_id', assignmentIds),
+      client.from(tables.violations).select('assignment_id, occurred_at').in('assignment_id', assignmentIds)
+    ]) : [{ data: [], error: null }, { data: [], error: null }]
+    if (answers.error || violations.error) throw new Error((answers.error || violations.error)!.message)
+    const sessionByStudent = new Map(sessions.map((row: any) => [row.student_id, row]))
+    return (roster.data ?? []).map((student: any) => {
+      const session: any = sessionByStudent.get(student.id)
+      const saved = session ? (answers.data ?? []).filter((row: any) => row.assignment_id === session.id && questionIds.has(row.question_id)) : []
+      const incidents = session ? (violations.data ?? []).filter((row: any) => row.assignment_id === session.id) : []
+      const times = [session?.started_at, session?.submitted_at, ...saved.map((row: any) => row.saved_at), ...incidents.map((row: any) => row.occurred_at)]
+        .filter(Boolean).sort()
+      const lastTime = times.at(-1)
+      const answered = saved.filter((row: any) => typeof row.answer === 'string' ? row.answer.trim().length > 0
+        : Array.isArray(row.answer) ? row.answer.length > 0
+        : row.answer !== null && (typeof row.answer !== 'object' || Object.keys(row.answer).length > 0))
+      return {
+        id: student.id, name: student.name, nisn: student.nisn,
+        progress: new Set(answered.map((row: any) => row.question_id)).size,
+        total: questionIds.size,
+        status: session?.status === 'selesai' ? 'Selesai' : session?.status === 'terkunci' ? 'Terkunci'
+          : session?.status === 'berlangsung' ? 'Mengerjakan' : 'Belum mulai',
+        violations: incidents.length,
+        lastActive: lastTime ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(lastTime)) : '-'
+      }
+    })
   }
 
   const loadQuestions = (force = false): Promise<void> => {
@@ -447,6 +477,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     error,
     questionsLoading,
     loadQuestions,
+    loadMonitoring,
     load,
     saveBankPackage,
     deleteBankPackage,

@@ -87,6 +87,7 @@ const drawerPayload = ref<any>(null)
 const toastMessage = ref('')
 const isToastVisible = ref(false)
 let toastTimeout: ReturnType<typeof setTimeout> | null = null
+let monitoringRefresh: ReturnType<typeof setInterval> | null = null
 
 const syncRoute = () => router.replace({
   query: {
@@ -113,6 +114,9 @@ watch([activeTab, () => cbtData.loading.value], ([tab, isLoading]) => {
   if (tab === 'bank' && !isLoading) {
     void cbtData.loadQuestions().catch(() => {})
   }
+})
+watch(activeTab, tab => {
+  if (tab === 'monitoring') void cbtData.load(true)
 })
 
 const triggerToast = (msg: string) => {
@@ -278,11 +282,15 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 onMounted(() => {
   cbtData.load(true)
+  monitoringRefresh = setInterval(() => {
+    if (activeTab.value === 'monitoring') void cbtData.load(true)
+  }, 15_000)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('click', handleDocumentClick)
 })
 
 onUnmounted(() => {
+  if (monitoringRefresh) clearInterval(monitoringRefresh)
   if (typeof window !== 'undefined') {
     window.removeEventListener('keydown', handleKeydown)
     window.removeEventListener('click', handleDocumentClick)
@@ -373,7 +381,7 @@ const handleDocumentClick = (e: MouseEvent) => {
         class="mb-4 rounded-xl border border-[#F5C6C0] bg-[#FFFBFA] px-4 py-3 text-xs text-[#B42318]"
         role="alert"
       >
-        Data belum dapat dimuat. Struktur halaman tetap tersedia dan dapat dicoba kembali dengan memuat ulang halaman.
+        Data gagal dimuat: {{ cbtData.error.value }}. Muat ulang halaman untuk mencoba kembali.
       </div>
 
       <CbtV2Summary
@@ -391,11 +399,13 @@ const handleDocumentClick = (e: MouseEvent) => {
       <CbtV2Monitoring
         v-else-if="activeTab === 'monitoring'"
         :grade="grade"
+        :source="assessmentSource"
         :is-frozen="isFrozen"
         @toggle-freeze="toggleFreeze"
         @open-drawer="openDrawer"
         @copy-token="copyToken"
         @toast="triggerToast"
+        @switch-tab="switchTab"
         :exams="exams"
       />
 

@@ -109,6 +109,7 @@ const importFileName = ref('')
 const currentGradePackages = computed(() => {
   return packages.value.filter(p => p.grade === props.grade)
 })
+const storedFormatCount = computed(() => new Set(currentGradePackages.value.flatMap(pkg => pkg.questions.map(q => q.type))).size)
 
 const allClasses = computed(() => {
   return cbtData.classes.value.filter(item => item.grade === props.grade).map(item => item.name)
@@ -136,6 +137,7 @@ const classStats = (cls: string) => {
   return {
     subjects: pks.length,
     total,
+    formats: new Set(pks.flatMap(pkg => pkg.questions.map(q => q.type))).size,
     pg: countByType('PG'),
     isian: countByType('Isian'),
     esai: countByType('Esai'),
@@ -452,9 +454,9 @@ const confirmImport = async () => {
           </div>
           <div class="my-2">
             <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
-              4 Format
+              {{ storedFormatCount || '-' }} Format
             </div>
-            <div class="text-xs text-[#667085] font-semibold mt-1">Format soal</div>
+            <div class="text-xs text-[#667085] font-semibold mt-1">Format soal tersimpan</div>
           </div>
         </article>
       </div>
@@ -529,7 +531,7 @@ const confirmImport = async () => {
                 <span class="text-[10px] text-[#667085]">Total soal</span>
               </div>
               <div>
-                <b class="text-sm font-extrabold text-[#101828] block">4</b>
+                <b class="text-sm font-extrabold text-[#101828] block">{{ classStats(c).formats || '-' }}</b>
                 <span class="text-[10px] text-[#667085]">Jenis format</span>
               </div>
             </div>
