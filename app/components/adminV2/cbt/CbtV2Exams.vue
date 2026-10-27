@@ -21,7 +21,7 @@ const emit = defineEmits<{
   (e: 'copy-token', token: string): void
 }>()
 
-const examView = ref<'classes' | 'detail'>('classes')
+const examView = ref<'list' | 'classes' | 'detail'>('list')
 const selectedClass = ref('')
 const isCreateModalOpen = ref(false)
 const scheduleDialog = ref<HTMLElement | null>(null)
@@ -29,6 +29,12 @@ watch(isCreateModalOpen, async open => {
   if (open) { await nextTick(); scheduleDialog.value?.focus() }
 })
 const isSaving = ref(false)
+const wizardStep = ref(1)
+const soalMode = ref<'acak' | 'manual'>('acak')
+const acakCount = ref(40)
+const acakRolled = ref(false)
+const statusFilter = ref<'semua' | 'siap' | 'berlangsung' | 'selesai'>('semua')
+const searchQuery = ref('')
 const selectedQuestionIds = ref<string[]>([])
 const selectionError = ref('')
 const loadingSelection = ref(false)
@@ -48,12 +54,23 @@ const emptyExam = () => ({
   questionBankId: '',
   startsAt: localDateTime(new Date(Date.now() + 86_400_000)),
   duration: 90,
-  token: ''
+  token: '',
+  supervisorId: ''
 })
 
 const newExam = ref(emptyExam())
 const currentExams = computed(() => props.exams.filter(exam => exam.grade === props.grade))
+const statusKey = (e: ExamItem) => e.status === 'Berlangsung' ? 'berlangsung' : e.status === 'Selesai' ? 'selesai' : 'siap'
+const statusLabel = (e: ExamItem) => e.status === 'Berlangsung' ? 'Sedang Berlangsung' : e.status === 'Selesai' ? 'Selesai' : 'Siap Tayang'
+const soalLabel = (e: ExamItem) => e.questionIds ? e.questionIds.length + ' soal terpasang' : 'Seluruh bank soal'
+const filteredExams = computed(() => currentExams.value.filter(e => {
+  if (statusFilter.value !== 'semua' && statusKey(e) !== statusFilter.value) return false
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q && !(e.name + ' ' + e.subject + ' ' + e.classroom).toLowerCase().includes(q)) return false
+  return true
+}))
 const gradeClasses = computed(() => cbtData.classes.value.filter(item => item.grade === props.grade))
+const totalSiswaAktif = computed(() => gradeClasses.value.reduce((sum, c) => sum + (c.studentCount ?? 0), 0))
 const gradePackages = computed(() => cbtData.bankPackages.value.filter(item => item.grade === props.grade))
 
 const groups = computed(() => gradeClasses.value.map(classItem => {
@@ -121,8 +138,39 @@ const moveQuestion = (index: number, offset: number) => {
 }
 
 watch(() => newExam.value.questionBankId, () => {
+  acakRolled.value = false
   if (isCreateModalOpen.value) void loadSelection()
 }, { flush: 'sync' })
+
+const rollRandom = () => {
+  const ids = bankQuestions.value.map(q => q.id)
+  if (!ids.length) return
+  const n = Math.max(1, Math.min(Math.floor(Number(acakCount.value)) || 1, ids.length))
+  acakCount.value = n
+  const shuffled = [...ids]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!]
+  }
+  const order = new Map(bankQuestions.value.map(q => [q.id, q.number]))
+  const picked = shuffled.slice(0, n).sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0))
+  selectedQuestionIds.value = picked
+  acakRolled.value = true
+}
+
+const goStep2 = () => {
+  if (!newExam.value.name.trim()) { emit('toast', 'Nama ujian wajib diisi.'); return }
+  if (!newExam.value.classId || !newExam.value.subjectId) { emit('toast', 'Pilih rombel dan mata pelajaran dulu.'); return }
+  if (!newExam.value.questionBankId) { emit('toast', 'Belum ada bank soal untuk mapel ini di rombel ini. Buat dulu di tab Bank Soal.'); return }
+  wizardStep.value = 2
+  if (soalMode.value === 'acak' && !acakRolled.value && bankQuestions.value.length) rollRandom()
+}
+
+const ringkasanJadwal = computed(() => newExam.value.startsAt
+  ? new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(newExam.value.startsAt))
+  : '-')
+const ringkasanKelas = computed(() => gradeClasses.value.find(c => c.id === newExam.value.classId)?.name ?? '-')
+const ringkasanMapel = computed(() => cbtData.subjects.value.find(s => s.id === newExam.value.subjectId)?.name ?? '-')
 
 const openDetail = (classroom: string) => {
   selectedClass.value = classroom
@@ -143,6 +191,10 @@ const openCreateSchedule = (classroom?: string) => {
   const firstPackage = gradePackages.value.find(pkg => pkg.classId === newExam.value.classId)
   newExam.value.subjectId = firstPackage?.subjectId ?? ''
   newExam.value.questionBankId = firstPackage?.id ?? ''
+  wizardStep.value = 1
+  soalMode.value = 'acak'
+  acakRolled.value = false
+  acakCount.value = 40
   isCreateModalOpen.value = true
   void loadSelection()
 }
@@ -157,8 +209,12 @@ const openEditSchedule = (exam: ExamItem) => {
     questionBankId: exam.questionBankId ?? '',
     startsAt: exam.startsAt ? localDateTime(new Date(exam.startsAt)) : localDateTime(new Date()),
     duration: exam.duration,
-    token: exam.token
+    token: exam.token,
+    supervisorId: exam.supervisorId ?? ''
   }
+  wizardStep.value = 1
+  soalMode.value = 'manual'
+  acakRolled.value = true
   isCreateModalOpen.value = true
   void loadSelection(exam.questionIds)
 }
@@ -186,7 +242,7 @@ const saveSchedule = async () => {
       token: newExam.value.token || undefined
     })
     isCreateModalOpen.value = false
-    emit('toast', `Jadwal ujian berhasil disimpan. Token: ${token}`)
+    emit('toast', `Ujian berhasil ditayangkan. Token: ${token}`)
   } catch (saveError) {
     emit('toast', saveError instanceof Error ? saveError.message : 'Jadwal ujian gagal disimpan.')
   } finally { isSaving.value = false }
@@ -206,6 +262,71 @@ const removeSchedule = async (exam: ExamItem) => {
 
 <template>
   <div class="space-y-4">
+    <!-- VIEW 0: LIST PER UJIAN -->
+    <div v-if="examView === 'list'" class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
+        <div>
+          <h2 class="text-lg font-extrabold text-[#101828]">Daftar Ujian</h2>
+          <p class="text-xs text-[#667085] mt-0.5">Satu baris = satu ujian &middot; {{ totalSiswaAktif }} siswa aktif di jenjang ini.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex rounded-full bg-[#EEF1F6] p-1 gap-1">
+            <button type="button" class="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-white text-[#101828] shadow-xs">Per Ujian</button>
+            <button type="button" class="px-3.5 py-1.5 rounded-full text-xs font-extrabold text-[#667085]" @click="examView = 'classes'">Per Rombel</button>
+          </div>
+          <button type="button" class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5" @click="openCreateSchedule()">
+            <AdminV2Icon name="plus" :size="14" />
+            <span>Buat Ujian</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 text-xs font-bold text-[#667085] flex-wrap">
+        <button type="button" class="inline-flex items-center gap-1.5 hover:text-[#1B5FD9]" @click="emit('switch-tab', 'bank')"><span class="w-5 h-5 rounded-full bg-[#1B5FD9] text-white inline-flex items-center justify-center text-[10px] font-extrabold">1</span> Siapkan Soal</button>
+        <span aria-hidden="true">&rarr;</span>
+        <span class="inline-flex items-center gap-1.5 text-[#101828]"><span class="w-5 h-5 rounded-full bg-[#1B5FD9] text-white inline-flex items-center justify-center text-[10px] font-extrabold">2</span> Buat Ujian</span>
+        <span aria-hidden="true">&rarr;</span>
+        <span class="inline-flex items-center gap-1.5 text-[#101828]"><span class="w-5 h-5 rounded-full bg-[#1B5FD9] text-white inline-flex items-center justify-center text-[10px] font-extrabold">3</span> Jadwal &amp; Tayang</span>
+      </div>
+
+      <div class="flex flex-col lg:flex-row gap-2.5">
+        <div class="flex gap-1.5 flex-wrap">
+          <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'semua' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'semua'">Semua</button>
+          <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'siap' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'siap'">Siap Tayang</button>
+          <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'berlangsung' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'berlangsung'">Sedang Berlangsung</button>
+          <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'selesai' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'selesai'">Sudah Selesai</button>
+        </div>
+        <input v-model="searchQuery" type="text" placeholder="Cari nama ujian, mapel, atau rombel..." class="flex-1 border border-[#E7EBF2] rounded-full px-4 py-2 text-xs bg-white outline-none focus:border-[#1B5FD9]">
+      </div>
+
+      <div class="space-y-3">
+        <article v-for="e in filteredExams" :key="e.id" class="bg-white border border-[#E7EBF2] rounded-[18px] p-5 shadow-xs">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-base font-extrabold text-[#101828]">{{ e.name }}</h3>
+              <p class="text-xs text-[#667085] mt-0.5">{{ e.subject }} &middot; {{ e.classroom }} &middot; Token <b class="font-mono text-[#0A2A5C]">{{ e.token }}</b></p>
+            </div>
+            <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shrink-0" :class="statusKey(e) === 'berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : statusKey(e) === 'siap' ? 'bg-[#E8F0FE] text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#344054]'">{{ statusLabel(e) }}</span>
+          </div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mt-3.5">
+            <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Jadwal</span><b class="text-xs font-bold text-[#101828]">{{ e.date }}</b><span class="block text-[10.5px] text-[#667085]">{{ e.time }}</span></div>
+            <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Pengawas</span><b class="text-xs font-bold text-[#101828]">{{ e.supervisor || '-' }}</b></div>
+            <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Peserta</span><b class="text-xs font-bold text-[#101828]">{{ e.participants }} siswa</b></div>
+            <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Soal</span><b class="text-xs font-bold text-[#101828]">{{ soalLabel(e) }}</b></div>
+          </div>
+          <div class="flex items-center justify-end gap-3 pt-3 mt-3.5 border-t border-[#E7EBF2]">
+            <button type="button" class="text-xs font-bold text-[#667085] hover:underline" @click="openDetail(e.classroom)">Detail Rombel</button>
+            <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">Ubah</button>
+            <button type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">Hapus</button>
+          </div>
+        </article>
+        <div v-if="!filteredExams.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center">
+          <p class="text-xs text-[#667085] mb-3">Belum ada ujian yang cocok.</p>
+          <button type="button" class="px-4 py-2.5 rounded-full bg-[#101828] text-white text-xs font-extrabold" @click="openCreateSchedule()">+ Buat Ujian</button>
+        </div>
+      </div>
+    </div>
+
     <!-- VIEW 1: CLASSES GRID (vbt-v4) -->
     <div v-if="examView === 'classes'" class="space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
@@ -215,11 +336,18 @@ const removeSchedule = async (exam: ExamItem) => {
         </div>
         <button
           type="button"
+          class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#344054] text-xs font-extrabold transition inline-flex items-center gap-1.5"
+          @click="examView = 'list'"
+        >
+          <span>Lihat per Ujian</span>
+        </button>
+        <button
+          type="button"
           class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
           @click="openCreateSchedule()"
         >
           <AdminV2Icon name="plus" :size="14" />
-          <span>Buat Jadwal Ujian</span>
+          <span>Buat Ujian</span>
         </button>
       </div>
 
@@ -395,8 +523,8 @@ const removeSchedule = async (exam: ExamItem) => {
         <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90dvh] overflow-y-auto shadow-2xl border border-[#E7EBF2]">
           <div class="p-5 border-b border-[#E7EBF2] flex items-center justify-between">
             <div>
-              <span class="text-[10px] font-extrabold uppercase text-[#1B5FD9] tracking-wider">Form Penjadwalan</span>
-              <h3 class="text-base font-extrabold text-[#101828] mt-0.5">{{ newExam.id ? 'Ubah Jadwal Ujian' : 'Buat Jadwal Ujian' }}</h3>
+              <span class="text-[10px] font-extrabold uppercase text-[#1B5FD9] tracking-wider">{{ wizardStep === 1 ? 'Langkah 1 dari 2 · Buat Ujian' : 'Langkah 2 dari 2 · Jadwal & Soal' }}</span>
+              <h3 class="text-base font-extrabold text-[#101828] mt-0.5">{{ newExam.id ? 'Ubah Ujian' : 'Buat Ujian' }}</h3>
             </div>
             <button
               type="button"
@@ -413,15 +541,82 @@ const removeSchedule = async (exam: ExamItem) => {
               <span>{{ source === 'ujian_harian' ? 'Bank Soal LMS untuk ujian harian.' : 'Bank Soal CBT untuk PTS/PAS.' }} Token dibuat otomatis.</span>
             </div>
 
-            <div>
-              <label for="exam-bank" class="block font-bold text-[#344054] mb-1">{{ source === 'ujian_harian' ? 'Bank Soal LMS (ujian harian)' : 'Bank Soal CBT (PTS/PAS)' }}</label>
-              <select id="exam-bank" v-model="newExam.questionBankId" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9]">
-                <option value="" disabled>Pilih bank soal</option>
-                <option v-for="pkg in availablePackages.filter(p => p.subjectId === newExam.subjectId)" :key="pkg.id" :value="pkg.id">{{ pkg.subject }} · {{ pkg.code }}</option>
-              </select>
+            <div v-if="wizardStep === 1" class="space-y-3.5">
+              <div>
+                <label class="block font-bold text-[#344054] mb-1">Nama Ujian *</label>
+                <input v-model="newExam.name" type="text" placeholder="Contoh: Penilaian Tengah Semester Informatika" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]">
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold text-[#344054] mb-1">Rombel</label>
+                  <select v-model="newExam.classId" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none" @change="newExam.subjectId = ''; newExam.questionBankId = ''">
+                    <option value="" disabled>Pilih rombel</option>
+                    <option v-for="c in gradeClasses" :key="c.id" :value="c.id">{{ c.name }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold text-[#344054] mb-1">Mata Pelajaran</label>
+                  <select v-model="newExam.subjectId" @change="syncPackage" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
+                    <option value="" disabled>Pilih mata pelajaran</option>
+                    <option v-for="s in availableSubjects" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold text-[#344054] mb-1">Durasi (menit)</label>
+                  <input v-model="newExam.duration" type="number" min="1" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
+                </div>
+                <div>
+                  <label class="block font-bold text-[#344054] mb-1">Pengawas</label>
+                  <select v-model="newExam.supervisorId" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
+                    <option value="">Belum ditentukan</option>
+                    <option v-for="t in cbtData.teachers.value.filter(t => t.grade === grade || t.grade === 'Yayasan')" :key="t.id" :value="t.id">{{ t.name }}</option>
+                  </select>
+                </div>
+              </div>
+              <p class="p-3 rounded-xl bg-[#F6F8FC] text-[#43506B] font-semibold">Di langkah ini belum ada jadwal dan soal — keduanya dikerjakan di langkah berikutnya.</p>
             </div>
 
-            <fieldset class="min-w-0 space-y-2 rounded-xl border border-[#E7EBF2] p-3">
+            <div v-else class="space-y-3.5">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold text-[#344054] mb-1">Tanggal dan Waktu Mulai</label>
+                  <input v-model="newExam.startsAt" type="datetime-local" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
+                </div>
+                <div>
+                  <label class="block font-bold text-[#344054] mb-1">Token Ujian</label>
+                  <input :value="newExam.token || 'Dibuat otomatis saat disimpan'" readonly class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#667085] bg-[#F6F8FC] outline-none">
+                </div>
+              </div>
+              <div>
+                <label for="exam-bank" class="block font-bold text-[#344054] mb-1">{{ source === 'ujian_harian' ? 'Bank Soal LMS (ujian harian)' : 'Bank Soal CBT (PTS/PAS)' }}</label>
+                <select id="exam-bank" v-model="newExam.questionBankId" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9]">
+                  <option value="" disabled>Pilih bank soal</option>
+                  <option v-for="pkg in availablePackages.filter(p => p.subjectId === newExam.subjectId)" :key="pkg.id" :value="pkg.id">{{ pkg.subject }} &middot; {{ pkg.code }}</option>
+                </select>
+              </div>
+              <div class="flex rounded-xl bg-[#EEF1F6] p-1 gap-1">
+                <button type="button" class="flex-1 px-3 py-2 rounded-lg text-xs font-extrabold" :class="soalMode === 'acak' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#667085]'" @click="soalMode = 'acak'">Acak oleh Sistem</button>
+                <button type="button" class="flex-1 px-3 py-2 rounded-lg text-xs font-extrabold" :class="soalMode === 'manual' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#667085]'" @click="soalMode = 'manual'">Pilih Sendiri</button>
+              </div>
+              <div v-if="soalMode === 'acak'" class="space-y-2.5 rounded-xl border border-[#E7EBF2] p-3">
+                <div class="flex items-end gap-2">
+                  <div class="flex-1">
+                    <label class="block font-bold text-[#344054] mb-1">Berapa soal yang dipakai</label>
+                    <input v-model="acakCount" type="number" min="1" :max="bankQuestions.length || 1" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
+                  </div>
+                  <button type="button" class="px-4 py-2.5 rounded-xl bg-[#1B5FD9] text-white text-xs font-extrabold" @click="rollRandom">Acak Soal</button>
+                </div>
+                <p class="font-bold text-[#0A2A5C]" aria-live="polite">{{ selectedQuestionIds.length }} soal terpasang dari {{ bankQuestions.length }} soal di bank</p>
+                <p v-if="loadingSelection" role="status">Memuat soal&hellip;</p>
+                <div v-else-if="selectionError" role="alert" class="text-[#B42318]">{{ selectionError }} <button type="button" class="min-h-11 px-2 underline" @click="loadSelection(requestedQuestionIds)">Muat ulang soal</button></div>
+                <div v-else class="flex flex-wrap gap-1.5">
+                  <span v-for="q in orderedQuestions" :key="q.id" class="px-2 py-1 rounded-lg bg-[#E8F0FE] text-[#0A2A5C] font-bold">Soal {{ q.number }}</span>
+                </div>
+                <p class="text-[#667085]">Hasil acakan tersimpan untuk ujian ini dan terkunci setelah disimpan. Masih bisa diacak ulang sebelum itu.</p>
+              </div>
+              <fieldset v-if="soalMode === 'manual'" class="min-w-0 space-y-2 rounded-xl border border-[#E7EBF2] p-3">
               <legend class="px-1 font-bold text-[#344054]">Pemilihan soal</legend>
               <p aria-live="polite" class="font-bold text-[#0A2A5C]">{{ selectedQuestionIds.length }} dari {{ bankQuestions.length }} soal terpilih</p>
               <p v-if="loadingSelection" role="status">Memuat soal…</p>
@@ -456,79 +651,24 @@ const removeSchedule = async (exam: ExamItem) => {
                 </div>
               </template>
             </fieldset>
-
-            <div>
-              <label class="block font-bold text-[#344054] mb-1">Nama Ujian *</label>
-              <input
-                v-model="newExam.name"
-                type="text"
-                placeholder="Contoh: Penilaian Tengah Semester Informatika"
-                class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]"
-              >
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block font-bold text-[#344054] mb-1">Mata Pelajaran</label>
-                <select
-                  v-model="newExam.subjectId"
-                  @change="syncPackage"
-                  class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
-                >
-                  <option value="" disabled>Pilih mata pelajaran</option>
-                  <option v-for="s in availableSubjects" :key="s.id" :value="s.id">{{ s.name }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block font-bold text-[#344054] mb-1">Rombel</label>
-                <select
-                  v-model="newExam.classId"
-                  class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
-                  @change="newExam.subjectId = ''; newExam.questionBankId = ''"
-                >
-                  <option value="" disabled>Pilih rombel</option>
-                  <option v-for="c in gradeClasses" :key="c.id" :value="c.id">{{ c.name }}</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block font-bold text-[#344054] mb-1">Tanggal dan Waktu Mulai</label>
-                <input
-                  v-model="newExam.startsAt"
-                  type="datetime-local"
-                  class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none"
-                >
-              </div>
-              <div>
-                <label class="block font-bold text-[#344054] mb-1">Durasi (menit)</label>
-                <input
-                  v-model="newExam.duration"
-                  type="number"
-                  min="1"
-                  class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none"
-                >
+              <div class="rounded-xl bg-[#101828] text-[#C9D6F2] p-4 space-y-1.5">
+                <p class="font-extrabold text-white">Ringkasan Ujian</p>
+                <div class="flex justify-between gap-3"><span>Nama</span><b class="text-white text-right">{{ newExam.name || '-' }}</b></div>
+                <div class="flex justify-between gap-3"><span>Mapel &middot; Rombel</span><b class="text-white text-right">{{ ringkasanMapel }} &middot; {{ ringkasanKelas }}</b></div>
+                <div class="flex justify-between gap-3"><span>Jadwal</span><b class="text-white text-right">{{ ringkasanJadwal }}</b></div>
+                <div class="flex justify-between gap-3"><span>Soal</span><b class="text-white text-right">{{ selectedQuestionIds.length }} soal ({{ soalMode === 'acak' ? 'diacak sistem' : 'pilih sendiri' }})</b></div>
               </div>
             </div>
           </div>
 
-          <div class="p-4 border-t border-[#E7EBF2] bg-[#FAFBFC] flex items-center justify-end gap-2">
-            <button
-              type="button"
-              class="px-4 py-2 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-white"
-              @click="isCreateModalOpen = false"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              class="px-5 py-2 rounded-xl bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-bold shadow-sm"
-              @click="saveSchedule"
-              :disabled="isSaving || loadingSelection || !!selectionError || !selectedQuestionIds.length"
-            >
-              {{ isSaving ? 'Menyimpan…' : 'Simpan Jadwal' }}
-            </button>
+          <div class="p-4 border-t border-[#E7EBF2] bg-[#FAFBFC] flex items-center justify-between gap-2">
+            <button v-if="wizardStep === 2" type="button" class="px-4 py-2 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-white" @click="wizardStep = 1">Kembali</button>
+            <span v-else></span>
+            <div class="flex items-center gap-2">
+              <button type="button" class="px-4 py-2 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-white" @click="isCreateModalOpen = false">Batal</button>
+              <button v-if="wizardStep === 1" type="button" class="px-5 py-2 rounded-xl bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-bold shadow-sm" @click="goStep2">Lanjut ke Jadwal &amp; Soal</button>
+              <button v-else type="button" class="px-5 py-2 rounded-xl bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-bold shadow-sm" @click="saveSchedule" :disabled="isSaving || loadingSelection || !!selectionError || !selectedQuestionIds.length">{{ isSaving ? 'Menyimpan…' : (newExam.id ? 'Simpan Perubahan' : 'Simpan & Tayangkan') }}</button>
+            </div>
           </div>
         </div>
       </div>

@@ -41,6 +41,7 @@ export interface ExamItem {
   doing: number
   violations: number
   supervisor: string
+  supervisorId?: string
 }
 
 export interface BankQuestionItem {

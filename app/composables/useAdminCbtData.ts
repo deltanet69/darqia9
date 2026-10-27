@@ -213,6 +213,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             doing: counts.doing,
             violations: violationCounts.get(row.id) ?? 0,
             supervisor: teacherById.get(row.supervisor_id)?.name ?? '',
+            supervisorId: row.supervisor_id ?? '',
             bankCode: bankById.get(row.question_bank_id)?.code ?? ''
           } as ExamItem
         })

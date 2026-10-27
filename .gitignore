@@ -26,6 +26,7 @@ logs
 /dummy
 /docs/*
 !/docs/laporan-cbt-banksoal.md
+!/docs/laporan-cbt-daftar-ujian.md
 !/docs/bukti-cbt-banksoal/
 agents.md
 .vercel
@@ -38,4 +39,4 @@ supabase/migrations/*
 !supabase/migrations/0012_students_nis_per_jenjang.sql
 !supabase/migrations/0014_pilihan_soal_ujian.sql
 !supabase/migrations/0015_validasi_jenjang_bank_soal.sql
-
+!supabase/migrations/0016_kerangka_ujian_draf.sql
