@@ -41,10 +41,13 @@ globalThis.window = { DecompressionStream, scrollTo() {} }
 for (const grade of ['SMP', 'SMK']) {
   const name = `Template_Import_Bank_Soal_${grade}.docx`
   const imported = await readWordBankTemplate(new File([fs.readFileSync(path.join(root, 'public/templates', name))], name), grade,
-    ['Isi persis sesuai Manajemen Kelas'], ['Isi persis sesuai data Mata Pelajaran'])
-  assert.deepEqual(imported.package.questions.map(q => q.type), ['PG', 'Esai', 'Interaktif'])
-  assert.equal(imported.package.questions[2].interactiveAnswerType, 'PG')
-  assert.equal(imported.package.questions[2].options.length, grade === 'SMP' ? 4 : 5)
+    [grade === 'SMK' ? 'XI AKL' : 'VIII A'], ['Matematika'])
+  assert.deepEqual(imported.issues, [])
+  assert.deepEqual(imported.package.questions.map(q => q.type), ['PG', 'PG', 'Esai', 'Interaktif'])
+  assert.equal(imported.package.questions[1].isMultiSelect, true)
+  assert.deepEqual(imported.package.questions[1].key, ['A', 'C'])
+  assert.equal(imported.package.questions[3].interactiveAnswerType, 'PG')
+  assert.equal(imported.package.questions[3].options.length, grade === 'SMP' ? 4 : 5)
 }
 const formula = '$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$'
 const payload = { text: formula, isRtl: false, containsFormula: true, reviewNote: '' }

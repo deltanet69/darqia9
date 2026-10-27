@@ -2,11 +2,18 @@ import type { BankPackage, BankQuestionItem, GradeType } from '~/components/admi
 
 type ImportType = BankQuestionItem['type']
 
+export interface WordBankIssue {
+  number: number
+  message: string
+}
+
 export interface WordBankPreview {
   package: BankPackage
   classroom: string
   subject: string
   questionCount: number
+  totalCount: number
+  issues: WordBankIssue[]
 }
 
 const clean = (value = '') => value.trim()
@@ -61,6 +68,7 @@ const toType = (value: string): ImportType | null => {
   const type = keyOf(value)
   if (['PG', 'PILIHANGANDA'].includes(type)) return 'PG'
   if (['ESAI', 'ESSAY'].includes(type)) return 'Esai'
+  if (['ISIAN', 'ISIANSINGKAT'].includes(type)) return 'Isian'
   return type === 'INTERAKTIF' ? 'Interaktif' : null
 }
 
@@ -98,49 +106,63 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
   }
   if (block.length) blocks.push(block)
   const options = grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
-  const questions = blocks.map((item, index) => {
+  const questions: BankQuestionItem[] = []
+  const issues: WordBankIssue[] = []
+  blocks.forEach((item, index) => {
     const row = fields(item)
     const number = Number(row.NO || index + 1)
-    const type = toType(row.TIPE)
-    if (!type) throw new Error(`Soal ${number}: TIPE harus PG, Esai, atau Interaktif.`)
-    const text = required(row.PERTANYAAN, 'PERTANYAAN', number)
-    const question: BankQuestionItem = {
-      id: `Q-IMP-${Date.now()}-${index + 1}`,
-      number: index + 1,
-      type,
-      difficulty: toDifficulty(row.KESULITAN),
-      text,
-      isRtl: /[\u0600-\u06FF]/.test(text),
-      key: ''
+    try {
+      const type = toType(row.TIPE)
+      if (!type) throw new Error(`Soal ${number}: TIPE harus PG, Isian, Esai, atau Interaktif.`)
+      const text = required(row.PERTANYAAN, 'PERTANYAAN', number)
+      const question: BankQuestionItem = {
+        id: `Q-IMP-${Date.now()}-${index + 1}`,
+        number: questions.length + 1,
+        type,
+        difficulty: toDifficulty(row.KESULITAN),
+        text,
+        isRtl: /[\u0600-\u06FF]/.test(text),
+        key: ''
+      }
+      const jenisJawaban = keyOf(row.JENISJAWABAN || 'PG')
+      if (type === 'Interaktif' && !['PG', 'PGMULTI', 'ISIAN'].includes(jenisJawaban)) {
+        throw new Error(`Soal ${number}: JENIS_JAWABAN interaktif harus PG, PG Multi, atau Isian.`)
+      }
+      const needsOptions = type === 'PG' || (type === 'Interaktif' && jenisJawaban !== 'ISIAN')
+      if (needsOptions) {
+        question.options = options.map(key => ({ key, text: required(row[`PILIHAN${key}`], `PILIHAN_${key}`, number) }))
+        const answers = required(row.KUNCI, 'KUNCI', number).toUpperCase().split(',').map(clean)
+        if (!answers.every(answer => options.includes(answer))) throw new Error(`Soal ${number}: KUNCI PG tidak sesuai pilihan jawaban.`)
+        question.isMultiSelect = type === 'Interaktif' ? jenisJawaban === 'PGMULTI' : keyOf(row.MODEPG) === 'MULTI'
+        if (!question.isMultiSelect && answers.length !== 1) throw new Error(`Soal ${number}: PG tunggal hanya boleh memiliki satu KUNCI.`)
+        question.key = question.isMultiSelect ? answers : answers[0]
+      }
+      if (type === 'Isian') question.key = required(row.KUNCI, 'KUNCI', number)
+      if (type === 'Esai') question.rubric = required(row.RUBRIK, 'RUBRIK', number)
+      if (type === 'Interaktif') {
+        const mediaUrl = required(row.LINKMEDIA, 'LINK_MEDIA', number)
+        const mediaType = keyOf(row.MEDIA) === 'AUDIO' ? 'audio' : 'video'
+        if (!/^https?:\/\//i.test(mediaUrl) && !(mediaType === 'audio' && mediaUrl.startsWith('/'))) {
+          throw new Error(`Soal ${number}: LINK_MEDIA harus berupa tautan lengkap.`)
+        }
+        if (mediaType === 'video' && !/(youtube\.com|youtu\.be)/i.test(mediaUrl)) throw new Error(`Soal ${number}: video harus menggunakan tautan YouTube.`)
+        question.mediaType = mediaType
+        question.mediaUrl = mediaUrl
+        question.interactiveAnswerType = jenisJawaban === 'ISIAN' ? 'Isian' : question.isMultiSelect ? 'PG_Multi' : 'PG'
+        if (jenisJawaban === 'ISIAN') question.key = required(row.KUNCI, 'KUNCI', number)
+      }
+      questions.push(question)
+    } catch (error) {
+      issues.push({ number, message: error instanceof Error ? error.message : 'Format soal tidak valid.' })
     }
-    if (type === 'Interaktif' && keyOf(row.JENISJAWABAN) !== 'PG') {
-      throw new Error(`Soal ${number}: JENIS_JAWABAN interaktif harus PG.`)
-    }
-    if (type === 'PG' || type === 'Interaktif') {
-      question.options = options.map(key => ({ key, text: required(row[`PILIHAN${key}`], `PILIHAN_${key}`, number) }))
-      const answers = required(row.KUNCI, 'KUNCI', number).toUpperCase().split(',').map(clean)
-      if (!answers.every(answer => options.includes(answer))) throw new Error(`Soal ${number}: KUNCI PG tidak sesuai pilihan jawaban.`)
-      question.isMultiSelect = keyOf(row.MODEPG) === 'MULTI'
-      if (!question.isMultiSelect && answers.length !== 1) throw new Error(`Soal ${number}: PG tunggal hanya boleh memiliki satu KUNCI.`)
-      question.key = question.isMultiSelect ? answers : answers[0]
-    }
-    if (type === 'Esai') question.rubric = required(row.RUBRIK, 'RUBRIK', number)
-    if (type === 'Interaktif') {
-      const mediaUrl = required(row.LINKMEDIA, 'LINK_MEDIA', number)
-      const mediaType = keyOf(row.MEDIA) === 'AUDIO' ? 'audio' : 'video'
-      if (!/^https?:\/\//i.test(mediaUrl)) throw new Error(`Soal ${number}: LINK_MEDIA harus berupa tautan lengkap.`)
-      if (mediaType === 'video' && !/(youtube\.com|youtu\.be)/i.test(mediaUrl)) throw new Error(`Soal ${number}: video harus menggunakan tautan YouTube.`)
-      question.mediaType = mediaType
-      question.mediaUrl = mediaUrl
-      question.interactiveAnswerType = question.isMultiSelect ? 'PG_Multi' : 'PG'
-    }
-    return question
   })
-  if (!questions.length) throw new Error('Dokumen belum memiliki butir soal.')
+  if (!questions.length) throw new Error(`Tidak ada butir soal yang valid dalam dokumen.${issues[0] ? ` ${issues[0].message}` : ''}`)
   return {
     classroom,
     subject,
     questionCount: questions.length,
+    totalCount: blocks.length,
+    issues,
     package: {
       id: `PKG-IMP-${Date.now()}`,
       code: `IMP-${subject.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-6)}`,
