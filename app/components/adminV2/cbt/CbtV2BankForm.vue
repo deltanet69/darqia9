@@ -11,6 +11,7 @@ interface Props {
   grade: GradeType
   classOptions: string[]
   subjectOptions: string[]
+  saving?: boolean
   initialStep?: 'PG' | 'Isian' | 'Esai' | 'Interaktif'
 }
 
@@ -26,6 +27,22 @@ const emit = defineEmits<{
 
 // Deep clone of package to edit without mutating directly
 const draft = ref<BankPackage>(JSON.parse(JSON.stringify(props.pkg)))
+const optionKeys = computed(() => props.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'])
+for (const question of draft.value.questions) {
+  if (question.type === 'PG') {
+    question.options = optionKeys.value.map(key => question.options?.find(option => option.key === key) || { key, text: '' })
+    question.key = Array.isArray(question.key) ? question.key.filter(key => optionKeys.value.includes(key))
+      : optionKeys.value.includes(question.key) ? question.key : ''
+  }
+}
+watch(() => draft.value.classroom, () => {
+  draft.value.classId = undefined
+  draft.value.subjectId = undefined
+  draft.value.subject = ''
+})
+watch(() => props.subjectOptions, options => {
+  if (!options.includes(draft.value.subject)) { draft.value.subject = ''; draft.value.subjectId = undefined }
+})
 
 const currentStep = ref<'PG' | 'Esai' | 'Interaktif'>(props.initialStep === 'Isian' ? 'PG' : props.initialStep || 'PG')
 const isSettingsOpen = ref(!props.editing)
@@ -64,24 +81,16 @@ watch(questionsInStep, questions => {
   }
 }, { immediate: true })
 
-let questionCounter = 100
-
 const blankQuestion = (type: 'PG' | 'Esai' | 'Interaktif'): BankQuestionItem => {
-  questionCounter++
   return {
-    id: `Q-${questionCounter}`,
+    id: crypto.randomUUID(),
     number: draft.value.questions.length + 1,
     type,
     difficulty: 'Sedang',
     text: '',
     key: type === 'PG' || type === 'Interaktif' ? 'A' : '',
     options: type === 'PG' || type === 'Interaktif'
-      ? [
-          { key: 'A', text: '' },
-          { key: 'B', text: '' },
-          { key: 'C', text: '' },
-          { key: 'D', text: '' }
-        ]
+      ? optionKeys.value.map(key => ({ key, text: '' }))
       : undefined,
     isMultiSelect: false,
     rubric: '',
@@ -158,6 +167,11 @@ const prevStep = () => {
 }
 
 const submitForm = () => {
+  if (props.saving) return
+  if (draft.value.grade !== props.grade || !props.classOptions.includes(draft.value.classroom) || !props.subjectOptions.includes(draft.value.subject)) {
+    emit('toast', 'Pilih kelas dan mata pelajaran yang sesuai dengan jenjang aktif.')
+    return
+  }
   if (!draft.value.teacherName?.trim()) {
     emit('toast', 'Nama guru penyusun wajib diisi.')
     return
@@ -189,10 +203,10 @@ const submitForm = () => {
           {{ grade }} · {{ draft.classroom }}
         </span>
         <h2 class="text-xl sm:text-2xl font-extrabold text-white mt-2">
-          {{ editing ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal Baru' }}
+          {{ editing ? 'Ubah Bank Soal' : 'Buat Bank Soal' }}
         </h2>
         <p class="text-xs text-[#C7D7F2] mt-1 max-w-xl">
-          Kelola seluruh format dalam satu paket. Perubahan tersimpan secara interaktif.
+          Pilih kelas dan mata pelajaran, susun soal, lalu simpan bank soal.
         </p>
       </div>
 
@@ -208,9 +222,10 @@ const submitForm = () => {
           type="button"
           class="min-h-11 px-5 rounded-xl bg-white hover:bg-[#E8F0FE] text-[#0A2A5C] text-sm font-bold transition shadow-sm inline-flex items-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           @click="submitForm"
+          :disabled="saving"
         >
           <AdminV2Icon name="check" :size="14" />
-          <span>Simpan Paket</span>
+          <span>{{ saving ? 'Menyimpan…' : 'Simpan Bank Soal' }}</span>
         </button>
       </div>
     </div>
@@ -238,8 +253,10 @@ const submitForm = () => {
           <label class="block text-xs font-bold text-[#344054] mb-1.5">Rombel / Kelas</label>
           <select
             v-model="draft.classroom"
+            :disabled="editing || saving"
             class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
           >
+            <option value="" disabled>Pilih kelas</option>
             <option v-for="c in classOptions" :key="c" :value="c">{{ c }}</option>
           </select>
         </div>
@@ -248,10 +265,13 @@ const submitForm = () => {
           <label class="block text-xs font-bold text-[#344054] mb-1.5">Mata Pelajaran</label>
           <select
             v-model="draft.subject"
+            :disabled="editing || saving || !draft.classroom || !subjectOptions.length"
             class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
           >
+            <option value="" disabled>Pilih mata pelajaran</option>
             <option v-for="s in subjectOptions" :key="s" :value="s">{{ s }}</option>
           </select>
+          <p v-if="draft.classroom && !subjectOptions.length" class="mt-1 text-xs text-[#667085]">Belum ada mata pelajaran pada jadwal kelas ini.</p>
         </div>
 
         <div>
@@ -597,8 +617,9 @@ const submitForm = () => {
           type="button"
           class="min-h-11 rounded-xl bg-[#1B5FD9] px-4 text-sm font-bold text-white active:bg-[#12459B]"
           @click="submitForm"
+          :disabled="saving"
         >
-          Simpan Paket
+          {{ saving ? 'Menyimpan…' : 'Simpan Bank Soal' }}
         </button>
       </div>
     </div>

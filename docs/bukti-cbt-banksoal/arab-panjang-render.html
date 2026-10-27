@@ -1,0 +1,68 @@
+<!doctype html><html lang="id"><meta charset="utf-8"><title>Render Arab panjang hasil OCR terverifikasi</title><style>
+.editor-button[data-v-cbt-test] {
+  min-height: 44px;
+  border: 1px solid #e7ebf2;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0.35rem 0.6rem;
+  color: #344054;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.editor-button[data-v-cbt-test]:hover, .editor-button[data-v-cbt-test]:focus-visible {
+  border-color: #1b5fd9;
+  outline: 2px solid #d9e7ff;
+  outline-offset: 1px;
+}
+.editor-button[aria-pressed='true'][data-v-cbt-test] {
+  border-color: #1b5fd9;
+  background: #e8f0fe;
+  color: #0a2a5c;
+}
+.editor-action[data-v-cbt-test] {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid #e7ebf2;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.editor-action[data-v-cbt-test]:disabled { cursor: wait; opacity: 0.55;
+}
+textarea[dir='rtl'][data-v-cbt-test], .question-preview[dir='rtl'][data-v-cbt-test] {
+  font-family: 'Traditional Arabic', 'Times New Roman', serif;
+  font-size: 1.25rem;
+  line-height: 2;
+  text-align: right;
+}
+.question-preview[data-v-cbt-test] .cbt-code {
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #101828;
+  padding: 0.75rem;
+  color: #f8fafc;
+  direction: ltr;
+  text-align: left;
+  white-space: pre-wrap;
+}
+.question-preview[data-v-cbt-test] .cbt-inline-code { border-radius: 4px; background: #e9eef5; padding: 0.1rem 0.3rem; direction: ltr;
+}
+.question-preview[data-v-cbt-test] .cbt-subheading { display: block; margin: 0.45rem 0 0.2rem;
+}
+.question-preview[data-v-cbt-test] .cbt-list-item { display: block; padding-inline-start: 1rem;
+}
+.question-preview[data-v-cbt-test] .cbt-list-item::before { content: '•'; margin-inline-end: 0.5rem;
+}
+
+
+.cbt-question-text[dir='rtl'][data-v-cbt-test] {
+  font-family: 'Traditional Arabic', 'Times New Roman', serif;
+  font-size: 1.5rem;
+  line-height: 2;
+  text-align: right;
+}
+</style><body><div class="overflow-hidden rounded-xl border border-[#E7EBF2] bg-white focus-within:border-[#1B5FD9]" data-v-cbt-test><div class="flex flex-wrap items-center gap-1 border-b border-[#E7EBF2] bg-[#F9FAFC] p-2" role="toolbar" aria-label="Pemformatan pertanyaan" data-v-cbt-test><button type="button" class="editor-button font-extrabold" title="Tebal" data-v-cbt-test>B</button><button type="button" class="editor-button italic" title="Miring" data-v-cbt-test>I</button><button type="button" class="editor-button" title="Subjudul" data-v-cbt-test>H</button><button type="button" class="editor-button" title="Daftar" data-v-cbt-test>Daftar</button><button type="button" class="editor-button font-mono" title="Kode sebaris" data-v-cbt-test>&lt;/&gt;</button><button type="button" class="editor-button font-mono" title="Blok kode" data-v-cbt-test>Blok kode</button><span class="mx-1 h-6 w-px bg-[#DCE2EA]" aria-hidden="true" data-v-cbt-test></span><!--[--><button type="button" class="editor-button" title="Pecahan Matematika" data-v-cbt-test>a/b</button><button type="button" class="editor-button" title="Bentuk Akar" data-v-cbt-test>√x</button><button type="button" class="editor-button" title="Pangkat / Eksponen" data-v-cbt-test>x²</button><button type="button" class="editor-button" title="Subskrip Indeks" data-v-cbt-test>x₁</button><button type="button" class="editor-button" title="Integral Tertentu" data-v-cbt-test>∫</button><button type="button" class="editor-button" title="Notasi Sigma" data-v-cbt-test>∑</button><button type="button" class="editor-button" title="Plus Minus" data-v-cbt-test>±</button><button type="button" class="editor-button" title="Perkalian Silang" data-v-cbt-test>×</button><button type="button" class="editor-button" title="Bilangan Pi" data-v-cbt-test>π</button><button type="button" class="editor-button" title="Alfa" data-v-cbt-test>α</button><button type="button" class="editor-button" title="Beta" data-v-cbt-test>β</button><button type="button" class="editor-button" title="Sudut Theta" data-v-cbt-test>θ</button><button type="button" class="editor-button" title="Kurang Dari Sama Dengan" data-v-cbt-test>≤</button><button type="button" class="editor-button" title="Lebih Dari Sama Dengan" data-v-cbt-test>≥</button><button type="button" class="editor-button" title="Tidak Sama Dengan" data-v-cbt-test>≠</button><button type="button" class="editor-button" title="Panah Reaksi / Implikasi" data-v-cbt-test>→</button><!--]--><span class="mx-1 h-6 w-px bg-[#DCE2EA]" aria-hidden="true" data-v-cbt-test></span><button type="button" class="editor-button" aria-pressed="true" data-v-cbt-test>العربية RTL</button><button type="button" class="editor-button" data-v-cbt-test>Unggah gambar</button><input class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" data-v-cbt-test></div><textarea rows="5" dir="rtl" lang="ar" class="text-right font-serif text-xl leading-loose block w-full resize-y bg-white p-3 text-sm text-[#101828] outline-none" placeholder="Tulis pertanyaan. Gunakan $...$ untuk rumus sebaris dan $$...$$ untuk rumus terpisah." data-v-cbt-test>وَإِذْ قَالَ رَبُّكَ لِلْمَلَائِكَةِ إِنِّي جَاعِلٌ فِي الْأَرْضِ خَلِيفَةً قَالُوا
+
+أَتَجْعَلُ فِيهَا مَنْ يُفْسِدُ فِيهَا وَيَسْفِكُ الدِّمَاءَ وَنَحْنُ نُسَبِّحُ
+
+بِحَمْدِكَ وَنُقَدِّسُ لَكَ قَالَ إِنِّي أَعْلَمُ مَا لَا تَعْلَمُونَ</textarea><!----><div class="border-t border-[#E7EBF2] bg-[#FAFBFC] p-3" data-v-cbt-test><span class="mb-2 block text-[10px] font-extrabold uppercase text-[#667085]" data-v-cbt-test>Pratinjau siswa</span><div class="font-serif text-xl leading-loose text-right question-preview overflow-x-auto text-sm leading-relaxed text-[#101828]" dir="rtl" data-v-cbt-test>وَإِذْ قَالَ رَبُّكَ لِلْمَلَائِكَةِ إِنِّي جَاعِلٌ فِي الْأَرْضِ خَلِيفَةً قَالُوا<br><br>أَتَجْعَلُ فِيهَا مَنْ يُفْسِدُ فِيهَا وَيَسْفِكُ الدِّمَاءَ وَنَحْنُ نُسَبِّحُ<br><br>بِحَمْدِكَ وَنُقَدِّسُ لَكَ قَالَ إِنِّي أَعْلَمُ مَا لَا تَعْلَمُونَ</div><!----></div></div></body></html>

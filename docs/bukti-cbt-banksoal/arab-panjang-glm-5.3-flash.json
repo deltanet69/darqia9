@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "model": "glm-5.3-flash",
+  "result": {
+    "text": "وَإِذْ قَالَ رَبُّكَ لِلْمَلَائِكَةِ إِنِّي جَاعِلٌ فِي الْأَرْضِ خَلِيفَةً ۖ قَالُوا\n\nأَتَجْعَلُ فِيهَا مَنْ يُفْسِدُ فِيهَا وَيَسْفِكُ الدِّمَاءَ وَنَحْنُ نُسَبِّحُ\n\nبِحَمْدِكَ وَنُقَدِّسُ لَكَ ۖ قَالَ إِنِّي أَعْلَمُ مَا لَا تَعْلَمُونَ",
+    "isRtl": true,
+    "containsFormula": false,
+    "reviewNote": "Teks merupakan kutipan Al-Qur'an surah Al-Baqarah ayat 30 yang terbagi dalam tiga baris. Harakat dan tanda waqaf (ۖ) tampak jelas dan telah dipertahankan. Tidak ada rumus matematika/sains pada gambar. Disarankan guru memverifikasi penulisan mad (mis. الْمَلَائِكَةِ dan الدِّمَاءَ) serta memastikan tidak ada potongan kata yang terlewat di tepi kanan gambar."
+  }
+}

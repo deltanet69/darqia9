@@ -1,0 +1,29 @@
+[
+  {
+    "name": "matematika",
+    "status": 422,
+    "error": "Dua pembacaan gambar belum cocok. Hasil tidak dimasukkan agar teks, harakat, atau rumus tidak berubah. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor."
+  },
+  {
+    "name": "fisika",
+    "status": 200,
+    "text": "$$E_k = \\frac{1}{2}mv^2$$",
+    "reviewNote": "Transkripsi rumus energi kinetik sudah sesuai gambar: indeks k pada E, pecahan 1/2, dan pangkat 2 pada v. Tidak ada teks lain pada gambar."
+  },
+  {
+    "name": "biologi",
+    "status": 200,
+    "text": "$$6\\text{CO}_2 + 6\\text{H}_2\\text{O} \\xrightarrow{\\text{cahaya}} \\text{C}_6\\text{H}_{12}\\text{O}_6 + 6\\text{O}_2$$",
+    "reviewNote": "Persamaan fotosintesis terbaca jelas; kata \"cahaya\" berada di atas tanda panah."
+  },
+  {
+    "name": "arab",
+    "status": 422,
+    "error": "Dua pembacaan gambar belum cocok. Hasil tidak dimasukkan agar teks, harakat, atau rumus tidak berubah. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor."
+  },
+  {
+    "name": "arab-panjang",
+    "status": 502,
+    "error": "Layanan OCR gagal mengekstrak gambar. Coba gunakan gambar yang lebih jelas."
+  }
+]

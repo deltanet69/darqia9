@@ -75,6 +75,7 @@ const isProfileOpen = ref(false)
 const cbtData = useAdminCbtData(assessmentSource.value)
 const grade = ref<GradeType>(initialGrade)
 const activeTab = ref<CbtTabId>(initialActiveTab)
+const bankEntry = ref(0)
 const exams = computed(() => cbtData.exams.value)
 const students = ref<StudentScore[]>([...INITIAL_STUDENTS])
 
@@ -225,6 +226,7 @@ const liveExamCount = computed(() => {
 
 // Tab navigation handler
 const switchTab = (tab: CbtTabId) => {
+  if (tab === 'bank') bankEntry.value++
   activeTab.value = tab
   syncRoute()
   isMobileMenuOpen.value = false
@@ -411,6 +413,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
       <!-- TAB 3: QUESTION BANK TAB -->
       <CbtV2Bank
+        :key="`bank-${assessmentSource}-${grade}-${bankEntry}`"
         v-else-if="activeTab === 'bank'"
         :grade="grade"
         :source="assessmentSource"
@@ -420,6 +423,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
       <!-- TAB 4: EXAM SCHEDULE & LIST TAB -->
       <CbtV2Exams
+        :key="`exams-${assessmentSource}-${grade}`"
         v-else-if="activeTab === 'exams'"
         :grade="grade"
         :source="assessmentSource"

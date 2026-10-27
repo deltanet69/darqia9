@@ -30,7 +30,12 @@ registerHooks({
 })
 
 const { renderKaTeXHtml, validateLatexExpressions } = await import('../app/utils/cbtFormula.ts')
-const { parseOcrExtraction } = await import('../server/utils/cbtOcr.ts')
+const { parseOcrExtraction, ocrTextsAgree } = await import('../server/utils/cbtOcr.ts')
+assert.equal(ocrTextsAgree('بِسْمِ', 'بِسمِ'), false)
+assert.equal(ocrTextsAgree('قَالُوا', 'قَالُوا ۖ'), false)
+assert.equal(ocrTextsAgree('$$v^{2}$$', '$$v^2$$'), true)
+assert.equal(ocrTextsAgree('$$\\sqrt{(b^2-4ac)}$$', '$$\\sqrt{b^{2}-4ac}$$'), true)
+assert.equal(ocrTextsAgree('$$\\sqrt{b^2-4ac}$$', '$$\\sqrt{b^2-5ac}$$'), false)
 const { readWordBankTemplate } = await import('../app/utils/cbtWordBank.ts')
 globalThis.window = { DecompressionStream, scrollTo() {} }
 for (const grade of ['SMP', 'SMK']) {
@@ -68,13 +73,17 @@ globalThis.$fetch = async () => {
   providerCalls++
   return { choices: [{ message: { content: JSON.stringify(providerOutputs.shift()) } }] }
 }
-providerOutputs = [{ ...payload, text: 'x = 1/2' }, payload]
+providerOutputs = [{ ...payload, text: 'x = 1/2' }, payload, payload]
 assert.equal((await ocr(ocrRequest)).text, formula)
-assert.equal(providerCalls, 2, 'Rumus polos dicoba ulang')
+assert.equal(providerCalls, 3, 'Rumus polos dicoba ulang dan diperiksa dengan pembacaan independen')
 providerOutputs = [{ ...payload, text: formula + '\nx = 1/2' }, { ...payload, text: '$$\\salah{x}$$' }]
 await assert.rejects(ocr(ocrRequest), error => error.statusCode === 422)
-providerOutputs = [{ ...payload, text: formula + '\n$$rumus belum ditutup' }, payload]
+providerOutputs = [{ ...payload, text: formula + '\n$$rumus belum ditutup' }, payload, payload]
 assert.equal((await ocr(ocrRequest)).text, formula)
+providerOutputs = [payload, { ...payload, text: '$$x = 999$$' }]
+await assert.rejects(ocr(ocrRequest), error => error.statusCode === 422 && error.message.includes('belum cocok'))
+providerOutputs = [{ ...payload, text: '[tidak terbaca]', containsFormula: false }]
+await assert.rejects(ocr(ocrRequest), error => error.statusCode === 422 && error.message.includes('tidak terbaca'))
 
 // Data ini hanya berada dalam proses uji, tidak ditulis ke Supabase.
 const ids = ['1', '2', '3'].map(n => `00000000-0000-4000-8000-${n.padStart(12, '0')}`)
@@ -133,6 +142,14 @@ assert.equal(form.draft.value.questions[1].type, 'Isian')
 form.nextStep()
 assert.equal(form.currentStep.value, 'Esai')
 assert.equal(form.blankQuestion('Interaktif').interactiveAnswerType, 'PG')
+assert.equal(form.blankQuestion('PG').options.length, 5)
+const smpForm = BankForm.setup({ pkg: { ...bank, grade: 'SMP', teacherName: 'Guru uji' }, grade: 'SMP', editing: false, classOptions: ['Kelas uji'], subjectOptions: ['Mapel uji'] }, { expose() {}, emit() {} })
+assert.deepEqual(smpForm.blankQuestion('PG').options.map(option => option.key), ['A', 'B', 'C', 'D'])
+assert.equal(smpForm.draft.value.questions[0].options.length, 4)
+const oldMulti = { ...bank.questions[0], key: ['A', 'E'], isMultiSelect: true, options: ['A','B','C','D','E'].map(key => ({ key, text: key })) }
+const repairedSmp = BankForm.setup({ pkg: { ...bank, grade: 'SMP', questions: [oldMulti] }, grade: 'SMP', editing: true, classOptions: ['Kelas uji'], subjectOptions: ['Mapel uji'] }, { expose() {}, emit() {} })
+assert.deepEqual([...repairedSmp.draft.value.questions[0].key], ['A'])
+assert.deepEqual(oldMulti.key, ['A', 'E'], 'Normalisasi editor tidak mengubah data asli sebelum disimpan')
 
 const { useAdminCbtData } = await import('../app/composables/useAdminCbtData.ts')
 const daily = useAdminCbtData('ujian_harian')
@@ -255,19 +272,90 @@ await renderToString(createSSRApp({ setup() {
 } }))
 assert.equal(bankVm.storedFormatCount.value, 2)
 monitorData.bankPackages.value = []
+
+const draftStore = new Map([['darqia:cbt-bank-draft:SMK', JSON.stringify({ draft: bank, editing: false })]])
+globalThis.window.sessionStorage = { getItem: key => draftStore.get(key) || null, setItem: (key, value) => draftStore.set(key, value), removeItem: key => draftStore.delete(key) }
+let storedDraftVm
+const draftApp = viewModelRenderer.createApp({ setup() {
+  storedDraftVm = Bank.setup({ grade: 'SMK', source: 'cbt' }, { expose() {}, emit() {} })
+  return () => h('div')
+} })
+draftApp.mount({ children: [] })
+assert.equal(storedDraftVm.hasSavedDraft.value, true)
+assert.equal(storedDraftVm.bankMode.value, 'subjects', 'Draf tersimpan tidak membuka form secara otomatis')
+let smpDraftVm
+const smpDraftApp = viewModelRenderer.createApp({ setup() {
+  smpDraftVm = Bank.setup({ grade: 'SMP', source: 'cbt' }, { expose() {}, emit() {} })
+  return () => h('div')
+} })
+smpDraftApp.mount({ children: [] })
+assert.equal(smpDraftVm.hasSavedDraft.value, false, 'Draf SMK tidak dimuat pada SMP')
+assert.equal(smpDraftVm.formDraft.value, null)
+draftApp.unmount()
+smpDraftApp.unmount()
 assert.equal(bankVm.storedFormatCount.value, 0)
 const { default: BankSsr } = await import('../app/components/adminV2/cbt/CbtV2Bank.vue?ssr')
 const emptyBankHtml = await renderToString(createSSRApp({ render: () => h(BankSsr, { grade: 'SMK', source: 'cbt' }) }))
 assert.doesNotMatch(emptyBankHtml, /4 Format/)
-assert.match(emptyBankHtml, /- Format/)
+assert.match(emptyBankHtml, /0 bank soal/)
+assert.ok(emptyBankHtml.includes('Buat Bank Soal'))
+assert.ok(!emptyBankHtml.includes('Konfigurasi paket ujian'))
+const smpClassId = '00000000-0000-4000-8000-000000000013'
+const smpSubjectId = '00000000-0000-4000-8000-000000000014'
+monitorData.classes.value.push({ id: smpClassId, name: 'Kelas SMP', grade: 'SMP' })
+monitorData.subjects.value.push({ id: smpSubjectId, name: 'Mapel SMP', grade: 'SMP' })
+monitorData.classSubjects.value = [{ class_id: classId, subject_id: subjectId }, { class_id: smpClassId, subject_id: smpSubjectId }]
+assert.deepEqual(bankVm.subjectsForClass('Kelas uji'), ['Mapel uji'])
+assert.deepEqual(bankVm.subjectsForClass('Kelas SMP'), [])
+assert.equal(bankVm.bankMode.value, 'subjects')
+bankVm.startCreatePackage()
+assert.equal(bankVm.formDraft.value.grade, 'SMK')
+assert.equal(bankVm.formDraft.value.questions[0].options.length, 5)
+const smpBank = { ...bank, id: 'bank-smp-uji', grade: 'SMP', classId: smpClassId, subjectId: smpSubjectId, classroom: 'Kelas SMP', subject: 'Mapel SMP' }
+monitorData.bankPackages.value = [bank, smpBank]
+assert.equal(bankVm.currentGradePackages.value.length, 1)
+bankVm.selectedPkgId.value = smpBank.id
+assert.equal(bankVm.selectedPackage.value, null)
+await assert.rejects(monitorData.saveBankPackage(smpBank, 'SMK'), /Jenjang/)
+await assert.rejects(monitorData.deleteBankPackage(smpBank.id, 'SMK'), /jenjang/)
+await assert.rejects(monitorData.saveBankPackage({ ...bank, questions: [{ ...bank.questions[0], options: ['A','B','C','D'].map(key => ({key,text:key})) }] }, 'SMK'), /5 opsi/)
+await assert.rejects(monitorData.saveBankPackage({ ...smpBank, questions: [{ ...bank.questions[0], options: ['A','B','C','D','E'].map(key => ({key,text:key})) }] }, 'SMP'), /4 opsi/)
+bankVm.searchQuery.value = 'Mapel SMP'
+assert.equal(bankVm.subjectPackages.value.length, 0)
+monitorData.bankPackages.value = []
 
 const { default: Editor } = await import('../app/components/adminV2/cbt/CbtRichQuestionEditor.vue?ssr')
+const { default: EditorSetup } = await import('../app/components/adminV2/cbt/CbtRichQuestionEditor.vue')
+const editorEvents = []
+const editorProps = reactive({ modelValue: '', imageUrl: 'data:image/png;base64,YQ==', rtl: false })
+const editorVm = EditorSetup.setup(editorProps, { expose() {}, emit: (event, value) => editorEvents.push([event, value]) })
+let finishExtraction
+globalThis.$fetch = () => new Promise(resolve => { finishExtraction = resolve })
+const staleExtraction = editorVm.extractImageText()
+editorProps.imageUrl = 'data:image/png;base64,Yg=='
+finishExtraction({ text: 'Hasil gambar sebelumnya', isRtl: false, reviewNote: '' })
+await staleExtraction
+assert.ok(!editorEvents.some(([event]) => event === 'update:modelValue'))
+assert.match(editorVm.extractionNote.value, /sudah berubah/)
+globalThis.$fetch = async () => { throw { data: { statusMessage: 'Dua pembacaan belum cocok.' } } }
+await editorVm.extractImageText()
+assert.ok(!editorEvents.some(([event]) => event === 'update:modelValue'))
+assert.equal(editorVm.extractionNote.value, 'Dua pembacaan belum cocok.')
 const { default: Student } = await import('../app/components/cbt/CbtExamScreen.vue?ssr')
 const componentStyles = ['CbtRichQuestionEditor.vue', '../../cbt/CbtExamScreen.vue'].map(filename => {
   const file = path.join(root, 'app/components/adminV2/cbt', filename)
   return parse(fs.readFileSync(file, 'utf8')).descriptor.styles.map(style => compileStyle({ source: style.content, filename: file, id: 'data-v-cbt-test', scoped: true }).code).join('\n')
 }).join('\n')
 const folder = path.join(root, 'docs/bukti-cbt-banksoal')
+const latestOcr = JSON.parse(fs.readFileSync(path.join(folder, 'ocr-verifikasi-ganda-terakhir.json'), 'utf8'))
+const longArabic = latestOcr.find(item => item.name === 'arab-panjang')
+const expectedLongArabic = 'وَإِذْ قَالَ رَبُّكَ لِلْمَلَائِكَةِ إِنِّي جَاعِلٌ فِي الْأَرْضِ خَلِيفَةً قَالُوا أَتَجْعَلُ فِيهَا مَنْ يُفْسِدُ فِيهَا وَيَسْفِكُ الدِّمَاءَ وَنَحْنُ نُسَبِّحُ بِحَمْدِكَ وَنُقَدِّسُ لَكَ قَالَ إِنِّي أَعْلَمُ مَا لَا تَعْلَمُونَ'
+assert.equal(longArabic.status, 200)
+assert.equal(longArabic.text.normalize('NFC').replace(/\s+/g, ''), expectedLongArabic.normalize('NFC').replace(/\s+/g, ''))
+const longArabicEditor = await renderToString(createSSRApp({ render: () => h(Editor, { modelValue: longArabic.text }) }))
+assert.match(longArabicEditor, /dir="rtl"/)
+assert.match(longArabicEditor, /lang="ar"/)
+fs.writeFileSync(path.join(folder, 'arab-panjang-render.html'), '<!doctype html><html lang="id"><meta charset="utf-8"><title>Render Arab panjang hasil OCR terverifikasi</title><style>'+componentStyles+'</style><body>'+longArabicEditor+'</body></html>')
 fs.writeFileSync(path.join(folder, 'monitoring-kosong-render.html'), '<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bukti struktur monitoring kosong</title><body>'+emptyMonitoringHtml+'</body></html>')
 const evidence = []
 for (const name of ['matematika', 'fisika', 'biologi', 'arab']) {
@@ -305,6 +393,6 @@ for (const name of ['matematika', 'fisika', 'biologi', 'arab']) {
   evidence.push({ name, status: 'LULUS SSR', formula: result.containsFormula, rtl: result.isRtl })
 }
 await nextTick()
-const summary = { parser: 'LULUS', retryDanPenolakanRumusInvalid: 'LULUS (penyedia tiruan)', templateDanImpor: 'LULUS SMP/SMK', pemilihanUrutanDanRpc: 'LULUS (Supabase tiruan)', pemuatanSiswa: 'LULUS (respons server tiruan)', pemisahanSumber: 'LULUS (Supabase tiruan)', monitoringDanDataKosong: 'LULUS (Supabase tiruan + SSR)', kompatibilitasLama: 'LULUS', formulir: 'LULUS', evidence }
+const summary = { parser: 'LULUS', retryDanPenolakanRumusInvalid: 'LULUS (penyedia tiruan)', ocrIndependenDanHasilKedaluwarsa: 'LULUS (penyedia tiruan)', daftarBankDanPemisahanJenjang: 'LULUS (Supabase tiruan + SSR)', opsiPilihanGanda: 'LULUS SMP 4 / SMK 5', templateDanImpor: 'LULUS SMP/SMK', pemilihanUrutanDanRpc: 'LULUS (Supabase tiruan)', pemuatanSiswa: 'LULUS (respons server tiruan)', pemisahanSumber: 'LULUS (Supabase tiruan)', monitoringDanDataKosong: 'LULUS (Supabase tiruan + SSR)', kompatibilitasLama: 'LULUS', formulir: 'LULUS', evidence }
 fs.writeFileSync(path.join(folder, 'hasil-uji.json'), JSON.stringify(summary, null, 2))
 console.log(JSON.stringify(summary, null, 2))

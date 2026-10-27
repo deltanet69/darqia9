@@ -22,11 +22,12 @@ const emit = defineEmits<{
 }>()
 
 // Navigation & Filters: 'classes' | 'subjects' | 'detail' | 'form'
-const bankMode = ref<'classes' | 'subjects' | 'detail' | 'form'>('classes')
+const bankMode = ref<'subjects' | 'detail' | 'form'>('subjects')
+const hasSavedDraft = ref(false)
+const isSaving = ref(false)
 const selectedClass = ref('')
 const selectedPkgId = ref<string | null>(null)
 const searchQuery = ref('')
-const levelFilter = ref('all')
 const activeFormat = ref<'all' | 'PG' | 'Isian' | 'Esai' | 'Interaktif'>('all')
 
 const packages = computed(() => cbtData.bankPackages.value)
@@ -61,6 +62,7 @@ const persistFormDraft = () => {
 
 const clearFormDraft = () => {
   if (typeof window !== 'undefined') window.sessionStorage.removeItem(draftStorageKey())
+  hasSavedDraft.value = false
 }
 
 const updateFormDraft = (draft: BankPackage) => {
@@ -118,46 +120,30 @@ const allClasses = computed(() => {
 const allSubjects = computed(() => {
   return cbtData.subjects.value.filter(item => item.grade === props.grade).map(item => item.name)
 })
-
-const filteredClasses = computed(() => {
-  const q = searchQuery.value.toLowerCase().trim()
-  const lv = levelFilter.value
-  return allClasses.value.filter(c => {
-    const matchQ = !q || c.toLowerCase().includes(q)
-    const matchLv = lv === 'all' || c.includes(lv)
-    return matchQ && matchLv
-  })
-})
-
-const classStats = (cls: string) => {
-  const pks = currentGradePackages.value.filter(p => p.classroom === cls)
-  const countByType = (t: string) =>
-    pks.reduce((sum, p) => sum + p.questions.filter(q => q.type === t).length, 0)
-  const total = pks.reduce((sum, p) => sum + p.questions.length, 0)
-  return {
-    subjects: pks.length,
-    total,
-    formats: new Set(pks.flatMap(pkg => pkg.questions.map(q => q.type))).size,
-    pg: countByType('PG'),
-    isian: countByType('Isian'),
-    esai: countByType('Esai'),
-    inter: countByType('Interaktif')
+const subjectsForClass = (classroom: string) => {
+  const target = cbtData.classes.value.find(item => item.grade === props.grade && item.name === classroom)
+  if (!target) return []
+  const ids = new Set(cbtData.classSubjects.value.filter(item => item.class_id === target.id).map(item => item.subject_id))
+  for (const bank of currentGradePackages.value.filter(item => item.classId === target.id)) {
+    if (bank.subjectId) ids.add(bank.subjectId)
   }
+  return cbtData.subjects.value.filter(item => item.grade === props.grade && ids.has(item.id)).map(item => item.name)
 }
+
 
 // Current subject packages in selected class
 const subjectPackages = computed(() => {
   const q = searchQuery.value.toLowerCase().trim()
   return currentGradePackages.value.filter(p => {
-    const inCls = p.classroom === selectedClass.value
-    const matchQ = !q || p.subject.toLowerCase().includes(q) || p.teacherName.toLowerCase().includes(q)
+    const inCls = !selectedClass.value || p.classroom === selectedClass.value
+    const matchQ = !q || [p.subject, p.classroom, p.code, p.teacherName].some(value => (value || '').toLowerCase().includes(q))
     return inCls && matchQ
   })
 })
 
 // Current selected package
 const selectedPackage = computed(() => {
-  return packages.value.find(p => p.id === selectedPkgId.value) || null
+  return currentGradePackages.value.find(p => p.id === selectedPkgId.value) || null
 })
 
 // Filtered questions in package detail
@@ -168,21 +154,17 @@ const displayedQuestions = computed(() => {
 })
 
 // Actions
-const openClassSubjects = (cls: string) => {
-  selectedClass.value = cls
-  bankMode.value = 'subjects'
-  searchQuery.value = ''
-}
 
 const openPackageDetail = (pkgId: string) => {
+  if (!currentGradePackages.value.some(pkg => pkg.id === pkgId)) return
   selectedPkgId.value = pkgId
   bankMode.value = 'detail'
   activeFormat.value = 'all'
 }
 
 const startCreatePackage = (preselectedClass?: string) => {
-  const targetClass = preselectedClass || selectedClass.value || allClasses.value[0] || ''
-  const targetSubject = allSubjects.value[0] || ''
+  const targetClass = preselectedClass || selectedClass.value || ''
+  const targetSubject = ''
   formDraft.value = {
     id: `PKG-${Date.now()}`,
     code: `${targetSubject.slice(0, 3).toUpperCase()}-${targetClass.replace(/\s+/g, '')}`,
@@ -201,12 +183,7 @@ const startCreatePackage = (preselectedClass?: string) => {
         difficulty: 'Sedang',
         text: '',
         key: 'A',
-        options: [
-          { key: 'A', text: '' },
-          { key: 'B', text: '' },
-          { key: 'C', text: '' },
-          { key: 'D', text: '' }
-        ]
+        options: (props.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']).map(key => ({ key, text: '' }))
       }
     ]
   }
@@ -217,6 +194,7 @@ const startCreatePackage = (preselectedClass?: string) => {
 }
 
 const startEditPackage = (pkg: BankPackage) => {
+  if (pkg.grade !== props.grade) return
   formDraft.value = JSON.parse(JSON.stringify(pkg))
   isEditingForm.value = true
   formStep.value = 'PG'
@@ -225,8 +203,12 @@ const startEditPackage = (pkg: BankPackage) => {
 }
 
 const handleSavePackage = async (updatedPkg: BankPackage) => {
+  if (isSaving.value) return
+  isSaving.value = true
   try {
-    const savedId = await cbtData.saveBankPackage(updatedPkg)
+    if (!subjectsForClass(updatedPkg.classroom).includes(updatedPkg.subject)) throw new Error('Mata pelajaran tidak tersedia pada kelas yang dipilih.')
+    const updated = { ...updatedPkg, code: isEditingForm.value ? updatedPkg.code : `BANK-${props.grade}-${crypto.randomUUID().slice(0, 8).toUpperCase()}` }
+    const savedId = await cbtData.saveBankPackage(updated, props.grade)
     selectedPkgId.value = savedId
     selectedClass.value = updatedPkg.classroom
     bankMode.value = 'detail'
@@ -235,19 +217,13 @@ const handleSavePackage = async (updatedPkg: BankPackage) => {
     emit('toast', `Paket bank soal ${updatedPkg.subject} berhasil disimpan.`)
   } catch (saveError) {
     emit('toast', saveError instanceof Error ? saveError.message : 'Paket bank soal gagal disimpan.')
-  }
+  } finally { isSaving.value = false }
 }
 
 const handleCancelForm = () => {
   clearFormDraft()
   formDraft.value = null
-  if (selectedPkgId.value) {
-    bankMode.value = 'detail'
-  } else if (selectedClass.value) {
-    bankMode.value = 'subjects'
-  } else {
-    bankMode.value = 'classes'
-  }
+  bankMode.value = 'subjects'
 }
 
 const exportCsv = (pkg: BankPackage) => {
@@ -289,9 +265,9 @@ const deleteQuestion = async (qId: string) => {
 const deletePackage = async (pkgId: string) => {
   if (confirm('Hapus seluruh paket bank soal ini?')) {
     try {
-      await cbtData.deleteBankPackage(pkgId)
+      await cbtData.deleteBankPackage(pkgId, props.grade)
       clearFormDraft()
-      bankMode.value = 'classes'
+      bankMode.value = 'subjects'
       emit('toast', 'Paket bank soal berhasil dihapus.')
     } catch (deleteError) {
       emit('toast', deleteError instanceof Error ? deleteError.message : 'Paket bank soal gagal dihapus.')
@@ -299,7 +275,10 @@ const deletePackage = async (pkgId: string) => {
   }
 }
 
-onMounted(restoreFormDraft)
+onMounted(() => {
+  try { hasSavedDraft.value = !!window.sessionStorage.getItem(draftStorageKey()) }
+  catch { hasSavedDraft.value = false }
+})
 
 const downloadWordTemplate = (grade: GradeType) => {
   const link = document.createElement('a')
@@ -332,7 +311,8 @@ const confirmImport = async () => {
   if (!importPreview.value || isImporting.value) return
   isImporting.value = true
   try {
-    const savedId = await cbtData.saveBankPackage(importPreview.value.package)
+    if (!subjectsForClass(importPreview.value.classroom).includes(importPreview.value.subject)) throw new Error('Mata pelajaran impor tidak sesuai dengan jadwal kelas.')
+    const savedId = await cbtData.saveBankPackage(importPreview.value.package, props.grade)
     selectedPkgId.value = savedId
     selectedClass.value = importPreview.value.classroom
     activeFormat.value = 'all'
@@ -353,10 +333,11 @@ const confirmImport = async () => {
     <div v-if="bankMode === 'form' && formDraft">
       <CbtV2BankForm
         :pkg="formDraft"
+        :saving="isSaving"
         :editing="isEditingForm"
         :grade="grade"
         :class-options="allClasses"
-        :subject-options="allSubjects"
+        :subject-options="subjectsForClass(formDraft.classroom)"
         :initial-step="formStep"
         @save="handleSavePackage"
         @cancel="handleCancelForm"
@@ -366,227 +347,44 @@ const confirmImport = async () => {
       />
     </div>
 
-    <!-- VIEW 1: CLASSES GRID -->
-    <div v-else-if="bankMode === 'classes'" class="space-y-4">
-      <!-- Section Head -->
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
-        <div>
-          <h2 class="text-lg font-extrabold text-[#101828]">{{ bankLabel }}</h2>
-          <p class="text-xs text-[#667085] mt-0.5">Jelajahi rombel → paket mapel → rincian soal.</p>
-        </div>
-        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-          <button
-            type="button"
-            class="min-h-11 px-3 sm:px-4 rounded-xl border border-[#E7EBF2] bg-white hover:bg-[#F3F5F9] text-xs font-extrabold text-[#344054] transition inline-flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
-            @click="isImportModalOpen = true"
-          >
-            <AdminV2Icon name="download" :size="14" />
-            <span>Import Word/Excel</span>
-          </button>
-          <button
-            type="button"
-            class="min-h-11 px-3 sm:px-4 rounded-xl bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
-            @click="startCreatePackage()"
-          >
-            <AdminV2Icon name="plus" :size="14" />
-            <span>Buat Paket Soal</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 4 KPIs (vbt-v4) -->
-      <div class="hidden lg:grid grid-cols-4 gap-3">
-        <!-- 1. Paket Contoh -->
-        <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
-          <div class="flex items-center justify-between text-xs">
-            <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
-              <AdminV2Icon name="book" :size="16" />
-            </span>
-            <span class="text-[10px] font-extrabold text-[#667085]">Multi-Format</span>
-          </div>
-          <div class="my-2">
-            <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
-              {{ currentGradePackages.length }} Paket
-            </div>
-            <div class="text-xs text-[#667085] font-semibold mt-1">Paket tersimpan</div>
-          </div>
-        </article>
-
-        <!-- 2. Rombel Aktif -->
-        <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
-          <div class="flex items-center justify-between text-xs">
-            <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
-              <AdminV2Icon name="users" :size="16" />
-            </span>
-            <span class="text-[10px] font-extrabold text-[#667085]">{{ grade }}</span>
-          </div>
-          <div class="my-2">
-            <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
-              {{ allClasses.length }}
-            </div>
-            <div class="text-xs text-[#667085] font-semibold mt-1">Rombel aktif</div>
-          </div>
-        </article>
-
-        <!-- 3. Mata Pelajaran Siap -->
-        <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
-          <div class="flex items-center justify-between text-xs">
-            <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
-              <AdminV2Icon name="check" :size="16" />
-            </span>
-            <span class="text-[10px] font-extrabold text-[#667085]">Kurikulum</span>
-          </div>
-          <div class="my-2">
-            <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
-              {{ allSubjects.length }} Mapel
-            </div>
-            <div class="text-xs text-[#667085] font-semibold mt-1">Mata pelajaran siap</div>
-          </div>
-        </article>
-
-        <!-- 4. Format Soal -->
-        <article class="bg-white border border-[#E7EBF2] rounded-[18px] p-4 flex flex-col justify-between shadow-xs">
-          <div class="flex items-center justify-between text-xs">
-            <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
-              <AdminV2Icon name="grid" :size="16" />
-            </span>
-            <span class="text-[10px] font-extrabold text-[#667085]">PG · Esai · Interaktif</span>
-          </div>
-          <div class="my-2">
-            <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
-              {{ storedFormatCount || '-' }} Format
-            </div>
-            <div class="text-xs text-[#667085] font-semibold mt-1">Format soal tersimpan</div>
-          </div>
-        </article>
-      </div>
-
-      <div class="lg:hidden rounded-xl border border-[#E7EBF2] bg-white px-3.5 py-3 text-sm text-[#344054]">
-        <strong class="text-[#101828]">{{ currentGradePackages.length }}</strong> paket pada
-        <strong class="text-[#101828]">{{ allClasses.length }}</strong> rombel dan
-        <strong class="text-[#101828]">{{ allSubjects.length }}</strong> mata pelajaran.
-      </div>
-
-      <!-- Toolstrip Search + Level Filter -->
-      <section class="bg-white border border-[#E7EBF2] rounded-2xl p-3 shadow-xs flex flex-col sm:flex-row items-center gap-3">
-        <div class="relative flex-1 w-full">
-          <AdminV2Icon name="search" :size="15" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#98A2B3]" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Cari rombel, mis. X RPL 1, VII-A"
-            class="w-full bg-[#F9FAFC] border border-[#E7EBF2] rounded-xl pl-9 pr-3 py-2 text-xs text-[#101828] outline-none focus:bg-white focus:border-[#1B5FD9]"
-          >
-        </div>
-
-        <select
-          v-model="levelFilter"
-          class="border border-[#E7EBF2] rounded-xl px-3 py-2 text-xs font-bold text-[#344054] bg-white outline-none cursor-pointer w-full sm:w-auto"
-        >
-          <option value="all">Semua Tingkat</option>
-          <template v-if="grade === 'SMK'">
-            <option value="X">Kelas X</option>
-            <option value="XI">Kelas XI</option>
-            <option value="XII">Kelas XII</option>
-            <option value="RPL">Jurusan RPL</option>
-            <option value="TKJ">Jurusan TKJ</option>
-          </template>
-          <template v-else>
-            <option value="VII">Kelas VII</option>
-            <option value="VIII">Kelas VIII</option>
-            <option value="IX">Kelas IX</option>
-          </template>
-        </select>
-      </section>
-
-      <!-- 4-col Cards Grid -->
-      <div v-if="filteredClasses.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <article
-          v-for="c in filteredClasses"
-          :key="c"
-          role="button"
-          tabindex="0"
-          class="bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-[18px] p-4 sm:p-5 shadow-xs cursor-pointer transition hover:-translate-y-1 hover:shadow-md flex flex-col justify-between"
-          @click="openClassSubjects(c)"
-          @keydown.enter.prevent="openClassSubjects(c)"
-          @keydown.space.prevent="openClassSubjects(c)"
-        >
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <span class="w-9 h-9 rounded-xl bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
-                <AdminV2Icon name="book" :size="18" />
-              </span>
-              <span class="text-[10.5px] font-extrabold px-2 py-0.5 rounded-full bg-[#EFF2F7] text-[#344054]">
-                {{ grade }}
-              </span>
-            </div>
-            <h3 class="text-base font-extrabold text-[#101828]">{{ c }}</h3>
-            <p class="text-xs text-[#667085] mt-0.5 mb-3">
-              {{ classStats(c).subjects ? `${classStats(c).subjects} paket mapel tersedia` : 'Belum ada paket soal' }}
-            </p>
-
-            <div class="flex items-center gap-4 text-xs mt-2">
-              <div>
-                <b class="text-sm font-extrabold text-[#101828] block">{{ classStats(c).total }}</b>
-                <span class="text-[10px] text-[#667085]">Total soal</span>
-              </div>
-              <div>
-                <b class="text-sm font-extrabold text-[#101828] block">{{ classStats(c).formats || '-' }}</b>
-                <span class="text-[10px] text-[#667085]">Jenis format</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between pt-3 mt-4 border-t border-[#E7EBF2] text-xs font-bold text-[#1B5FD9]">
-            <span>Lihat paket mapel</span>
-            <AdminV2Icon name="arrow-right" :size="12" />
-          </div>
-        </article>
-      </div>
-      <div v-else class="bg-white border border-[#E7EBF2] rounded-2xl p-8 text-center text-xs text-[#667085]">
-        Rombel tidak ditemukan. Ubah kata kunci atau filter tingkat.
-      </div>
-    </div>
 
     <!-- VIEW 2: SUBJECTS LIST -->
     <div v-else-if="bankMode === 'subjects'" class="space-y-4">
-      <button
-        type="button"
-        class="text-xs font-bold text-[#667085] hover:text-[#101828] inline-flex items-center gap-1.5 transition"
-        @click="bankMode = 'classes'"
-      >
-        <AdminV2Icon name="arrow-left" :size="12" />
-        <span>Kembali ke daftar rombel</span>
-      </button>
-
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
         <div>
           <h2 class="text-lg font-extrabold text-[#101828]">
-            {{ bankLabel }} · {{ selectedClass }}
+            {{ bankLabel }}
           </h2>
           <p class="text-xs text-[#667085] mt-0.5">
-            Paket mata pelajaran dan komposisi format untuk rombel ini.
+            {{ currentGradePackages.length }} bank soal · {{ currentGradePackages.reduce((total, pkg) => total + pkg.questions.length, 0) }} soal tersimpan · {{ storedFormatCount || '-' }} format · {{ grade }}
           </p>
         </div>
+        <div class="flex flex-wrap items-center gap-2">
+        <button v-if="hasSavedDraft" type="button" class="min-h-11 rounded-xl border px-3 text-xs font-bold text-[#344054]" @click="restoreFormDraft">Lanjutkan draf</button>
+        <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-3 text-xs font-bold text-[#344054]" @click="isImportModalOpen = true">Impor Word</button>
         <button
           type="button"
           class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
           @click="startCreatePackage(selectedClass)"
         >
           <AdminV2Icon name="plus" :size="14" />
-          <span>Buat Paket Mapel Baru</span>
+          <span>Buat Bank Soal</span>
         </button>
+        </div>
       </div>
 
       <!-- Search Toolstrip -->
+      <div class="flex flex-col gap-3 sm:flex-row">
       <div class="relative w-full">
         <AdminV2Icon name="search" :size="15" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#98A2B3]" />
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Cari mapel atau guru"
+          placeholder="Cari mata pelajaran, kelas, atau penyusun"
           class="w-full bg-white border border-[#E7EBF2] rounded-xl pl-9 pr-3 py-2.5 text-xs text-[#101828] outline-none shadow-xs"
         >
+      </div>
+      <select v-model="selectedClass" aria-label="Filter kelas bank soal" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm sm:w-56"><option value="">Semua kelas {{ grade }}</option><option v-for="cls in allClasses" :key="cls" :value="cls">{{ cls }}</option></select>
       </div>
 
       <!-- Table of Packages -->
@@ -599,7 +397,7 @@ const confirmImport = async () => {
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <h3 class="text-sm font-extrabold text-[#101828] break-words">{{ p.subject }}</h3>
-              <p class="mt-0.5 font-mono text-[11px] text-[#667085] break-all">{{ p.code }}</p>
+              <p class="mt-0.5 text-xs text-[#667085]">{{ p.classroom }} · {{ p.updatedAt }}</p>
             </div>
             <span class="shrink-0 rounded-lg bg-[#EFF2F7] px-2 py-1 text-[11px] font-bold text-[#344054]">{{ p.questions.length }} soal</span>
           </div>
@@ -616,26 +414,27 @@ const confirmImport = async () => {
             </span>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 border-t border-[#E7EBF2] pt-3">
+          <div class="grid grid-cols-3 gap-2 border-t border-[#E7EBF2] pt-3">
             <button
               type="button"
               class="min-h-11 rounded-xl border border-[#E7EBF2] px-3 text-xs font-bold text-[#344054] active:bg-[#F3F5F9]"
               @click="startEditPackage(p)"
             >
-              Edit Paket
+              Ubah
             </button>
             <button
               type="button"
               class="min-h-11 rounded-xl bg-[#E8F0FE] px-3 text-xs font-bold text-[#0A2A5C] active:bg-[#D6E6FF]"
               @click="openPackageDetail(p.id)"
             >
-              Lihat Soal
+              Lihat
             </button>
+            <button type="button" class="min-h-11 rounded-xl border border-[#F8D3CE] px-3 text-xs font-bold text-[#B42318]" @click="deletePackage(p.id)">Hapus</button>
           </div>
         </article>
       </div>
       <div v-else class="md:hidden rounded-2xl border border-[#E7EBF2] bg-white p-6 text-center text-sm text-[#667085]">
-        Belum ada paket sesuai pencarian. Buat paket mapel baru untuk kelas ini.
+        {{ currentGradePackages.length ? 'Tidak ada bank soal sesuai pencarian.' : `Belum ada bank soal ${grade}. Klik Buat Bank Soal untuk mulai menyusun.` }}
       </div>
 
       <section class="hidden md:block bg-white border border-[#E7EBF2] rounded-2xl overflow-hidden shadow-xs">
@@ -643,7 +442,7 @@ const confirmImport = async () => {
           <table class="w-full text-left text-xs min-w-[700px]">
             <thead class="bg-[#FAFBFC] border-b border-[#E7EBF2] text-[10px] uppercase font-extrabold text-[#667085] tracking-wider">
               <tr>
-                <th class="py-3 px-4">Mata Pelajaran &amp; Kode</th>
+                <th class="py-3 px-4">Mata Pelajaran &amp; Kelas</th>
                 <th class="py-3 px-4">Guru Penyusun</th>
                 <th class="py-3 px-4">Komposisi Format</th>
                 <th class="py-3 px-4">Kesulitan</th>
@@ -655,7 +454,7 @@ const confirmImport = async () => {
               <tr v-for="p in subjectPackages" :key="p.id" class="hover:bg-[#FAFCFF] transition">
                 <td class="py-3 px-4">
                   <strong class="block text-xs font-bold text-[#101828]">{{ p.subject }}</strong>
-                  <span class="block text-[10.5px] font-mono text-[#667085]">{{ p.code }}</span>
+                  <span class="block text-[11px] text-[#667085]">{{ p.classroom }} · {{ p.updatedAt }}</span>
                 </td>
                 <td class="py-3 px-4 font-semibold text-[#344054]">{{ p.teacherName }}</td>
                 <td class="py-3 px-4">
@@ -682,8 +481,9 @@ const confirmImport = async () => {
                       class="px-3 py-1.5 rounded-xl border border-[#E7EBF2] text-xs font-bold hover:bg-[#F3F5F9] transition"
                       @click="startEditPackage(p)"
                     >
-                      Edit Paket
+                      Ubah
                     </button>
+                    <button type="button" class="min-h-11 px-3 text-xs font-bold text-[#B42318]" @click="deletePackage(p.id)">Hapus</button>
                     <button
                       type="button"
                       class="px-3 py-1.5 text-xs font-bold text-[#1B5FD9] hover:underline inline-flex items-center gap-1"
@@ -697,14 +497,14 @@ const confirmImport = async () => {
               </tr>
               <tr v-if="!subjectPackages.length">
                 <td colspan="6" class="py-8 text-center text-xs text-[#667085]">
-                  Belum ada paket sesuai pencarian. Buat paket mapel baru untuk kelas ini.
+                  {{ currentGradePackages.length ? 'Tidak ada bank soal sesuai pencarian.' : `Belum ada bank soal ${grade}. Klik Buat Bank Soal untuk mulai menyusun.` }}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
         <div class="p-3 border-t border-[#E7EBF2] bg-[#FAFBFC] text-xs text-[#667085]">
-          Menampilkan {{ subjectPackages.length }} paket soal untuk {{ selectedClass }}.
+          Menampilkan {{ subjectPackages.length }} bank soal {{ grade }}{{ selectedClass ? ` · ${selectedClass}` : '' }}.
         </div>
       </section>
     </div>
@@ -717,7 +517,7 @@ const confirmImport = async () => {
         @click="bankMode = 'subjects'"
       >
         <AdminV2Icon name="arrow-left" :size="12" />
-        <span>Kembali ke paket {{ selectedPackage.classroom }}</span>
+        <span>Kembali ke daftar bank soal</span>
       </button>
 
       <!-- Head & Actions -->

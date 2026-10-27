@@ -106,7 +106,45 @@ Uji manual tindak lanjut: buka `/adminV2/cbt?tab=monitoring&jenjang=smk`, pastik
 
 Berkas tindak lanjut: `CbtV2Monitoring.vue`, `CbtV2Exams.vue`, `CbtV2Bank.vue`, `CbtV2Header.vue`, `CbtV2PageContent.vue`, dan `cbtV2Data.ts` di `app/components/adminV2/cbt/`; `app/composables/useAdminCbtData.ts`; `tests/cbt-banksoal.mjs`; laporan dan bukti SSR ini. Tidak ada migrasi atau dependensi tambahan.
 
-## Definition of Done dan cara uji manual
+## Pembaruan daftar bank soal opsi PG dan verifikasi OCR
+
+Cadangan sebelum perubahan: commit `82d1116`, cabang `backup/bank-soal-crud-20261027`. Tanpa dependensi baru dan tanpa push.
+
+- Klik tab Bank Soal selalu membuka daftar bank pada jenjang aktif, termasuk saat tab yang sama diklik ulang. Daftar menyediakan pencarian, filter kelas, jumlah soal, penyusun, tanggal pembaruan, komposisi soal, serta aksi Lihat/Ubah/Hapus. Tampilan mobile menggunakan kartu.
+- Form hanya dibuka melalui **Buat Bank Soal**, **Ubah**, atau **Lanjutkan draf**. Draf tidak dipulihkan otomatis. Draf dipisahkan menurut sumber CBT/LMS dan SMP/SMK. Pergantian jenjang membuat instance form baru sehingga pilihan lama tidak ikut terbawa.
+- Mata pelajaran pembuatan mengikuti relasi `class_schedules` aktif pada kelas yang dipilih. Tidak ada pengisian mapel tebakan bila jadwal kelas belum dipetakan. Bank lama mempertahankan identitas kelas/mapelnya saat diedit; kedua field dikunci untuk menjaga relasi ujian.
+- Daftar, rincian, penyimpanan, impor, dan penghapusan dibatasi oleh jenjang aktif. Payload kelas/mapel yang tidak sejenjang ditolak. Penghapusan juga menyaring kolom `grade` dan memeriksa hasil penghapusan agar tidak menampilkan sukses palsu.
+- Pilihan ganda baru: **SMP A–D (4)**, **SMK A–E (5)**. Aturan berlaku di form serta validasi penyimpanan. Opsi harus terisi dan kunci harus merujuk opsi yang tersedia. Form lama dinormalisasi saat dibuka untuk edit, tanpa mengubah data tersimpan sebelum guru menyimpan.
+
+Pembaruan OCR:
+
+- PNG/JPEG/WebP sampai 700 KB dikirim sebagai gambar asli, tanpa kompresi ulang. Gambar lebih besar memakai batas dimensi 2400 px untuk menjaga detail. Permintaan pembacaan menggunakan detail tinggi.
+- Hasil dibaca oleh dua model penyedia yang sama: `glm-5.3-flash` dan `deepseek-v4-flash-vision-exp`. Daftar model dikonfirmasi melalui endpoint `/v1/models` penyedia; tidak ada layanan atau dependensi baru.
+- Prompt melarang melengkapi ayat dari hafalan atau menambah tanda waqaf/harakat yang tidak terlihat. Uji awal memang menemukan model menambah waqaf pada gambar uji yang tidak memilikinya.
+- Dua hasil dibandingkan dengan normalisasi Unicode NFC, spasi, dan variasi LaTeX terbatas yang setara. Harakat tidak dibuang dalam pembandingan. Normalisasi tidak menulis ulang teks hasil ekstraksi.
+- Perbedaan bacaan, penanda `[tidak terbaca]`, atau rumus tidak valid ditolak dengan HTTP 422. Teks utama tidak diubah. Hasil dari gambar lama juga tidak disisipkan bila gambar atau teks sudah berubah saat permintaan masih berjalan. Catatan kegagalan tetap terlihat di bawah gambar.
+
+Uji penyedia sebenarnya: [hasil pembacaan ganda](bukti-cbt-banksoal/ocr-verifikasi-ganda.json) dan [pengujian akhir matematika serta Arab](bukti-cbt-banksoal/ocr-verifikasi-ganda-terakhir.json). Matematika dan Arab tiga baris memperoleh HTTP 200 pada pengujian akhir; fisika dan biologi memperoleh HTTP 200 pada putaran sebelumnya. Arab pendek memperoleh HTTP 422 karena dua pembacaan tidak identik. **Ini membuktikan penolakan hasil meragukan, bukan jaminan bahwa semua gambar akan berhasil ditranskripsi.**
+
+[Gambar Arab panjang](bukti-cbt-banksoal/arab-panjang.png) dibuat untuk uji dengan teks yang terlihat pada tangkapan layar owner, bukan berkas unggahan asli owner. Hasil akhirnya cocok dengan teks sumber setelah normalisasi NFC dan spasi, termasuk harakat; [render editor RTL](bukti-cbt-banksoal/arab-panjang-render.html) diverifikasi melalui komponen editor sebenarnya. Tangkapan layar asli owner belum diuji sebagai berkas gambar terpisah.
+
+Tes otomatis diperluas untuk daftar awal meskipun ada draf, isolasi draf SMP/SMK, penyaringan daftar/rincian lintas jenjang, mapel sesuai kelas, penolakan simpan/hapus lintas jenjang, opsi SMP 4/SMK 5, perbedaan harakat, hasil OCR tidak terbaca, dan respons dari gambar kedaluwarsa. Perintah: `node tests/cbt-banksoal.mjs`. Pengujian CRUD memakai data tiruan dalam memori; tidak menulis data uji ke Supabase. Pemeriksaan visual browser dan transaksi menggunakan akun staf asli belum diklaim lulus.
+
+### Migrasi yang perlu dijalankan nanti
+
+Owner memilih menerapkan migrasi tambahan kemudian. Jalankan [0015_validasi_jenjang_bank_soal.sql](../supabase/migrations/0015_validasi_jenjang_bank_soal.sql) untuk mengaktifkan:
+
+1. Larangan mengubah jenjang bank/ujian yang sudah ada, untuk CBT dan LMS.
+2. Validasi jumlah, urutan, isi, dan kunci opsi PG (termasuk jawaban PG interaktif) pada penulisan soal berikutnya.
+3. Validasi mata pelajaran sesuai jadwal kelas untuk bank baru. Identitas bank lama yang tidak berubah tetap dapat dipertahankan.
+
+Migrasi tidak menghapus atau menulis ulang soal lama. Validasi antarmuka sudah ada, tetapi trigger tambahan tersebut **belum aktif sebelum migrasi 0015 diterapkan**.
+
+Uji manual: buka `/adminV2/cbt?tab=bank&jenjang=smk` dengan draf lama tersimpan; pastikan tetap masuk daftar. Klik Buat Bank Soal, pilih kelas terjadwal dan mapel yang belum memiliki bank, isi penyusun dan 5 opsi lengkap, lalu simpan. Ubah, lihat, dan hapus sesuai kebutuhan; penghapusan bank yang masih dipakai ujian harus ditolak. Beralih ke SMP, ulangi dengan 4 opsi dan pastikan bank/draf SMK tidak tampil. Ulangi pada LMS. Pada editor gambar, bandingkan hasil dengan sumber; penolakan bacaan yang berbeda tidak boleh mengubah teks pertanyaan.
+
+Berkas utama tambahan yang disentuh: `CbtV2Bank.vue`, `CbtV2BankForm.vue`, `CbtRichQuestionEditor.vue`, `CbtV2PageContent.vue`, `app/composables/useAdminCbtData.ts`, `server/api/cbt/ocr.post.ts`, `server/utils/cbtOcr.ts`, migrasi 0015, `.gitignore`, tes, laporan, dan bukti OCR.
+
+## Status uji terima awal
 
 | Poin | Status bukti saat ini | Langkah manual |
 | --- | --- | --- |

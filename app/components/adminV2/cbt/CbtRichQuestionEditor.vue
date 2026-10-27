@@ -35,7 +35,18 @@ const handleImage = async (event: Event) => {
   if (!file) return
   if (!file.type.startsWith('image/')) return emit('message', 'Berkas harus berupa gambar.')
   try {
-    const result = await compressImageToWebP(file)
+    if (file.size <= 700 * 1024 && ['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      const original = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      emit('update:imageUrl', original)
+      emit('message', 'Gambar asli siap dibaca tanpa kompresi ulang.')
+      return
+    }
+    const result = await compressImageToWebP(file, 2400)
     emit('update:imageUrl', result.dataUrl)
     emit('message', 'Gambar berhasil diproses menjadi ' + result.compressedSizeKB + ' KB.')
   } catch {
@@ -49,17 +60,24 @@ const extractImageText = async () => {
   if (!props.imageUrl || extracting.value) return
   extracting.value = true
   extractionNote.value = ''
+  const sourceImage = props.imageUrl
+  const sourceText = props.modelValue
   try {
     const extracted = await $fetch<{ text: string; isRtl: boolean; containsFormula: boolean; reviewNote: string }>('/api/cbt/ocr', {
       method: 'POST',
-      body: { imageDataUrl: props.imageUrl }
+      body: { imageDataUrl: sourceImage }
     })
+    if (props.imageUrl !== sourceImage || props.modelValue !== sourceText) {
+      extractionNote.value = 'Gambar atau teks sudah berubah. Ekstrak kembali agar hasil sesuai dengan gambar aktif.'
+      return
+    }
     emit('update:modelValue', props.modelValue + (props.modelValue.trim() ? '\n' : '') + extracted.text)
     if (extracted.isRtl) emit('update:rtl', true)
     extractionNote.value = extracted.reviewNote || 'Periksa kembali hasil ekstraksi sebelum menyimpan.'
     emit('message', 'Teks berhasil diekstrak. Periksa hasil sebelum menyimpan.')
   } catch (error) {
     const message = (error as any)?.data?.statusMessage || (error as any)?.statusMessage || 'Teks pada gambar gagal diekstrak.'
+    extractionNote.value = message
     emit('message', message)
   } finally {
     extracting.value = false
@@ -102,7 +120,7 @@ const extractImageText = async () => {
       <img :src="imageUrl" alt="Gambar pendukung soal" class="max-h-56 rounded-xl border border-[#E7EBF2] object-contain">
       <div class="mt-2 flex flex-wrap gap-2">
         <button type="button" class="editor-action" :disabled="extracting" @click="extractImageText">{{ extracting ? 'Mengekstrak…' : 'Ekstrak teks dari gambar' }}</button>
-        <button type="button" class="editor-action text-[#C43232]" @click="emit('update:imageUrl', undefined)">Hapus gambar</button>
+        <button type="button" class="editor-action text-[#C43232]" :disabled="extracting" @click="emit('update:imageUrl', undefined)">Hapus gambar</button>
       </div>
       <p class="mt-2 text-[11px] leading-relaxed text-[#667085]">Hasil ekstraksi masuk sebagai draf dan wajib diperiksa sebelum disimpan.</p>
       <p v-if="extractionNote" class="mt-1 text-[11px] font-semibold text-[#A15C00]">{{ extractionNote }}</p>

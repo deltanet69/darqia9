@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "model": "deepseek-v4-flash-vision-exp",
+  "result": {
+    "text": "وَإِذْ قَالَ رَبُّكَ لِلْمَلَائِكَةِ إِنِّي جَاعِلٌ فِي الْأَرْضِ خَلِيفَةً قَالُوا\nأَتَجْعَلُ فِيهَا مَن يُفْسِدُ فِيهَا وَيَسْفِكُ الدِّمَاءَ وَنَحْنُ نُسَبِّحُ\nبِحَمْدِكَ وَنُقَدِّسُ لَكَ قَالَ إِنِّي أَعْلَمُ مَا لَا تَعْلَمُونَ",
+    "isRtl": true,
+    "containsFormula": false,
+    "reviewNote": "Teks Arab Al-Quran (QS. Al-Baqarah: 30); harakat dipertahankan sesuai gambar. Tidak ada rumus atau kode."
+  }
+}

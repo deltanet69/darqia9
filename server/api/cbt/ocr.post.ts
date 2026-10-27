@@ -1,4 +1,4 @@
-import { parseOcrExtraction } from '../../utils/cbtOcr'
+import { parseOcrExtraction, ocrTextsAgree } from '../../utils/cbtOcr'
 import { validateLatexExpressions } from '../../../app/utils/cbtFormula'
 
 const requestWindows = new Map<string, { count: number; startedAt: number }>()
@@ -53,6 +53,7 @@ export default defineEventHandler(async (event) => {
     'Anda adalah OCR untuk bank soal sekolah Indonesia.',
     'Transkripsikan isi gambar dengan setia. Jangan menerjemahkan, memperbaiki, atau mengarang bagian yang tidak terbaca.',
     'Untuk teks Arab atau Al-Quran: pertahankan Unicode Arab beserta harakat dan tanda baca yang terlihat.',
+    'Baca piksel gambar, bukan hafalan ayat. Jangan melengkapi kalimat yang dikenal. Jangan menambah tanda waqaf, nomor ayat, atau harakat yang tidak terlihat pada gambar.',
     'Untuk rumus matematika, fisika, kimia, atau biologi: JANGAN tulis sebagai teks biasa. Setiap rumus wajib menjadi LaTeX KaTeX valid di dalam $$...$$ pada baris terpisah.',
     'Pertahankan struktur visual: pecahan horizontal menjadi \\frac{pembilang}{penyebut}, pangkat menjadi ^{...}, indeks menjadi _{...}, akar menjadi \\sqrt{...}, dan satuan atau nama zat gunakan \\text{...}.',
     'Contoh gambar "Sₙ = n/2(a + Uₙ)" harus ditulis "$$S_n = \\frac{n}{2}(a + U_n)$$". Pastikan semua kurung kurawal dan penanda $$ berpasangan.',
@@ -62,7 +63,7 @@ export default defineEventHandler(async (event) => {
     'Gunakan nama properti persis tersebut, bukan "transkripsi". Jangan sertakan penjelasan di luar JSON yang diminta.'
   ].join(' ')
 
-  const extract = (instruction: string) => $fetch<any>('https://api.pecutmarket.my.id/v1/chat/completions', {
+  const extract = (instruction: string, model = 'glm-5.3-flash') => $fetch<any>('https://api.pecutmarket.my.id/v1/chat/completions', {
     method: 'POST',
     timeout: 60_000,
     headers: {
@@ -70,12 +71,12 @@ export default defineEventHandler(async (event) => {
       'content-type': 'application/json'
     },
     body: {
-      model: 'glm-5.3-flash',
+      model,
       messages: [{
         role: 'user',
         content: [
           { type: 'text', text: instruction },
-          { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + base64 } }
+          { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + base64, detail: 'high' } }
         ]
       }],
       response_format: { type: 'json_object' },
@@ -115,5 +116,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 422, statusMessage: 'Rumus hasil OCR belum valid setelah dicoba ulang. Gunakan gambar yang lebih jelas atau tulis rumus melalui editor.' })
   }
 
+  if (/\[tidak terbaca\]/i.test(extracted.text)) {
+    throw createError({ statusCode: 422, statusMessage: 'Sebagian isi gambar tidak terbaca dengan pasti. Hasil tidak dimasukkan. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor.' })
+  }
+  const independent = parseSafely(await extract(prompt, 'deepseek-v4-flash-vision-exp'))
+  if (!ocrTextsAgree(extracted.text, independent.text)) {
+    throw createError({ statusCode: 422, statusMessage: 'Dua pembacaan gambar belum cocok. Hasil tidak dimasukkan agar teks, harakat, atau rumus tidak berubah. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor.' })
+  }
   return extracted
 })

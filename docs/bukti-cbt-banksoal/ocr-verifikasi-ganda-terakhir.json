@@ -1,0 +1,19 @@
+[
+  {
+    "name": "matematika",
+    "status": 200,
+    "text": "$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$",
+    "reviewNote": "Gambar hanya memuat satu rumus (rumus kuadrat/abc) tanpa teks soal. Rumus ditulis sebagai LaTeX dalam $$...$$. Tanda minus pada pembilang (-b) dan dalam akar (b^2 - 4ac) dipertahankan sesuai tampilan gambar. Tidak ada bagian yang tidak terbaca, namun perlu konfirmasi guru apakah rumus ini bagian dari soal yang lebih lengkap."
+  },
+  {
+    "name": "arab",
+    "status": 422,
+    "error": "Dua pembacaan gambar belum cocok. Hasil tidak dimasukkan agar teks, harakat, atau rumus tidak berubah. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor."
+  },
+  {
+    "name": "arab-panjang",
+    "status": 200,
+    "text": "وَإِذْ قَالَ رَبُّكَ لِلْمَلَائِكَةِ إِنِّي جَاعِلٌ فِي الْأَرْضِ خَلِيفَةً قَالُوا\n\nأَتَجْعَلُ فِيهَا مَنْ يُفْسِدُ فِيهَا وَيَسْفِكُ الدِّمَاءَ وَنَحْنُ نُسَبِّحُ\n\nبِحَمْدِكَ وَنُقَدِّسُ لَكَ قَالَ إِنِّي أَعْلَمُ مَا لَا تَعْلَمُونَ",
+    "reviewNote": "Teks Arab (Q.S. Al-Baqarah [2]: 30) ditranskripsikan sesuai piksel gambar, tersusun dalam tiga baris terpisah seperti pada gambar. Harakat dipertahankan sesuai yang tampak. Tidak ditemukan tanda waqaf, nomor ayat, atau tanda baca tambahan yang terlihat pada gambar; guru dimohon memeriksa apakah penanda waqf (mis. tanda waqf pada akhir kata 'خَلِيفَةً' dan 'لَكَ') memang tidak tercetak atau sengaja tidak disertakan. Tidak ada rumus atau kode program dalam gambar."
+  }
+]

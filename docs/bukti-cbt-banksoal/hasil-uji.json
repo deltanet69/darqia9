@@ -1,6 +1,9 @@
 {
   "parser": "LULUS",
   "retryDanPenolakanRumusInvalid": "LULUS (penyedia tiruan)",
+  "ocrIndependenDanHasilKedaluwarsa": "LULUS (penyedia tiruan)",
+  "daftarBankDanPemisahanJenjang": "LULUS (Supabase tiruan + SSR)",
+  "opsiPilihanGanda": "LULUS SMP 4 / SMK 5",
   "templateDanImpor": "LULUS SMP/SMK",
   "pemilihanUrutanDanRpc": "LULUS (Supabase tiruan)",
   "pemuatanSiswa": "LULUS (respons server tiruan)",

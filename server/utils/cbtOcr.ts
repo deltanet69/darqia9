@@ -17,3 +17,11 @@ export const parseOcrExtraction = (content: unknown) => {
     reviewNote: typeof extracted.reviewNote === 'string' ? extracted.reviewNote : ''
   }
 }
+
+export const ocrTextsAgree = (first: string, second: string) => {
+  const normalize = (text: string) => text.normalize('NFC')
+    .replace(/\\(?:left|right)|\\[,;!]|\s+/g, '')
+    .replace(/([_^])\{([a-zA-Z0-9])\}/g, '$1$2')
+    .replace(/\\sqrt\{\(([^()]+)\)\}/g, '\\sqrt{$1}')
+  return normalize(first) === normalize(second)
+}

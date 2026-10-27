@@ -78,6 +78,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const stateKey = source === 'ujian_harian' ? 'ujian-harian' : 'cbt'
   const classes = useState<CbtClass[]>(`${stateKey}-master-classes`, () => [])
   const subjects = useState<CbtSubject[]>(`${stateKey}-master-subjects`, () => [])
+  const classSubjects = useState<{ class_id: string; subject_id: string }[]>(`${stateKey}-class-subjects`, () => [])
   const teachers = useState<CbtTeacher[]>('admin-master-teachers', () => [])
   const bankPackages = useState<BankPackage[]>(`${stateKey}-bank-packages`, () => [])
   const exams = useState<ExamItem[]>(`${stateKey}-exams`, () => [])
@@ -93,7 +94,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     error.value = null
 
     try {
-      const [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult] = await Promise.all([
+      const [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult] = await Promise.all([
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
@@ -102,14 +103,16 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from('students').select('class_id').eq('active', true),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
         client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
-        client.from(tables.violations).select('assignment_id')
+        client.from(tables.violations).select('assignment_id'),
+        client.from('class_schedules').select('class_id, subject_id').eq('active', true)
       ])
 
-      const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult]
+      const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult]
         .find(result => result.error)?.error
       if (firstError) throw firstError
 
       const classRows = classResult.data ?? []
+      classSubjects.value = scheduleResult.data ?? []
       const subjectRows = subjectResult.data ?? []
       const teacherRows = teacherResult.data ?? []
       const teacherById = new Map(teacherRows.map((row: any) => [row.id, row]))
@@ -321,10 +324,28 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     return request
   }
 
-  const saveBankPackage = async (pkg: BankPackage) => {
+  const saveBankPackage = async (pkg: BankPackage, expectedGrade: GradeType = pkg.grade) => {
     const classItem = classes.value.find(item => item.id === pkg.classId || (item.grade === pkg.grade && item.name === pkg.classroom))
     const subjectItem = subjects.value.find(item => item.id === pkg.subjectId || (item.grade === pkg.grade && item.name === pkg.subject))
     if (!classItem || !subjectItem) throw new Error('Kelas atau mata pelajaran tidak lagi tersedia.')
+    if (pkg.grade !== expectedGrade || classItem.grade !== expectedGrade || subjectItem.grade !== expectedGrade) {
+      throw new Error('Jenjang bank soal, kelas, dan mata pelajaran harus sesuai dengan jenjang yang dipilih.')
+    }
+    const existingBank = bankPackages.value.find(item => item.id === pkg.id)
+    if (existingBank && existingBank.grade !== expectedGrade) throw new Error('Bank soal berasal dari jenjang lain.')
+    if ((!existingBank || existingBank.classId !== classItem.id || existingBank.subjectId !== subjectItem.id)
+      && !classSubjects.value.some(item => item.class_id === classItem.id && item.subject_id === subjectItem.id)) {
+      throw new Error('Mata pelajaran belum terdaftar pada jadwal kelas yang dipilih.')
+    }
+    const keys = classItem.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
+    for (const question of pkg.questions) {
+      if (question.type !== 'PG' && !(question.type === 'Interaktif' && ['PG', 'PG_Multi'].includes(question.interactiveAnswerType || ''))) continue
+      if (question.options?.length !== keys.length || question.options.some((option, index) => option.key !== keys[index] || !option.text.trim())) {
+        throw new Error(`Pilihan ganda ${expectedGrade} wajib memiliki ${keys.length} opsi terisi (${keys.join('–')}).`)
+      }
+      const answers = Array.isArray(question.key) ? question.key : [question.key]
+      if (!answers.length || answers.some(answer => !keys.includes(answer))) throw new Error('Kunci pilihan ganda tidak sesuai dengan opsi jawaban.')
+    }
     if (classItem.grade !== subjectItem.grade) throw new Error('Jenjang kelas dan mata pelajaran tidak sesuai.')
 
     const payload: Record<string, any> = {
@@ -370,9 +391,11 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     return bankId
   }
 
-  const deleteBankPackage = async (id: string) => {
-    const { error: deleteError } = await client.from(tables.banks).delete().eq('id', id)
-    if (deleteError) throw deleteError
+  const deleteBankPackage = async (id: string, grade?: GradeType) => {
+    const bank = bankPackages.value.find(item => item.id === id)
+    if (!bank || (grade && bank.grade !== grade)) throw new Error('Bank soal tidak tersedia pada jenjang yang dipilih.')
+    const { error: deleteError } = await client.from(tables.banks).delete().eq('id', id).eq('grade', grade ?? bank.grade).select('id').single()
+    if (deleteError) throw new Error(deleteError.message)
     await load(true)
   }
 
@@ -470,6 +493,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   return {
     classes,
     subjects,
+    classSubjects,
     teachers,
     bankPackages,
     exams,
