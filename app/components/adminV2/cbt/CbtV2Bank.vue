@@ -92,7 +92,7 @@ const restoreFormDraft = () => {
     isEditingForm.value = Boolean(saved.editing)
     selectedClass.value = saved.selectedClass || saved.draft.classroom
     selectedPkgId.value = saved.selectedPkgId || null
-    formStep.value = ['PG', 'Esai', 'Interaktif'].includes(saved.step || '')
+    formStep.value = ['PG', 'Isian', 'Esai', 'Interaktif'].includes(saved.step || '')
       ? saved.step as QuestionStep
       : 'PG'
     bankMode.value = 'form'
@@ -129,13 +129,22 @@ const allClasses = computed(() => {
 const allSubjects = computed(() => {
   return cbtData.subjects.value.filter(item => item.grade === props.grade).map(item => item.name)
 })
+const scheduledSubjectIds = (classId: string) => {
+  const ids = new Set(cbtData.classSubjects.value.filter(item => item.class_id === classId).map(item => item.subject_id))
+  for (const bank of currentGradePackages.value.filter(item => item.classId === classId)) {
+    if (bank.subjectId) ids.add(bank.subjectId)
+  }
+  return ids
+}
+const isSubjectFallback = (classroom: string) => {
+  const target = cbtData.classes.value.find(item => item.grade === props.grade && item.name === classroom)
+  return !!target && scheduledSubjectIds(target.id).size === 0
+}
 const subjectsForClass = (classroom: string) => {
   const target = cbtData.classes.value.find(item => item.grade === props.grade && item.name === classroom)
   if (!target) return []
-  const ids = new Set(cbtData.classSubjects.value.filter(item => item.class_id === target.id).map(item => item.subject_id))
-  for (const bank of currentGradePackages.value.filter(item => item.classId === target.id)) {
-    if (bank.subjectId) ids.add(bank.subjectId)
-  }
+  const ids = scheduledSubjectIds(target.id)
+  if (!ids.size) return allSubjects.value
   return cbtData.subjects.value.filter(item => item.grade === props.grade && ids.has(item.id)).map(item => item.name)
 }
 
@@ -392,6 +401,7 @@ const confirmImport = async () => {
         :grade="grade"
         :class-options="allClasses"
         :subject-options="subjectsForClass(formDraft.classroom)"
+        :subject-fallback="isSubjectFallback(formDraft.classroom)"
         :initial-step="formStep"
         @save="handleSavePackage"
         @cancel="handleCancelForm"

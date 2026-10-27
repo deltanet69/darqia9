@@ -1,4 +1,4 @@
-import { parseOcrExtraction, ocrTextsAgree } from '../../utils/cbtOcr'
+import { parseOcrExtraction, ocrTextsAgree, ocrTextsAgreeLoose } from '../../utils/cbtOcr'
 import { validateLatexExpressions } from '../../../app/utils/cbtFormula'
 
 const requestWindows = new Map<string, { count: number; startedAt: number }>()
@@ -121,7 +121,27 @@ export default defineEventHandler(async (event) => {
   }
   const independent = parseSafely(await extract(prompt, 'deepseek-v4-flash-vision-exp'))
   if (!ocrTextsAgree(extracted.text, independent.text)) {
-    throw createError({ statusCode: 422, statusMessage: 'Dua pembacaan gambar belum cocok. Hasil tidak dimasukkan agar teks, harakat, atau rumus tidak berubah. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor.' })
+    // Ajudikasi: pembacaan ketiga memeriksa piksel gambar dengan dua kandidat di tangan
+    // dan menulis transkripsi final yang paling setia. Hasilnya hanya diterima bila
+    // kerangka hurufnya sama dengan salah satu kandidat (isi tidak berubah), dan tetap
+    // melewati gerbang rumus serta [tidak terbaca].
+    const adjudicated = parseSafely(await extract([
+      prompt,
+      'Dua transkripsi kandidat dari gambar yang sama berbeda pada detail harakat, tanda baca, atau rumus:',
+      'Kandidat 1: ' + JSON.stringify(extracted.text),
+      'Kandidat 2: ' + JSON.stringify(independent.text),
+      'Periksa kembali piksel gambar kata per kata. Tulis transkripsi final yang persis seperti gambar - harakat, tanda waqaf, dan rumus mengikuti gambar, bukan mengikuti salah satu kandidat. Keluarkan format JSON yang sama.'
+    ].join('\n')))
+    if (!ocrTextsAgreeLoose(adjudicated.text, extracted.text) && !ocrTextsAgreeLoose(adjudicated.text, independent.text)) {
+      throw createError({ statusCode: 422, statusMessage: 'Dua pembacaan gambar belum cocok. Hasil tidak dimasukkan agar teks, harakat, atau rumus tidak berubah. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor.' })
+    }
+    extracted = adjudicated
+    if ((extracted.containsFormula || hasFormulaHint(extracted.text)) && !hasValidFormula(extracted.text)) {
+      throw createError({ statusCode: 422, statusMessage: 'Rumus hasil OCR belum valid setelah dicoba ulang. Gunakan gambar yang lebih jelas atau tulis rumus melalui editor.' })
+    }
+    if (/\[tidak terbaca\]/i.test(extracted.text)) {
+      throw createError({ statusCode: 422, statusMessage: 'Sebagian isi gambar tidak terbaca dengan pasti. Hasil tidak dimasukkan. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor.' })
+    }
   }
   return extracted
 })

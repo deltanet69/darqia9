@@ -30,12 +30,17 @@ registerHooks({
 })
 
 const { renderKaTeXHtml, validateLatexExpressions } = await import('../app/utils/cbtFormula.ts')
-const { parseOcrExtraction, ocrTextsAgree } = await import('../server/utils/cbtOcr.ts')
+const { parseOcrExtraction, ocrTextsAgree, ocrTextsAgreeLoose } = await import('../server/utils/cbtOcr.ts')
 assert.equal(ocrTextsAgree('بِسْمِ', 'بِسمِ'), false)
 assert.equal(ocrTextsAgree('قَالُوا', 'قَالُوا ۖ'), false)
 assert.equal(ocrTextsAgree('$$v^{2}$$', '$$v^2$$'), true)
 assert.equal(ocrTextsAgree('$$\\sqrt{(b^2-4ac)}$$', '$$\\sqrt{b^{2}-4ac}$$'), true)
 assert.equal(ocrTextsAgree('$$\\sqrt{b^2-4ac}$$', '$$\\sqrt{b^2-5ac}$$'), false)
+assert.equal(ocrTextsAgreeLoose('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ', 'بسم الله الرحمن'), true)
+assert.equal(ocrTextsAgreeLoose('خَلِيفَةً', 'خليفه'), true)
+assert.equal(ocrTextsAgree('بسم الله الرحمن', 'بسم الله الرحيم'), false)
+assert.equal(ocrTextsAgreeLoose('العدد ٥', 'العدد 5'), true)
+assert.equal(ocrTextsAgreeLoose('$$\\dfrac{1}{2}$$', '$$\\frac{1}{2}$$'), true)
 const { readWordBankTemplate } = await import('../app/utils/cbtWordBank.ts')
 globalThis.window = { DecompressionStream, scrollTo() {} }
 for (const grade of ['SMP', 'SMK']) {
@@ -83,8 +88,14 @@ providerOutputs = [{ ...payload, text: formula + '\nx = 1/2' }, { ...payload, te
 await assert.rejects(ocr(ocrRequest), error => error.statusCode === 422)
 providerOutputs = [{ ...payload, text: formula + '\n$$rumus belum ditutup' }, payload, payload]
 assert.equal((await ocr(ocrRequest)).text, formula)
-providerOutputs = [payload, { ...payload, text: '$$x = 999$$' }]
+providerOutputs = [payload, { ...payload, text: '$$x = 999$$' }, { ...payload, text: '$$x = 123$$' }]
 await assert.rejects(ocr(ocrRequest), error => error.statusCode === 422 && error.message.includes('belum cocok'))
+providerOutputs = [
+  { text: 'بِسْمِ ٱللَّهِ', isRtl: true, containsFormula: false, reviewNote: '' },
+  { text: 'بسم الله', isRtl: true, containsFormula: false, reviewNote: '' },
+  { text: 'بِسْمِ ٱللَّهِ', isRtl: true, containsFormula: false, reviewNote: '' }
+]
+assert.equal((await ocr(ocrRequest)).text, 'بِسْمِ ٱللَّهِ')
 providerOutputs = [{ ...payload, text: '[tidak terbaca]', containsFormula: false }]
 await assert.rejects(ocr(ocrRequest), error => error.statusCode === 422 && error.message.includes('tidak terbaca'))
 
@@ -139,8 +150,10 @@ assert.equal(bank.questions[1].type, 'Isian', 'Tipe soal lama tetap dipertahanka
 
 const { default: BankForm } = await import('../app/components/adminV2/cbt/CbtV2BankForm.vue')
 const form = BankForm.setup({ pkg: { ...bank, teacherName: 'Guru uji' }, grade: 'SMK', editing: true, initialStep: 'Isian' }, { expose() {}, emit() {} })
-assert.equal(form.currentStep.value, 'PG')
-assert.ok(!form.questionSteps.some(step => step.id === 'Isian'))
+assert.equal(form.currentStep.value, 'Isian')
+assert.ok(form.questionSteps.some(step => step.id === 'Isian'))
+assert.equal(form.blankQuestion('Isian').key, '')
+assert.equal(form.blankQuestion('Isian').options, undefined)
 assert.equal(form.draft.value.questions[1].type, 'Isian')
 form.nextStep()
 assert.equal(form.currentStep.value, 'Esai')

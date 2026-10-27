@@ -11,6 +11,7 @@ interface Props {
   grade: GradeType
   classOptions: string[]
   subjectOptions: string[]
+  subjectFallback?: boolean
   saving?: boolean
   initialStep?: 'PG' | 'Isian' | 'Esai' | 'Interaktif'
 }
@@ -44,11 +45,12 @@ watch(() => props.subjectOptions, options => {
   if (!options.includes(draft.value.subject)) { draft.value.subject = ''; draft.value.subjectId = undefined }
 })
 
-const currentStep = ref<'PG' | 'Esai' | 'Interaktif'>(props.initialStep === 'Isian' ? 'PG' : props.initialStep || 'PG')
+const currentStep = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>(props.initialStep || 'PG')
 const isSettingsOpen = ref(!props.editing)
 const activeQuestionId = ref('')
 const questionSteps = [
   { id: 'PG', label: 'Pilihan Ganda', shortLabel: 'PG' },
+  { id: 'Isian', label: 'Isian', shortLabel: 'Isian' },
   { id: 'Esai', label: 'Esai', shortLabel: 'Esai' },
   { id: 'Interaktif', label: 'Interaktif', shortLabel: 'Media' }
 ] as const
@@ -81,7 +83,7 @@ watch(questionsInStep, questions => {
   }
 }, { immediate: true })
 
-const blankQuestion = (type: 'PG' | 'Esai' | 'Interaktif'): BankQuestionItem => {
+const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuestionItem => {
   return {
     id: crypto.randomUUID(),
     number: draft.value.questions.length + 1,
@@ -100,7 +102,7 @@ const blankQuestion = (type: 'PG' | 'Esai' | 'Interaktif'): BankQuestionItem => 
   }
 }
 
-const addQuestion = (type: 'PG' | 'Esai' | 'Interaktif') => {
+const addQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif') => {
   const q = blankQuestion(type)
   draft.value.questions.push(q)
   activeQuestionId.value = q.id
@@ -152,7 +154,8 @@ const isOptionSelected = (q: BankQuestionItem, keyLetter: string) => {
 
 // Navigation Step Controls
 const nextStep = () => {
-  if (currentStep.value === 'PG') currentStep.value = 'Esai'
+  if (currentStep.value === 'PG') currentStep.value = 'Isian'
+  else if (currentStep.value === 'Isian') currentStep.value = 'Esai'
   else if (currentStep.value === 'Esai') {
     if (draft.value.hasInteractive) currentStep.value = 'Interaktif'
     else submitForm()
@@ -163,7 +166,8 @@ const nextStep = () => {
 
 const prevStep = () => {
   if (currentStep.value === 'Interaktif') currentStep.value = 'Esai'
-  else if (currentStep.value === 'Esai') currentStep.value = 'PG'
+  else if (currentStep.value === 'Esai') currentStep.value = 'Isian'
+  else if (currentStep.value === 'Isian') currentStep.value = 'PG'
 }
 
 const submitForm = () => {
@@ -177,10 +181,19 @@ const submitForm = () => {
     return
   }
   const validQuestions = draft.value.questions.filter(q => q.text.trim())
-  const invalidFormula = validQuestions.find(q => validateLatexExpressions(q.text))
+  const formulaTexts = (q: BankQuestionItem) => [q.text, ...(q.options?.map(option => option.text) || []), ...(q.type === 'Isian' || q.interactiveAnswerType === 'Isian' ? [String(q.key || '')] : [])]
+  const invalidFormula = validQuestions.find(q => formulaTexts(q).some(text => validateLatexExpressions(text)))
   if (invalidFormula) {
-    if (invalidFormula.type !== 'Isian') currentStep.value = invalidFormula.type
+    currentStep.value = invalidFormula.type
+    activeQuestionId.value = invalidFormula.id
     emit('toast', 'Perbaiki rumus yang belum valid sebelum menyimpan.')
+    return
+  }
+  const missingIsianKey = validQuestions.find(q => q.type === 'Isian' && !String(q.key || '').trim())
+  if (missingIsianKey) {
+    currentStep.value = 'Isian'
+    activeQuestionId.value = missingIsianKey.id
+    emit('toast', 'Kunci jawaban soal Isian wajib diisi.')
     return
   }
   if (!validQuestions.some(q => q.type === 'PG')) {
@@ -271,7 +284,8 @@ const submitForm = () => {
             <option value="" disabled>Pilih mata pelajaran</option>
             <option v-for="s in subjectOptions" :key="s" :value="s">{{ s }}</option>
           </select>
-          <p v-if="draft.classroom && !subjectOptions.length" class="mt-1 text-xs text-[#667085]">Belum ada mata pelajaran pada jadwal kelas ini.</p>
+          <p v-if="subjectFallback" class="mt-1 text-xs leading-relaxed text-[#1B5FD9]">Kelas ini belum memiliki jadwal pelajaran. Semua mata pelajaran {{ grade }} dari Master Mapel ditampilkan agar bank soal tetap dapat dibuat.</p>
+          <p v-else-if="draft.classroom && !subjectOptions.length" class="mt-1 text-xs text-[#667085]">Belum ada mata pelajaran pada jadwal kelas ini.</p>
         </div>
 
         <div>
@@ -365,11 +379,13 @@ const submitForm = () => {
           <div>
             <h3 class="text-sm font-extrabold text-[#101828]">
               {{ currentStep === 'PG' ? 'Butir Soal Pilihan Ganda'
+                : currentStep === 'Isian' ? 'Butir Soal Isian'
                 : currentStep === 'Esai' ? 'Butir Soal Esai'
                 : 'Butir Soal Interaktif (Audio / Video)' }}
             </h3>
             <p class="text-xs text-[#667085] mt-0.5">
               {{ currentStep === 'PG' ? 'Pilih satu kunci atau aktifkan multi-select untuk PG kompleks.'
+                : currentStep === 'Isian' ? 'Tulis kunci jawaban yang benar untuk setiap soal. Rumus dan teks Arab didukung.'
                 : currentStep === 'Esai' ? 'Siapkan rubrik serta skor maksimal untuk koreksi guru.'
                 : 'Pilih media dan jenis jawaban untuk setiap soal.' }}
             </p>
@@ -483,7 +499,7 @@ const submitForm = () => {
                   <div
                     v-for="(opt, oIdx) in (q.options || [])"
                     :key="opt.key"
-                    class="flex items-center gap-2"
+                    class="flex items-start gap-2"
                   >
                     <button
                       type="button"
@@ -495,15 +511,26 @@ const submitForm = () => {
                     >
                       {{ opt.key }}
                     </button>
-                    <input
-                      v-model="opt.text"
-                      type="text"
-                      :dir="q.isRtl ? 'rtl' : 'auto'"
-                      :placeholder="`Teks opsi ${opt.key}`"
-                      class="flex-1 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
-                    >
+                    <div class="min-w-0 flex-1">
+                      <CbtRichQuestionEditor
+                        compact
+                        v-model="opt.text"
+                        @message="emit('toast', $event)"
+                      />
+                    </div>
                   </div>
                 </div>
+              </div>
+
+              <!-- Isian Specific -->
+              <div v-else-if="q.type === 'Isian'">
+                <label class="block text-xs font-bold text-[#344054] mb-1">Kunci Jawaban Isian</label>
+                <CbtRichQuestionEditor
+                  compact
+                  v-model="(q.key as string)"
+                  @message="emit('toast', $event)"
+                />
+                <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">Tulis jawaban yang benar persis seperti yang harus dijawab siswa. Rumus dan teks Arab didukung.</p>
               </div>
 
               <!-- Esai Specific -->
@@ -552,14 +579,13 @@ const submitForm = () => {
                     >
                   </div>
                 </div>
-                <div>
+                <div v-if="q.interactiveAnswerType === 'Isian'">
                   <label class="block text-xs font-bold text-[#344054] mb-1">Kunci / Jawaban</label>
-                  <input
-                    v-model="q.key as string"
-                    type="text"
-                    placeholder="Kunci jawaban interaktif"
-                    class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
-                  >
+                  <CbtRichQuestionEditor
+                    compact
+                    v-model="(q.key as string)"
+                    @message="emit('toast', $event)"
+                  />
                 </div>
               </div>
             </div>

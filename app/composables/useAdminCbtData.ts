@@ -334,7 +334,9 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
     const existingBank = bankPackages.value.find(item => item.id === pkg.id)
     if (existingBank && existingBank.grade !== expectedGrade) throw new Error('Bank soal berasal dari jenjang lain.')
-    if ((!existingBank || existingBank.classId !== classItem.id || existingBank.subjectId !== subjectItem.id)
+    const classHasSchedule = classSubjects.value.some(item => item.class_id === classItem.id)
+    if (classHasSchedule
+      && (!existingBank || existingBank.classId !== classItem.id || existingBank.subjectId !== subjectItem.id)
       && !classSubjects.value.some(item => item.class_id === classItem.id && item.subject_id === subjectItem.id)) {
       throw new Error('Mata pelajaran belum terdaftar pada jadwal kelas yang dipilih.')
     }

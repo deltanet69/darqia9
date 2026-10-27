@@ -2,7 +2,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { compressImageToWebP, isArabicText, LATEX_TOOLBAR_SYMBOLS, renderKaTeXHtml, validateLatexExpressions } from '~/utils/cbtFormula'
 
-const props = defineProps<{ modelValue: string; imageUrl?: string; rtl?: boolean }>()
+const props = defineProps<{ modelValue: string; imageUrl?: string; rtl?: boolean; compact?: boolean }>()
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void
   (event: 'update:imageUrl', value: string | undefined): void
@@ -14,7 +14,12 @@ const textarea = ref<HTMLTextAreaElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
 const extracting = ref(false)
 const extractionNote = ref('')
-const detectedRtl = computed(() => props.rtl || isArabicText(props.modelValue))
+const localRtl = ref<boolean | null>(null)
+const detectedRtl = computed(() => props.compact ? (localRtl.value ?? isArabicText(props.modelValue)) : (props.rtl || isArabicText(props.modelValue)))
+const toggleRtl = () => {
+  if (props.compact) localRtl.value = !detectedRtl.value
+  else emit('update:rtl', !detectedRtl.value)
+}
 const formulaError = computed(() => validateLatexExpressions(props.modelValue))
 const tick = String.fromCharCode(96)
 
@@ -86,37 +91,37 @@ const extractImageText = async () => {
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-xl border border-[#E7EBF2] bg-white focus-within:border-[#1B5FD9]">
+  <div class="overflow-hidden rounded-xl border border-[#E7EBF2] bg-white focus-within:border-[#1B5FD9]" :class="compact ? 'rich-compact' : ''">
     <div class="flex flex-wrap items-center gap-1 border-b border-[#E7EBF2] bg-[#F9FAFC] p-2" role="toolbar" aria-label="Pemformatan pertanyaan">
       <button type="button" class="editor-button font-extrabold" title="Tebal" @click="replaceSelection('**', '**', 'teks tebal')">B</button>
       <button type="button" class="editor-button italic" title="Miring" @click="replaceSelection('_', '_', 'teks miring')">I</button>
-      <button type="button" class="editor-button" title="Subjudul" @click="replaceSelection('### ', '', 'Subjudul')">H</button>
-      <button type="button" class="editor-button" title="Daftar" @click="replaceSelection('- ', '', 'butir daftar')">Daftar</button>
-      <button type="button" class="editor-button font-mono" title="Kode sebaris" @click="replaceSelection(tick, tick, 'kode')">&lt;/&gt;</button>
-      <button type="button" class="editor-button font-mono" title="Blok kode" @click="replaceSelection(tick + tick + tick + '\n', '\n' + tick + tick + tick, 'kode program')">Blok kode</button>
+      <button v-if="!compact" type="button" class="editor-button" title="Subjudul" @click="replaceSelection('### ', '', 'Subjudul')">H</button>
+      <button v-if="!compact" type="button" class="editor-button" title="Daftar" @click="replaceSelection('- ', '', 'butir daftar')">Daftar</button>
+      <button v-if="!compact" type="button" class="editor-button font-mono" title="Kode sebaris" @click="replaceSelection(tick, tick, 'kode')">&lt;/&gt;</button>
+      <button v-if="!compact" type="button" class="editor-button font-mono" title="Blok kode" @click="replaceSelection(tick + tick + tick + '\n', '\n' + tick + tick + tick, 'kode program')">Blok kode</button>
       <span class="mx-1 h-6 w-px bg-[#DCE2EA]" aria-hidden="true" />
       <button v-for="symbol in LATEX_TOOLBAR_SYMBOLS" :key="symbol.syntax" type="button" class="editor-button" :title="symbol.description" @click="replaceSelection('$', '$', symbol.syntax)">
         {{ symbol.label }}
       </button>
       <span class="mx-1 h-6 w-px bg-[#DCE2EA]" aria-hidden="true" />
-      <button type="button" class="editor-button" :aria-pressed="detectedRtl" @click="emit('update:rtl', !detectedRtl)">العربية RTL</button>
-      <button type="button" class="editor-button" @click="imageInput?.click()">Unggah gambar</button>
+      <button type="button" class="editor-button" :aria-pressed="detectedRtl" @click="toggleRtl">العربية RTL</button>
+      <button v-if="!compact" type="button" class="editor-button" @click="imageInput?.click()">Unggah gambar</button>
       <input ref="imageInput" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" @change="handleImage">
     </div>
 
     <textarea
       ref="textarea"
       :value="modelValue"
-      rows="5"
+      :rows="compact ? 2 : 5"
       :dir="detectedRtl ? 'rtl' : 'ltr'"
       :lang="detectedRtl ? 'ar' : 'id'"
       :class="detectedRtl ? 'text-right font-serif text-xl leading-loose' : 'text-left'"
       class="block w-full resize-y bg-white p-3 text-sm text-[#101828] outline-none"
-      placeholder="Tulis pertanyaan. Gunakan $...$ untuk rumus sebaris dan $$...$$ untuk rumus terpisah."
+      :placeholder="compact ? 'Tulis jawaban. Gunakan $...$ untuk rumus dan aktifkan RTL untuk teks Arab.' : 'Tulis pertanyaan. Gunakan $...$ untuk rumus sebaris dan $$...$$ untuk rumus terpisah.'"
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
 
-    <div v-if="imageUrl" class="border-t border-[#E7EBF2] p-3">
+    <div v-if="imageUrl && !compact" class="border-t border-[#E7EBF2] p-3">
       <img :src="imageUrl" alt="Gambar pendukung soal" class="max-h-56 rounded-xl border border-[#E7EBF2] object-contain">
       <div class="mt-2 flex flex-wrap gap-2">
         <button type="button" class="editor-action" :disabled="extracting" @click="extractImageText">{{ extracting ? 'Mengekstrak…' : 'Ekstrak teks dari gambar' }}</button>
@@ -127,7 +132,7 @@ const extractImageText = async () => {
     </div>
 
     <div v-if="modelValue.trim()" class="border-t border-[#E7EBF2] bg-[#FAFBFC] p-3">
-      <span class="mb-2 block text-[10px] font-extrabold uppercase text-[#667085]">Pratinjau siswa</span>
+      <span class="mb-2 block text-[10px] font-extrabold uppercase text-[#667085]">{{ compact ? 'Pratinjau jawaban' : 'Pratinjau siswa' }}</span>
       <div class="question-preview overflow-x-auto text-sm leading-relaxed text-[#101828]" :class="detectedRtl ? 'font-serif text-xl leading-loose text-right' : ''" :dir="detectedRtl ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(modelValue)" />
       <p v-if="formulaError" class="mt-2 text-xs font-semibold text-[#C43232]" role="alert">Rumus belum valid: {{ formulaError }}</p>
     </div>
@@ -164,6 +169,7 @@ const extractImageText = async () => {
   font-weight: 700;
 }
 .editor-action:disabled { cursor: wait; opacity: 0.55; }
+.rich-compact .editor-button { min-height: 34px; padding: 0.2rem 0.45rem; }
 textarea[dir='rtl'], .question-preview[dir='rtl'] {
   font-family: 'Traditional Arabic', 'Times New Roman', serif;
   font-size: 1.25rem;

@@ -43,3 +43,4 @@ supabase/migrations/*
 !/docs/laporan-master-mapel.md
 !/docs/laporan-impor-ekspor-mapel.md
 !docs/laporan-impor-ekspor-bank-soal.md
+!/docs/laporan-perbaikan-crud-bank-soal.md
