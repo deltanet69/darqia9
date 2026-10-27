@@ -131,6 +131,27 @@ export const useAdminSubjects = () => {
     return code
   }
 
+  const importMany = async (items: SubjectInput[]) => {
+    if (!items.length) return [] as string[]
+    const takenCodes = subjects.value.map(subject => subject.code)
+    const insertRows = items.map(item => {
+      const code = generateSubjectCode(item.name, takenCodes)
+      takenCodes.push(code)
+      return {
+        code,
+        name: item.name,
+        grade: item.grade,
+        category: item.category,
+        kkm: item.kkm,
+        hours_per_week: item.hoursPerWeek
+      }
+    })
+    const { error: insertError } = await client.from('subjects').insert(insertRows)
+    if (insertError) throw insertError
+    await load()
+    return insertRows.map(row => row.code)
+  }
+
   const update = async (id: string, input: SubjectInput) => {
     // Kode sengaja tidak diubah: kode adalah identitas yang dirujuk jadwal, bank soal, dan nilai.
     const { error: updateError } = await client.from('subjects').update({
@@ -170,5 +191,5 @@ export const useAdminSubjects = () => {
     await load()
   }
 
-  return { subjects, loading, error, load, create, update, setActive, remove }
+  return { subjects, loading, error, load, create, importMany, update, setActive, remove }
 }

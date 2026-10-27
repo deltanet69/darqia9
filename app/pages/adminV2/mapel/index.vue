@@ -11,6 +11,7 @@ import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import MapelV2Modal, { type SubjectItem, type SubjectSaveData } from '~/components/adminV2/mapel/MapelV2Modal.vue'
 import MapelV2DeleteModal from '~/components/adminV2/mapel/MapelV2DeleteModal.vue'
+import MapelV2ImportModal from '~/components/adminV2/mapel/MapelV2ImportModal.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminSubjects, type AdminSubject } from '~/composables/useAdminSubjects'
 
@@ -60,6 +61,7 @@ const triggerToast = (msg: string) => {
 const searchQuery = ref('')
 const selectedCategory = ref('all')
 const isModalOpen = ref(false)
+const isImportOpen = ref(false)
 
 const filteredSubjects = computed(() => {
   return subjectsStore.subjects.value.filter(s => {
@@ -90,6 +92,31 @@ const scheduledSummary = computed(() => {
   if (!active.length) return '-'
   return `${active.filter(s => s.scheduledClasses > 0).length} / ${active.length}`
 })
+
+// Export Excel
+const exportExcel = async () => {
+  const XLSX = await import('xlsx')
+  const rows = filteredSubjects.value.map(s => ({
+    'Kode': s.code,
+    'Nama Mata Pelajaran': s.name,
+    'Jenjang': s.grade,
+    'Kategori': s.category,
+    'KKM': s.kkm,
+    'Beban Jam/Minggu': s.hoursPerWeek,
+    'Pengajar (dari Jadwal)': s.teachers.length ? s.teachers.join('; ') : 'Belum ada jadwal',
+    'Kelas Terjadwal': s.scheduledClasses,
+    'Status': s.status
+  }))
+  const worksheet = XLSX.utils.json_to_sheet(rows)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, `Mapel ${grade.value}`)
+  XLSX.writeFile(workbook, `master-mapel-${grade.value.toLowerCase()}-${Date.now()}.xlsx`)
+  triggerToast(`Master mapel ${grade.value} berhasil diekspor ke Excel.`)
+}
+
+const handleImported = (count: number) => {
+  triggerToast(`${count} mata pelajaran berhasil diimpor dari Excel.`)
+}
 
 // Export CSV (1:1 Versi Asli)
 const exportCsv = () => {
@@ -299,6 +326,22 @@ const handleSelectModule = (title: string) => {
           </button>
           <button
             type="button"
+            class="px-4 py-2.5 rounded-xl font-bold text-xs text-[#344054] bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] shadow-2xs flex items-center gap-2 transition cursor-pointer"
+            @click="exportExcel"
+          >
+            <AdminV2Icon name="dl" :size="14" />
+            <span>Ekspor Excel</span>
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2.5 rounded-xl font-bold text-xs text-[#344054] bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] shadow-2xs flex items-center gap-2 transition cursor-pointer"
+            @click="isImportOpen = true"
+          >
+            <AdminV2Icon name="plus" :size="14" />
+            <span>Impor Excel</span>
+          </button>
+          <button
+            type="button"
             class="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-[#1B5FD9] hover:bg-[#154EBC] shadow-xs flex items-center gap-2 transition cursor-pointer"
             @click="openCreate"
           >
@@ -456,6 +499,13 @@ const handleSelectModule = (title: string) => {
       :existing-codes="existingCodes"
       @close="isModalOpen = false; editingSubject = null"
       @save="handleSaveSubject"
+    />
+
+    <!-- MODAL IMPOR MAPEL -->
+    <MapelV2ImportModal
+      :open="isImportOpen"
+      @close="isImportOpen = false"
+      @imported="handleImported"
     />
 
     <!-- MODAL HAPUS MAPEL -->
