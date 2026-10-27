@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
+import { generateSubjectCode } from '~/composables/useAdminSubjects'
 
 export type SubjectCategory = 'Umum' | 'Kejuruan' | 'Keagamaan' | 'Muatan Lokal'
 
@@ -11,59 +12,90 @@ export interface SubjectItem {
   category: SubjectCategory
   kkm: number
   hoursPerWeek: number
-  coordinator: string
   grade: 'SMP' | 'SMK'
   status: 'Aktif' | 'Nonaktif'
+}
+
+export interface SubjectSaveData {
+  id: string | null
+  code: string
+  name: string
+  category: SubjectCategory
+  kkm: number
+  hoursPerWeek: number
+  grade: 'SMP' | 'SMK'
 }
 
 interface Props {
   open: boolean
   grade: 'SMP' | 'SMK'
   schoolName: string
+  subject: SubjectItem | null
+  existingCodes: string[]
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'save', subjectData: Omit<SubjectItem, 'id' | 'grade' | 'status'>): void
+  (e: 'save', subjectData: SubjectSaveData): void
 }>()
 
 const form = ref({
-  code: '',
   name: '',
   category: 'Umum' as SubjectCategory,
   kkm: 75,
   hoursPerWeek: 4,
-  coordinator: ''
+  grade: 'SMK' as 'SMP' | 'SMK'
+})
+
+const isEdit = computed(() => !!props.subject)
+
+const formSchoolName = computed(() => form.value.grade === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9')
+
+const codePreview = computed(() => {
+  if (props.subject) return props.subject.code
+  return generateSubjectCode(form.value.name, props.existingCodes)
 })
 
 watch(() => props.open, (isOpen) => {
-  if (isOpen) {
+  if (!isOpen) return
+  if (props.subject) {
     form.value = {
-      code: '',
+      name: props.subject.name,
+      category: props.subject.category,
+      kkm: props.subject.kkm,
+      hoursPerWeek: props.subject.hoursPerWeek,
+      grade: props.subject.grade
+    }
+  } else {
+    form.value = {
       name: '',
       category: props.grade === 'SMK' ? 'Kejuruan' : 'Umum',
       kkm: 75,
       hoursPerWeek: 4,
-      coordinator: ''
+      grade: props.grade
     }
   }
 })
 
 const handleSubmit = () => {
-  if (!form.value.name.trim() || !form.value.code.trim()) {
-    alert('Mohon isi kode dan nama mata pelajaran!')
+  if (!form.value.name.trim()) {
+    alert('Mohon isi nama mata pelajaran!')
     return
   }
-
+  if (!codePreview.value) {
+    alert('Nama mata pelajaran belum cukup untuk membuat kode otomatis.')
+    return
+  }
   emit('save', {
-    code: form.value.code.trim().toUpperCase(),
+    id: props.subject?.id ?? null,
+    code: codePreview.value,
     name: form.value.name.trim(),
     category: form.value.category,
-    kkm: Number(form.value.kkm),
-    hoursPerWeek: Number(form.value.hoursPerWeek),
-    coordinator: form.value.coordinator.trim() || `Tim Guru ${props.grade}`
+    kkm: Math.max(0, Math.min(100, Number(form.value.kkm) || 0)),
+    hoursPerWeek: Math.max(0, Number(form.value.hoursPerWeek) || 0),
+    grade: form.value.grade
   })
 }
 </script>
@@ -74,11 +106,11 @@ const handleSubmit = () => {
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
     @click.self="emit('close')"
   >
-    <div class="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-[#E7EBF2] space-y-4">
+    <div class="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-[#E7EBF2] space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex items-center justify-between pb-3.5 border-b border-[#F1F5F9]">
         <div>
-          <h3 class="text-base font-extrabold text-[#101828]">Tambah Mata Pelajaran Baru</h3>
-          <p class="text-xs text-[#667085] mt-0.5">Struktur kurikulum nasional &bull; {{ schoolName }}</p>
+          <h3 class="text-base font-extrabold text-[#101828]">{{ isEdit ? 'Ubah Mata Pelajaran' : 'Tambah Mata Pelajaran Baru' }}</h3>
+          <p class="text-xs text-[#667085] mt-0.5">Struktur kurikulum nasional &bull; {{ formSchoolName }}</p>
         </div>
         <button
           type="button"
@@ -91,27 +123,55 @@ const handleSubmit = () => {
 
       <form class="space-y-3.5 text-xs" @submit.prevent="handleSubmit">
         <div>
-          <label class="block font-bold text-[#344054] mb-1">Kode Mata Pelajaran</label>
-          <input
-            v-model="form.code"
-            placeholder="Contoh: SMK-RPL-01 atau SMP-IPA-02"
-            class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-mono font-bold text-[#101828] outline-none focus:border-[#1B5FD9] placeholder:text-[#98A2B3]"
-            required
-          />
-          <p class="text-[11px] text-[#667085] mt-1">Kode unik identifikasi mata pelajaran di kurikulum sekolah.</p>
-        </div>
-
-        <div>
           <label class="block font-bold text-[#344054] mb-1">Nama Mata Pelajaran</label>
           <input
             v-model="form.name"
-            placeholder="Contoh: Pemrograman Web &amp; Mobile, Matematika Terapan"
+            placeholder="Contoh: Pendidikan Agama dan Budi Pekerti"
             class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-bold text-[#101828] outline-none focus:border-[#1B5FD9] placeholder:text-[#98A2B3]"
             required
           />
         </div>
 
+        <div>
+          <label class="block font-bold text-[#344054] mb-1">Kode Mata Pelajaran</label>
+          <div class="flex items-center gap-2">
+            <div class="flex-1 px-3.5 py-2.5 rounded-xl border border-dashed border-[#B2CCFF] bg-[#F5F9FF] font-mono font-extrabold text-sm text-[#0A2A5C]">
+              {{ codePreview || '—' }}
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-[#1B5FD9] text-white text-[10px] font-extrabold uppercase tracking-wide">
+              {{ isEdit ? 'Terkunci' : 'Otomatis' }}
+            </span>
+          </div>
+          <p class="text-[11px] text-[#667085] mt-1">
+            {{ isEdit
+              ? 'Kode mapel yang sudah dipakai tidak diubah, agar referensi jadwal, bank soal, dan nilai tidak putus.'
+              : 'Dibuat otomatis dari nama dan dijamin unik. Kode tidak bisa diubah setelah mapel dipakai.' }}
+          </p>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-[#344054] mb-1">Jenjang Pendidikan</label>
+            <div class="flex bg-[#EEF1F6] rounded-xl p-1 gap-1">
+              <button
+                type="button"
+                class="flex-1 py-2 rounded-lg text-xs font-extrabold cursor-pointer transition"
+                :class="form.grade === 'SMP' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#667085]'"
+                @click="form.grade = 'SMP'"
+              >
+                SMP
+              </button>
+              <button
+                type="button"
+                class="flex-1 py-2 rounded-lg text-xs font-extrabold cursor-pointer transition"
+                :class="form.grade === 'SMK' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#667085]'"
+                @click="form.grade = 'SMK'"
+              >
+                SMK
+              </button>
+            </div>
+          </div>
+
           <div>
             <label class="block font-bold text-[#344054] mb-1">Kategori Kurikulum</label>
             <select
@@ -124,39 +184,36 @@ const handleSubmit = () => {
               <option value="Muatan Lokal">Muatan Lokal</option>
             </select>
           </div>
+        </div>
 
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-bold text-[#344054] mb-1">Standar KKM Minimal</label>
             <input
               v-model.number="form.kkm"
               type="number"
-              min="60"
+              min="0"
               max="100"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-mono font-bold text-[#101828] outline-none focus:border-[#1B5FD9]"
+              required
+            />
+            <p class="text-[11px] text-[#667085] mt-1">Acuan tuntas di penilaian akhir: nilai CBT, agenda, dan rapor membaca angka ini.</p>
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#344054] mb-1">Alokasi Beban Jam (Jam/Minggu)</label>
+            <input
+              v-model.number="form.hoursPerWeek"
+              type="number"
+              min="0"
               class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-mono font-bold text-[#101828] outline-none focus:border-[#1B5FD9]"
               required
             />
           </div>
         </div>
 
-        <div>
-          <label class="block font-bold text-[#344054] mb-1">Alokasi Beban Jam (Jam/Minggu)</label>
-          <input
-            v-model.number="form.hoursPerWeek"
-            type="number"
-            min="1"
-            class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-mono font-bold text-[#101828] outline-none focus:border-[#1B5FD9]"
-            required
-          />
-        </div>
-
-        <div>
-          <label class="block font-bold text-[#344054] mb-1">Guru Koordinator Pengampu</label>
-          <input
-            v-model="form.coordinator"
-            placeholder="Nama guru penanggung jawab mata pelajaran"
-            class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-medium text-[#101828] outline-none focus:border-[#1B5FD9] placeholder:text-[#98A2B3]"
-            required
-          />
+        <div class="rounded-xl bg-[#E8F0FE] text-[#0A2A5C] px-3.5 py-3 font-semibold leading-relaxed">
+          Pengajar tidak diatur di master ini. Pengajar ditentukan di Jadwal Pelajaran per kelas — satu mapel bisa diajar guru berbeda di tiap kelas, dan dari jadwal itu Jadwal Mengajar tiap guru terisi otomatis.
         </div>
 
         <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-[#F1F5F9]">

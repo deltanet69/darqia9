@@ -9,9 +9,10 @@ import AdminV2Popovers from '~/components/adminV2/AdminV2Popovers.vue'
 import AdminV2Toast from '~/components/adminV2/AdminV2Toast.vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
-import MapelV2Modal, { type SubjectItem } from '~/components/adminV2/mapel/MapelV2Modal.vue'
+import MapelV2Modal, { type SubjectItem, type SubjectSaveData } from '~/components/adminV2/mapel/MapelV2Modal.vue'
+import MapelV2DeleteModal from '~/components/adminV2/mapel/MapelV2DeleteModal.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
-import { useAdminSubjects } from '~/composables/useAdminSubjects'
+import { useAdminSubjects, type AdminSubject } from '~/composables/useAdminSubjects'
 
 definePageMeta({
   layout: false
@@ -66,7 +67,7 @@ const filteredSubjects = computed(() => {
     if (selectedCategory.value !== 'all' && s.category !== selectedCategory.value) return false
     if (searchQuery.value) {
       const q = searchQuery.value.toLowerCase()
-      return s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q) || s.coordinator.toLowerCase().includes(q)
+      return s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q) || s.teachers.some(t => t.toLowerCase().includes(q))
     }
     return true
   })
@@ -76,9 +77,23 @@ const totalHours = computed(() => {
   return filteredSubjects.value.reduce((acc, curr) => acc + curr.hoursPerWeek, 0)
 })
 
+const kkmRange = computed(() => {
+  const kkms = filteredSubjects.value.filter(s => s.status === 'Aktif').map(s => s.kkm)
+  if (!kkms.length) return '-'
+  const min = Math.min(...kkms)
+  const max = Math.max(...kkms)
+  return min === max ? `${min}` : `${min} - ${max}`
+})
+
+const scheduledSummary = computed(() => {
+  const active = filteredSubjects.value.filter(s => s.status === 'Aktif')
+  if (!active.length) return '-'
+  return `${active.filter(s => s.scheduledClasses > 0).length} / ${active.length}`
+})
+
 // Export CSV (1:1 Versi Asli)
 const exportCsv = () => {
-  const headers = ['No', 'Kode Mapel', 'Nama Mata Pelajaran', 'Kategori', 'KKM', 'Beban Jam/Minggu', 'Koordinator Guru', 'Jenjang', 'Status']
+  const headers = ['No', 'Kode Mapel', 'Nama Mata Pelajaran', 'Kategori', 'KKM', 'Beban Jam/Minggu', 'Pengajar (dari Jadwal)', 'Kelas Terjadwal', 'Jenjang', 'Status']
   const rows = filteredSubjects.value.map((s, i) => [
     i + 1,
     `"${s.code}"`,
@@ -86,7 +101,8 @@ const exportCsv = () => {
     `"${s.category}"`,
     s.kkm,
     s.hoursPerWeek,
-    `"${s.coordinator}"`,
+    `"${s.teachers.length ? s.teachers.join('; ') : 'Belum ada jadwal'}"`,
+    s.scheduledClasses,
     s.grade,
     s.status
   ])
@@ -101,23 +117,82 @@ const exportCsv = () => {
   triggerToast(`Master mapel ${grade.value} berhasil diekspor ke CSV.`)
 }
 
-// Tambah Mapel Handler
-const handleSaveSubject = async (data: Omit<SubjectItem, 'id' | 'grade' | 'status'>) => {
+// Tambah & Ubah Mapel
+const editingSubject = ref<AdminSubject | null>(null)
+const deleteTarget = ref<AdminSubject | null>(null)
+
+const openCreate = () => {
+  editingSubject.value = null
+  isModalOpen.value = true
+}
+
+const openEdit = (subject: AdminSubject) => {
+  editingSubject.value = subject
+  isModalOpen.value = true
+}
+
+const handleSaveSubject = async (data: SubjectSaveData) => {
   try {
-    await subjectsStore.create({
-    code: data.code,
-    name: data.name,
-    category: data.category,
-    kkm: data.kkm,
-    hoursPerWeek: data.hoursPerWeek,
-      grade: grade.value
-    })
+    if (data.id) {
+      await subjectsStore.update(data.id, {
+        name: data.name,
+        grade: data.grade,
+        category: data.category,
+        kkm: data.kkm,
+        hoursPerWeek: data.hoursPerWeek
+      })
+      triggerToast(`Mata pelajaran ${data.name} (${data.code}) berhasil diubah.`)
+    } else {
+      const code = await subjectsStore.create({
+        name: data.name,
+        grade: data.grade,
+        category: data.category,
+        kkm: data.kkm,
+        hoursPerWeek: data.hoursPerWeek
+      })
+      triggerToast(`Mata pelajaran ${data.name} (${code}) berhasil ditambahkan.`)
+    }
     isModalOpen.value = false
-    triggerToast(`Mata pelajaran ${data.name} (${data.code}) berhasil ditambahkan.`)
+    editingSubject.value = null
   } catch (error) {
     triggerToast(error instanceof Error ? error.message : 'Mata pelajaran gagal disimpan.')
   }
 }
+
+const toggleSubjectActive = async (subject: AdminSubject) => {
+  try {
+    await subjectsStore.setActive(subject.id, subject.status !== 'Aktif')
+    triggerToast(subject.status === 'Aktif'
+      ? `Mata pelajaran ${subject.name} dinonaktifkan. Mapel nonaktif tidak muncul di jadwal, bank soal, dan ujian baru.`
+      : `Mata pelajaran ${subject.name} diaktifkan kembali.`)
+  } catch (error) {
+    triggerToast(error instanceof Error ? error.message : 'Status mata pelajaran gagal diubah.')
+  }
+}
+
+const handleDeactivateFromDelete = async (subject: AdminSubject) => {
+  deleteTarget.value = null
+  await toggleSubjectActive(subject)
+}
+
+const handleConfirmDelete = async (subject: AdminSubject) => {
+  try {
+    await subjectsStore.remove(subject.id)
+    deleteTarget.value = null
+    triggerToast(`Mata pelajaran ${subject.name} berhasil dihapus.`)
+  } catch (error) {
+    deleteTarget.value = null
+    triggerToast(error instanceof Error ? error.message : 'Mata pelajaran gagal dihapus.')
+  }
+}
+
+const existingCodes = computed(() => subjectsStore.subjects.value.map(s => s.code))
+
+const editingItem = computed<SubjectItem | null>(() => {
+  const s = editingSubject.value
+  if (!s) return null
+  return { id: s.id, code: s.code, name: s.name, category: s.category, kkm: s.kkm, hoursPerWeek: s.hoursPerWeek, grade: s.grade, status: s.status }
+})
 
 onMounted(() => subjectsStore.load())
 
@@ -225,12 +300,23 @@ const handleSelectModule = (title: string) => {
           <button
             type="button"
             class="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-[#1B5FD9] hover:bg-[#154EBC] shadow-xs flex items-center gap-2 transition cursor-pointer"
-            @click="isModalOpen = true"
+            @click="openCreate"
           >
             <AdminV2Icon name="plus" :size="14" />
             <span>Tambah Mapel</span>
           </button>
         </div>
+      </div>
+
+      <!-- INTEGRASI MASTER MAPEL -->
+      <div class="flex flex-wrap items-center gap-1.5 text-[11.5px] font-bold text-[#667085]">
+        <span class="mr-1">Master ini terhubung ke:</span>
+        <span class="px-2.5 py-1 rounded-full bg-white border border-[#E7EBF2] text-[#344054]">Jadwal Pelajaran per Kelas</span>
+        <span class="px-2.5 py-1 rounded-full bg-white border border-[#E7EBF2] text-[#344054]">Jadwal Mengajar Guru</span>
+        <span class="px-2.5 py-1 rounded-full bg-white border border-[#E7EBF2] text-[#344054]">Bank Soal CBT &amp; LMS</span>
+        <span class="px-2.5 py-1 rounded-full bg-white border border-[#E7EBF2] text-[#344054]">Ujian (KKM bawaan)</span>
+        <span class="px-2.5 py-1 rounded-full bg-white border border-[#E7EBF2] text-[#344054]">Agenda Mengajar</span>
+        <span class="px-2.5 py-1 rounded-full bg-white border border-[#E7EBF2] text-[#344054]">Rapor</span>
       </div>
 
       <!-- 4 KPI Cards -->
@@ -248,15 +334,15 @@ const handleSelectModule = (title: string) => {
         </div>
 
         <div class="p-4 sm:p-5 rounded-3xl bg-white border border-[#E7EBF2] shadow-xs">
-          <span class="text-[10.5px] font-extrabold uppercase tracking-wider text-[#98A2B3] block">Standar KKM Rata-rata</span>
-          <b class="text-2xl sm:text-3xl font-mono font-extrabold text-[#101828] block mt-1.5">75 - 78</b>
-          <span class="text-xs text-[#667085] block mt-1">Kriteria Ketuntasan Minimal</span>
+          <span class="text-[10.5px] font-extrabold uppercase tracking-wider text-[#98A2B3] block">Standar KKM</span>
+          <b class="text-2xl sm:text-3xl font-mono font-extrabold text-[#101828] block mt-1.5">{{ kkmRange }}</b>
+          <span class="text-xs text-[#667085] block mt-1">Rentang nyata dari data &middot; acuan penilaian akhir</span>
         </div>
 
         <div class="p-4 sm:p-5 rounded-3xl bg-white border border-[#E7EBF2] shadow-xs">
-          <span class="text-[10.5px] font-extrabold uppercase tracking-wider text-[#98A2B3] block">Status Kurikulum</span>
-          <b class="text-2xl sm:text-3xl font-mono font-extrabold text-[#059669] block mt-1.5">Terverifikasi</b>
-          <span class="text-xs text-[#667085] block mt-1">Disetujui Waka Kurikulum</span>
+          <span class="text-[10.5px] font-extrabold uppercase tracking-wider text-[#98A2B3] block">Sudah Terjadwal</span>
+          <b class="text-2xl sm:text-3xl font-mono font-extrabold text-[#059669] block mt-1.5">{{ scheduledSummary }}</b>
+          <span class="text-xs text-[#667085] block mt-1">Mapel yang sudah punya jadwal kelas</span>
         </div>
       </div>
 
@@ -266,7 +352,7 @@ const handleSelectModule = (title: string) => {
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Cari kode mapel, nama mata pelajaran, atau koordinator..."
+            placeholder="Cari kode mapel, nama mata pelajaran, atau pengajar..."
             class="w-full pl-9 pr-4 py-2.5 text-xs bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl outline-none focus:bg-white focus:border-[#1B5FD9] font-medium transition-colors text-[#101828] placeholder:text-[#98A2B3]"
           />
           <AdminV2Icon name="search" :size="15" class="absolute left-3 top-3 text-[#98A2B3]" />
@@ -295,15 +381,16 @@ const handleSelectModule = (title: string) => {
                 <th class="py-3.5 px-4">Kategori</th>
                 <th class="py-3.5 px-4 text-center">KKM</th>
                 <th class="py-3.5 px-4 text-center">Beban Jam</th>
-                <th class="py-3.5 px-4">Koordinator Pengampu</th>
-                <th class="py-3.5 px-4 text-right">Status</th>
+                <th class="py-3.5 px-4">Pengajar (dari Jadwal Pelajaran)</th>
+                <th class="py-3.5 px-4">Status</th>
+                <th class="py-3.5 px-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[#F1F5F9] font-medium text-[#344054]">
               <tr
                 v-for="s in filteredSubjects"
                 :key="s.id"
-                class="hover:bg-[#F8FAFC] transition-colors"
+                class="hover:bg-[#F8FAFC] transition-colors" :class="{ 'opacity-55': s.status === 'Nonaktif' }"
               >
                 <td class="py-3.5 px-4 font-mono font-bold text-[#1B5FD9]">{{ s.code }}</td>
                 <td class="py-3.5 px-4 font-extrabold text-[#101828] text-[13px]">{{ s.name }}</td>
@@ -322,16 +409,35 @@ const handleSelectModule = (title: string) => {
                 </td>
                 <td class="py-3.5 px-4 text-center font-mono font-bold text-[#101828]">{{ s.kkm }}</td>
                 <td class="py-3.5 px-4 text-center font-mono text-[#667085]">{{ s.hoursPerWeek }} Jam / mg</td>
-                <td class="py-3.5 px-4 font-semibold text-[#344054]">{{ s.coordinator }}</td>
-                <td class="py-3.5 px-4 text-right">
-                  <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#059669]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+                <td class="py-3.5 px-4">
+                  <template v-if="s.teachers.length">
+                    <span class="block font-bold text-[#344054]">{{ s.teachers.join(' &middot; ') }}</span>
+                    <span class="block text-[11px] text-[#98A2B3] font-semibold mt-0.5">{{ s.teachers.length }} guru &middot; {{ s.scheduledClasses }} kelas terjadwal</span>
+                  </template>
+                  <template v-else>
+                    <span class="block font-bold text-[#B54708]">Belum ada jadwal</span>
+                    <span class="block text-[11px] text-[#98A2B3] font-semibold mt-0.5">Atur di Jadwal Pelajaran</span>
+                  </template>
+                </td>
+                <td class="py-3.5 px-4">
+                  <span
+                    class="inline-flex items-center gap-1.5 text-[11px] font-bold"
+                    :class="s.status === 'Aktif' ? 'text-[#059669]' : 'text-[#98A2B3]'"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full" :class="s.status === 'Aktif' ? 'bg-[#10B981]' : 'bg-[#98A2B3]'" />
                     {{ s.status }}
                   </span>
                 </td>
+                <td class="py-3.5 px-4">
+                  <div class="flex items-center justify-end gap-3.5 whitespace-nowrap">
+                    <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline cursor-pointer" @click="openEdit(s)">Ubah</button>
+                    <button type="button" class="text-xs font-bold text-[#667085] hover:underline cursor-pointer" @click="toggleSubjectActive(s)">{{ s.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan' }}</button>
+                    <button type="button" class="text-xs font-bold text-[#B42318] hover:underline cursor-pointer" @click="deleteTarget = s">Hapus</button>
+                  </div>
+                </td>
               </tr>
               <tr v-if="filteredSubjects.length === 0">
-                <td colspan="7" class="py-12 text-center text-[#98A2B3] font-medium">
+                <td colspan="8" class="py-12 text-center text-[#98A2B3] font-medium">
                   Tidak ada data mata pelajaran ditemukan.
                 </td>
               </tr>
@@ -341,13 +447,23 @@ const handleSelectModule = (title: string) => {
       </div>
     </main>
 
-    <!-- MODAL TAMBAH MAPEL -->
+    <!-- MODAL TAMBAH / UBAH MAPEL -->
     <MapelV2Modal
       :open="isModalOpen"
       :grade="grade"
       :school-name="schoolName"
-      @close="isModalOpen = false"
+      :subject="editingItem"
+      :existing-codes="existingCodes"
+      @close="isModalOpen = false; editingSubject = null"
       @save="handleSaveSubject"
+    />
+
+    <!-- MODAL HAPUS MAPEL -->
+    <MapelV2DeleteModal
+      :subject="deleteTarget"
+      @close="deleteTarget = null"
+      @deactivate="handleDeactivateFromDelete"
+      @confirm-delete="handleConfirmDelete"
     />
 
     <!-- BOTTOM BAR NAVIGATION (Mobile) -->
@@ -386,3 +502,4 @@ const handleSelectModule = (title: string) => {
     />
   </div>
 </template>
+

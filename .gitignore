@@ -40,3 +40,4 @@ supabase/migrations/*
 !supabase/migrations/0014_pilihan_soal_ujian.sql
 !supabase/migrations/0015_validasi_jenjang_bank_soal.sql
 !supabase/migrations/0016_kerangka_ujian_draf.sql
+!/docs/laporan-master-mapel.md
