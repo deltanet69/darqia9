@@ -13,6 +13,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const bankLabel = computed(() => props.source === 'ujian_harian' ? 'Bank Soal LMS (ujian harian)' : 'Bank Soal CBT (PTS/PAS)')
 const cbtData = useAdminCbtData(props.source ?? 'cbt')
 
 const emit = defineEmits<{
@@ -88,7 +89,7 @@ const restoreFormDraft = () => {
     isEditingForm.value = Boolean(saved.editing)
     selectedClass.value = saved.selectedClass || saved.draft.classroom
     selectedPkgId.value = saved.selectedPkgId || null
-    formStep.value = ['PG', 'Isian', 'Esai', 'Interaktif'].includes(saved.step || '')
+    formStep.value = ['PG', 'Esai', 'Interaktif'].includes(saved.step || '')
       ? saved.step as QuestionStep
       : 'PG'
     bankMode.value = 'form'
@@ -368,7 +369,7 @@ const confirmImport = async () => {
       <!-- Section Head -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
         <div>
-          <h2 class="text-lg font-extrabold text-[#101828]">Bank Soal</h2>
+          <h2 class="text-lg font-extrabold text-[#101828]">{{ bankLabel }}</h2>
           <p class="text-xs text-[#667085] mt-0.5">Jelajahi rombel → paket mapel → rincian soal.</p>
         </div>
         <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
@@ -447,7 +448,7 @@ const confirmImport = async () => {
             <span class="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
               <AdminV2Icon name="grid" :size="16" />
             </span>
-            <span class="text-[10px] font-extrabold text-[#667085]">PG · Isian · Esai · Interaktif</span>
+            <span class="text-[10px] font-extrabold text-[#667085]">PG · Esai · Interaktif</span>
           </div>
           <div class="my-2">
             <div class="text-2xl font-extrabold font-mono text-[#101828] leading-none">
@@ -559,7 +560,7 @@ const confirmImport = async () => {
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
         <div>
           <h2 class="text-lg font-extrabold text-[#101828]">
-            Bank Soal · {{ selectedClass }}
+            {{ bankLabel }} · {{ selectedClass }}
           </h2>
           <p class="text-xs text-[#667085] mt-0.5">
             Paket mata pelajaran dan komposisi format untuk rombel ini.
@@ -856,7 +857,7 @@ const confirmImport = async () => {
           <!-- Head -->
           <div class="p-5 border-b border-[#E7EBF2] flex items-center justify-between">
             <div>
-              <h3 class="text-base font-extrabold text-[#101828]">Import Bank Soal</h3>
+              <h3 class="text-base font-extrabold text-[#101828]">Impor {{ bankLabel }}</h3>
               <p class="text-xs text-[#667085] mt-0.5">Unggah template Word .docx lalu konfirmasi metadata yang terdeteksi.</p>
             </div>
             <button
@@ -878,7 +879,7 @@ const confirmImport = async () => {
 
             <div class="rounded-xl border border-[#E7EBF2] bg-[#FAFBFC] p-3">
               <p class="font-extrabold text-[#344054]">Template sesuai jenjang aktif: {{ props.grade }}</p>
-              <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">PG SMP berisi 4 pilihan A-D. PG SMK berisi 5 pilihan A-E. Template juga memuat Isian, Esai, Video YouTube, dan Audio.</p>
+              <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">PG SMP berisi 4 pilihan A-D. PG SMK berisi 5 pilihan A-E. Template juga memuat Esai, Video YouTube, dan Audio dengan jawaban PG.</p>
               <button type="button" class="mt-2 min-h-10 rounded-lg bg-white px-3 font-extrabold text-[#1B5FD9] ring-1 ring-[#B9D1F9] hover:bg-[#E8F0FE]" @click="downloadWordTemplate(props.grade)">
                 Unduh Template Word {{ props.grade }}
               </button>

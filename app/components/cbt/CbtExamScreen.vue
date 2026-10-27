@@ -12,8 +12,8 @@
         <div class="flex items-center gap-3">
           <img src="/asset/logo.png" alt="Logo" class="w-9 h-9 sm:w-10 sm:h-10 object-contain">
           <div>
-            <div class="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">Informatika</div>
-            <div class="text-[11px] sm:text-xs font-semibold text-slate-500">{{ grade === 'SMP' ? 'Informatika & Komputer Dasar' : 'Jaringan Komputer Dasar' }}</div>
+            <div class="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">{{ exam?.subject }}</div>
+            <div class="text-[11px] sm:text-xs font-semibold text-slate-500">{{ exam?.name }}</div>
           </div>
         </div>
 
@@ -143,7 +143,7 @@
 
             <!-- Question Text with KaTeX & Arabic RTL -->
             <div
-              class="text-base sm:text-lg font-medium text-slate-900 leading-relaxed overflow-x-auto"
+              class="cbt-question-text text-base sm:text-lg font-medium text-slate-900 leading-relaxed overflow-x-auto"
               :dir="curQuestion.isRtl || isArabicText(curQuestion.text) ? 'rtl' : 'ltr'"
               :class="curQuestion.isRtl || isArabicText(curQuestion.text) ? 'text-right font-serif text-xl sm:text-2xl leading-loose py-2 text-slate-950' : ''"
               v-html="renderKaTeXHtml(curQuestion.text)"
@@ -414,6 +414,7 @@ const videoEmbedUrl = (url?: string) => {
 
 defineProps<{
   screen: string
+  exam?: { name: string; subject: string } | null
   grade: string
   remainingTime: number
   isSaving: boolean
@@ -455,3 +456,12 @@ defineEmits<{
   (e: 'simulate-violation', level?: number): void
 }>()
 </script>
+
+<style scoped>
+.cbt-question-text[dir='rtl'] {
+  font-family: 'Traditional Arabic', 'Times New Roman', serif;
+  font-size: 1.5rem;
+  line-height: 2;
+  text-align: right;
+}
+</style>

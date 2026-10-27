@@ -1,7 +1,6 @@
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminGrade } from '~/composables/useAdminGrade'
-import { useAdminCbtState } from '~/composables/useAdminCbtState'
 
 export interface SectionItem {
   id: string
@@ -13,6 +12,7 @@ export interface SectionItem {
 }
 
 export interface QuestionItem {
+  id?: string
   sec: string
   type: 'single' | 'multiple' | 'short' | 'essay' | 'audio' | 'video' | string
   text: string
@@ -61,13 +61,16 @@ export interface ModalState {
 
 export interface LoginForm {
   nis: string
-  pass: string
   kode: string
 }
 
 export const useCbtExam = () => {
   const router = useRouter()
   const grade = useAdminGrade()
+  const route = useRoute()
+  const activeExam = ref<{ id: string; name: string; code: string; duration: number; studentName: string; classroom: string; subject: string } | null>(null)
+  const examQuestions = ref<QuestionItem[]>([])
+  const loadingExam = ref(false)
 
   const gradeTheme = computed<string>(() => {
     return (grade.value || 'smk').toLowerCase()
@@ -113,76 +116,13 @@ export const useCbtExam = () => {
     }
   ]
 
-  const questionsSMK: QuestionItem[] = [
-    { sec: 'pg', type: 'single', text: 'Perangkat yang berfungsi menghubungkan dua jaringan yang berbeda dan menentukan jalur terbaik untuk paket data adalah ….', options: ['Switch', 'Router', 'Hub', 'Repeater', 'Access point'] },
-    { sec: 'pg', type: 'single', text: 'Alamat IP 192.168.10.25 termasuk ke dalam IP kelas ….', options: ['A', 'B', 'C', 'D', 'E'] },
-    { sec: 'pg', type: 'single', text: 'Lapisan pada model OSI yang bertanggung jawab atas pengalamatan logis (IP addressing) adalah lapisan ….', options: ['Physical', 'Data Link', 'Network', 'Transport', 'Session'] },
-    { sec: 'pg', type: 'single', text: 'Perintah pada Command Prompt yang digunakan untuk menguji konektivitas ke komputer lain dalam jaringan adalah ….', options: ['ipconfig', 'ping', 'tracert', 'netstat', 'nslookup'] },
-    { sec: 'pg', type: 'single', text: 'Jenis kabel UTP yang tepat untuk menghubungkan dua perangkat sejenis (misalnya PC ke PC) adalah kabel ….', options: ['Straight-through', 'Crossover', 'Rollover', 'Coaxial', 'Fiber optik'] },
-    { sec: 'pg', type: 'single', text: 'Jumlah alamat host yang dapat digunakan pada sebuah jaringan dengan subnet mask 255.255.255.0 adalah ….', options: ['254', '256', '512', '128', '510'] },
-    { sec: 'pg', type: 'multiple', text: 'Pilih SEMUA pernyataan yang BENAR tentang switch.', options: ['Bekerja pada Layer 2 model OSI', 'Meneruskan frame berdasarkan MAC address', 'Dapat menghubungkan dua jaringan dengan segmen IP berbeda', 'Memiliki satu broadcast domain untuk semua port', 'Mendukung teknologi VLAN'] },
-    { sec: 'pg', type: 'multiple', text: 'Manakah yang termasuk media transmisi terpandu (guided media)?', options: ['Kabel UTP', 'Kabel fiber optik', 'Gelombang radio', 'Kabel coaxial', 'Sinyal inframerah'] },
-    { sec: 'singkat', type: 'short', text: 'Tuliskan kepanjangan dari DHCP.', placeholder: 'Ketik jawaban singkatmu…' },
-    { sec: 'singkat', type: 'short', text: 'Protokol HTTPS secara default berjalan pada port nomor ….', placeholder: 'Ketik jawaban singkatmu…' },
-    { sec: 'essay', type: 'essay', text: 'Jelaskan secara runtut proses kerja DHCP (DORA) saat sebuah komputer pertama kali terhubung ke jaringan. Uraikan setiap tahapannya dengan jelas dan sistematis.', placeholder: 'Tulis jawaban essay-mu di sini…', minWords: 40 },
-    { sec: 'essay', type: 'essay', text: 'Sebuah sekolah memiliki 120 unit komputer yang terbagi ke dalam 4 laboratorium (30 unit per lab). Rancanglah skema pengalamatan IP yang efisien: tentukan network ID, subnet mask, dan rentang IP untuk masing-masing lab. Jelaskan alasan pemilihan skemamu.', placeholder: 'Tulis jawaban essay-mu di sini…', minWords: 40 },
-    {
-      sec: 'interaktif', type: 'audio', text: 'Berdasarkan audio di atas, perangkat yang bermasalah dan langkah pertama yang paling tepat adalah ….',
-      options: ['Switch lab — mengganti seluruh kabel UTP', 'Router penghubung — memeriksa daya dan me-restart perangkat', 'Access point — mereset ulang konfigurasi', 'Server — menginstal ulang sistem operasi'],
-      audioTitle: 'Skenario Troubleshooting Jaringan', audioSub: 'Dengarkan dengan saksama, lalu jawab pertanyaan di bawah.',
-      audioScript: 'Skenario troubleshooting jaringan. Seorang teknisi menerima laporan bahwa seluruh komputer di Laboratorium 2 tidak dapat mengakses internet, namun komputer-komputer tersebut masih bisa saling berkomunikasi satu sama lain di dalam lab. Teknisi memeriksa kabel jaringan, switch, dan konfigurasi IP address. Semuanya dalam kondisi normal. Terakhir, teknisi memeriksa perangkat yang menghubungkan Laboratorium 2 ke jaringan utama sekolah, dan mendapati lampu indikator daya pada perangkat tersebut mati.'
-    },
-    {
-      sec: 'interaktif', type: 'video', text: 'Perhatikan video topologi jaringan berikut. Jenis topologi apakah yang ditampilkan pada video?',
-      options: ['Bus', 'Star', 'Ring', 'Mesh'], videoDur: '01:24', videoTitle: 'Video: Topologi Jaringan'
-    }
-  ]
-
-  const questionsSMP: QuestionItem[] = [
-    { sec: 'pg', type: 'single', text: 'Perangkat keras komputer yang berfungsi sebagai otak pemroses data utama adalah ….', options: ['Monitor', 'Processor (CPU)', 'Keyboard', 'Speaker', 'Scanner'] },
-    { sec: 'pg', type: 'single', text: 'Aplikasi peramban web yang umum digunakan untuk menjelajahi internet adalah ….', options: ['Microsoft Word', 'Google Chrome', 'VLC Media Player', 'Adobe Photoshop', 'CorelDRAW'] },
-    { sec: 'pg', type: 'single', text: 'Jaringan komputer yang mencakup area terbatas seperti dalam satu ruangan atau laboratorium disebut ….', options: ['LAN', 'WAN', 'MAN', 'Internet', 'SAN'] },
-    { sec: 'pg', type: 'single', text: 'Kombinasi tombol keyboard yang digunakan untuk menyalin (copy) teks atau berkas adalah ….', options: ['Ctrl + X', 'Ctrl + V', 'Ctrl + C', 'Ctrl + Z', 'Ctrl + S'] },
-    { sec: 'pg', type: 'single', text: 'Perangkat keluaran (output device) yang berfungsi menghasilkan cetakan fisik pada kertas adalah ….', options: ['Mouse', 'Printer', 'Microphone', 'Webcam', 'Flashdisk'] },
-    { sec: 'pg', type: 'single', text: 'Satuan kapasitas penyimpanan data digital terkecil setelah Byte adalah ….', options: ['Kilobyte (KB)', 'Megabyte (MB)', 'Gigabyte (GB)', 'Terabyte (TB)', 'Petabyte (PB)'] },
-    { sec: 'pg', type: 'multiple', text: 'Pilih SEMUA yang termasuk perangkat masukan (input device).', options: ['Keyboard', 'Mouse', 'Monitor', 'Scanner', 'Speaker'] },
-    { sec: 'pg', type: 'multiple', text: 'Pilih etika yang BENAR saat berkomunikasi di media sosial/internet.', options: ['Menggunakan bahasa yang sopan', 'Menghormati privasi orang lain', 'Menyebarkan informasi tanpa verifikasi', 'Tidak melakukan perundungan siber (cyberbullying)', 'Membagikan kata sandi akun ke publik'] },
-    { sec: 'singkat', type: 'short', text: 'Tuliskan kepanjangan dari singkatan WWW.', placeholder: 'Ketik jawaban singkatmu…' },
-    { sec: 'singkat', type: 'short', text: 'Sistem operasi open-source yang memiliki maskot penguin bernama Tux adalah ….', placeholder: 'Ketik jawaban singkatmu…' },
-    { sec: 'essay', type: 'essay', text: 'Jelaskan perbedaan antara perangkat keras (Hardware) dan perangkat lunak (Software), serta berikan masing-masing 3 contohnya dalam kehidupan sehari-hari.', placeholder: 'Tulis jawaban essay-mu di sini…', minWords: 30 },
-    { sec: 'essay', type: 'essay', text: 'Jelaskan mengapa kita harus menjaga keamanan data pribadi dan kata sandi saat menggunakan internet di sekolah maupun di rumah.', placeholder: 'Tulis jawaban essay-mu di sini…', minWords: 30 },
-    {
-      sec: 'interaktif', type: 'audio', text: 'Berdasarkan instruksi audio, tindakan pencegahan virus komputer yang disarankan adalah ….',
-      options: ['Mematikan antivirus komputer', 'Mengunduh file dari sembarang tautan', 'Rutin memperbarui antivirus dan tidak membuka lampiran mencurigakan', 'Menghapus seluruh file sistem operasi'],
-      audioTitle: 'Tips Keamanan Digital untuk Pelajar', audioSub: 'Dengarkan penjelasan singkat berikut, lalu jawab pertanyaan.',
-      audioScript: 'Perhatian untuk seluruh siswa. Untuk menjaga komputer laboratorium dari serangan program jahat atau virus, selalu pastikan perangkat lunak antivirus dalam kondisi aktif dan terbarukan. Hindari mencolokkan flashdisk yang belum dipindai dan jangan pernah membuka lampiran email dari pengirim yang tidak dikenal.'
-    },
-    {
-      sec: 'interaktif', type: 'video', text: 'Perhatikan animasi pengenalan perangkat keras komputer berikut. Komponen yang berfungsi menyimpan data sementara saat komputer menyala adalah ….',
-      options: ['Hard Disk', 'RAM', 'Power Supply', 'Heatsink'], videoDur: '01:10', videoTitle: 'Video: Komponen Hardware Komputer'
-    }
-  ]
-
-  const { allBankPackages, fetchBankPackagesFromDb } = useAdminCbtState()
-
-  // On mount, auto-fetch from Supabase if needed
-  onMounted(async () => {
-    await fetchBankPackagesFromDb()
-  })
-
-  const questions = computed<QuestionItem[]>(() => {
-    // 1. Cari paket bank soal aktif sesuai jenjang pendidikan saat ini
-    const activePackages = allBankPackages.value.filter(p => p.grade === grade.value)
-    if (activePackages.length > 0 && activePackages[0].questions && activePackages[0].questions.length > 0) {
-      // Ambil paket pertama yang memiliki butir soal lengkap
-      const activePkg = activePackages.find(p => p.questions.length >= 4) || activePackages[0]
-      return activePkg.questions.map(q => {
+  const mapExamQuestions = (rows: any[]): QuestionItem[] => rows.map(q => {
         let sec = 'pg'
         let qType: QuestionItem['type'] = 'single'
 
         if (q.type === 'PG') {
           sec = 'pg'
-          qType = q.isMultiSelect ? 'multiple' : 'single'
+          qType = q.is_multi_select ? 'multiple' : 'single'
         } else if (q.type === 'Isian') {
           sec = 'singkat'
           qType = 'short'
@@ -191,52 +131,46 @@ export const useCbtExam = () => {
           qType = 'essay'
         } else if (q.type === 'Interaktif') {
           sec = 'interaktif'
-          qType = q.mediaType === 'video' ? 'video' : 'audio'
+          qType = q.media_type === 'video' ? 'video' : 'audio'
         }
 
-        const options = q.options ? q.options.map(o => o.text) : []
+        const options = q.options ? q.options.map((option: { text: string }) => option.text) : []
 
         return {
+          id: q.id,
           sec,
           type: qType,
           text: q.text,
           options: options.length > 0 ? options : undefined,
           placeholder: q.type === 'Esai' ? 'Tulis jawaban essay-mu di sini…' : 'Ketik jawaban singkatmu…',
-          minWords: q.wordCountMin || (q.type === 'Esai' ? 30 : undefined),
-          maxWords: q.wordCountMax,
-          isRtl: q.isRtl,
-          imageUrl: q.imageUrl,
-          audioTitle: q.mediaFileName || 'Audio Ujian',
+          minWords: q.type === 'Esai' ? 30 : undefined,
+          isRtl: q.is_rtl,
+          imageUrl: q.image_url,
+          audioTitle: q.media_file_name || 'Audio Ujian',
           audioSub: 'Dengarkan rekaman dengan saksama',
-          mediaUrl: q.mediaUrl,
-          mediaFileName: q.mediaFileName,
-          interactiveAnswerType: q.interactiveAnswerType,
-          answerKey: q.key,
-          rubric: q.rubric,
-          videoTitle: q.mediaFileName || 'Video Materi Soal'
+          mediaUrl: q.media_url,
+          mediaFileName: q.media_file_name,
+          interactiveAnswerType: q.interactive_answer_type,
+          videoTitle: q.media_file_name || 'Video Materi Soal'
         }
       })
-    }
-
-    // Fallback kurikulum bawaan bila bank soal kosong
-    return grade.value === 'SMP' ? questionsSMP : questionsSMK
-  })
+  const questions = computed<QuestionItem[]>(() => examQuestions.value)
 
   const letters: string[] = ['A', 'B', 'C', 'D', 'E', 'F']
   const totalQuestions = computed<number>(() => questions.value.length)
-  const DURATION: number = 90 * 60 // 90 menit (5400 detik)
-  const SAVE_KEY = computed<string>(() => `cbt_darqia_${grade.value.toLowerCase()}_v1`)
+  const DURATION = computed(() => (activeExam.value?.duration ?? 90) * 60)
+  const SAVE_KEY = computed(() => `cbt_darqia_${grade.value}_${activeExam.value?.id}_${loginForm.nis}_v2`)
 
   /* ---------- STATE ---------- */
   const screen = ref<'login' | 'confirm' | 'exam' | 'review' | 'done'>('login')
-  const loginForm = reactive<LoginForm>({ nis: '', pass: '', kode: '' })
+  const loginForm = reactive<LoginForm>({ nis: '', kode: '' })
   const openedAcc = ref<string>('pg')
   const agreeStart = ref<boolean>(false)
 
   const qIdx = ref<number>(0)
   const answers = reactive<{ [key: number]: any }>({})
   const flags = reactive<Set<number>>(new Set<number>())
-  const remainingTime = ref<number>(DURATION)
+  const remainingTime = ref<number>(DURATION.value)
   let timerId: any = null
   const isSaving = ref<boolean>(false)
   const showMobilePalette = ref<boolean>(false)
@@ -450,16 +384,27 @@ export const useCbtExam = () => {
     openedAcc.value = openedAcc.value === id ? '' : id
   }
 
-  const fillDemo = (): void => {
-    loginForm.nis = grade.value === 'SMP' ? '2024005678' : '2024001234'
-    loginForm.pass = 'demo123'
-    loginForm.kode = grade.value === 'SMP' ? 'IF-0901' : 'IF-1201'
-    triggerToast('Data demo terisi. Ketuk "Masuk".')
-  }
-
-  const doLogin = (): void => {
+  const doLogin = async (): Promise<void> => {
+    if (loadingExam.value) return
     if (!loginForm.nis) { triggerToast('Isi Nomor Peserta / NIS dulu.'); return }
-    if (!loginForm.pass) { triggerToast('Isi kata sandi dulu.'); return }
+    if (!loginForm.kode) { triggerToast('Isi token ujian dulu.'); return }
+    loadingExam.value = true
+    try {
+      const result = await $fetch<any>('/api/cbt/questions', {
+        method: 'POST',
+        body: { nis: loginForm.nis, code: loginForm.kode, grade: grade.value, source: route.query.mode === 'ujian_harian' ? 'ujian_harian' : 'cbt' }
+      })
+      if (!result.questions?.length) throw new Error('Ujian belum memiliki soal. Hubungi pengawas.')
+      activeExam.value = result
+      examQuestions.value = mapExamQuestions(result.questions)
+      remainingTime.value = DURATION.value
+      Object.keys(answers).forEach(key => delete answers[Number(key)])
+      flags.clear()
+      qIdx.value = 0
+    } catch (error: any) {
+      triggerToast(error?.data?.statusMessage || error?.message || 'Soal ujian gagal dimuat.')
+      return
+    } finally { loadingExam.value = false }
 
     // Resume otomatis pasca re-login jika sudah ada sesi tersimpan
     const restored = restore()
@@ -478,7 +423,7 @@ export const useCbtExam = () => {
     }
     openModal({
       title: 'Mulai ujian sekarang?',
-      desc: 'Timer <b>90 menit</b> akan langsung berjalan dan soal akan ditampilkan. Pastikan koneksi internet stabil.',
+      desc: `Timer <b>${activeExam.value?.duration ?? 90} menit</b> akan langsung berjalan dan soal akan ditampilkan. Pastikan koneksi internet stabil.`,
       okText: 'Mulai sekarang',
       cancelText: 'Batal',
       btnClass: 'btn-primary',
@@ -713,7 +658,7 @@ export const useCbtExam = () => {
 
     const d = new Date()
     doneTime.value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} WIB`
-    const usedSec = Math.max(0, DURATION - remainingTime.value)
+    const usedSec = Math.max(0, DURATION.value - remainingTime.value)
     const um = Math.max(0, Math.round(usedSec / 60))
     doneDur.value = um >= 60 ? `${Math.floor(um / 60)} jam ${um % 60} menit` : `${um} menit`
 
@@ -877,6 +822,8 @@ export const useCbtExam = () => {
   }
 
   return {
+    activeExam,
+    loadingExam,
     grade,
     gradeTheme,
     jenjangText,
@@ -927,7 +874,6 @@ export const useCbtExam = () => {
     onModalBackClick,
     handleModalOk,
     toggleAcc,
-    fillDemo,
     doLogin,
     startExam,
     beginExam,

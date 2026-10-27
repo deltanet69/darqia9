@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { GradeType, StudentResult } from './cbtV2Data'
 import { CLASS_RESULTS, INITIAL_RESULTS } from './cbtV2Data'
+import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 
 interface Props {
   grade: GradeType
@@ -344,13 +345,10 @@ const exportCsv = (clsFilter: string | null) => {
 
         <div>
           <h4 class="text-xs font-extrabold text-[#101828] mb-2">Jawaban esai dari data contoh</h4>
-          <div class="p-3.5 rounded-xl border border-[#E7EBF2] bg-[#F9FAFC] space-y-2 text-xs">
-            <strong class="block text-[#101828]">
-              Jelaskan perbedaan mendasar antara OOP dengan pemrograman prosedural!
-            </strong>
-            <p class="text-[#475467] leading-relaxed p-2.5 bg-white rounded-lg border border-[#E7EBF2]">
-              OOP itu berorientasi pada objek nyata seperti mobil dan manusia, prosedural adalah prosedur fungsi biasa.
-            </p>
+          <div v-for="(answer, index) in selectedEssayStudent.essayAnswers || []" :key="index" class="p-3.5 rounded-xl border border-[#E7EBF2] bg-[#F9FAFC] space-y-2 text-xs">
+            <div class="overflow-x-auto font-bold text-[#101828]" :dir="isArabicText(answer.question) ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(answer.question)" />
+            <div class="overflow-x-auto text-[#475467] leading-relaxed p-2.5 bg-white rounded-lg border border-[#E7EBF2]" :dir="isArabicText(answer.studentAnswer) ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(answer.studentAnswer)" />
+            <div class="overflow-x-auto text-[#475467]" :dir="isArabicText(answer.rubric) ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(answer.rubric)" />
           </div>
         </div>
 

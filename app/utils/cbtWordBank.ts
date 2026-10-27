@@ -10,7 +10,7 @@ export interface WordBankPreview {
 }
 
 const clean = (value = '') => value.trim()
-const keyOf = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+const keyOf = (value = '') => value.toUpperCase().replace(/[^A-Z0-9]/g, '')
 const decodeXml = (value: string) => value.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
 
 const fields = (lines: string[]) => Object.fromEntries(lines.map(line => {
@@ -60,7 +60,6 @@ const linesFromXml = (xml: string) => Array.from(xml.matchAll(/<w:p(?:\s[^>]*)?>
 const toType = (value: string): ImportType | null => {
   const type = keyOf(value)
   if (['PG', 'PILIHANGANDA'].includes(type)) return 'PG'
-  if (['ISIAN', 'JAWABANSINGKAT'].includes(type)) return 'Isian'
   if (['ESAI', 'ESSAY'].includes(type)) return 'Esai'
   return type === 'INTERAKTIF' ? 'Interaktif' : null
 }
@@ -103,7 +102,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
     const row = fields(item)
     const number = Number(row.NO || index + 1)
     const type = toType(row.TIPE)
-    if (!type) throw new Error(`Soal ${number}: TIPE harus PG, Isian, Esai, atau Interaktif.`)
+    if (!type) throw new Error(`Soal ${number}: TIPE harus PG, Esai, atau Interaktif.`)
     const text = required(row.PERTANYAAN, 'PERTANYAAN', number)
     const question: BankQuestionItem = {
       id: `Q-IMP-${Date.now()}-${index + 1}`,
@@ -114,7 +113,10 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
       isRtl: /[\u0600-\u06FF]/.test(text),
       key: ''
     }
-    if (type === 'PG') {
+    if (type === 'Interaktif' && keyOf(row.JENISJAWABAN) !== 'PG') {
+      throw new Error(`Soal ${number}: JENIS_JAWABAN interaktif harus PG.`)
+    }
+    if (type === 'PG' || type === 'Interaktif') {
       question.options = options.map(key => ({ key, text: required(row[`PILIHAN${key}`], `PILIHAN_${key}`, number) }))
       const answers = required(row.KUNCI, 'KUNCI', number).toUpperCase().split(',').map(clean)
       if (!answers.every(answer => options.includes(answer))) throw new Error(`Soal ${number}: KUNCI PG tidak sesuai pilihan jawaban.`)
@@ -122,7 +124,6 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
       if (!question.isMultiSelect && answers.length !== 1) throw new Error(`Soal ${number}: PG tunggal hanya boleh memiliki satu KUNCI.`)
       question.key = question.isMultiSelect ? answers : answers[0]
     }
-    if (type === 'Isian') question.key = required(row.KUNCI, 'KUNCI', number)
     if (type === 'Esai') question.rubric = required(row.RUBRIK, 'RUBRIK', number)
     if (type === 'Interaktif') {
       const mediaUrl = required(row.LINKMEDIA, 'LINK_MEDIA', number)
@@ -131,8 +132,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
       if (mediaType === 'video' && !/(youtube\.com|youtu\.be)/i.test(mediaUrl)) throw new Error(`Soal ${number}: video harus menggunakan tautan YouTube.`)
       question.mediaType = mediaType
       question.mediaUrl = mediaUrl
-      question.key = clean(row.KUNCI)
-      question.interactiveAnswerType = keyOf(row.JENISJAWABAN) === 'PG' ? 'PG' : 'Isian'
+      question.interactiveAnswerType = question.isMultiSelect ? 'PG_Multi' : 'PG'
     }
     return question
   })

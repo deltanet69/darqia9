@@ -6,6 +6,7 @@ interface Props {
   activeTab: CbtTabId
   grade: GradeType
   liveExamCount: number
+  bankLabel?: string
 }
 
 const props = defineProps<Props>()
@@ -40,7 +41,7 @@ const emit = defineEmits<{
             :size="15"
             :class="activeTab === tab.id ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"
           />
-          <span>{{ tab.label }}</span>
+          <span>{{ tab.id === 'bank' ? (bankLabel || tab.label) : tab.label }}</span>
 
           <!-- Live Badge with pulsing dot -->
           <span

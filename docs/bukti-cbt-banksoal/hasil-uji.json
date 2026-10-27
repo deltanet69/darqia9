@@ -1,0 +1,36 @@
+{
+  "parser": "LULUS",
+  "retryDanPenolakanRumusInvalid": "LULUS (penyedia tiruan)",
+  "templateDanImpor": "LULUS SMP/SMK",
+  "pemilihanUrutanDanRpc": "LULUS (Supabase tiruan)",
+  "pemuatanSiswa": "LULUS (respons server tiruan)",
+  "pemisahanSumber": "LULUS (Supabase tiruan)",
+  "kompatibilitasLama": "LULUS",
+  "formulir": "LULUS",
+  "evidence": [
+    {
+      "name": "matematika",
+      "status": "LULUS SSR",
+      "formula": true,
+      "rtl": false
+    },
+    {
+      "name": "fisika",
+      "status": "LULUS SSR",
+      "formula": true,
+      "rtl": false
+    },
+    {
+      "name": "biologi",
+      "status": "LULUS SSR",
+      "formula": true,
+      "rtl": false
+    },
+    {
+      "name": "arab",
+      "status": "LULUS SSR",
+      "formula": false,
+      "rtl": true
+    }
+  ]
+}

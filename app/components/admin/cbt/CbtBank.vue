@@ -76,7 +76,7 @@ const formDifficulty = ref<Difficulty>('Sedang')
 const formTeacherName = ref('Bpk. Budi Santoso, S.Kom')
 const formHasInteractive = ref(false)
 const editingPackageId = ref<string | null>(null)
-const formActiveStep = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>('PG')
+const formActiveStep = ref<'PG' | 'Esai' | 'Interaktif'>('PG')
 
 // Form Questions State per Format
 interface FormPgQuestion {
@@ -604,7 +604,7 @@ const openCreatePackageForm = (prefillClass?: string) => {
       mediaCompressStatus: 'YouTube Unlisted Nocookie (0 byte beban server)',
       uploadMode: 'url',
       isCompressing: false,
-      interactiveAnswerType: 'Isian',
+      interactiveAnswerType: 'PG',
       options: [
         { key: 'A', text: '' },
         { key: 'B', text: '' },
@@ -760,7 +760,7 @@ const openEditPackageForm = (pkg: BankSubjectPackage) => {
       mediaCompressStatus: 'Opus 64kbps Terkompresi (68% hemat space, 3.8MB → 1.2MB)',
       uploadMode: 'file',
       isCompressing: false,
-      interactiveAnswerType: 'Isian',
+      interactiveAnswerType: 'PG',
       options: [
         { key: 'A', text: '' },
         { key: 'B', text: '' },
@@ -803,22 +803,6 @@ const removePgQuestion = (index: number) => {
   }
 }
 
-const addIsianQuestion = () => {
-  formIsianList.value.push({
-    id: `is-${Date.now()}-${formIsianList.value.length + 1}`,
-    text: '',
-    difficulty: 'Sedang',
-    key: '',
-    previewMode: 'edit'
-  })
-}
-
-const removeIsianQuestion = (index: number) => {
-  if (formIsianList.value.length > 1) {
-    formIsianList.value.splice(index, 1)
-  }
-}
-
 const addEssayQuestion = () => {
   formEssayList.value.push({
     id: `es-${Date.now()}-${formEssayList.value.length + 1}`,
@@ -848,7 +832,7 @@ const addInteractiveQuestion = () => {
     mediaCompressStatus: 'YouTube Unlisted Nocookie (0 byte beban server)',
     uploadMode: 'url',
     isCompressing: false,
-    interactiveAnswerType: 'Isian',
+    interactiveAnswerType: 'PG',
     options: [
       { key: 'A', text: '' },
       { key: 'B', text: '' },
@@ -910,7 +894,8 @@ const saveFullSubjectPackage = async () => {
   })
 
   // 2. Isian
-  const validIsians = formIsianList.value.filter(q => q.text.trim())
+  const originalPackage = allBankPackages.value.find(pkg => pkg.id === editingPackageId.value)
+  const validIsians = formIsianList.value.filter(q => q.text.trim() && originalPackage?.questions.some(old => old.id === q.id && old.type === 'Isian'))
   validIsians.forEach(q => {
     compiledQuestions.push({
       id: q.id,
@@ -2313,14 +2298,6 @@ const getClassStats = (clsName: string) => {
                     >
                       PG Kompleks
                     </button>
-                    <button
-                      type="button"
-                      class="px-2 py-0.5 rounded-md transition cursor-pointer"
-                      :class="singleEditInteractiveAnswerType === 'Isian' ? 'bg-violet-600 text-white' : 'text-slate-600 hover:text-slate-900'"
-                      @click="singleEditInteractiveAnswerType = 'Isian'"
-                    >
-                      Jawaban Singkat
-                    </button>
                   </div>
                 </div>
 
@@ -2427,7 +2404,7 @@ const getClassStats = (clsName: string) => {
               {{ editingPackageId ? 'Edit Paket Bank Soal' : 'Buat Paket Bank Soal Baru' }}
             </h3>
             <p class="text-xs text-slate-500 font-medium">
-              Kelola seluruh format butir soal (Pilihan Ganda, Jawaban Singkat, Essay, dan Interaktif) dalam satu paket terpadu
+              Kelola butir soal Pilihan Ganda, Esai, dan Interaktif dalam satu paket terpadu
             </p>
           </div>
           <div class="flex items-center gap-2.5 shrink-0">
@@ -2533,29 +2510,12 @@ const getClassStats = (clsName: string) => {
             <button
               type="button"
               class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
-              :class="formActiveStep === 'Isian'
-                ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/60 font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'"
-              @click="formActiveStep = 'Isian'"
-            >
-              <span>2. Jawaban Singkat</span>
-              <span
-                class="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold"
-                :class="formActiveStep === 'Isian' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'"
-              >
-                {{ formIsianList.length }} Soal
-              </span>
-            </button>
-
-            <button
-              type="button"
-              class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
               :class="formActiveStep === 'Esai'
                 ? 'bg-white text-purple-700 shadow-sm border border-slate-200/60 font-bold'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'"
               @click="formActiveStep = 'Esai'"
             >
-              <span>3. Essay</span>
+              <span>2. Esai</span>
               <span
                 class="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold"
                 :class="formActiveStep === 'Esai' ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-600'"
@@ -2574,7 +2534,7 @@ const getClassStats = (clsName: string) => {
                   : 'text-slate-400 hover:text-slate-600'"
               @click="formActiveStep = 'Interaktif'"
             >
-              <span>4. Interaktif</span>
+              <span>3. Interaktif</span>
               <span
                 v-if="formHasInteractive"
                 class="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold"
@@ -2932,315 +2892,19 @@ const getClassStats = (clsName: string) => {
 
             <!-- Navigasi Langkah Berikutnya: Isian -->
             <div class="flex items-center justify-between pt-4 border-t border-slate-200/80 mt-2">
-              <span class="text-xs text-slate-500 font-medium">Langkah 1 dari 4: Pilihan Ganda</span>
+              <span class="text-xs text-slate-500 font-medium">Langkah 1 dari 3: Pilihan Ganda</span>
               <button
                 type="button"
                 class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-2 cursor-pointer"
-                @click="formActiveStep = 'Isian'"
-              >
-                <span>Lanjut ke 2. Jawaban Singkat</span>
-                <AdminIcon name="crt" size="14" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- STEP 2: JAWABAN SINGKAT BUILDER -->
-        <div v-if="formActiveStep === 'Isian'" class="space-y-6">
-          <div class="flex items-center justify-between pb-1 border-b border-slate-100 flex-wrap gap-2">
-            <div>
-              <h4 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>Butir Soal Jawaban Singkat (Isian)</span>
-                <span class="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  {{ formIsianList.length }} Soal
-                </span>
-              </h4>
-              <p class="text-xs text-slate-500 mt-0.5">
-                Kunci jawaban otomatis dinilai sistem. Masukkan kunci yang tepat (bisa sertakan varian dengan tanda koma).
-              </p>
-            </div>
-          </div>
-
-          <div class="space-y-5">
-            <div
-              v-for="(isQ, qIdx) in formIsianList"
-              :key="isQ.id"
-              class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition space-y-0"
-            >
-              <!-- Card Header Bar -->
-              <div class="bg-slate-50/90 px-4 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2.5">
-                <div class="flex items-center gap-2">
-                  <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-white bg-slate-900 shadow-2xs">
-                    Soal #{{ qIdx + 1 }}
-                  </span>
-                  <span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                    Jawaban Singkat
-                  </span>
-                  <select
-                    v-model="isQ.difficulty"
-                    class="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 focus:outline-none focus:border-emerald-500 shadow-2xs"
-                  >
-                    <option value="Mudah">Tingkat: Mudah</option>
-                    <option value="Sedang">Tingkat: Sedang</option>
-                    <option value="Sukar">Tingkat: Sukar</option>
-                  </select>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <!-- Toggle Mode Arab (RTL) -->
-                  <button
-                    type="button"
-                    class="px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                    :class="isQ.isArabic || isArabicText(isQ.text)
-                      ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
-                    @click="isQ.isArabic = !isQ.isArabic"
-                    title="Aktifkan penulisan teks Arab dari kanan ke kiri (RTL)"
-                  >
-                    <span>عربي</span>
-                    <span>{{ (isQ.isArabic || isArabicText(isQ.text)) ? 'Arab (RTL)' : 'Teks Arab' }}</span>
-                  </button>
-
-                  <!-- Hapus Soal Button -->
-                  <button
-                    v-if="formIsianList.length > 1"
-                    type="button"
-                    class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                    title="Hapus butir soal ini"
-                    @click="removeIsianQuestion(qIdx)"
-                  >
-                    <AdminIcon name="trash" size="15" />
-                  </button>
-                </div>
-              </div>
-
-              <!-- Question Body -->
-              <div class="p-5 space-y-4">
-                <!-- Editor Box with Integrated Toolbar -->
-                <div class="rounded-xl border border-slate-200 overflow-hidden focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition">
-                  <!-- Toolbar: LaTeX Symbols + Upload Photo Button -->
-                  <div class="bg-slate-50/90 px-3 py-2 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
-                    <!-- Simbol KaTeX chips -->
-                    <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
-                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">Simbol:</span>
-                      <button
-                        v-for="sym in LATEX_TOOLBAR_SYMBOLS"
-                        :key="sym.label"
-                        type="button"
-                        class="px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 rounded text-[11px] font-mono text-slate-700 transition cursor-pointer shadow-2xs shrink-0"
-                        :title="sym.description"
-                        @click="insertFormulaToQuestion(isQ, sym.syntax)"
-                      >
-                        {{ sym.label }}
-                      </button>
-                    </div>
-
-                    <!-- Upload Photo Action on Toolbar -->
-                    <label class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 rounded-lg text-xs font-bold cursor-pointer shadow-2xs transition flex items-center gap-1.5 shrink-0">
-                      <AdminIcon name="upload" size="12" class="text-emerald-600" />
-                      <span>{{ isQ.imageUrl ? 'Ganti Foto' : 'Sisipkan Foto / Rumus' }}</span>
-                      <input type="file" accept="image/*" class="hidden" @change="handleQuestionImageUpload(isQ, $event)" />
-                    </label>
-                  </div>
-
-                  <!-- Textarea -->
-                  <textarea
-                    v-model="isQ.text"
-                    rows="3"
-                    class="w-full p-3.5 bg-white text-xs sm:text-sm text-slate-900 focus:outline-none transition"
-                    :dir="isQ.isArabic || isArabicText(isQ.text) ? 'rtl' : 'ltr'"
-                    :class="(isQ.isArabic || isArabicText(isQ.text)) ? 'text-right font-serif text-base leading-relaxed' : ''"
-                    :placeholder="`Tuliskan butir pertanyaan jawaban singkat nomor ${qIdx + 1}... (Gunakan $...$ untuk rumus KaTeX)`"
-                  />
-                </div>
-
-                <!-- Attached Image Bar (ONLY visible if image is attached) -->
-                <div v-if="isQ.imageUrl" class="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80 flex items-start gap-3">
-                  <img :src="isQ.imageUrl" alt="Preview Foto" class="h-16 w-24 object-contain rounded-lg border border-slate-200 bg-white" />
-                  <div class="flex-1 space-y-1.5">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold text-slate-800">Foto Soal / Rumus Terlampir</span>
-                        <span class="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-bold">
-                          {{ isQ.imageCompressedSize }} (&lt; 200KB WebP)
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        class="text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
-                        @click="removeQuestionImage(isQ)"
-                      >
-                        Hapus Foto
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      class="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 text-white rounded-lg font-bold text-[10.5px] shadow-2xs transition flex items-center gap-1 cursor-pointer"
-                      @click="triggerAiFormulaAnalysis(isQ, formSubject)"
-                    >
-                      <AdminIcon name="spark" size="11" />
-                      <span>Ekstrak Rumus LaTeX via Asisten AI</span>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Kotak Saran Asisten AI -->
-                <div v-if="isQ.aiSuggestion" class="p-3.5 bg-purple-50 rounded-xl border border-purple-200 space-y-2.5">
-                  <div class="flex items-center justify-between text-xs font-bold text-purple-950">
-                    <span class="flex items-center gap-1.5 text-[11px]">
-                      <AdminIcon name="spark" size="12" class="text-purple-600" />
-                      <span>Saran Rumus LaTeX AI (Akurasi {{ isQ.aiSuggestion.confidence }}%)</span>
-                    </span>
-                    <button
-                      type="button"
-                      class="text-purple-400 hover:text-purple-700 text-xs font-bold cursor-pointer"
-                      @click="isQ.aiSuggestion = null"
-                    >
-                      &times;
-                    </button>
-                  </div>
-
-                  <!-- Kategori Switcher AI -->
-                  <div class="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1 border-b border-purple-200/60">
-                    <span class="text-[10px] font-bold text-purple-900 uppercase tracking-wider">Kategori:</span>
-                    <button
-                      type="button"
-                      class="px-2 py-0.5 rounded-md text-[10.5px] font-bold transition border cursor-pointer"
-                      :class="isQ.aiSuggestion.category === 'matematika' ? 'bg-purple-700 text-white border-purple-700' : 'bg-white text-purple-800 border-purple-200 hover:bg-purple-100'"
-                      @click="setAiCategory(isQ, 'matematika')"
-                    >
-                      📐 Matematika
-                    </button>
-                    <button
-                      type="button"
-                      class="px-2 py-0.5 rounded-md text-[10.5px] font-bold transition border cursor-pointer"
-                      :class="isQ.aiSuggestion.category === 'fisika' ? 'bg-purple-700 text-white border-purple-700' : 'bg-white text-purple-800 border-purple-200 hover:bg-purple-100'"
-                      @click="setAiCategory(isQ, 'fisika')"
-                    >
-                      ⚡ Fisika
-                    </button>
-                    <button
-                      type="button"
-                      class="px-2 py-0.5 rounded-md text-[10.5px] font-bold transition border cursor-pointer"
-                      :class="isQ.aiSuggestion.category === 'kimia' ? 'bg-purple-700 text-white border-purple-700' : 'bg-white text-purple-800 border-purple-200 hover:bg-purple-100'"
-                      @click="setAiCategory(isQ, 'kimia')"
-                    >
-                      🧪 Kimia/Bio
-                    </button>
-                    <button
-                      type="button"
-                      class="px-2 py-0.5 rounded-md text-[10.5px] font-bold transition border cursor-pointer"
-                      :class="isQ.aiSuggestion.category === 'arab' ? 'bg-purple-700 text-white border-purple-700' : 'bg-white text-purple-800 border-purple-200 hover:bg-purple-100'"
-                      @click="setAiCategory(isQ, 'arab')"
-                    >
-                      📖 Teks Arab
-                    </button>
-                  </div>
-
-                  <!-- Preview KaTeX Formula -->
-                  <div class="p-2.5 bg-white rounded-lg border border-purple-200 text-xs text-slate-800 font-mono overflow-x-auto" v-html="renderKaTeXHtml(isQ.aiSuggestion.latex)" />
-
-                  <!-- Input Edit LaTeX Langsung -->
-                  <div class="space-y-1">
-                    <label class="block text-[10.5px] font-bold text-purple-900">Edit Sintaks LaTeX (Bila Perlu Penyesuaian Angka):</label>
-                    <input
-                      v-model="isQ.aiSuggestion.latex"
-                      class="w-full px-2.5 py-1.5 bg-white border border-purple-200 rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:border-purple-600"
-                    />
-                  </div>
-
-                  <p class="text-[11px] text-purple-800 font-medium">{{ isQ.aiSuggestion.explanation }}</p>
-
-                  <div class="flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg font-bold text-xs shadow-2xs cursor-pointer transition flex items-center gap-1"
-                      @click="applyAiSuggestion(isQ)"
-                    >
-                      <AdminIcon name="check" size="13" />
-                      <span>Terapkan ke Soal</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="px-2.5 py-1.5 bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 rounded-lg font-bold text-xs cursor-pointer transition"
-                      @click="isQ.aiSuggestion = null"
-                    >
-                      Tolak
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Real-time KaTeX & Arabic Preview (only if $ or Arabic present) -->
-                <div v-if="isQ.text && (isQ.text.includes('$') || isQ.isArabic || isArabicText(isQ.text))" class="p-3 bg-emerald-50/40 rounded-xl border border-emerald-200/80 space-y-1">
-                  <div class="flex items-center justify-between text-[11px] font-bold text-emerald-900">
-                    <span class="flex items-center gap-1">
-                      <AdminIcon name="spark" size="12" class="text-emerald-600" />
-                      <span>Pratinjau Tampilan Ujian Siswa (KaTeX &amp; Teks Arab):</span>
-                    </span>
-                  </div>
-                  <div
-                    class="p-2.5 bg-white rounded-lg border border-emerald-100 text-xs sm:text-sm text-slate-900 leading-relaxed overflow-x-auto"
-                    :dir="isQ.isArabic || isArabicText(isQ.text) ? 'rtl' : 'ltr'"
-                    :class="(isQ.isArabic || isArabicText(isQ.text)) ? 'text-right font-serif text-base' : ''"
-                    v-html="renderKaTeXHtml(isQ.text)"
-                  />
-                </div>
-
-                <!-- Kunci Jawaban Singkat -->
-                <div class="p-4 bg-emerald-50/50 border border-emerald-200/80 rounded-xl space-y-2">
-                  <div class="flex justify-between items-center text-xs font-bold text-slate-800 flex-wrap gap-1">
-                    <span class="flex items-center gap-1.5 text-emerald-950">
-                      <span class="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px]">&check;</span>
-                      <span>Kunci Jawaban Singkat Tepat (Mendukung Varian / Formula)</span>
-                    </span>
-                    <span class="font-mono text-[11px] text-slate-500">Contoh varian jawaban: dipisah tanda koma</span>
-                  </div>
-                  <input
-                    v-model="isQ.key"
-                    class="w-full p-2.5 bg-white border border-emerald-300 rounded-xl text-xs sm:text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition"
-                    placeholder="Contoh: ip a, ifconfig, IP Address"
-                  />
-                  <div class="flex items-center justify-between text-[11px] text-emerald-800 font-medium pt-0.5">
-                    <span>Siswa akan otomatis dinyatakan benar jika menjawab salah satu kata kunci di atas.</span>
-                    <span class="font-mono font-bold bg-white px-2 py-0.5 rounded border border-emerald-200">
-                      Standar: 10 &mdash; 30 Kata
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- BUTTON TAMBAH SOAL ISIAN DI BAWAH LIST -->
-            <button
-              class="w-full py-3.5 bg-white hover:bg-emerald-50/60 text-emerald-600 hover:text-emerald-700 border-2 border-dashed border-emerald-200 hover:border-emerald-400 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-              type="button"
-              @click="addIsianQuestion"
-            >
-              <AdminIcon name="plus" size="16" />
-              <span>Tambah Butir Soal Isian Baru (#{{ formIsianList.length + 1 }})</span>
-            </button>
-
-            <!-- Navigasi Langkah: Kembali ke PG / Lanjut ke Essay -->
-            <div class="flex items-center justify-between pt-4 border-t border-slate-200/80 mt-2">
-              <button
-                type="button"
-                class="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-2xs"
-                @click="formActiveStep = 'PG'"
-              >
-                <AdminIcon name="clt" size="14" />
-                <span>Kembali ke 1. Pilihan Ganda</span>
-              </button>
-              <button
-                type="button"
-                class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-2 cursor-pointer"
                 @click="formActiveStep = 'Esai'"
               >
-                <span>Lanjut ke 3. Essay</span>
+                <span>Lanjut ke 2. Esai</span>
                 <AdminIcon name="crt" size="14" />
               </button>
             </div>
           </div>
         </div>
+
 
         <!-- STEP 3: ESSAY BUILDER -->
         <div v-if="formActiveStep === 'Esai'" class="space-y-6">
@@ -3544,10 +3208,10 @@ const getClassStats = (clsName: string) => {
               <button
                 type="button"
                 class="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-2xs"
-                @click="formActiveStep = 'Isian'"
+                @click="formActiveStep = 'PG'"
               >
                 <AdminIcon name="clt" size="14" />
-                <span>Kembali ke 2. Jawaban Singkat</span>
+                <span>Kembali ke 1. Pilihan Ganda</span>
               </button>
               <button
                 v-if="formHasInteractive"
@@ -3555,7 +3219,7 @@ const getClassStats = (clsName: string) => {
                 class="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-2 cursor-pointer"
                 @click="formActiveStep = 'Interaktif'"
               >
-                <span>Lanjut ke 4. Interaktif</span>
+                <span>Lanjut ke 3. Interaktif</span>
                 <AdminIcon name="crt" size="14" />
               </button>
               <button
@@ -3970,14 +3634,6 @@ const getClassStats = (clsName: string) => {
                       >
                         Multi-Select
                       </button>
-                      <button
-                        type="button"
-                        class="px-2.5 py-1 rounded-lg transition cursor-pointer text-xs"
-                        :class="inQ.interactiveAnswerType === 'Isian' ? 'bg-violet-600 text-white shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'"
-                        @click="inQ.interactiveAnswerType = 'Isian'"
-                      >
-                        Jawaban Singkat
-                      </button>
                     </div>
                   </div>
 
@@ -4082,7 +3738,7 @@ const getClassStats = (clsName: string) => {
                 @click="formActiveStep = 'Esai'"
               >
                 <AdminIcon name="clt" size="14" />
-                <span>Kembali ke 3. Essay</span>
+                <span>Kembali ke 2. Esai</span>
               </button>
               <button
                 type="button"
@@ -4156,7 +3812,7 @@ const getClassStats = (clsName: string) => {
             <div class="p-4 rounded-xl bg-blue-50/60 border border-blue-100 space-y-2">
               <span class="font-bold text-blue-900 block">1. Unduh Template Standard:</span>
               <p class="text-blue-800 leading-relaxed">
-                Gunakan file template berikut untuk mempermudah penulisan soal pilihan ganda, isian singkat, dan uraian esai:
+                Gunakan file template berikut untuk mempermudah penulisan soal pilihan ganda, esai, dan interaktif:
               </p>
               <div class="flex flex-wrap gap-2 pt-1">
                 <button

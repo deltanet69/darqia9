@@ -1,0 +1,115 @@
+# Laporan penyesuaian bank soal CBT
+
+Tanggal: 27 Oktober 2026. Acuan yang dibaca lengkap: `AGENTS.md` dan `docs/Admin Portal/CBT/cbt_banksoal.md` (berkas brief tidak berada langsung di `docs/`).
+
+Implementasi lokal tersedia, tanpa dependensi baru dan tanpa push. Penerimaan penuh masih menunggu migrasi Supabase dan pemeriksaan visual browser. Cabang cadangan: `backup/cbt-banksoal-20261027`, dari commit `383dfac`; commit penanda sebelum perubahan: `18c1f48`.
+
+## Perubahan
+
+- OCR sekarang menyebut tepat empat properti JSON dalam prompt. Sebelumnya objek skema hanya dideklarasikan tanpa dikirim, dan penyedia sempat mengembalikan `transkripsi` alih-alih `text`, sehingga endpoint membalas 502. Parser menerima JSON biasa, pembungkus Markdown, dan satu lapis serialisasi tambahan. Isi rumus dan harakat tidak ditulis ulang oleh parser.
+- Validasi rumus mencakup seluruh penanda, rumus polos yang tertinggal di luar penanda, dan hasil percobaan ulang. Hasil yang masih tidak valid ditolak dengan 422. Rumus tetap LTR di dalam soal RTL. Field Arab dan pratinjau memakai font serif yang mendukung Arab serta jarak baris untuk harakat.
+- Pembuatan soal baru menyediakan PG, Esai, dan Interaktif. Soal lama `Isian` tetap disimpan dan dapat dibaca. Perubahan meliputi AdminV2 CBT, LMS, drawer, portal admin lama, parser impor, dan kedua template Word.
+- Jadwal ujian mendukung centang per soal, pilih semua, jumlah terpilih, serta tombol Naik/Turun. Membuka ulang edit memulihkan pilihan dan urutan. Pilihan kosong tidak boleh disimpan. Kegagalan memuat soal memiliki aksi muat ulang.
+- Metadata ujian dan relasinya disimpan dalam satu transaksi. Penyimpanan bank juga atomik dan mempertahankan UUID soal; menghapus soal yang masih dipilih ujian ditolak. Jalur penyimpanan portal lama memakai fungsi penyimpanan yang sama.
+- Player siswa mengambil soal berdasarkan NIS aktif, token, jenjang, rombel, dan waktu ujian pada data Supabase yang sudah ada. Player tidak lagi memilih paket pertama atau memakai soal contoh sebagai cadangan. Identitas konfirmasi dan durasi memakai respons server. Kunci jawaban/rubrik tidak dikirim kepada siswa.
+- Label membedakan `Bank Soal CBT (PTS/PAS)` dan `Bank Soal LMS (ujian harian)`. Tabel, relasi, dan state kedua sumber tetap terpisah.
+
+Pemuatan soal ini bukan implementasi seluruh brief login siswa: keanggotaan ruang/assignment, sesi autentikasi ujian, autosave jawaban server, PIN pengawas, monitoring, dan nilai resmi tetap pekerjaan brief masing-masing. Kelayakan pemuatan soal pada perubahan ini mengikuti siswa aktif dalam rombel ujian. Tampilan hasil AdminV2 masih memakai sumber hasil contoh yang sudah ada; perubahan di sana hanya mengganti teks esai hardcoded dengan render `essayAnswers` melalui KaTeX/RTL.
+
+## Bukti uji
+
+Keempat PNG berikut adalah gambar contoh untuk pengujian, bukan data sekolah. Semua dikirim ke endpoint aplikasi `/api/cbt/ocr`, dengan penyedia OCR sebenarnya; pengambilan akhir menghasilkan HTTP 200 untuk keempatnya. JSON disimpan sebagai byte UTF-8 asli.
+
+| Sampel | Gambar sumber | Respons OCR | Render komponen editor dan siswa |
+| --- | --- | --- | --- |
+| Matematika | [matematika.png](bukti-cbt-banksoal/matematika.png) | [matematika-ocr.json](bukti-cbt-banksoal/matematika-ocr.json) | [matematika-render.html](bukti-cbt-banksoal/matematika-render.html) |
+| Fisika | [fisika.png](bukti-cbt-banksoal/fisika.png) | [fisika-ocr.json](bukti-cbt-banksoal/fisika-ocr.json) | [fisika-render.html](bukti-cbt-banksoal/fisika-render.html) |
+| Biologi | [biologi.png](bukti-cbt-banksoal/biologi.png) | [biologi-ocr.json](bukti-cbt-banksoal/biologi-ocr.json) | [biologi-render.html](bukti-cbt-banksoal/biologi-render.html) |
+| Arab | [arab.png](bukti-cbt-banksoal/arab.png) | [arab-ocr.json](bukti-cbt-banksoal/arab-ocr.json) | [arab-render.html](bukti-cbt-banksoal/arab-render.html) |
+
+Pemeriksaan SSR menggunakan komponen Vue editor dan layar siswa yang sebenarnya. Ketiga rumus menghasilkan elemen KaTeX tanpa `katex-error`; matematika/fisika memiliki pecahan `mfrac`, biologi memiliki indeks `msupsub`. Teks Arab cocok dengan sumber setelah normalisasi Unicode NFC: `قُلْ هُوَ اللَّهُ أَحَدٌ`. Field dan render memiliki `dir="rtl"`; rumus di dalamnya memiliki `dir="ltr"`.
+
+HTML tersebut merupakan bukti render SSR, bukan tangkapan layar browser. Stylesheet lokalnya tersedia setelah `npm run build`. Pemeriksaan visual desktop, lebar 360 px, interaksi pointer, dan tampilan Word belum dapat diverifikasi: Computer Use dihentikan karena tidak dapat memastikan URL Chrome pada Windows. Tidak ada klaim lulus visual untuk pemeriksaan tersebut.
+
+[Hasil pemeriksaan otomatis](bukti-cbt-banksoal/hasil-uji.json) juga mencatat:
+
+- Parser OCR dan percobaan ulang/penolakan rumus tidak valid.
+- Impor kedua template Word: hanya PG, Esai, dan Interaktif; opsi interaktif 4 untuk SMP dan 5 untuk SMK.
+- Pemilihan subset dan urutan, pemulihan edit, serta payload RPC.
+- Player hanya memuat urutan subset dalam respons server; `Isian` lama tetap menjadi `short`.
+- Penyimpanan LMS menggunakan namespace/tabel LMS.
+
+Pengujian relasi, pemuatan siswa, dan pemisahan tabel pada pemeriksaan otomatis memakai Supabase/respons server tiruan dalam proses uji. Tidak ada siswa contoh atau data pengujian yang ditulis ke Supabase. Pengujian ini tidak menggantikan uji transaksi/RLS pada database asli.
+
+Perintah mengulang pemeriksaan lokal (Node 24):
+
+Hasil akhir: `npm run build` lulus (kode keluar 0), `node tests/cbt-banksoal.mjs` lulus, dan `git diff --check` lulus. Build masih mengeluarkan peringatan lama tentang `/bgdarqia.png` serta deprecation pemetaan package; tidak ada kegagalan kompilasi. Pemeriksaan tipe TypeScript terpisah tidak dijalankan.
+
+```powershell
+npm run dev -- --host 127.0.0.1
+# Terminal lain, memanggil layanan OCR sebenarnya:
+powershell -NoProfile -File tests/cbt-ocr.ps1
+node tests/cbt-banksoal.mjs
+npm run build
+git diff --check
+```
+
+## Nilai dan label yang disembunyikan
+
+| Lokasi | Nilai persis yang ditutup dari pembuatan |
+| --- | --- |
+| Langkah AdminV2 | `{ id: 'Isian', label: 'Jawaban Singkat', shortLabel: 'Isian' }` |
+| Drawer AdminV2 | `formFormat = 'Isian'`, tombol berlabel `Isian` |
+| Portal admin lama | `formActiveStep = 'Isian'`, label `2. Jawaban Singkat`, pembuat/tombol tambah Isian |
+| Pilihan jawaban interaktif portal lama | `interactiveAnswerType = 'Isian'`, label `Jawaban Singkat` |
+| Impor | Alias normalisasi `ISIAN` dan `JAWABANSINGKAT`; `JENIS_JAWABAN: Isian` juga ditolak untuk impor baru |
+| Template Word SMP/SMK | Blok `TIPE: Isian` dihapus; `JENIS_JAWABAN: Isian` diganti `JENIS_JAWABAN: PG` dengan pilihan jawaban |
+
+Tipe `BankQuestionItem['type'] = 'Isian'`, `interactiveAnswerType = 'Isian'`, dan tipe player `short` tetap tersedia untuk data lama. Filter/badge/rincian pembacaan soal lama dapat tetap menampilkan label tersebut. Enum/check constraint lama tidak dihapus.
+
+## Migrasi
+
+Berkas: [0014_pilihan_soal_ujian.sql](../supabase/migrations/0014_pilihan_soal_ujian.sql). Tautan ini memuat SQL lengkap yang perlu diterapkan; migrasi tidak menghapus atau mengisi data siswa.
+
+| Isi | Rincian |
+| --- | --- |
+| `exam_questions` | `exam_id` FK ke `exams` dengan cascade saat ujian dihapus; `question_id` FK ke `questions` dengan restrict saat soal dihapus; `position` bilangan positif. PK `(exam_id, question_id)`, unique `(exam_id, position)`. |
+| `ujian_harian_exam_questions` | Struktur sama, FK khusus `ujian_harian` dan `ujian_harian_questions`. |
+| RLS | Kedua relasi hanya dikelola staf melalui `public.is_staff()`. |
+| `validate_exam_question_bank()` | Trigger memastikan soal berasal dari bank ujian sumber yang benar. |
+| `save_assessment_exam(source, exam_data, question_ids)` | RPC security invoker; validasi bank, soal, duplikasi, minimal satu pilihan, dan ujian yang sudah dikerjakan; simpan metadata + urutan atomik. Akses authenticated, tetap wajib staf/RLS. |
+| `save_assessment_bank(source, bank_data, question_data)` | RPC security invoker; upsert soal dengan UUID tetap, renumerasi aman untuk unique LMS, pertahankan Isian lama, tolak pembuatan Isian baru lewat RPC, serta rollback jika penghapusan melanggar relasi ujian. |
+| `load_student_exam_questions(student_nis, exam_code, target_grade, source)` | RPC security definer terbatas; validasi siswa aktif, token, rombel/jenjang dan waktu. Mengembalikan subset berurutan atau seluruh bank bila relasi kosong. Hasil tidak memuat `answer_key`, `rubric`, atau `rubric_score`. Dapat dipanggil anon/authenticated dengan NIS + token yang cocok. |
+
+Pemeriksaan Supabase pada sesi ini masih mengembalikan HTTP 404 / `PGRST202` untuk `load_student_exam_questions`. Owner menyatakan akan menerapkan migrasi; konfirmasi selesai belum diterima. Kunci yang tersedia di workspace berjenis `anon`, sehingga migrasi tidak dapat diterapkan dari sesi ini. Penyimpanan bank/jadwal baru memerlukan migrasi ini terlebih dahulu.
+
+## Definition of Done dan cara uji manual
+
+| Poin | Status bukti saat ini | Langkah manual |
+| --- | --- | --- |
+| 3 gambar rumus | Endpoint nyata + render SSR lulus; visual browser belum diperiksa | Masuk sebagai staf ke `/adminV2/cbt?tab=bank&jenjang=smk`. Buka/Buat paket pada kelas/mapel asli. Unggah setiap PNG bukti, klik **Ekstrak teks dari gambar**, periksa pratinjau, lalu simpan. Pilih soal itu dalam ujian aktif dan buka `/cbt` dengan NIS siswa aktif dalam rombel dan token ujian. Cocokkan pecahan, akar, pangkat/indeks di editor dan siswa. |
+| Arab | OCR sesuai sumber, harakat dan RTL SSR lulus; visual browser belum diperiksa | Ulangi dengan `arab.png`. Pastikan field/pratinjau RTL; ketik atau sunting Arab berharakat lalu simpan. Buka soal siswa dan cocokkan harakat serta arah. Ulangi pada viewport 360 px. |
+| Sembunyikan Jawaban Singkat | Pemeriksaan form, parser, template, dan pembacaan lama lulus | Periksa pembuatan di `/adminV2/cbt?tab=bank`, `/adminV2/lms?tab=bank`, dan `/admin/cbt`. Tidak ada pilihan baru Jawaban Singkat/Isian. Unduh kedua template dan periksa isinya. Impor dokumen bertipe `Isian`/`Jawaban Singkat` harus ditolak. Buka paket lama bertipe `Isian` melalui rincian; soal dan jawabannya tetap terbaca pada siswa. |
+| Subset + urutan + kompatibilitas | Logika lokal/RPC tiruan lulus; database/RLS asli belum diuji | Setelah migrasi, buka `/adminV2/cbt?tab=exams`. Buat jadwal dari bank asli minimal 3 soal, atur mulai dalam waktu aktif, centang hanya dua soal, tukar urutan dengan Naik/Turun, simpan. Muat ulang, pilih Ubah, pastikan dua ID dan urutannya tetap. Buka `/cbt` dengan NIS/jenjang/rombel yang cocok: hanya dua soal dalam urutan itu. Periksa Pilih semua, pilihan kosong, dan kegagalan jaringan. Ujian lama tanpa baris `exam_questions` harus memuat seluruh bank. Edit teks bank: UUID dan pilihan ujian tidak berubah. Hapus soal yang masih dipilih: ditolak. |
+| Pemisahan sumber | Label dan namespace lokal lulus; transaksi asli belum diuji | Bandingkan header, tab, menu mobile, bank, dan penjadwalan pada `/adminV2/cbt` versus `/adminV2/lms`. Ulangi subset LMS di `/cbt?mode=ujian_harian`; soal CBT tidak boleh masuk ke LMS atau sebaliknya. |
+| Migrasi terlapor | SQL tersedia; penerapan eksternal belum terverifikasi | Jalankan SQL lengkap melalui Supabase SQL Editor. Pastikan dua tabel relasi, tiga RPC, trigger, dan RLS tersedia, lalu lakukan uji subset di atas memakai akun staf dan data siswa asli. |
+
+## Berkas yang disentuh
+
+- `.gitignore`: izinkan pelacakan laporan, bukti, dan migrasi baru yang sebelumnya diabaikan.
+- `server/api/cbt/ocr.post.ts`, `server/utils/cbtOcr.ts`: kontrak respons, parser, dan validasi OCR.
+- `server/api/cbt/questions.post.ts`: validasi permintaan dan pemuatan soal siswa melalui RPC.
+- `app/utils/cbtFormula.ts`, `app/utils/cbtWordBank.ts`: render/validasi rumus serta batas tipe impor.
+- `app/components/adminV2/cbt/CbtRichQuestionEditor.vue`: input dan pratinjau Arab.
+- `app/components/adminV2/cbt/CbtV2BankForm.vue`, `CbtV2DrawerPackageForm.vue`, `CbtV2Bank.vue`: pilihan tipe dan label bank/impor.
+- `app/components/adminV2/cbt/CbtV2Exams.vue`, `cbtV2Data.ts`: pemilihan/urutan soal dan data ujian.
+- `app/components/adminV2/cbt/CbtV2PageContent.vue`, `CbtV2Header.vue`, `CbtV2Tabs.vue`, `CbtV2MobileNav.vue`: konteks CBT/LMS dan pemuatan data.
+- `app/components/adminV2/cbt/CbtV2Results.vue`: render teks soal, jawaban, dan rubrik esai.
+- `app/components/admin/cbt/CbtBank.vue`, `app/composables/useAdminCbtState.ts`: tutup pembuatan Isian portal lama dan gunakan penyimpanan atomik bersama.
+- `app/composables/useAdminCbtData.ts`: pemuatan relasi, RPC penyimpanan, dan UUID soal.
+- `app/composables/useCbtExam.ts`, `app/pages/cbt/index.vue`: pemuatan subset siswa tanpa cadangan soal contoh.
+- `app/components/cbt/CbtLoginScreen.vue`, `CbtConfirmScreen.vue`, `CbtExamScreen.vue`: masukan NIS/token, identitas ujian dari server, dan render Arab.
+- `public/templates/Template_Import_Bank_Soal_SMP.docx`, `Template_Import_Bank_Soal_SMK.docx`: contoh impor yang tersedia.
+- `supabase/migrations/0014_pilihan_soal_ujian.sql`: isi migrasi dijelaskan di atas.
+- `tests/cbt-banksoal.mjs`, `tests/cbt-ocr.ps1`: pemeriksaan yang dapat diulang.
+- `docs/laporan-cbt-banksoal.md`, `docs/bukti-cbt-banksoal/`: laporan, 4 PNG sumber, 4 JSON hasil OCR, 4 HTML render, dan JSON hasil pemeriksaan.

@@ -27,13 +27,11 @@ const emit = defineEmits<{
 // Deep clone of package to edit without mutating directly
 const draft = ref<BankPackage>(JSON.parse(JSON.stringify(props.pkg)))
 
-// Current step: PG, Isian, Esai, Interaktif
-const currentStep = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>(props.initialStep || 'PG')
+const currentStep = ref<'PG' | 'Esai' | 'Interaktif'>(props.initialStep === 'Isian' ? 'PG' : props.initialStep || 'PG')
 const isSettingsOpen = ref(!props.editing)
 const activeQuestionId = ref('')
 const questionSteps = [
   { id: 'PG', label: 'Pilihan Ganda', shortLabel: 'PG' },
-  { id: 'Isian', label: 'Jawaban Singkat', shortLabel: 'Isian' },
   { id: 'Esai', label: 'Esai', shortLabel: 'Esai' },
   { id: 'Interaktif', label: 'Interaktif', shortLabel: 'Media' }
 ] as const
@@ -68,7 +66,7 @@ watch(questionsInStep, questions => {
 
 let questionCounter = 100
 
-const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuestionItem => {
+const blankQuestion = (type: 'PG' | 'Esai' | 'Interaktif'): BankQuestionItem => {
   questionCounter++
   return {
     id: `Q-${questionCounter}`,
@@ -76,7 +74,7 @@ const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuesti
     type,
     difficulty: 'Sedang',
     text: '',
-    key: type === 'PG' ? 'A' : '',
+    key: type === 'PG' || type === 'Interaktif' ? 'A' : '',
     options: type === 'PG' || type === 'Interaktif'
       ? [
           { key: 'A', text: '' },
@@ -89,11 +87,11 @@ const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuesti
     rubric: '',
     mediaType: 'video',
     mediaUrl: '',
-    interactiveAnswerType: 'Isian'
+    interactiveAnswerType: 'PG'
   }
 }
 
-const addQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif') => {
+const addQuestion = (type: 'PG' | 'Esai' | 'Interaktif') => {
   const q = blankQuestion(type)
   draft.value.questions.push(q)
   activeQuestionId.value = q.id
@@ -145,8 +143,7 @@ const isOptionSelected = (q: BankQuestionItem, keyLetter: string) => {
 
 // Navigation Step Controls
 const nextStep = () => {
-  if (currentStep.value === 'PG') currentStep.value = 'Isian'
-  else if (currentStep.value === 'Isian') currentStep.value = 'Esai'
+  if (currentStep.value === 'PG') currentStep.value = 'Esai'
   else if (currentStep.value === 'Esai') {
     if (draft.value.hasInteractive) currentStep.value = 'Interaktif'
     else submitForm()
@@ -157,8 +154,7 @@ const nextStep = () => {
 
 const prevStep = () => {
   if (currentStep.value === 'Interaktif') currentStep.value = 'Esai'
-  else if (currentStep.value === 'Esai') currentStep.value = 'Isian'
-  else if (currentStep.value === 'Isian') currentStep.value = 'PG'
+  else if (currentStep.value === 'Esai') currentStep.value = 'PG'
 }
 
 const submitForm = () => {
@@ -169,7 +165,7 @@ const submitForm = () => {
   const validQuestions = draft.value.questions.filter(q => q.text.trim())
   const invalidFormula = validQuestions.find(q => validateLatexExpressions(q.text))
   if (invalidFormula) {
-    currentStep.value = invalidFormula.type
+    if (invalidFormula.type !== 'Isian') currentStep.value = invalidFormula.type
     emit('toast', 'Perbaiki rumus yang belum valid sebelum menyimpan.')
     return
   }
@@ -349,13 +345,11 @@ const submitForm = () => {
           <div>
             <h3 class="text-sm font-extrabold text-[#101828]">
               {{ currentStep === 'PG' ? 'Butir Soal Pilihan Ganda'
-                : currentStep === 'Isian' ? 'Butir Soal Jawaban Singkat'
                 : currentStep === 'Esai' ? 'Butir Soal Esai'
                 : 'Butir Soal Interaktif (Audio / Video)' }}
             </h3>
             <p class="text-xs text-[#667085] mt-0.5">
               {{ currentStep === 'PG' ? 'Pilih satu kunci atau aktifkan multi-select untuk PG kompleks.'
-                : currentStep === 'Isian' ? 'Isi pertanyaan dan kunci jawaban singkat.'
                 : currentStep === 'Esai' ? 'Siapkan rubrik serta skor maksimal untuk koreksi guru.'
                 : 'Pilih media dan jenis jawaban untuk setiap soal.' }}
             </p>
@@ -453,7 +447,7 @@ const submitForm = () => {
               </div>
 
               <!-- PG Specific Options -->
-              <div v-if="q.type === 'PG'">
+              <div v-if="q.type === 'PG' || (q.type === 'Interaktif' && q.interactiveAnswerType !== 'Isian')">
                 <div class="flex items-center justify-between gap-3 mb-2">
                   <span class="text-xs font-bold text-[#344054]">Opsi Jawaban &amp; Kunci Benar</span>
                   <button
@@ -484,22 +478,12 @@ const submitForm = () => {
                     <input
                       v-model="opt.text"
                       type="text"
+                      :dir="q.isRtl ? 'rtl' : 'auto'"
                       :placeholder="`Teks opsi ${opt.key}`"
                       class="flex-1 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
                     >
                   </div>
                 </div>
-              </div>
-
-              <!-- Isian Specific -->
-              <div v-else-if="q.type === 'Isian'">
-                <label class="block text-xs font-bold text-[#344054] mb-1">Kunci Jawaban Singkat</label>
-                <input
-                  v-model="q.key as string"
-                  type="text"
-                  placeholder="Contoh: Cascading Style Sheets"
-                  class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
-                >
               </div>
 
               <!-- Esai Specific -->
@@ -526,7 +510,7 @@ const submitForm = () => {
               </div>
 
               <!-- Interaktif Specific -->
-              <div v-else-if="q.type === 'Interaktif'" class="space-y-3">
+              <div v-if="q.type === 'Interaktif'" class="space-y-3">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label class="block text-xs font-bold text-[#344054] mb-1">Jenis Media</label>

@@ -24,7 +24,9 @@ logs
 !.env.example
 
 /dummy
-/docs
+/docs/*
+!/docs/laporan-cbt-banksoal.md
+!/docs/bukti-cbt-banksoal/
 agents.md
 .vercel
 
@@ -34,4 +36,5 @@ supabase/migrations/*
 !supabase/migrations/0009_agenda_mengajar.sql
 !supabase/migrations/0011_students_profile.sql
 !supabase/migrations/0012_students_nis_per_jenjang.sql
+!supabase/migrations/0014_pilihan_soal_ujian.sql
 

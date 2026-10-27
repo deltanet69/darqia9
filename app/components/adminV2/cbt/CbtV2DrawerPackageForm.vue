@@ -19,12 +19,11 @@ const packageClass = ref('X RPL 1')
 const packageSubject = ref('Informatika')
 const packageTeacher = ref('')
 const packageDifficulty = ref('Sedang')
-const formFormat = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>('PG')
+const formFormat = ref<'PG' | 'Esai' | 'Interaktif'>('PG')
 
 const formatGuide = computed(() => {
   const map: Record<string, [string, string]> = {
     PG: ['Pilihan ganda', 'Opsi jawaban A–E, kunci benar, dan pilihan lebih dari satu jawaban.'],
-    Isian: ['Isian singkat', 'Kunci jawaban dan toleransi penulisan.'],
     Esai: ['Esai', 'Rubrik dan skor maksimal untuk koreksi guru.'],
     Interaktif: ['Soal interaktif', 'Audio atau video dan tipe jawaban terkait.']
   }
@@ -76,7 +75,7 @@ const formatGuide = computed(() => {
       :class="grade === 'SMP' ? 'bg-[#E7F6ED] text-[#14532D]' : 'bg-[#E8F0FE] text-[#0A2A5C]'"
     >
       <AdminV2Icon name="book" :size="16" class="shrink-0" />
-      <span>Satu paket per mapel, dengan empat format soal dalam alur yang sama.</span>
+      <span>Satu paket per mapel, dengan pilihan ganda, esai, dan interaktif.</span>
     </div>
 
     <div class="space-y-3 pt-1">
@@ -116,7 +115,7 @@ const formatGuide = computed(() => {
         </h4>
         <div class="flex items-center gap-1 bg-[#EFF2F7] p-1 rounded-full w-max mb-3">
           <button
-            v-for="fmt in (['PG', 'Isian', 'Esai', 'Interaktif'] as const)"
+            v-for="fmt in (['PG', 'Esai', 'Interaktif'] as const)"
             :key="fmt"
             type="button"
             class="px-3 py-1 rounded-full text-[11px] font-extrabold transition"

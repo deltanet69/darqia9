@@ -3,6 +3,7 @@ import { useAdminTeachers } from '~/composables/useAdminTeachers'
 import type { BankPackage, BankQuestionItem, ExamItem, GradeType } from '~/components/adminV2/cbt/cbtV2Data'
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
+const questionRequests = new Map<AssessmentSource, Promise<void>>()
 
 const assessmentTables = (source: AssessmentSource) => source === 'ujian_harian'
   ? { banks: 'ujian_harian_banks', questions: 'ujian_harian_questions', exams: 'ujian_harian', assignments: 'ujian_harian_assignments' }
@@ -42,6 +43,7 @@ export interface CbtExamInput {
   classId: string
   subjectId: string
   questionBankId: string
+  questionIds: string[]
   supervisorId?: string
   startsAt: string
   duration: number
@@ -92,17 +94,18 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     error.value = null
 
     try {
-      const [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult] = await Promise.all([
+      const [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult] = await Promise.all([
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
         client.from(tables.exams).select('*').order('starts_at', { ascending: false }),
         client.from(tables.assignments).select('exam_id, status'),
         client.from('students').select('class_id').eq('active', true),
-        client.from('teachers').select('id, nip, name, grade, active').eq('active', true)
+        client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
+        client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position')
       ])
 
-      const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult]
+      const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult]
         .find(result => result.error)?.error
       if (firstError) throw firstError
 
@@ -202,6 +205,9 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             classId: row.class_id,
             subjectId: row.subject_id,
             questionBankId: row.question_bank_id,
+            questionIds: selectionResult.data?.some((item: any) => item.exam_id === row.id)
+              ? selectionResult.data.filter((item: any) => item.exam_id === row.id).map((item: any) => item.question_id)
+              : null,
             subject: subjectItem?.name ?? '',
             classroom: classItem?.name ?? '',
             grade: row.grade,
@@ -235,8 +241,11 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
   }
 
-  const loadQuestions = async (force = false) => {
-    if (questionsLoading.value || (questionsLoaded.value && !force)) return
+  const loadQuestions = (force = false): Promise<void> => {
+    const pending = questionRequests.get(source)
+    if (pending) return pending
+    if (questionsLoaded.value && !force) return Promise.resolve()
+    const request = (async () => {
     questionsLoading.value = true
     try {
       const { data, error: questionError } = await client
@@ -269,11 +278,17 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       }
       bankPackages.value = bankPackages.value.map(pkg => ({ ...pkg, questions: questionsByBank.get(pkg.id) ?? [] }))
       questionsLoaded.value = true
+      error.value = null
     } catch (loadError: any) {
       error.value = loadError?.message ?? 'Isi bank soal gagal dimuat.'
+      throw new Error(error.value!)
     } finally {
       questionsLoading.value = false
+      questionRequests.delete(source)
     }
+    })()
+    questionRequests.set(source, request)
+    return request
   }
 
   const saveBankPackage = async (pkg: BankPackage) => {
@@ -296,20 +311,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
     if (isUuid(pkg.id)) payload.id = pkg.id
 
-    const { data, error: packageError } = await client
-      .from(tables.banks)
-      .upsert(payload, { onConflict: 'code' })
-      .select('id')
-      .single()
-    if (packageError) throw packageError
-
-    const bankId = data.id
-    const { error: deleteError } = await client.from(tables.questions).delete().eq('bank_id', bankId)
-    if (deleteError) throw deleteError
-
-    if (pkg.questions.length) {
-      const rows = pkg.questions.map((question, index) => ({
-        bank_id: bankId,
+    const rows = pkg.questions.map((question, index) => ({
+        id: isUuid(question.id) ? question.id : crypto.randomUUID(),
         number: index + 1,
         type: question.type,
         text: question.text,
@@ -325,9 +328,12 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         media_file_name: question.mediaFileName ?? null,
         interactive_answer_type: question.interactiveAnswerType ?? null
       }))
-      const { error: questionError } = await client.from(tables.questions).insert(rows)
-      if (questionError) throw questionError
-    }
+    const { data: bankId, error: packageError } = await client.rpc('save_assessment_bank', {
+      source,
+      bank_data: payload,
+      question_data: rows
+    })
+    if (packageError) throw new Error(packageError.message)
 
     await load(true)
     await loadQuestions(true)
@@ -348,9 +354,17 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     if (classItem.grade !== subjectItem.grade || bank.classId !== classItem.id || bank.subjectId !== subjectItem.id) {
       throw new Error('Bank soal harus sesuai dengan kelas dan mata pelajaran ujian.')
     }
+    if (!input.questionIds.length || new Set(input.questionIds).size !== input.questionIds.length
+      || input.questionIds.some(id => !bank.questions.some(question => question.id === id))) {
+      throw new Error('Pilih minimal satu soal yang tersedia di bank ujian, tanpa duplikasi.')
+    }
+    if (!Number.isFinite(Number(input.duration)) || Number(input.duration) <= 0 || !Number.isFinite(new Date(input.startsAt).getTime())) {
+      throw new Error('Waktu mulai dan durasi ujian harus valid.')
+    }
 
     const token = (input.token || Math.random().toString(36).slice(2, 8)).toUpperCase()
     const payload = {
+      ...(input.id ? { id: input.id } : {}),
       code: token,
       name: input.name,
       grade: classItem.grade,
@@ -363,11 +377,12 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       updated_at: new Date().toISOString()
     }
 
-    const query = input.id
-      ? client.from(tables.exams).update(payload).eq('id', input.id)
-      : client.from(tables.exams).insert({ ...payload, status: 'terjadwal' })
-    const { error: saveError } = await query
-    if (saveError) throw saveError
+    const { error: saveError } = await client.rpc('save_assessment_exam', {
+      source,
+      exam_data: payload,
+      question_ids: input.questionIds
+    })
+    if (saveError) throw new Error(saveError.message)
     await load(true)
     return token
   }

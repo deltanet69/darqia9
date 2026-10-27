@@ -43,7 +43,7 @@ const assessmentSource = computed<'cbt' | 'ujian_harian'>(() => {
 
 const isDailyAssessment = computed(() => assessmentSource.value === 'ujian_harian')
 const moduleName = computed(() => isDailyAssessment.value ? 'LMS Ujian Harian' : 'Manajemen CBT')
-const moduleDescription = computed(() => isDailyAssessment.value ? 'Ujian harian digital' : 'Ujian digital')
+const moduleDescription = computed(() => isDailyAssessment.value ? 'Bank Soal LMS · ujian harian' : 'Bank Soal CBT · PTS/PAS')
 
 useHead({
   title: () => `Darqia 9 · ${moduleName.value} V2`,
@@ -72,7 +72,7 @@ const isNotifOpen = ref(false)
 const isProfileOpen = ref(false)
 
 // Core CBT State
-const cbtData = useAdminCbtData(props.source)
+const cbtData = useAdminCbtData(assessmentSource.value)
 const grade = ref<GradeType>(initialGrade)
 const activeTab = ref<CbtTabId>(initialActiveTab)
 const exams = computed(() => cbtData.exams.value)
@@ -111,7 +111,7 @@ watch(() => route.query.jenjang, value => {
 
 watch([activeTab, () => cbtData.loading.value], ([tab, isLoading]) => {
   if (tab === 'bank' && !isLoading) {
-    void cbtData.loadQuestions()
+    void cbtData.loadQuestions().catch(() => {})
   }
 })
 
@@ -352,6 +352,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- SUBMODULE TABS (1440px) -->
     <CbtV2Tabs
+      :bank-label="moduleDescription"
       :active-tab="activeTab"
       :live-exam-count="liveExamCount"
       :grade="grade"

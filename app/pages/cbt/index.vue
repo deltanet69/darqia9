@@ -5,8 +5,8 @@
       :screen="cbt.screen.value"
       :jenjang-text="cbt.jenjangText.value"
       :login-form="cbt.loginForm"
+      :loading="cbt.loadingExam.value"
       @login="cbt.doLogin"
-      @fill-demo="cbt.fillDemo"
     />
 
     <!-- SCREEN 2 : VERIFIKASI & TATA TERTIB -->
@@ -16,6 +16,7 @@
       :grade="cbt.grade.value"
       :login-form="cbt.loginForm"
       :total-questions="cbt.totalQuestions.value"
+      :exam="cbt.activeExam.value"
       :sections="cbt.sections"
       :opened-acc="cbt.openedAcc.value"
       :agree-start="cbt.agreeStart.value"
@@ -35,6 +36,7 @@
       :sections="cbt.sections"
       :questions="cbt.questions.value"
       :cur-question="cbt.curQuestion.value"
+      :exam="cbt.activeExam.value"
       :total-questions="cbt.totalQuestions.value"
       :q-idx="cbt.qIdx.value"
       :answered-count="cbt.answeredCount.value"

@@ -1,4 +1,5 @@
-import katex from 'katex'
+import { parseOcrExtraction } from '../../utils/cbtOcr'
+import { validateLatexExpressions } from '../../../app/utils/cbtFormula'
 
 const requestWindows = new Map<string, { count: number; startedAt: number }>()
 const MAX_IMAGE_BYTES = 700 * 1024
@@ -20,28 +21,12 @@ const limitRequest = (event: Parameters<typeof getRequestIP>[0]) => {
   existing.count += 1
 }
 
-const responseSchema = {
-  type: 'OBJECT',
-  properties: {
-    text: { type: 'STRING', description: 'Hasil transkripsi sesuai isi gambar.' },
-    isRtl: { type: 'BOOLEAN', description: 'Benar jika isi utama menggunakan aksara Arab.' },
-    containsFormula: { type: 'BOOLEAN', description: 'Benar jika ada rumus matematika, fisika, kimia, atau biologi.' },
-    reviewNote: { type: 'STRING', description: 'Catatan singkat bagian yang harus diperiksa guru.' }
-  },
-  required: ['text', 'isRtl', 'containsFormula', 'reviewNote']
-}
-
 const hasValidFormula = (text: string) => {
+  if (validateLatexExpressions(text)) return false
   const formulas = [...text.matchAll(/\$\$([\s\S]+?)\$\$|\$([^\n$]+?)\$/g)]
   if (!formulas.length) return false
-  return formulas.every(match => {
-    try {
-      katex.renderToString((match[1] || match[2]).trim(), { throwOnError: true })
-      return true
-    } catch {
-      return false
-    }
-  })
+  if (hasFormulaHint(text.replace(/\$\$([\s\S]+?)\$\$|\$([^\n$]+?)\$/g, ''))) return false
+  return true
 }
 
 const hasFormulaHint = (text: string) => /\\(?:frac|sqrt|sum|int)|[=^_√∑∫π]|\d\s*[=\/]\s*\d/.test(text)
@@ -73,7 +58,8 @@ export default defineEventHandler(async (event) => {
     'Contoh gambar "Sₙ = n/2(a + Uₙ)" harus ditulis "$$S_n = \\frac{n}{2}(a + U_n)$$". Pastikan semua kurung kurawal dan penanda $$ berpasangan.',
     'Untuk kode program: gunakan blok kode Markdown dengan tiga tanda backtick.',
     'Jika satu bagian tidak terbaca, gunakan penanda [tidak terbaca].',
-    'Jangan sertakan penjelasan di luar JSON yang diminta.'
+    'Keluarkan satu objek JSON dengan tepat empat properti: "text" (string hasil transkripsi), "isRtl" (boolean, true untuk teks utama Arab), "containsFormula" (boolean), "reviewNote" (string catatan pemeriksaan guru).',
+    'Gunakan nama properti persis tersebut, bukan "transkripsi". Jangan sertakan penjelasan di luar JSON yang diminta.'
   ].join(' ')
 
   const extract = (instruction: string) => $fetch<any>('https://api.pecutmarket.my.id/v1/chat/completions', {
@@ -108,22 +94,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 502, statusMessage: 'Layanan OCR gagal mengekstrak gambar. Coba gunakan gambar yang lebih jelas.' })
   })
 
-  const parseExtraction = (response: any) => {
-    const rawText = response?.choices?.[0]?.message?.content?.trim()
-    if (!rawText) throw createError({ statusCode: 422, statusMessage: 'Tidak ada teks yang dapat diekstrak dari gambar.' })
-    const extracted = JSON.parse(rawText)
-    if (typeof extracted.text !== 'string' || !extracted.text.trim()) throw new Error('empty')
-    return {
-      text: extracted.text.trim(),
-      isRtl: extracted.isRtl === true,
-      containsFormula: extracted.containsFormula === true,
-      reviewNote: typeof extracted.reviewNote === 'string' ? extracted.reviewNote : ''
-    }
-  }
-
   const parseSafely = (response: any) => {
     try {
-      return parseExtraction(response)
+      return parseOcrExtraction(response?.choices?.[0]?.message?.content)
     } catch {
       throw createError({ statusCode: 502, statusMessage: 'Format hasil OCR tidak valid. Coba ekstrak kembali.' })
     }
@@ -136,6 +109,10 @@ export default defineEventHandler(async (event) => {
       'Hasil OCR sebelumnya belum memenuhi format rumus:', extracted.text,
       'Ulangi transkripsi dari gambar. Keluarkan JSON yang sama, dengan setiap rumus valid di dalam $$...$$. Jangan mengubah teks yang bukan rumus.'
     ].join('\n')))
+  }
+
+  if ((extracted.containsFormula || hasFormulaHint(extracted.text)) && !hasValidFormula(extracted.text)) {
+    throw createError({ statusCode: 422, statusMessage: 'Rumus hasil OCR belum valid setelah dicoba ulang. Gunakan gambar yang lebih jelas atau tulis rumus melalui editor.' })
   }
 
   return extracted

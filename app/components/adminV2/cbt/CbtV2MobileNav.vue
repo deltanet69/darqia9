@@ -29,7 +29,7 @@ const navButtons: Array<{ id: CbtTabId; label: string; icon: string }> = [
 
 const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
   { id: 'summary', label: `${props.moduleName} · Ringkasan` },
-  { id: 'bank', label: `${props.moduleName} · Bank Soal` },
+  { id: 'bank', label: props.moduleName.includes('LMS') ? 'Bank Soal LMS (ujian harian)' : 'Bank Soal CBT (PTS/PAS)' },
   { id: 'monitoring', label: `${props.moduleName} · Monitoring Ujian` },
   { id: 'exams', label: `${props.moduleName} · Daftar Ujian` },
   { id: 'results', label: `${props.moduleName} · Nilai Siswa` },

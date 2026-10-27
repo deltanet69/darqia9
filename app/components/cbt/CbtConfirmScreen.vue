@@ -45,22 +45,22 @@
             
             <div class="flex items-center gap-4 mb-6">
               <div class="relative w-14 h-14 rounded-2xl bg-blue-600 text-white font-black text-xl flex items-center justify-center shadow-lg">
-                AF
+                {{ exam?.studentName?.split(' ').slice(0, 2).map(part => part[0]).join('') }}
                 <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#0F1E38] flex items-center justify-center">
                   <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
                 </span>
               </div>
               <div>
                 <div class="text-[11px] font-bold uppercase tracking-wider text-blue-300">Kartu Peserta Ujian</div>
-                <div class="text-lg font-black text-white leading-tight">Ahmad Fauzi</div>
-                <div class="text-xs text-slate-300 mt-0.5">NIS {{ loginForm.nis || '2024001234' }} &bull; {{ grade === 'SMP' ? 'IX-A' : 'XII TKJ 1' }}</div>
+                <div class="text-lg font-black text-white leading-tight">{{ exam?.studentName }}</div>
+                <div class="text-xs text-slate-300 mt-0.5">NIS {{ loginForm.nis }} &bull; {{ exam?.classroom }}</div>
               </div>
             </div>
 
             <div class="grid grid-cols-3 gap-2 pt-4 border-t border-white/10 text-center text-xs">
               <div class="bg-white/5 rounded-xl p-2.5 backdrop-blur-sm">
                 <span class="block text-[10px] text-slate-400 uppercase font-semibold">Token</span>
-                <b class="text-blue-300 font-mono font-bold text-xs truncate block mt-0.5">{{ grade === 'SMP' ? 'BCA-9X2K' : 'ATQ-9X2K' }}</b>
+                <b class="text-blue-300 font-mono font-bold text-xs truncate block mt-0.5">{{ exam?.code }}</b>
               </div>
               <div class="bg-white/5 rounded-xl p-2.5 backdrop-blur-sm">
                 <span class="block text-[10px] text-slate-400 uppercase font-semibold">Ruang</span>
@@ -87,7 +87,7 @@
                 </div>
                 <div>
                   <dt class="text-slate-400 text-xs">Mata Pelajaran</dt>
-                  <dd class="font-extrabold text-slate-900">Informatika</dd>
+                  <dd class="font-extrabold text-slate-900">{{ exam?.subject }}</dd>
                 </div>
               </div>
 
@@ -97,7 +97,7 @@
                 </div>
                 <div>
                   <dt class="text-slate-400 text-xs">Materi</dt>
-                  <dd class="font-extrabold text-slate-900">{{ grade === 'SMP' ? 'Informatika & Komputer Dasar' : 'Jaringan Komputer Dasar' }}</dd>
+                  <dd class="font-extrabold text-slate-900">{{ exam?.name }}</dd>
                 </div>
               </div>
 
@@ -107,7 +107,7 @@
                 </div>
                 <div>
                   <dt class="text-slate-400 text-xs">Durasi &amp; Soal</dt>
-                  <dd class="font-extrabold text-slate-900">90 menit &bull; {{ totalQuestions }} Soal</dd>
+                  <dd class="font-extrabold text-slate-900">{{ exam?.duration }} menit &bull; {{ totalQuestions }} Soal</dd>
                 </div>
               </div>
             </dl>
@@ -226,6 +226,7 @@ import type { LoginForm, SectionItem } from '~/composables/useCbtExam'
 
 defineProps<{
   screen: string
+  exam?: { studentName: string; classroom: string; code: string; name: string; subject: string; duration: number } | null
   jenjangText: string
   grade: string
   loginForm: LoginForm

@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
+import { useAdminCbtData } from '~/composables/useAdminCbtData'
 
 export type ExamStatus = 'Berlangsung' | 'Terjadwal' | 'Selesai'
 export type QuestionType = 'PG' | 'PG Kompleks' | 'Isian' | 'Esai' | 'Audio' | 'Video'
@@ -512,17 +513,6 @@ export const useAdminCbtState = () => {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val)
   }
 
-  const generateUuid = () => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID()
-    }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0
-      const v = c === 'x' ? r : (r & 0x3 | 0x8)
-      return v.toString(16)
-    })
-  }
-
   // Fetch all packages & questions from Supabase
   const fetchBankPackagesFromDb = async () => {
     isDbLoading.value = true
@@ -603,67 +593,10 @@ export const useAdminCbtState = () => {
   const savePackageToDb = async (pkg: BankSubjectPackage): Promise<boolean> => {
     isDbLoading.value = true
     try {
-      const supabase = useSupabaseClient()
-      const packageId = isValidUuid(pkg.id) ? pkg.id : generateUuid()
-      pkg.id = packageId
-
-      // 1. Upsert question_banks
-      const { error: pkgError } = await supabase
-        .from('question_banks')
-        .upsert({
-          id: packageId,
-          code: pkg.code,
-          classroom: pkg.classroom,
-          subject: pkg.subject,
-          grade: pkg.grade,
-          difficulty: pkg.difficulty,
-          teacher_name: pkg.teacherName,
-          has_interactive: pkg.hasInteractive,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'code' })
-
-      if (pkgError) {
-        console.warn('Gagal menyimpan ke question_banks:', pkgError.message)
-      }
-
-      // 2. Hapus pertanyaan lama dari paket ini untuk digantikan yang baru
-      await supabase
-        .from('questions')
-        .delete()
-        .eq('bank_id', packageId)
-
-      // 3. Insert butir pertanyaan baru
-      if (pkg.questions && pkg.questions.length > 0) {
-        const questionsToInsert = pkg.questions.map((q, idx) => ({
-          id: isValidUuid(q.id) ? q.id : generateUuid(),
-          bank_id: packageId,
-          number: idx + 1,
-          type: q.type,
-          text: q.text,
-          difficulty: q.difficulty,
-          is_multi_select: !!q.isMultiSelect,
-          options: q.options || null,
-          answer_key: q.key,
-          rubric: q.rubric || null,
-          rubric_score: q.rubricScore || 20,
-          image_url: q.imageUrl || null,
-          media_type: q.mediaType || null,
-          media_id: q.mediaId || null,
-          media_url: q.mediaUrl || null,
-          media_file_name: q.mediaFileName || null,
-          interactive_answer_type: q.interactiveAnswerType || null,
-          is_rtl: !!q.isRtl
-        }))
-
-        const { error: qInsertError } = await supabase
-          .from('questions')
-          .insert(questionsToInsert)
-
-        if (qInsertError) {
-          console.warn('Gagal menyimpan butir questions:', qInsertError.message)
-        }
-      }
-
+      const cbtData = useAdminCbtData('cbt')
+      await cbtData.load()
+      pkg.id = await cbtData.saveBankPackage(pkg)
+      await fetchBankPackagesFromDb()
       isDbConnected.value = true
       return true
     } catch (e: any) {

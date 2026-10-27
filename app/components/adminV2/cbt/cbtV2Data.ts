@@ -22,6 +22,7 @@ export interface ExamItem {
   classId?: string
   subjectId?: string
   questionBankId?: string
+  questionIds?: string[] | null
   startsAt?: string
   bankCode?: string
   name: string

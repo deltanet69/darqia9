@@ -91,7 +91,8 @@ const extractImageText = async () => {
       :value="modelValue"
       rows="5"
       :dir="detectedRtl ? 'rtl' : 'ltr'"
-      :class="detectedRtl ? 'text-right text-base leading-loose' : 'text-left'"
+      :lang="detectedRtl ? 'ar' : 'id'"
+      :class="detectedRtl ? 'text-right font-serif text-xl leading-loose' : 'text-left'"
       class="block w-full resize-y bg-white p-3 text-sm text-[#101828] outline-none"
       placeholder="Tulis pertanyaan. Gunakan $...$ untuk rumus sebaris dan $$...$$ untuk rumus terpisah."
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
@@ -109,7 +110,7 @@ const extractImageText = async () => {
 
     <div v-if="modelValue.trim()" class="border-t border-[#E7EBF2] bg-[#FAFBFC] p-3">
       <span class="mb-2 block text-[10px] font-extrabold uppercase text-[#667085]">Pratinjau siswa</span>
-      <div class="question-preview overflow-x-auto text-sm leading-relaxed text-[#101828]" :dir="detectedRtl ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(modelValue)" />
+      <div class="question-preview overflow-x-auto text-sm leading-relaxed text-[#101828]" :class="detectedRtl ? 'font-serif text-xl leading-loose text-right' : ''" :dir="detectedRtl ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(modelValue)" />
       <p v-if="formulaError" class="mt-2 text-xs font-semibold text-[#C43232]" role="alert">Rumus belum valid: {{ formulaError }}</p>
     </div>
   </div>
@@ -117,7 +118,7 @@ const extractImageText = async () => {
 
 <style scoped>
 .editor-button {
-  min-height: 36px;
+  min-height: 44px;
   border: 1px solid #e7ebf2;
   border-radius: 8px;
   background: #fff;
@@ -137,7 +138,7 @@ const extractImageText = async () => {
   color: #0a2a5c;
 }
 .editor-action {
-  min-height: 36px;
+  min-height: 44px;
   border-radius: 8px;
   border: 1px solid #e7ebf2;
   padding: 0.4rem 0.7rem;
@@ -145,6 +146,12 @@ const extractImageText = async () => {
   font-weight: 700;
 }
 .editor-action:disabled { cursor: wait; opacity: 0.55; }
+textarea[dir='rtl'], .question-preview[dir='rtl'] {
+  font-family: 'Traditional Arabic', 'Times New Roman', serif;
+  font-size: 1.25rem;
+  line-height: 2;
+  text-align: right;
+}
 .question-preview :deep(.cbt-code) {
   overflow-x: auto;
   border-radius: 8px;

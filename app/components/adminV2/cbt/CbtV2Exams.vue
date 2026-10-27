@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
@@ -23,6 +24,16 @@ const emit = defineEmits<{
 const examView = ref<'classes' | 'detail'>('classes')
 const selectedClass = ref('')
 const isCreateModalOpen = ref(false)
+const scheduleDialog = ref<HTMLElement | null>(null)
+watch(isCreateModalOpen, async open => {
+  if (open) { await nextTick(); scheduleDialog.value?.focus() }
+})
+const isSaving = ref(false)
+const selectedQuestionIds = ref<string[]>([])
+const selectionError = ref('')
+const loadingSelection = ref(false)
+const requestedQuestionIds = ref<string[] | null>(null)
+let selectionRequest = 0
 
 const localDateTime = (date: Date) => {
   const offset = date.getTimezoneOffset() * 60_000
@@ -66,6 +77,45 @@ const availableSubjects = computed(() => {
   return cbtData.subjects.value.filter(item => item.grade === props.grade && ids.has(item.id))
 })
 
+const selectedBank = computed(() => availablePackages.value.find(pkg => pkg.id === newExam.value.questionBankId))
+const bankQuestions = computed(() => selectedBank.value?.questions ?? [])
+const orderedQuestions = computed(() => selectedQuestionIds.value.map(id => bankQuestions.value.find(q => q.id === id)).filter(q => !!q))
+
+const loadSelection = async (ids?: string[] | null) => {
+  requestedQuestionIds.value = ids == null ? null : [...ids]
+  const request = ++selectionRequest
+  loadingSelection.value = true
+  selectionError.value = ''
+  selectedQuestionIds.value = []
+  try {
+    await cbtData.loadQuestions(true)
+    if (request !== selectionRequest) return
+    selectedQuestionIds.value = ids == null ? bankQuestions.value.map(q => q.id) : [...ids]
+  } catch (error) {
+    if (request === selectionRequest) selectionError.value = error instanceof Error ? error.message : 'Soal gagal dimuat.'
+  } finally {
+    if (request === selectionRequest) loadingSelection.value = false
+  }
+}
+
+const toggleQuestion = (id: string) => {
+  selectedQuestionIds.value = selectedQuestionIds.value.includes(id)
+    ? selectedQuestionIds.value.filter(item => item !== id)
+    : [...selectedQuestionIds.value, id]
+}
+
+const moveQuestion = (index: number, offset: number) => {
+  const next = [...selectedQuestionIds.value]
+  const target = index + offset
+  if (target < 0 || target >= next.length) return
+  ;[next[index], next[target]] = [next[target]!, next[index]!]
+  selectedQuestionIds.value = next
+}
+
+watch(() => newExam.value.questionBankId, () => {
+  if (isCreateModalOpen.value) void loadSelection()
+}, { flush: 'sync' })
+
 const openDetail = (classroom: string) => {
   selectedClass.value = classroom
   examView.value = 'detail'
@@ -86,9 +136,11 @@ const openCreateSchedule = (classroom?: string) => {
   newExam.value.subjectId = firstPackage?.subjectId ?? ''
   newExam.value.questionBankId = firstPackage?.id ?? ''
   isCreateModalOpen.value = true
+  void loadSelection()
 }
 
 const openEditSchedule = (exam: ExamItem) => {
+  isCreateModalOpen.value = false
   newExam.value = {
     id: exam.id,
     name: exam.name,
@@ -100,9 +152,11 @@ const openEditSchedule = (exam: ExamItem) => {
     token: exam.token
   }
   isCreateModalOpen.value = true
+  void loadSelection(exam.questionIds)
 }
 
 const saveSchedule = async () => {
+  if (isSaving.value || loadingSelection.value || selectionError.value) return
   if (!newExam.value.name.trim()) {
     emit('toast', 'Nama ujian wajib diisi.')
     return
@@ -111,17 +165,23 @@ const saveSchedule = async () => {
     emit('toast', 'Pilih kelas, mata pelajaran, dan bank soal yang sesuai.')
     return
   }
+  if (!selectedQuestionIds.value.length) {
+    emit('toast', 'Pilih minimal satu soal untuk ujian.')
+    return
+  }
+  isSaving.value = true
   try {
     const token = await cbtData.saveExam({
       ...newExam.value,
       name: newExam.value.name.trim(),
+      questionIds: selectedQuestionIds.value,
       token: newExam.value.token || undefined
     })
     isCreateModalOpen.value = false
     emit('toast', `Jadwal ujian berhasil disimpan. Token: ${token}`)
   } catch (saveError) {
     emit('toast', saveError instanceof Error ? saveError.message : 'Jadwal ujian gagal disimpan.')
-  }
+  } finally { isSaving.value = false }
 }
 
 const removeSchedule = async (exam: ExamItem) => {
@@ -318,11 +378,15 @@ const removeSchedule = async (exam: ExamItem) => {
     <Teleport to="body">
       <div
         v-if="isCreateModalOpen"
+        ref="scheduleDialog"
+        tabindex="-1"
         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
         role="dialog"
         aria-modal="true"
+        aria-label="Penjadwalan ujian"
+        @keydown.esc="!isSaving && (isCreateModalOpen = false)"
       >
-        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-[#E7EBF2]">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90dvh] overflow-y-auto shadow-2xl border border-[#E7EBF2]">
           <div class="p-5 border-b border-[#E7EBF2] flex items-center justify-between">
             <div>
               <span class="text-[10px] font-extrabold uppercase text-[#1B5FD9] tracking-wider">Form Penjadwalan</span>
@@ -340,8 +404,52 @@ const removeSchedule = async (exam: ExamItem) => {
           <div class="p-5 space-y-3.5 text-xs">
             <div class="p-3 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] flex items-center gap-2 font-semibold">
               <AdminV2Icon name="cal" :size="16" class="shrink-0" />
-              <span>Form V2 mengikuti field penjadwalan pada aplikasi. Token digenerate otomatis.</span>
+              <span>{{ source === 'ujian_harian' ? 'Bank Soal LMS untuk ujian harian.' : 'Bank Soal CBT untuk PTS/PAS.' }} Token dibuat otomatis.</span>
             </div>
+
+            <div>
+              <label for="exam-bank" class="block font-bold text-[#344054] mb-1">{{ source === 'ujian_harian' ? 'Bank Soal LMS (ujian harian)' : 'Bank Soal CBT (PTS/PAS)' }}</label>
+              <select id="exam-bank" v-model="newExam.questionBankId" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9]">
+                <option value="" disabled>Pilih bank soal</option>
+                <option v-for="pkg in availablePackages.filter(p => p.subjectId === newExam.subjectId)" :key="pkg.id" :value="pkg.id">{{ pkg.subject }} · {{ pkg.code }}</option>
+              </select>
+            </div>
+
+            <fieldset class="min-w-0 space-y-2 rounded-xl border border-[#E7EBF2] p-3">
+              <legend class="px-1 font-bold text-[#344054]">Pemilihan soal</legend>
+              <p aria-live="polite" class="font-bold text-[#0A2A5C]">{{ selectedQuestionIds.length }} dari {{ bankQuestions.length }} soal terpilih</p>
+              <p v-if="loadingSelection" role="status">Memuat soal…</p>
+              <div v-else-if="selectionError" role="alert" class="text-[#B42318]">
+                {{ selectionError }}
+                <button type="button" class="min-h-11 px-2 underline" @click="loadSelection(requestedQuestionIds)">Muat ulang soal</button>
+              </div>
+              <template v-else>
+                <label class="flex min-h-11 items-center gap-2 font-bold">
+                  <input type="checkbox" :checked="bankQuestions.length > 0 && selectedQuestionIds.length === bankQuestions.length" :indeterminate="selectedQuestionIds.length > 0 && selectedQuestionIds.length < bankQuestions.length" :disabled="!bankQuestions.length" @change="selectedQuestionIds = ($event.target as HTMLInputElement).checked ? bankQuestions.map(q => q.id) : []">
+                  Pilih semua
+                </label>
+                <div class="max-h-56 overflow-y-auto divide-y divide-[#E7EBF2]">
+                  <label v-for="q in bankQuestions" :key="q.id" class="flex min-h-11 items-start gap-2 py-3">
+                    <input type="checkbox" class="mt-1 shrink-0" :aria-label="`Pilih soal ${q.number}`" :checked="selectedQuestionIds.includes(q.id)" @change="toggleQuestion(q.id)">
+                    <span class="shrink-0 font-bold">{{ q.number }}.</span>
+                    <span class="min-w-0 flex-1 overflow-x-auto break-words" :dir="q.isRtl || isArabicText(q.text) ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(q.text)" />
+                  </label>
+                </div>
+                <p v-if="!bankQuestions.length" class="text-[#667085]">Belum ada soal di bank yang dipilih.</p>
+                <div v-if="orderedQuestions.length" class="border-t border-[#E7EBF2] pt-3">
+                  <p class="font-bold text-[#344054]">Urutan soal siswa</p>
+                  <ol class="max-h-48 overflow-y-auto">
+                    <li v-for="(q, index) in orderedQuestions" :key="q.id" class="flex items-center justify-between gap-2 py-1">
+                      <span>{{ index + 1 }}. Soal bank nomor {{ q.number }}</span>
+                      <span class="flex shrink-0 gap-1">
+                        <button type="button" class="min-h-11 rounded-lg border px-2 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9]" :aria-label="`Naikkan soal ${q.number}`" :disabled="index === 0" @click="moveQuestion(index, -1)">Naik</button>
+                        <button type="button" class="min-h-11 rounded-lg border px-2 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9]" :aria-label="`Turunkan soal ${q.number}`" :disabled="index === orderedQuestions.length - 1" @click="moveQuestion(index, 1)">Turun</button>
+                      </span>
+                    </li>
+                  </ol>
+                </div>
+              </template>
+            </fieldset>
 
             <div>
               <label class="block font-bold text-[#344054] mb-1">Nama Ujian *</label>
@@ -411,8 +519,9 @@ const removeSchedule = async (exam: ExamItem) => {
               type="button"
               class="px-5 py-2 rounded-xl bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-bold shadow-sm"
               @click="saveSchedule"
+              :disabled="isSaving || loadingSelection || !!selectionError || !selectedQuestionIds.length"
             >
-              Simpan Jadwal
+              {{ isSaving ? 'Menyimpan…' : 'Simpan Jadwal' }}
             </button>
           </div>
         </div>

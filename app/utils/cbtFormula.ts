@@ -50,7 +50,7 @@ export const validateLatexExpressions = (text: string): string | null => {
     const expression = text.slice(start + marker.length, end).trim()
     if (!expression) return 'Rumus tidak boleh kosong.'
     try {
-      katex.renderToString(expression, { throwOnError: true })
+      katex.renderToString(expression, { throwOnError: true, displayMode: marker === '$$' })
     } catch (error) {
       return error instanceof Error ? error.message.replace('KaTeX parse error: ', '') : 'Rumus tidak valid.'
     }
@@ -97,7 +97,7 @@ export const renderKaTeXHtml = (rawText: string): string => {
     // 1. Ekstrak dan render display math ($$...$$)
     let textWithTokens = rawText.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
       try {
-        const rendered = `<span class="katex-display-wrapper my-2 block overflow-x-auto text-center">${katex.renderToString(math.trim(), {
+        const rendered = `<span dir="ltr" class="katex-display-wrapper my-2 block overflow-x-auto text-center">${katex.renderToString(math.trim(), {
           displayMode: true,
           throwOnError: false
         })}</span>`
@@ -112,7 +112,7 @@ export const renderKaTeXHtml = (rawText: string): string => {
     // 2. Ekstrak dan render inline math ($...$)
     textWithTokens = textWithTokens.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
       try {
-        const rendered = `<span class="katex-inline-wrapper inline-block align-middle">${katex.renderToString(math.trim(), {
+        const rendered = `<span dir="ltr" class="katex-inline-wrapper inline-block align-middle">${katex.renderToString(math.trim(), {
           displayMode: false,
           throwOnError: false
         })}</span>`

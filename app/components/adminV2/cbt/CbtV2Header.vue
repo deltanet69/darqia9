@@ -41,7 +41,7 @@ const activeTabLabel = computed(() => {
           {{ moduleName }}
         </h1>
         <p class="text-xs sm:text-[13px] text-[#667085] mt-1 font-medium">
-          Ujian digital · {{ schoolName }} · Tahun Ajaran 2026/2027
+          {{ moduleDescription }} · {{ schoolName }} · Tahun Ajaran 2026/2027
         </p>
       </div>
 
