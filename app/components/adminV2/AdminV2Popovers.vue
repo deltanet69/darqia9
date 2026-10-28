@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onMounted } from 'vue'
 import AdminV2Icon from './AdminV2Icon.vue'
 
 interface Props {
@@ -25,6 +25,8 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const searchQuery = ref('')
 const supabase = useSupabaseClient()
 const authUser = useSupabaseUser()
+const { isDark, toggleTheme, initTheme } = useAdminTheme()
+onMounted(() => initTheme())
 
 const profileName = computed(() => {
   const metadata = authUser.value?.user_metadata
@@ -223,6 +225,37 @@ const handleProfileAction = async (label: string) => {
             <b class="text-xs font-bold text-[#101828] block truncate">Pengaturan</b>
             <span class="text-[11px] text-[#667085] block truncate">Preferensi &amp; akses</span>
           </div>
+        </div>
+
+        <div
+          class="flex items-center gap-3 px-4 py-2.5 hover:bg-[#F8FAFD] transition cursor-pointer"
+          role="switch"
+          :aria-checked="isDark"
+          tabindex="0"
+          @click="toggleTheme"
+          @keydown.enter.prevent="toggleTheme"
+          @keydown.space.prevent="toggleTheme"
+        >
+          <span
+            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            :class="jenjang === 'smp' ? 'bg-[#E7F6ED] text-[#14532D]' : 'bg-[#E8F0FE] text-[#0A2A5C]'"
+          >
+            <AdminV2Icon name="moon" :size="16" />
+          </span>
+          <div class="flex-1 min-w-0">
+            <b class="text-xs font-bold text-[#101828] block truncate">Mode Gelap</b>
+            <span class="text-[11px] text-[#667085] block truncate">{{ isDark ? 'Aktif' : 'Nonaktif' }}</span>
+          </div>
+          <span
+            class="relative w-10 h-[22px] rounded-full transition-colors shrink-0"
+            :class="isDark ? 'bg-[#1B5FD9]' : 'bg-[#D9E0EC]'"
+            aria-hidden="true"
+          >
+            <span
+              class="absolute top-[2px] left-[2px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform"
+              :class="isDark ? 'translate-x-[18px]' : 'translate-x-0'"
+            />
+          </span>
         </div>
 
         <div

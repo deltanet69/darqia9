@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  css: ['~/assets/css/main.css', 'katex/dist/katex.min.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/admin-dark.css', 'katex/dist/katex.min.css'],
   app: {
     head: {
       title: 'DARQIA ATTAQWA — Unggul dalam IMTAQ, Terdepan dalam IPTEK',

@@ -226,6 +226,11 @@ const props = withDefaults(defineProps<Props>(), {
       <path d="M12 3l10 18H2L12 3zm0 6v5m0 3h.01" />
     </template>
 
+    <!-- moon -->
+    <template v-else-if="name === 'moon' || name === 'i-moon'">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </template>
+
     <!-- copy -->
     <template v-else-if="name === 'copy' || name === 'i-copy'">
       <rect x="8" y="8" width="13" height="13" rx="2" />
