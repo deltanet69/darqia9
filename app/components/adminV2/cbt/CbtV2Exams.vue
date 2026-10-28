@@ -561,7 +561,7 @@ const removeSchedule = async (exam: ExamItem) => {
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block font-bold text-[#344054] mb-1">Rombel</label>
-                  <select v-model="newExam.classId" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none" @change="newExam.subjectId = ''; newExam.questionBankId = ''">
+                  <select v-model="newExam.classId" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none" @change="syncPackage">
                     <option value="" disabled>Pilih rombel</option>
                     <option v-for="c in gradeClasses" :key="c.id" :value="c.id">{{ c.name }}</option>
                   </select>
