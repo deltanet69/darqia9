@@ -54,3 +54,28 @@ pilihan tersimpan, bawaan mengikuti setelan sistem.
 
 - Tema hanya berlaku di AdminV2; portal publik dan CBT siswa tidak berubah.
 - Tidak ada dependensi baru; tidak ada migrasi basis data.
+
+## Pembaruan Ronde 2 — 29 Oktober 2026
+
+Umpan balik pemilik dari uji live (5 poin): garis terlalu kontras, sebagian
+container masih terang, grafik kurang baik, ubin ikon menyatu dengan latar,
+dan kolom formulir kurang oke. Akar masalah hasil inventaris ulang
+(589 token warna, termasuk komponen lama `app/components/admin/` yang
+diimpor halaman AdminV2 — modal siswa & grafik garis/donat — dan varian
+opacity + varian keadaan hover/focus yang belum terpetakan):
+
+- Garis: `border-[#F1F5F9]`, `border-[#F2F4F7]`, `divide-[#F1F5F9]`,
+  `border-slate-200/80` (113×), dan keluarga border pucat lain → keluarga
+  navy redup (#16294D / rgba navy). Putih kini hanya untuk teks.
+- Container: `bg-slate-50/70–/90` (strip tab & kaki modal siswa),
+  `bg-slate-200`, `bg-[#E7EBF2]`, `bg-[#CBD5E1]`, latar lembut palet bernama
+  (blue/emerald/rose/purple/violet/amber-50) → Dark Navy.
+- Grafik: warna kerangka SVG dipetakan lewat pemilih atribut
+  (Seksi 9) — garis kisi #1C3560, label sumbu, angka tengah donat.
+- Ikon: ubin `bg-blue-50` dkk kini gelap (Seksi 3) sehingga ikon tidak
+  lagi berada di atas ubin terang.
+- Formulir (Seksi 8 baru): `focus:bg-white` (59×) dan ring fokus pucat
+  dipetakan — kolom aktif tidak lagi putih terang.
+- Total aturan 75 → 185; seluruh aturan ronde 1 utuh (terverifikasi
+  otomatis). Semua aturan tetap terkurung `html[data-theme="dark"]` —
+  **mode terang tidak berubah sama sekali**. Tes exit 0, build exit 0.

@@ -15,6 +15,9 @@
      SEKSI 6  GARIS TEPI ......... border kartu, pembagi tabel,
                                    garis cincin fokus
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
+     SEKSI 8  FORMULIR & MODAL ... keadaan fokus kolom isian
+     SEKSI 9  GRAFIK (SVG) ....... garis kisi, sumbu, label grafik
+     SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
 
    CARA EDIT:
    - Ubah HANYA hex di sisi kanan (di dalam { ... }) — itu warna
@@ -132,6 +135,39 @@ html[data-theme="dark"] .bg-\[\#1E293B\] { background-color: #22345C; }
 html[data-theme="dark"] .hover\:bg-\[\#1E293B\]:hover { background-color: #2C4470; }
 
 
+/* — Ronde 2: permukaan slate & abu dari komponen lama —
+   (dipakai modal siswa, grafik lama, dan beberapa panel v2) */
+html[data-theme="dark"] .bg-slate-200 { background-color: #1C3560; }
+html[data-theme="dark"] .bg-slate-50\/70 { background-color: rgba(12, 30, 58, 0.7); }
+html[data-theme="dark"] .bg-slate-50\/80 { background-color: rgba(12, 30, 58, 0.8); }
+html[data-theme="dark"] .bg-slate-50\/90 { background-color: rgba(12, 30, 58, 0.9); }
+html[data-theme="dark"] .bg-\[\#E7EBF2\] { background-color: #1C3560; }
+html[data-theme="dark"] .bg-\[\#CBD5E1\] { background-color: #22345C; }
+html[data-theme="dark"] .bg-\[\#DCE2EA\] { background-color: #22345C; }
+html[data-theme="dark"] .bg-\[\#D9E0EC\] { background-color: #22345C; }
+html[data-theme="dark"] .bg-\[\#E4E7EC\],
+html[data-theme="dark"] .bg-\[\#EAECF0\],
+html[data-theme="dark"] .bg-\[\#E4E9F0\] { background-color: #0C1E3A; }
+html[data-theme="dark"] .bg-\[\#FFFBFA\] { background-color: #0C1E3A; }
+html[data-theme="dark"] .bg-\[\#F8FAFD\]\/60 { background-color: rgba(12, 30, 58, 0.6); }
+html[data-theme="dark"] .bg-\[\#F9FAFB\]\/75 { background-color: rgba(12, 30, 58, 0.75); }
+
+/* Titik & penanda abu (titik status, penanda daftar) */
+html[data-theme="dark"] .bg-\[\#98A2B3\],
+html[data-theme="dark"] .bg-\[\#94A3B8\] { background-color: #5F7396; }
+html[data-theme="dark"] .bg-\[\#64748B\] { background-color: #546A8C; }
+
+/* Hover permukaan terang lainnya */
+html[data-theme="dark"] .hover\:bg-white:hover { background-color: #12294D; }
+html[data-theme="dark"] .hover\:bg-slate-100:hover { background-color: #12294D; }
+html[data-theme="dark"] .hover\:bg-slate-200:hover { background-color: #22345C; }
+html[data-theme="dark"] .hover\:bg-\[\#E2E8F0\]:hover { background-color: #22345C; }
+html[data-theme="dark"] .hover\:bg-\[\#E4E7EC\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#F7F9FC\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#FAFCFF\]:hover { background-color: #12294D; }
+html[data-theme="dark"] .hover\:bg-\[\#F8FAFD\]\/60:hover { background-color: rgba(18, 41, 77, 0.6); }
+
+
 /* ================================================================
    SEKSI 3 — LATAR LEMBUT BERWARNA
    Versi gelap dari latar pucat berwarna: latar chip & lencana
@@ -202,6 +238,46 @@ html[data-theme="dark"] .bg-\[\#F1EAFF\] { background-color: #221238; }
 /* — Pink lembut — */
 html[data-theme="dark"] .bg-\[\#FDF2FA\],
 html[data-theme="dark"] .bg-\[\#FCE8F3\] { background-color: #33102A; }
+
+
+/* — Ronde 2: latar lembut palet bernama (komponen lama) — */
+html[data-theme="dark"] .bg-blue-50,
+html[data-theme="dark"] .bg-blue-100,
+html[data-theme="dark"] .bg-\[\#DBEAFE\] { background-color: #12294D; }
+html[data-theme="dark"] .bg-emerald-50 { background-color: #0E2A20; }
+html[data-theme="dark"] .bg-rose-50,
+html[data-theme="dark"] .bg-red-50 { background-color: #33130F; }
+html[data-theme="dark"] .bg-purple-50,
+html[data-theme="dark"] .bg-violet-50 { background-color: #221238; }
+html[data-theme="dark"] .bg-purple-100 { background-color: #2A1A4A; }
+html[data-theme="dark"] .bg-amber-50 { background-color: #2E2108; }
+html[data-theme="dark"] .bg-emerald-50\/50 { background-color: rgba(14, 42, 32, 0.5); }
+html[data-theme="dark"] .bg-\[\#FEE4E2\] { background-color: #33130F; }
+
+/* Varian tembus pandang di atas kartu */
+html[data-theme="dark"] .bg-\[\#EFF4FF\]\/40,
+html[data-theme="dark"] .bg-\[\#E8F0FE\]\/40 { background-color: rgba(18, 41, 77, 0.4); }
+html[data-theme="dark"] .bg-\[\#E7F6ED\]\/40 { background-color: rgba(14, 42, 32, 0.4); }
+html[data-theme="dark"] .bg-\[\#FDECEA\]\/40,
+html[data-theme="dark"] .bg-\[\#FEF3F2\]\/40 { background-color: rgba(51, 19, 15, 0.4); }
+html[data-theme="dark"] .bg-\[\#FEE4E2\]\/50 { background-color: rgba(51, 19, 15, 0.5); }
+html[data-theme="dark"] .bg-\[\#FFF5F5\]\/70 { background-color: rgba(51, 19, 15, 0.7); }
+html[data-theme="dark"] .bg-\[\#FEF6EE\]\/40 { background-color: rgba(46, 33, 8, 0.4); }
+
+/* Hover latar lembut */
+html[data-theme="dark"] .hover\:bg-\[\#D1E0FF\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#DBEAFE\]:hover { background-color: #1A3560; }
+html[data-theme="dark"] .hover\:bg-\[\#D3F0E2\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#D1F2DE\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#DCFCE7\]:hover { background-color: #123527; }
+html[data-theme="dark"] .hover\:bg-rose-50:hover,
+html[data-theme="dark"] .hover\:bg-\[\#FFF1F2\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#FFF8F7\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#FFE4E6\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#FEE4E2\]:hover { background-color: #421A14; }
+html[data-theme="dark"] .hover\:bg-amber-50:hover,
+html[data-theme="dark"] .hover\:bg-\[\#FEF3C7\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#FDE68A\]:hover { background-color: #3A2A0C; }
 
 
 /* ================================================================
@@ -340,6 +416,50 @@ html[data-theme="dark"] .text-\[\#0E9384\],
 html[data-theme="dark"] .text-\[\#155E6B\] { color: #2DD4BF; }
 
 
+/* — 5G · Ronde 2: teks palet bernama & sisa teks gelap — */
+html[data-theme="dark"] .text-\[\#1E293B\] { color: #C4D0E4; }
+html[data-theme="dark"] .text-\[\#0B1F3A\] { color: #E9EFFA; }
+html[data-theme="dark"] .text-\[\#43506B\] { color: #93A5C4; }
+html[data-theme="dark"] .text-\[\#AD5950\] { color: #D98E85; }
+html[data-theme="dark"] .text-blue-600 { color: #5B96F5; }
+html[data-theme="dark"] .text-blue-700 { color: #6EA8FE; }
+html[data-theme="dark"] .text-emerald-600 { color: #34D399; }
+html[data-theme="dark"] .text-emerald-700 { color: #3ECF8E; }
+html[data-theme="dark"] .text-emerald-950 { color: #A7EBCB; }
+html[data-theme="dark"] .text-rose-600,
+html[data-theme="dark"] .text-rose-700 { color: #FB7185; }
+html[data-theme="dark"] .text-rose-800 { color: #F97066; }
+html[data-theme="dark"] .text-red-600,
+html[data-theme="dark"] .text-red-500 { color: #F87171; }
+html[data-theme="dark"] .text-red-800 { color: #F97066; }
+html[data-theme="dark"] .text-purple-600,
+html[data-theme="dark"] .text-purple-700,
+html[data-theme="dark"] .text-violet-600,
+html[data-theme="dark"] .text-violet-700 { color: #A78BFA; }
+html[data-theme="dark"] .text-purple-800,
+html[data-theme="dark"] .text-purple-900,
+html[data-theme="dark"] .text-purple-950 { color: #B79CFF; }
+html[data-theme="dark"] .text-amber-700 { color: #F5B74B; }
+
+/* Teks tembus pandang */
+html[data-theme="dark"] .text-\[\#667085\]\/60 { color: rgba(147, 165, 196, 0.6); }
+html[data-theme="dark"] .text-slate-400\/80 { color: rgba(95, 115, 150, 0.8); }
+html[data-theme="dark"] .text-slate-300\/90 { color: rgba(126, 147, 184, 0.9); }
+html[data-theme="dark"] .placeholder-\[\#94A3B8\]::placeholder { color: #5F7396; }
+
+/* Hover & group-hover teks */
+html[data-theme="dark"] .hover\:text-\[\#344054\]:hover { color: #C4D0E4; }
+html[data-theme="dark"] .hover\:text-\[\#1E293B\]:hover { color: #E9EFFA; }
+html[data-theme="dark"] .hover\:text-\[\#475467\]:hover { color: #A8BAD6; }
+html[data-theme="dark"] .hover\:text-slate-600:hover { color: #93A5C4; }
+html[data-theme="dark"] .hover\:text-slate-700:hover { color: #A8BAD6; }
+html[data-theme="dark"] .hover\:text-slate-800:hover { color: #C4D0E4; }
+html[data-theme="dark"] .group:hover .group-hover\:text-\[\#101828\] { color: #E9EFFA; }
+html[data-theme="dark"] .group:hover .group-hover\:text-\[\#C43232\] { color: #F97066; }
+html[data-theme="dark"] .group:hover .group-hover\:text-\[\#AD6504\] { color: #F5B74B; }
+html[data-theme="dark"] .group:hover .group-hover\:text-\[\#12459B\] { color: #6EA8FE; }
+
+
 /* ================================================================
    SEKSI 6 — GARIS TEPI & PEMBAGI
    Border kartu/panel/modal, garis pembagi baris tabel (divide),
@@ -400,6 +520,74 @@ html[data-theme="dark"] .border-\[\#DDD6FE\],
 html[data-theme="dark"] .border-\[\#D9D6FE\] { border-color: #3B2A6B; }
 
 
+/* — Ronde 2: garis yang sebelumnya masih terang — */
+/* Pembagi & border abu paling pucat (penyebab garis menyilaukan) */
+html[data-theme="dark"] .border-\[\#F1F5F9\],
+html[data-theme="dark"] .border-\[\#F2F4F7\],
+html[data-theme="dark"] .border-\[\#EEF2F6\] { border-color: #16294D; }
+html[data-theme="dark"] .divide-\[\#F1F5F9\] > :not([hidden]) ~ :not([hidden]),
+html[data-theme="dark"] .divide-\[\#F2F4F7\] > :not([hidden]) ~ :not([hidden]),
+html[data-theme="dark"] .divide-\[\#EEF2F6\] > :not([hidden]) ~ :not([hidden]) { border-color: #16294D; }
+
+/* Border slate tembus pandang (kartu & modal komponen lama) */
+html[data-theme="dark"] .border-slate-200\/80 { border-color: rgba(28, 53, 96, 0.8); }
+html[data-theme="dark"] .border-slate-200\/90 { border-color: rgba(28, 53, 96, 0.9); }
+html[data-theme="dark"] .border-slate-700\/50 { border-color: rgba(34, 52, 92, 0.5); }
+
+/* Border biru pucat */
+html[data-theme="dark"] .border-blue-200,
+html[data-theme="dark"] .border-\[\#B9D1F9\],
+html[data-theme="dark"] .border-\[\#BFCEE4\],
+html[data-theme="dark"] .border-\[\#BBD0EC\],
+html[data-theme="dark"] .border-\[\#D6E4FA\] { border-color: #22386B; }
+html[data-theme="dark"] .border-blue-200\/80 { border-color: rgba(34, 56, 107, 0.8); }
+html[data-theme="dark"] .border-blue-100\/80 { border-color: rgba(34, 56, 107, 0.8); }
+html[data-theme="dark"] .border-\[\#93B4F5\] { border-color: #2A4A8F; }
+html[data-theme="dark"] .border-\[\#C3CEDD\],
+html[data-theme="dark"] .border-\[\#BBCAE0\],
+html[data-theme="dark"] .border-\[\#DCE3ED\],
+html[data-theme="dark"] .border-\[\#D9E2F0\] { border-color: #22345C; }
+html[data-theme="dark"] .border-\[\#B9C4D6\],
+html[data-theme="dark"] .border-\[\#98A2B3\],
+html[data-theme="dark"] .border-\[\#101828\] { border-color: #2A3D63; }
+
+/* Border status palet bernama & sisipan pucat */
+html[data-theme="dark"] .border-purple-200,
+html[data-theme="dark"] .border-violet-200 { border-color: #3B2A6B; }
+html[data-theme="dark"] .border-emerald-200 { border-color: #175C3A; }
+html[data-theme="dark"] .border-rose-200,
+html[data-theme="dark"] .border-red-200 { border-color: #5C2A24; }
+html[data-theme="dark"] .border-amber-200 { border-color: #6B4E12; }
+html[data-theme="dark"] .border-\[\#FEDF89\],
+html[data-theme="dark"] .border-\[\#FED7AA\],
+html[data-theme="dark"] .border-\[\#FCD34D\],
+html[data-theme="dark"] .border-\[\#F5D9A8\],
+html[data-theme="dark"] .border-\[\#FEF4E5\] { border-color: #6B4E12; }
+html[data-theme="dark"] .border-\[\#FDA29B\] { border-color: #5C2A24; }
+html[data-theme="dark"] .border-\[\#FCCEEE\] { border-color: #5C2440; }
+
+/* Cincin (ring) pucat → navy redup */
+html[data-theme="dark"] .ring-\[\#E8F0FE\],
+html[data-theme="dark"] .ring-blue-100,
+html[data-theme="dark"] .ring-\[\#B9D1F9\] { --tw-ring-color: #22386B; }
+html[data-theme="dark"] .ring-\[\#E7F6ED\],
+html[data-theme="dark"] .ring-emerald-100 { --tw-ring-color: #175C3A; }
+html[data-theme="dark"] .ring-red-100 { --tw-ring-color: #5C2A24; }
+
+/* Hover & fokus garis */
+html[data-theme="dark"] .hover\:border-\[\#BBCAE0\]:hover,
+html[data-theme="dark"] .hover\:border-\[\#C3CEDD\]:hover,
+html[data-theme="dark"] .hover\:border-\[\#98A2B3\]:hover { border-color: #2A3D63; }
+html[data-theme="dark"] .hover\:border-\[\#CBD5E1\]:hover,
+html[data-theme="dark"] .hover\:border-\[\#CBD5E3\]:hover { border-color: #22345C; }
+html[data-theme="dark"] .hover\:border-\[\#BFCEE4\]:hover,
+html[data-theme="dark"] .hover\:border-\[\#B9D1F9\]:hover { border-color: #22386B; }
+html[data-theme="dark"] .hover\:border-\[\#F8D3CE\]:hover,
+html[data-theme="dark"] .hover\:border-\[\#F5C6C0\]:hover { border-color: #5C2A24; }
+html[data-theme="dark"] .hover\:border-\[\#FEF4E5\]:hover { border-color: #6B4E12; }
+html[data-theme="dark"] .focus-within\:border-\[\#101828\]:focus-within { border-color: #2A3D63; }
+
+
 /* ================================================================
    SEKSI 7 — BAYANGAN
    Bayangan kartu dilembutkan supaya tidak jadi noda terang
@@ -408,3 +596,56 @@ html[data-theme="dark"] .border-\[\#D9D6FE\] { border-color: #3B2A6B; }
 
 html[data-theme="dark"] .shadow-xs,
 html[data-theme="dark"] .shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+
+
+/* ================================================================
+   SEKSI 8 — FORMULIR & JENDELA MODAL
+   Keadaan fokus kolom isian. Tanpa seksi ini, kolom yang sedang
+   aktif berubah putih terang sementara teksnya ikut terang —
+   tidak terbaca. Berlaku juga untuk strip tab & kaki modal yang
+   memakai permukaan slate tembus pandang (sudah di Seksi 2).
+   ================================================================ */
+
+/* Kolom aktif tidak lagi putih terang */
+html[data-theme="dark"] .focus\:bg-white:focus { background-color: #0A1830; }
+html[data-theme="dark"] .focus-within\:bg-white:focus-within { background-color: #0A1830; }
+
+/* Lingkaran fokus pucat → navy redup */
+html[data-theme="dark"] .focus\:ring-\[\#E8F0FE\]:focus { --tw-ring-color: #22386B; }
+html[data-theme="dark"] .focus\:ring-\[\#E7F6ED\]:focus { --tw-ring-color: #175C3A; }
+html[data-theme="dark"] .focus\:ring-blue-200:focus,
+html[data-theme="dark"] .focus\:ring-blue-100:focus { --tw-ring-color: #22386B; }
+html[data-theme="dark"] .focus-within\:ring-red-100:focus-within { --tw-ring-color: #5C2A24; }
+html[data-theme="dark"] .focus-within\:ring-blue-100:focus-within { --tw-ring-color: #22386B; }
+html[data-theme="dark"] .focus-within\:ring-emerald-100:focus-within { --tw-ring-color: #175C3A; }
+
+/* Tombol nonaktif */
+html[data-theme="dark"] .disabled\:bg-\[\#98A2B3\]:disabled { background-color: #3D4F6E; }
+
+
+/* ================================================================
+   SEKSI 9 — GRAFIK (SVG)
+   Warna grafik ditulis sebagai atribut stroke/fill di dalam SVG,
+   bukan kelas — dipetakan lewat pemilih atribut. Hanya kerangka
+   grafik yang diubah (garis kisi, sumbu, label, angka tengah
+   donat); warna seri data (biru/hijau/merah) tetap apa adanya.
+   ================================================================ */
+
+/* Garis kisi & jalur latar */
+html[data-theme="dark"] [stroke="#E7EBF2"],
+html[data-theme="dark"] [stroke="#EFF2F7"],
+html[data-theme="dark"] [stroke="#F2F4F7"],
+html[data-theme="dark"] [stroke="#edf1f6"] { stroke: #1C3560; }
+html[data-theme="dark"] [fill="#E7EBF2"],
+html[data-theme="dark"] [fill="#EFF2F7"],
+html[data-theme="dark"] [fill="#F2F4F7"],
+html[data-theme="dark"] [fill="#edf1f6"] { fill: #1C3560; }
+
+/* Sumbu, label & angka pada grafik */
+html[data-theme="dark"] [stroke="#94A3B8"],
+html[data-theme="dark"] [stroke="#94a3b8"] { stroke: #5F7396; }
+html[data-theme="dark"] [fill="#101828"],
+html[data-theme="dark"] [fill="#0f172a"] { fill: #E9EFFA; }
+html[data-theme="dark"] [fill="#98A2B3"] { fill: #5F7396; }
+html[data-theme="dark"] [fill="#64748B"],
+html[data-theme="dark"] [fill="#64748b"] { fill: #8CA3C7; }
