@@ -79,3 +79,24 @@ opacity + varian keadaan hover/focus yang belum terpetakan):
 - Total aturan 75 → 185; seluruh aturan ronde 1 utuh (terverifikasi
   otomatis). Semua aturan tetap terkurung `html[data-theme="dark"]` —
   **mode terang tidak berubah sama sekali**. Tes exit 0, build exit 0.
+
+## Pembaruan Ronde 3 — 29 Oktober 2026
+
+Umpan balik pemilik: (1) Agenda Mengajar masih banyak putih, (2) kartu
+"Total Siswa Aktif" dashboard masih putih, (3) teks biru daftar siswa
+sulit dibaca di Dark Navy. Hasil diagnosis:
+
+- Agenda memakai `<style scoped>` sendiri (variabel `--ink/--ink-2/
+  --ink-3/--line` + puluhan warna langsung), di luar jangkauan pemetaan
+  kelas Tailwind. Seksi 10 baru menimpa gaya bawaan itu khusus gelap:
+  variabel halaman digelapkan (satu aturan memperbaiki teks & garis
+  seluruh halaman), strip tab, dropdown filter, tabel F.32 (kepala,
+  kolom nama lengket, sel H/S/I/A), kartu skor, rekap, dan panel jurnal.
+- Kartu hero dashboard memakai gradien `from-white to-[#F2F6FF]`
+  (satu-satunya pemakaian kombinasi itu) — kini digelapkan lewat
+  variabel gradien, plus cincin tipis untuk tombol gelapnya.
+- Teks biru dilembutkan: #5B96F5 → #9DBEF9 dan #6EA8FE → #A9C6FA
+  (keluarga text biru merek + blue-600/700) — kontras naik, jenuh turun.
+- Total aturan 185 → 253; selain 6 nilai biru itu, semua aturan lama
+  utuh (terverifikasi otomatis). Mode terang tetap nol perubahan.
+  Tes exit 0, build exit 0.

@@ -16,6 +16,7 @@
                                    garis cincin fokus
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
      SEKSI 8  FORMULIR & MODAL ... keadaan fokus kolom isian
+     SEKSI 10 GAYA BAWAAN ....... gaya <style> komponen (Agenda)
      SEKSI 9  GRAFIK (SVG) ....... garis kisi, sumbu, label grafik
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
 
@@ -340,12 +341,12 @@ html[data-theme="dark"] .text-\[\#154db0\],
 html[data-theme="dark"] .text-\[\#154EAE\],
 html[data-theme="dark"] .text-\[\#174FB5\],
 html[data-theme="dark"] .text-\[\#1E40AF\],
-html[data-theme="dark"] .text-\[\#2563EB\] { color: #6EA8FE; }
+html[data-theme="dark"] .text-\[\#2563EB\] { color: #A9C6FA; }
 html[data-theme="dark"] .text-\[\#1B5FD9\],
 html[data-theme="dark"] .text-\[\#175CD3\],
 html[data-theme="dark"] .text-\[\#2E7CF6\],
-html[data-theme="dark"] .text-\[\#3B82F6\] { color: #5B96F5; }
-html[data-theme="dark"] .group:hover .group-hover\:text-\[\#1B5FD9\] { color: #5B96F5; }
+html[data-theme="dark"] .text-\[\#3B82F6\] { color: #9DBEF9; }
+html[data-theme="dark"] .group:hover .group-hover\:text-\[\#1B5FD9\] { color: #9DBEF9; }
 
 /* — 5C · Teks hijau: sukses, aktif, lulus KKM — */
 html[data-theme="dark"] .text-\[\#14532D\] { color: #A7EBCB; }
@@ -421,8 +422,8 @@ html[data-theme="dark"] .text-\[\#1E293B\] { color: #C4D0E4; }
 html[data-theme="dark"] .text-\[\#0B1F3A\] { color: #E9EFFA; }
 html[data-theme="dark"] .text-\[\#43506B\] { color: #93A5C4; }
 html[data-theme="dark"] .text-\[\#AD5950\] { color: #D98E85; }
-html[data-theme="dark"] .text-blue-600 { color: #5B96F5; }
-html[data-theme="dark"] .text-blue-700 { color: #6EA8FE; }
+html[data-theme="dark"] .text-blue-600 { color: #9DBEF9; }
+html[data-theme="dark"] .text-blue-700 { color: #A9C6FA; }
 html[data-theme="dark"] .text-emerald-600 { color: #34D399; }
 html[data-theme="dark"] .text-emerald-700 { color: #3ECF8E; }
 html[data-theme="dark"] .text-emerald-950 { color: #A7EBCB; }
@@ -457,7 +458,7 @@ html[data-theme="dark"] .hover\:text-slate-800:hover { color: #C4D0E4; }
 html[data-theme="dark"] .group:hover .group-hover\:text-\[\#101828\] { color: #E9EFFA; }
 html[data-theme="dark"] .group:hover .group-hover\:text-\[\#C43232\] { color: #F97066; }
 html[data-theme="dark"] .group:hover .group-hover\:text-\[\#AD6504\] { color: #F5B74B; }
-html[data-theme="dark"] .group:hover .group-hover\:text-\[\#12459B\] { color: #6EA8FE; }
+html[data-theme="dark"] .group:hover .group-hover\:text-\[\#12459B\] { color: #A9C6FA; }
 
 
 /* ================================================================
@@ -649,3 +650,109 @@ html[data-theme="dark"] [fill="#0f172a"] { fill: #E9EFFA; }
 html[data-theme="dark"] [fill="#98A2B3"] { fill: #5F7396; }
 html[data-theme="dark"] [fill="#64748B"],
 html[data-theme="dark"] [fill="#64748b"] { fill: #8CA3C7; }
+
+
+/* ================================================================
+   SEKSI 10 — GAYA BAWAAN KOMPONEN (CSS scoped)
+   Sebagian komponen menulis gayanya sendiri di blok <style>,
+   bukan kelas Tailwind — terutama Agenda Mengajar (variabel
+   --ink/--line + warna langsung) dan kartu hero dashboard yang
+   memakai gradien putih. Kelas di seksi ini menimpa gaya bawaan
+   tersebut khusus mode gelap; mode terang tidak tersentuh.
+   ================================================================ */
+
+/* — Kartu hero dashboard (Total Siswa Aktif): gradien putih — */
+html[data-theme="dark"] .from-white.to-\[\#F2F6FF\] { --tw-gradient-from: #0A1830; --tw-gradient-to: #0C1E3A; }
+html[data-theme="dark"] .from-white.to-\[\#F2F6FF\] .bg-\[\#101828\] { box-shadow: inset 0 0 0 1px #2A3D63; }
+
+/* — Agenda Mengajar: variabel tinta & garis satu halaman penuh — */
+html[data-theme="dark"] .agenda-page { --ink: #E9EFFA; --ink-2: #C4D0E4; --ink-3: #93A5C4; --line: #1C3560; }
+
+/* Lencana jenjang & pil tanggal */
+html[data-theme="dark"] .grade-badge.smk { border-color: #2A4A8F; background: #12294D; color: #5B96F5; }
+html[data-theme="dark"] .grade-badge.smp { border-color: #175C3A; background: #0E2A20; color: #4ADE80; }
+html[data-theme="dark"] .date-pill,
+html[data-theme="dark"] .version-pill { border-color: #1C3560; background: #0A1830; color: #93A5C4; }
+html[data-theme="dark"] .version-pill { border-color: #22345C; color: #A8BAD6; }
+
+/* Strip tab halaman */
+html[data-theme="dark"] .agenda-tabs { background: #0C1E3A; }
+html[data-theme="dark"] .agenda-tabs button { color: #A8BAD6; }
+html[data-theme="dark"] .agenda-tabs button.active { background: #22345C; box-shadow: none; }
+
+/* Dropdown (dipakai halaman agenda & panel filternya) */
+html[data-theme="dark"] .dropdown-trigger { background: #0A1830; color: #E9EFFA; }
+html[data-theme="dark"] .dropdown-menu { border-color: #1C3560; background: #0A1830; }
+html[data-theme="dark"] .dropdown-menu button { color: #C4D0E4; }
+html[data-theme="dark"] .dropdown-menu button:hover,
+html[data-theme="dark"] .dropdown-menu button.active { background: #12294D; color: #6EA8FE; }
+
+/* Kartu keadaan (kosong / peringatan / galat) */
+html[data-theme="dark"] .state-card { background: #0A1830; color: #A8BAD6; }
+html[data-theme="dark"] .state-card.warning { border-color: #6B4E12; background: #2E2108; color: #F5B74B; }
+html[data-theme="dark"] .state-card.error { border-color: #5C2A24; background: #33130F; color: #F97066; }
+html[data-theme="dark"] .state-card button { background: #22345C; }
+
+/* Kartu utama, panduan, tombol sekunder */
+html[data-theme="dark"] .agenda-card { background: #0A1830; box-shadow: none; }
+html[data-theme="dark"] .guide { border-color: #22386B; background: #12294D; color: #6EA8FE; }
+html[data-theme="dark"] .secondary-button { background: #0C1E3A; }
+
+/* Legenda status hadir (kotak kecil di atas tabel) */
+html[data-theme="dark"] .status-h { background: #175C3A; }
+html[data-theme="dark"] .status-s { background: #6B4E12; }
+html[data-theme="dark"] .status-i { background: #22386B; }
+html[data-theme="dark"] .status-a { background: #5C2A24; }
+
+/* Tabel kehadiran F.32 */
+html[data-theme="dark"] .attendance-table thead th { background: #0C1E3A; }
+html[data-theme="dark"] .attendance-table .sticky-name { background: #0A1830; }
+html[data-theme="dark"] .attendance-table thead .sticky-name { background: #0C1E3A; }
+html[data-theme="dark"] .meeting-heading button:hover { background: #12294D; color: #6EA8FE; }
+html[data-theme="dark"] .student-avatar { background: #12294D; color: #6EA8FE; }
+html[data-theme="dark"] .value-h { background: #0E2A20; color: #3ECF8E; }
+html[data-theme="dark"] .value-s { background: #2E2108; color: #F5B74B; }
+html[data-theme="dark"] .value-i { background: #12294D; color: #6EA8FE; }
+html[data-theme="dark"] .value-a { background: #33130F; color: #F97066; }
+html[data-theme="dark"] .present-total { background: #0C1E3A; }
+html[data-theme="dark"] .attendance-segments { background: #0C1E3A; }
+
+/* Nilai tugas (kartu skor) */
+html[data-theme="dark"] .task-chips button { background: #0A1830; }
+html[data-theme="dark"] .task-chips button.active { border-color: #1B5FD9; background: #1B5FD9; }
+html[data-theme="dark"] .score-heading h2 span { background: #12294D; color: #6EA8FE; }
+html[data-theme="dark"] .score-row { background: #0C1E3A; }
+html[data-theme="dark"] .score-row::before { background: #22345C; }
+html[data-theme="dark"] .score-row:focus-within { background: #0A1830; }
+html[data-theme="dark"] .score-row input { background: #0A1830; }
+html[data-theme="dark"] .score-row input.low { border-color: #5C2A24; background: #33130F; color: #F97066; }
+html[data-theme="dark"] .score-row input.middle { border-color: #6B4E12; background: #2E2108; color: #F5B74B; }
+html[data-theme="dark"] .score-row input.high { border-color: #175C3A; background: #0E2A20; color: #3ECF8E; }
+html[data-theme="dark"] .score-row input:disabled { background: #0C1E3A; }
+html[data-theme="dark"] .score-meta small.complete { color: #3ECF8E; }
+html[data-theme="dark"] .task-dots i { background: #22345C; }
+
+/* Rekap & ringkasan */
+html[data-theme="dark"] .lock-box { border-color: #6B4E12; background: #2E2108; color: #F5B74B; }
+html[data-theme="dark"] .mode-selector { background: #0C1E3A; }
+html[data-theme="dark"] .mode-selector button.active { background: #22345C; box-shadow: none; }
+html[data-theme="dark"] .summary-grid > div { background: #0A1830; }
+html[data-theme="dark"] .recap-table th { background: #0C1E3A; }
+html[data-theme="dark"] .final-score { background: #0C1E3A; }
+html[data-theme="dark"] .status-chip.waiting { background: #2E2108; color: #F5B74B; }
+html[data-theme="dark"] .status-chip.success { background: #0E2A20; color: #3ECF8E; }
+html[data-theme="dark"] .status-chip.danger { background: #33130F; color: #F97066; }
+html[data-theme="dark"] .recap-final b { color: #6EA8FE; }
+
+/* Panel jurnal pertemuan (melayang dari kanan) */
+html[data-theme="dark"] .journal-panel { background: #0A1830; }
+html[data-theme="dark"] .journal-panel header { border-bottom-color: #1C3560; }
+html[data-theme="dark"] .journal-panel footer { border-top-color: #1C3560; }
+html[data-theme="dark"] .journal-panel h2 { color: #E9EFFA; }
+html[data-theme="dark"] .journal-panel header p { color: #93A5C4; }
+html[data-theme="dark"] .journal-panel header > button { color: #93A5C4; }
+html[data-theme="dark"] .journal-body label { color: #C4D0E4; }
+html[data-theme="dark"] .journal-body input,
+html[data-theme="dark"] .journal-body textarea { border-color: #1C3560; background: #0C1E3A; color: #E9EFFA; }
+html[data-theme="dark"] .journal-summary { background: #0C1E3A; color: #93A5C4; }
+
