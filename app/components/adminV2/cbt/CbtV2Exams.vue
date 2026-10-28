@@ -99,10 +99,16 @@ const availablePackages = computed(() =>
   gradePackages.value.filter(pkg => !newExam.value.classId || pkg.classId === newExam.value.classId)
 )
 
-const availableSubjects = computed(() => {
-  const ids = new Set(availablePackages.value.map(pkg => pkg.subjectId))
-  return cbtData.subjects.value.filter(item => item.grade === props.grade && ids.has(item.id))
-})
+// Daftar mapel di Langkah 1 selalu dari Master Mapel jenjang ini — bukan dari
+// bank soal. Rombel yang belum memiliki bank soal tetap dapat memilih mapel;
+// ketiadaan banknya dijelaskan lewat subjectHasBank dan penjaga di goStep2.
+const availableSubjects = computed(() =>
+  cbtData.subjects.value.filter(item => item.grade === props.grade)
+)
+
+const subjectHasBank = computed(() =>
+  !newExam.value.subjectId || availablePackages.value.some(pkg => pkg.subjectId === newExam.value.subjectId)
+)
 
 const selectedBank = computed(() => availablePackages.value.find(pkg => pkg.id === newExam.value.questionBankId))
 const bankQuestions = computed(() => selectedBank.value?.questions ?? [])
@@ -567,6 +573,7 @@ const removeSchedule = async (exam: ExamItem) => {
                     <option v-for="s in availableSubjects" :key="s.id" :value="s.id">{{ s.name }}</option>
                   </select>
                 </div>
+                <p v-if="!subjectHasBank" class="sm:col-span-2 p-3 rounded-xl bg-[#FEF4E5] text-[#7A4A03] font-semibold">Belum ada bank soal untuk mapel ini di rombel ini. Buat dulu bank soalnya di tab Bank Soal — ujian belum dapat dilanjutkan ke jadwal sebelum bank soal tersedia.</p>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

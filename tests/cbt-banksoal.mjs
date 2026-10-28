@@ -149,6 +149,18 @@ assert.deepEqual([...vm.selectedQuestionIds.value], ids, 'Ujian lama memuat semu
 await vm.loadSelection([ids[2], ids[0]])
 assert.deepEqual([...vm.selectedQuestionIds.value], [ids[2], ids[0]], 'Urutan subset pulih saat mengedit')
 assert.equal(bank.questions[1].type, 'Isian', 'Tipe soal lama tetap dipertahankan')
+// Regresi: daftar mapel Langkah 1 berasal dari Master Mapel, bukan dari bank soal —
+// rombel tanpa bank soal sama sekali tetap menampilkan seluruh mapel jenjangnya.
+states.get('cbt-master-subjects').value = [{ id: subjectId, name: 'Mapel uji', grade: 'SMK' }]
+states.get('cbt-bank-packages').value = []
+assert.ok(vm.availableSubjects.value.some(subject => subject.id === subjectId), 'Mapel Master tetap muncul walau rombel belum memiliki bank soal')
+vm.newExam.value.subjectId = ''
+assert.equal(vm.subjectHasBank.value, true, 'Tanpa mapel terpilih belum ada peringatan bank')
+vm.newExam.value.subjectId = subjectId
+assert.equal(vm.subjectHasBank.value, false, 'Mapel tanpa bank di rombel memicu peringatan')
+states.get('cbt-bank-packages').value = [bank]
+vm.syncPackage()
+assert.equal(vm.subjectHasBank.value, true, 'Peringatan hilang begitu bank soal tersedia')
 
 const { default: BankForm } = await import('../app/components/adminV2/cbt/CbtV2BankForm.vue')
 const form = BankForm.setup({ pkg: { ...bank, teacherName: 'Guru uji' }, grade: 'SMK', editing: true, initialStep: 'Isian' }, { expose() {}, emit() {} })
@@ -426,6 +438,6 @@ for (const needle of ['loadExamParticipants', 'issueExamTokens', 'regenerateStud
   assert.ok(tokensSource.includes(needle), `Panel token memuat ${needle}`)
 
 await nextTick()
-const summary = { parser: 'LULUS', retryDanPenolakanRumusInvalid: 'LULUS (penyedia tiruan)', ocrIndependenDanHasilKedaluwarsa: 'LULUS (penyedia tiruan)', daftarBankDanPemisahanJenjang: 'LULUS (Supabase tiruan + SSR)', opsiPilihanGanda: 'LULUS SMP 4 / SMK 5', templateDanImpor: 'LULUS SMP/SMK', pemilihanUrutanDanRpc: 'LULUS (Supabase tiruan)', pemuatanSiswa: 'LULUS (respons server tiruan)', pemisahanSumber: 'LULUS (Supabase tiruan)', monitoringDanDataKosong: 'LULUS (Supabase tiruan + SSR)', kompatibilitasLama: 'LULUS', formulir: 'LULUS', tokenPerSiswa: 'LULUS (migrasi 0017 + Supabase tiruan)', evidence }
+const summary = { parser: 'LULUS', retryDanPenolakanRumusInvalid: 'LULUS (penyedia tiruan)', ocrIndependenDanHasilKedaluwarsa: 'LULUS (penyedia tiruan)', daftarBankDanPemisahanJenjang: 'LULUS (Supabase tiruan + SSR)', opsiPilihanGanda: 'LULUS SMP 4 / SMK 5', templateDanImpor: 'LULUS SMP/SMK', pemilihanUrutanDanRpc: 'LULUS (Supabase tiruan)', pemuatanSiswa: 'LULUS (respons server tiruan)', pemisahanSumber: 'LULUS (Supabase tiruan)', monitoringDanDataKosong: 'LULUS (Supabase tiruan + SSR)', kompatibilitasLama: 'LULUS', formulir: 'LULUS', tokenPerSiswa: 'LULUS (migrasi 0017 + Supabase tiruan)', mapelUjianDariMaster: 'LULUS (Supabase tiruan)', evidence }
 fs.writeFileSync(path.join(folder, 'hasil-uji.json'), JSON.stringify(summary, null, 2))
 console.log(JSON.stringify(summary, null, 2))
