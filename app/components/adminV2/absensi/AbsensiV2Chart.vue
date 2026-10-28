@@ -24,7 +24,7 @@ const slots = TAP_TIME_SLOTS
 
 // SVG Coordinate Calculations for Smooth Spline Line Chart
 const svgWidth = 600
-const svgHeight = 220
+const svgHeight = 240
 const paddingLeft = 45
 const paddingRight = 25
 const paddingTop = 32
@@ -33,8 +33,9 @@ const paddingBottom = 38
 const innerWidth = svgWidth - paddingLeft - paddingRight
 const innerHeight = svgHeight - paddingTop - paddingBottom
 
-const minPct = 90
+const minPct = 0
 const maxPct = 100
+const yTicks = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 const getX = (index: number) => {
   return paddingLeft + (index / (days.length - 1)) * innerWidth
@@ -107,15 +108,15 @@ const activePoint = computed(() => {
   return points.value[selectedIndex.value] || points.value[4]
 })
 
-// Tooltip position (clamped to prevent cutoff on mobile/desktop edges)
-const tooltipX = computed(() => {
-  if (!activePoint.value) return 300
-  return Math.max(55, Math.min(svgWidth - 55, activePoint.value.x))
-})
-
-const tooltipY = computed(() => {
-  if (!activePoint.value) return 50
-  return Math.max(22, activePoint.value.y - 18)
+// Tooltip kartu HTML: menempel di bawah titik aktif (titik selalu di pita atas skala penuh)
+const fmtPct = (v: number) => `${v.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+const activeTotal = computed(() => activeData.value.hadir + activeData.value.terlambat + activeData.value.izinSakit + activeData.value.alpa)
+const activeDiff = computed(() => (activePoint.value?.val ?? 0) - 95)
+const tooltipCardStyle = computed(() => {
+  if (!activePoint.value) return {}
+  const leftPct = Math.min(84, Math.max(16, (activePoint.value.x / svgWidth) * 100))
+  const topPct = (activePoint.value.y / svgHeight) * 100
+  return { left: `${leftPct}%`, top: `${topPct}%`, transform: 'translate(-50%, 16px)' }
 })
 
 // Total count for bar chart calculations
@@ -211,31 +212,26 @@ const totalTapCount = computed(() => {
         >
           <defs>
             <linearGradient id="trendGradientSmk" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#1B5FD9" stop-opacity="0.32" />
-              <stop offset="60%" stop-color="#1B5FD9" stop-opacity="0.08" />
+              <stop offset="0%" stop-color="#1B5FD9" stop-opacity="0.18" />
+              <stop offset="60%" stop-color="#1B5FD9" stop-opacity="0.05" />
               <stop offset="100%" stop-color="#1B5FD9" stop-opacity="0.0" />
             </linearGradient>
             <linearGradient id="trendGradientSmp" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#16A34A" stop-opacity="0.32" />
-              <stop offset="60%" stop-color="#16A34A" stop-opacity="0.08" />
+              <stop offset="0%" stop-color="#16A34A" stop-opacity="0.18" />
+              <stop offset="60%" stop-color="#16A34A" stop-opacity="0.05" />
               <stop offset="100%" stop-color="#16A34A" stop-opacity="0.0" />
             </linearGradient>
-            <filter id="shadowFilter" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#101828" flood-opacity="0.16" />
-            </filter>
           </defs>
 
-          <!-- Horizontal Grid Lines (90%, 95%, 100%) -->
+          <!-- Horizontal Grid Lines (skala penuh 10-100%, kelipatan 10) -->
           <g stroke="#E7EBF2" stroke-width="1" stroke-dasharray="3 3">
-            <line :x1="paddingLeft" :y1="getY(100)" :x2="svgWidth - paddingRight" :y2="getY(100)" />
-            <line :x1="paddingLeft" :y1="getY(95)" :x2="svgWidth - paddingRight" :y2="getY(95)" stroke="#12B76A" stroke-width="1.2" />
-            <line :x1="paddingLeft" :y1="getY(90)" :x2="svgWidth - paddingRight" :y2="getY(90)" />
+            <line v-for="tk in yTicks" :key="`grid-${tk}`" :x1="paddingLeft" :y1="getY(tk)" :x2="svgWidth - paddingRight" :y2="getY(tk)" />
           </g>
+          <line :x1="paddingLeft" :y1="getY(95)" :x2="svgWidth - paddingRight" :y2="getY(95)" stroke="#12B76A" stroke-width="1.2" stroke-dasharray="6 5" />
+          <text :x="svgWidth - paddingRight" :y="getY(95) - 6" text-anchor="end" font-size="9.5" fill="#12B76A" font-weight="800">TARGET 95%</text>
 
           <!-- Y-Axis Labels -->
-          <text :x="paddingLeft - 8" :y="getY(100) + 4" text-anchor="end" font-size="10.5" fill="#98A2B3" font-weight="600">100%</text>
-          <text :x="paddingLeft - 8" :y="getY(95) + 4" text-anchor="end" font-size="10.5" fill="#12B76A" font-weight="700">95%</text>
-          <text :x="paddingLeft - 8" :y="getY(90) + 4" text-anchor="end" font-size="10.5" fill="#98A2B3" font-weight="600">90%</text>
+          <text v-for="tk in yTicks" :key="`ylbl-${tk}`" :x="paddingLeft - 8" :y="getY(tk) + 4" text-anchor="end" font-size="10.5" fill="#98A2B3" font-weight="600">{{ tk }}%</text>
 
           <!-- Smooth Gradient Area Fill -->
           <path
@@ -272,7 +268,7 @@ const totalTapCount = computed(() => {
             :d="smoothPathString"
             fill="none"
             :stroke="jenjang === 'smp' ? '#16A34A' : '#1B5FD9'"
-            stroke-width="3"
+            stroke-width="2.2"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
@@ -296,7 +292,7 @@ const totalTapCount = computed(() => {
               v-if="selectedIndex === i"
               :cx="p.x"
               :cy="p.y"
-              r="9"
+              r="8"
               :fill="jenjang === 'smp' ? '#16A34A' : '#1B5FD9'"
               opacity="0.22"
             />
@@ -305,10 +301,10 @@ const totalTapCount = computed(() => {
             <circle
               :cx="p.x"
               :cy="p.y"
-              :r="selectedIndex === i ? '5.5' : '4'"
+              :r="selectedIndex === i ? '4.6' : '3.2'"
               fill="#FFFFFF"
               :stroke="jenjang === 'smp' ? '#16A34A' : '#1B5FD9'"
-              :stroke-width="selectedIndex === i ? '3' : '2.5'"
+              :stroke-width="selectedIndex === i ? '2.6' : '2'"
               class="transition-all"
             />
 
@@ -325,29 +321,25 @@ const totalTapCount = computed(() => {
             />
           </g>
 
-          <!-- Floating Tooltip Pill on Active Point -->
-          <g v-if="activePoint" class="transition-all duration-200 pointer-events-none" filter="url(#shadowFilter)">
-            <rect
-              :x="tooltipX - 32"
-              :y="tooltipY - 14"
-              width="64"
-              height="24"
-              rx="12"
-              fill="#101828"
-            />
-            <text
-              :x="tooltipX"
-              :y="tooltipY + 2.5"
-              text-anchor="middle"
-              font-size="11.5"
-              font-weight="800"
-              fill="#FFFFFF"
-              font-family="monospace"
-            >
-              {{ activePoint.val }}%
-            </text>
-          </g>
         </svg>
+
+        <!-- Tooltip kartu rincian titik aktif -->
+        <div
+          v-if="activePoint"
+          class="absolute z-20 pointer-events-none bg-[#0B1F3A] text-white rounded-xl shadow-2xl border border-[#2A4A8F] px-2.5 py-2 min-w-[152px]"
+          :style="tooltipCardStyle"
+        >
+          <div class="text-[10px] font-extrabold tracking-wider uppercase text-[#9FB3D9]">{{ activeData.dateFull }}</div>
+          <div class="text-[10.5px] text-[#C4D0E4] font-medium mt-0.5">dari {{ activeTotal.toLocaleString('id-ID') }} siswa terdaftar</div>
+          <div class="mt-1.5 flex items-center gap-1.5 text-[11.5px]">
+            <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: jenjang === 'smp' ? '#16A34A' : '#1B5FD9' }" />
+            <span class="text-[#C4D0E4] font-medium flex-1">Presensi {{ jenjang.toUpperCase() }}</span>
+            <b class="font-bold tabular-nums">{{ fmtPct(activePoint.val) }}</b>
+          </div>
+          <div class="mt-1.5 pt-1.5 border-t border-white/10 text-[10.5px] font-bold" :style="{ color: activeDiff >= 0 ? '#7EE2A8' : '#FDA29B' }">
+            {{ activeDiff >= 0 ? '\u25B2' : '\u25BC' }} {{ fmtPct(Math.abs(activeDiff)) }} {{ activeDiff >= 0 ? 'di atas' : 'di bawah' }} target 95%
+          </div>
+        </div>
       </div>
 
       <!-- Active Selected Day Interactive Breakdown Card (Mobile-First 4-Cols) -->

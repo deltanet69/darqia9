@@ -2,7 +2,7 @@
 import AdminLineChart from '~/components/admin/AdminLineChart.vue'
 import AdminDonutChart from '~/components/admin/AdminDonutChart.vue'
 
-defineProps<{
+const props = defineProps<{
   periodLabel: string
   trendLabels: string[]
   trendSeries: Array<{ name: string; color: string; values: number[] }>
@@ -10,6 +10,14 @@ defineProps<{
   totalTeachers: number
   avgPresentRate?: string
 }>()
+
+const guruTooltipFooter = (i: number) => {
+  const tw = props.trendSeries[0]?.values[i]
+  const tl = props.trendSeries[1]?.values[i]
+  if (tw == null || tl == null) return null
+  const total = tw + tl
+  return { text: `Tepat waktu + terlambat = ${total.toLocaleString('id-ID', { maximumFractionDigits: 1 })}% hadir` }
+}
 </script>
 
 <template>
@@ -24,16 +32,6 @@ defineProps<{
           </div>
           <p class="text-xs text-[#667085] mt-0.5">Tingkat kehadiran tepat waktu vs terlambat ({{ periodLabel }})</p>
         </div>
-        <div class="flex items-center gap-4 text-xs font-bold">
-          <div class="flex items-center gap-1.5">
-            <span class="w-3 h-1.5 rounded-full bg-[#10B981]" />
-            <span class="text-[#475467]">Tepat Waktu</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="w-3 h-1.5 rounded-full bg-[#F59E0B]" />
-            <span class="text-[#475467]">Terlambat</span>
-          </div>
-        </div>
       </div>
 
       <!-- Line Chart Component -->
@@ -42,6 +40,13 @@ defineProps<{
           :labels="trendLabels"
           :series="trendSeries"
           :y-format="(v) => `${Math.round(v)}%`"
+          :y-min="0"
+          :y-max="100"
+          :y-step="10"
+          legend
+          :tooltip-title="(i) => `${trendLabels[i] ?? ''} — Presensi Guru`"
+          :tooltip-sub="() => `dari ${totalTeachers} guru & tendik`"
+          :tooltip-footer="guruTooltipFooter"
         />
       </div>
 

@@ -58,6 +58,14 @@ const chartSeries = [
   { name: 'Rata-rata Nilai', color: '#1B5FD9', values: [84.2, 82.8, 85.1, 81.5, 86.4, 83.7, 85.5, 83.2, 86.9, 84.6, 88.3, 85.8] }
 ]
 
+const rombelTooltipFooter = (i: number) => {
+  const hadir = chartSeries[0]?.values[i]
+  const nilai = chartSeries[1]?.values[i]
+  if (hadir == null || nilai == null) return null
+  const gap = hadir - nilai
+  return { text: `Selisih kehadiran \u2212 nilai: ${gap.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} poin`, color: '#9FB3D9' }
+}
+
 // Donut Chart Segments (Major & Grade Distribution)
 const donutSegments = [
   { label: 'RPL (SMK)', value: 140, color: '#1B5FD9' },
@@ -146,16 +154,6 @@ const gradeGroupSummary = [
             </div>
             <p class="text-[11.5px] text-[#667085] mt-0.5">Komparasi performa kehadiran vs capaian akademik antar kelas</p>
           </div>
-          <div class="flex items-center gap-4 text-xs font-bold">
-            <div class="flex items-center gap-1.5">
-              <span class="w-3 h-1.5 rounded-full bg-[#10B981]" />
-              <span class="text-[#475467]">Kehadiran (%)</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="w-3 h-1.5 rounded-full bg-[#1B5FD9]" />
-              <span class="text-[#475467]">Rata-rata Nilai</span>
-            </div>
-          </div>
         </div>
 
         <!-- Line Chart Component -->
@@ -164,6 +162,13 @@ const gradeGroupSummary = [
             :labels="chartLabels"
             :series="chartSeries"
             :y-format="(v) => `${Math.round(v)}`"
+            :y-min="0"
+            :y-max="100"
+            :y-step="10"
+            legend
+            :tooltip-title="(i) => `Rombel ${chartLabels[i] ?? ''}`"
+            :tooltip-sub="() => 'Kehadiran semester berjalan'"
+            :tooltip-footer="rombelTooltipFooter"
           />
         </div>
 
