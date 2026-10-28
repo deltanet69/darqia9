@@ -1,24 +1,53 @@
-/* ============================================================
-   Dark Navy — AdminV2 (Darqia 9)
-   Pemetaan ulang palet terang komponen AdminV2 ke Dark Navy.
-   HANYA warna yang berubah: layout, ukuran, teks, dan fungsi
-   tetap persis seperti tema terang.
-   Aktif hanya saat <html data-theme="dark"> — atribut itu hanya
-   dipasang di halaman /adminV2 (plugin admin-theme +
-   useAdminTheme), halaman publik tidak ikut berubah.
-   Warna merek (biru #1B5FD9, hijau SMP, gradasi jenjang) dan
-   warna panel yang memang selalu gelap TIDAK dipetakan ulang.
-   ============================================================ */
+/* ================================================================
+   DARK NAVY — AdminV2 (Darqia 9) · app/assets/css/admin-dark.css
+   ================================================================
+   PETA FILE — mau edit bagian apa, ubah di seksi mana:
 
+     SEKSI 1  FONDASI ............ latar halaman & scrollbar
+     SEKSI 2  KARTU & PANEL ...... permukaan utama (kartu, header,
+                                   popover, kotak abu lembut)
+     SEKSI 3  LATAR LEMBUT ....... chip, lencana status, kotak info
+              BERWARNA             (biru / hijau / merah / kuning /
+                                   ungu / pink versi gelapnya)
+     SEKSI 4  PILL JENJANG ....... isi tombol SMP/SMK saat aktif
+     SEKSI 5  TEKS ............... warna tulisan (utama, sekunder,
+                                   redup, dan teks berwarna)
+     SEKSI 6  GARIS TEPI ......... border kartu, pembagi tabel,
+                                   garis cincin fokus
+     SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
+
+   CARA EDIT:
+   - Ubah HANYA hex di sisi kanan (di dalam { ... }) — itu warna
+     gelap penggantinya. Sisi kiri adalah kelas warna terang asli
+     dari komponen; jangan diubah, nanti pemetaannya hilang.
+   - Satu aturan bisa menampung banyak kelas sekaligus (dipisah
+     koma) karena semuanya diganti ke warna gelap yang sama.
+   - Warna merek TIDAK dipetakan di sini dan tidak berubah:
+     biru #1B5FD9, hijau SMP, gradasi jenjang, dan panel yang
+     memang selalu gelap sejak tema terang.
+   - File ini aktif hanya saat <html data-theme="dark"> (halaman
+     /adminV2 saja — lihat useAdminTheme & plugin admin-theme).
+   ================================================================ */
+
+
+/* ================================================================
+   SEKSI 1 — FONDASI
+   Latar halaman keseluruhan + scrollbar. Ini kenop paling global:
+   kalau tema terasa terlalu gelap / terlalu biru, mulai dari sini.
+   ================================================================ */
+
+/* Kontrol bawaan browser (scrollbar, input tanggal, dll) ikut gelap */
 html[data-theme="dark"] {
   color-scheme: dark;
 }
 
+/* LATAR HALAMAN — warna di belakang semua kartu */
 html[data-theme="dark"] body {
   background-color: #050C1D;
   color: #E9EFFA;
 }
 
+/* Scrollbar halaman */
 html[data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: #22345C;
   border: 2px solid transparent;
@@ -30,14 +59,24 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
   background-clip: padding-box;
 }
 
-/* ---------- Permukaan terang → permukaan Dark Navy ---------- */
+
+/* ================================================================
+   SEKSI 2 — KARTU & PANEL (permukaan utama)
+   Warna isian kartu, panel, header, popover, dan kotak abu lembut
+   (latar ikon, baris bergantian, jalur progres, dll).
+   ================================================================ */
+
+/* KARTU UTAMA — hampir semua kartu & panel memakai ini */
 html[data-theme="dark"] .bg-white,
 html[data-theme="dark"] .bg-\[\#FFFFFF\] { background-color: #0A1830; }
+
+/* Permukaan melayang tembus pandang — header atas & popover */
 html[data-theme="dark"] .bg-white\/95 { background-color: rgba(6, 13, 29, 0.95); }
 html[data-theme="dark"] .bg-white\/90 { background-color: rgba(6, 13, 29, 0.9); }
 html[data-theme="dark"] .bg-white\/85 { background-color: rgba(6, 13, 29, 0.85); }
 html[data-theme="dark"] .bg-white\/60 { background-color: rgba(10, 24, 48, 0.6); }
 
+/* KOTAK ABU LEMBUT — latar ikon, sel tabel bergantian, panel sekunder */
 html[data-theme="dark"] .bg-\[\#F8FAFC\],
 html[data-theme="dark"] .bg-\[\#F8FAFD\],
 html[data-theme="dark"] .bg-\[\#F2F4F7\],
@@ -69,6 +108,10 @@ html[data-theme="dark"] .bg-\[\#FAFCFE\],
 html[data-theme="dark"] .bg-slate-50,
 html[data-theme="dark"] .bg-slate-100 { background-color: #0C1E3A; }
 
+/* Kotak abu yang sama persis, khusus varian abu paling sering dipakai */
+html[data-theme="dark"] .bg-\[\#EFF2F7\] { background-color: #0C1E3A; }
+
+/* HOVER kotak abu — baris menu & baris tabel saat kursor lewat */
 html[data-theme="dark"] .hover\:bg-\[\#F8FAFC\]:hover,
 html[data-theme="dark"] .hover\:bg-\[\#F8FAFD\]:hover,
 html[data-theme="dark"] .hover\:bg-\[\#F3F5F9\]:hover,
@@ -76,8 +119,11 @@ html[data-theme="dark"] .hover\:bg-\[\#F2F4F7\]:hover,
 html[data-theme="dark"] .hover\:bg-\[\#F1F5F9\]:hover,
 html[data-theme="dark"] .hover\:bg-\[\#EFF2F7\]:hover { background-color: #12294D; }
 
-html[data-theme="dark"] .bg-\[\#EFF2F7\] { background-color: #0C1E3A; }
+/* Jalur progres & trek abu kebiruan */
 html[data-theme="dark"] .bg-\[\#E2E8F0\] { background-color: #1C3560; }
+
+/* Permukaan yang di tema terang sudah gelap (tombol hitam, pill aktif,
+   panel ringkasan) — dibuat selangkah lebih terang dari kartu */
 html[data-theme="dark"] .bg-slate-800,
 html[data-theme="dark"] .bg-slate-900 { background-color: #22345C; }
 html[data-theme="dark"] .bg-slate-950 { background-color: #0A1830; }
@@ -85,7 +131,15 @@ html[data-theme="dark"] .bg-\[\#101828\] { background-color: #22345C; }
 html[data-theme="dark"] .bg-\[\#1E293B\] { background-color: #22345C; }
 html[data-theme="dark"] .hover\:bg-\[\#1E293B\]:hover { background-color: #2C4470; }
 
-/* ---------- Permukaan lembut berwarna ---------- */
+
+/* ================================================================
+   SEKSI 3 — LATAR LEMBUT BERWARNA
+   Versi gelap dari latar pucat berwarna: latar chip & lencana
+   status, kotak info, kotak peringatan, ubin ikon berwarna.
+   Urutan: biru → sian → hijau → merah → kuning → ungu → pink.
+   ================================================================ */
+
+/* — Biru lembut: chip info, ubin ikon biru, sel terpilih — */
 html[data-theme="dark"] .bg-\[\#E8F0FE\],
 html[data-theme="dark"] .bg-\[\#EFF4FF\],
 html[data-theme="dark"] .bg-\[\#EFF6FF\],
@@ -101,9 +155,12 @@ html[data-theme="dark"] .bg-\[\#D6E6FF\],
 html[data-theme="dark"] .bg-\[\#D6E4FA\] { background-color: #12294D; }
 html[data-theme="dark"] .hover\:bg-\[\#E8F0FE\]:hover,
 html[data-theme="dark"] .hover\:bg-\[\#EFF4FF\]:hover { background-color: #1A3560; }
+
+/* — Sian lembut — */
 html[data-theme="dark"] .bg-\[\#E0F2FE\],
 html[data-theme="dark"] .bg-\[\#ECFEFF\] { background-color: #0B2B3A; }
 
+/* — Hijau lembut: lencana sukses/aktif, kotak berhasil — */
 html[data-theme="dark"] .bg-\[\#E7F6ED\],
 html[data-theme="dark"] .bg-\[\#E7F8F0\],
 html[data-theme="dark"] .bg-\[\#ECFDF5\],
@@ -117,6 +174,7 @@ html[data-theme="dark"] .bg-\[\#D1FAE5\],
 html[data-theme="dark"] .bg-\[\#DCFCE7\] { background-color: #0E2A20; }
 html[data-theme="dark"] .hover\:bg-\[\#E7F6ED\]:hover { background-color: #123527; }
 
+/* — Merah lembut: kotak galat, peringatan anti-cheat, lencana gagal — */
 html[data-theme="dark"] .bg-\[\#FDECEA\],
 html[data-theme="dark"] .bg-\[\#FEF3F2\],
 html[data-theme="dark"] .bg-\[\#FFF1F2\],
@@ -126,6 +184,7 @@ html[data-theme="dark"] .bg-\[\#FFF5F5\],
 html[data-theme="dark"] .bg-\[\#FEF4F4\] { background-color: #33130F; }
 html[data-theme="dark"] .hover\:bg-\[\#FDECEA\]:hover { background-color: #421A14; }
 
+/* — Kuning/oranye lembut: kotak peringatan, lencana menunggu — */
 html[data-theme="dark"] .bg-\[\#FEF4E5\],
 html[data-theme="dark"] .bg-\[\#FFFBEB\],
 html[data-theme="dark"] .bg-\[\#FFFAEB\],
@@ -135,18 +194,38 @@ html[data-theme="dark"] .bg-\[\#FFF4ED\],
 html[data-theme="dark"] .bg-\[\#FFF7ED\],
 html[data-theme="dark"] .bg-\[\#FEF6EE\] { background-color: #2E2108; }
 
+/* — Ungu lembut: lencana Esai/Interaktif & kategori ungu — */
 html[data-theme="dark"] .bg-\[\#F5F3FF\],
 html[data-theme="dark"] .bg-\[\#F4F3FF\],
 html[data-theme="dark"] .bg-\[\#F1EAFF\] { background-color: #221238; }
+
+/* — Pink lembut — */
 html[data-theme="dark"] .bg-\[\#FDF2FA\],
 html[data-theme="dark"] .bg-\[\#FCE8F3\] { background-color: #33102A; }
 
-/* Isi jenjang aktif tetap berwarna tegas di tema gelap */
+
+/* ================================================================
+   SEKSI 4 — PILL JENJANG AKTIF
+   Isi tombol pengalih SMP/SMK saat terpilih (di header). Di tema
+   gelap dibuat berwarna tegas supaya status aktif tetap jelas.
+   ================================================================ */
+
+/* SMK aktif (semula navy pekat) */
 html[data-theme="dark"] .bg-\[\#0A2A5C\] { background-color: #1B5FD9; }
+
+/* SMP aktif (semula hijau pekat) */
 html[data-theme="dark"] .bg-\[\#14532D\],
 html[data-theme="dark"] .bg-\[\#166534\] { background-color: #16A34A; }
 
-/* ---------- Teks gelap → teks terang ---------- */
+
+/* ================================================================
+   SEKSI 5 — TEKS
+   Warna tulisan. 5A netral (paling sering dipakai), lalu teks
+   berwarna per rumpun warna.
+   ================================================================ */
+
+/* — 5A · Teks netral — */
+/* Judul & teks utama */
 html[data-theme="dark"] .text-\[\#101828\],
 html[data-theme="dark"] .text-\[\#1D2939\],
 html[data-theme="dark"] .text-\[\#0F172A\],
@@ -154,23 +233,28 @@ html[data-theme="dark"] .text-\[\#0C111D\],
 html[data-theme="dark"] .text-slate-900,
 html[data-theme="dark"] .text-slate-950 { color: #E9EFFA; }
 html[data-theme="dark"] .hover\:text-\[\#101828\]:hover { color: #E9EFFA; }
+/* Teks penegas (label, subjudul) */
 html[data-theme="dark"] .text-\[\#344054\],
 html[data-theme="dark"] .text-slate-800 { color: #C4D0E4; }
+/* Teks menengah */
 html[data-theme="dark"] .text-\[\#475467\],
 html[data-theme="dark"] .text-\[\#334155\],
 html[data-theme="dark"] .text-slate-700 { color: #A8BAD6; }
+/* Teks sekunder (deskripsi, keterangan) */
 html[data-theme="dark"] .text-\[\#667085\],
 html[data-theme="dark"] .text-slate-600 { color: #93A5C4; }
 html[data-theme="dark"] .text-\[\#64748B\],
 html[data-theme="dark"] .text-slate-500 { color: #8CA3C7; }
+/* Teks redup (petunjuk, ikon samar, placeholder) */
 html[data-theme="dark"] .text-\[\#98A2B3\],
 html[data-theme="dark"] .text-\[\#94A3B8\],
 html[data-theme="dark"] .text-slate-400 { color: #5F7396; }
 html[data-theme="dark"] .text-slate-300 { color: #7E93B8; }
 html[data-theme="dark"] .text-slate-200 { color: #A8BAD6; }
+/* Teks bayangan di kolom isian */
 html[data-theme="dark"] .placeholder-\[\#98A2B3\]::placeholder { color: #5F7396; }
 
-/* Teks biru/navy → biru terang */
+/* — 5B · Teks biru: tautan, aksen navy, status informasi — */
 html[data-theme="dark"] .text-\[\#0A2A5C\] { color: #B9D2FB; }
 html[data-theme="dark"] .hover\:text-\[\#0A2A5C\]:hover { color: #B9D2FB; }
 html[data-theme="dark"] .text-\[\#12459B\],
@@ -187,7 +271,7 @@ html[data-theme="dark"] .text-\[\#2E7CF6\],
 html[data-theme="dark"] .text-\[\#3B82F6\] { color: #5B96F5; }
 html[data-theme="dark"] .group:hover .group-hover\:text-\[\#1B5FD9\] { color: #5B96F5; }
 
-/* Teks hijau → hijau terang */
+/* — 5C · Teks hijau: sukses, aktif, lulus KKM — */
 html[data-theme="dark"] .text-\[\#14532D\] { color: #A7EBCB; }
 html[data-theme="dark"] .text-\[\#166534\],
 html[data-theme="dark"] .text-\[\#16A34A\],
@@ -205,7 +289,7 @@ html[data-theme="dark"] .text-\[\#10B981\],
 html[data-theme="dark"] .text-\[\#065F46\],
 html[data-theme="dark"] .text-\[\#064E3B\] { color: #34D399; }
 
-/* Teks merah → merah terang */
+/* — 5D · Teks merah & pink: galat, pelanggaran, hapus — */
 html[data-theme="dark"] .text-\[\#B42318\],
 html[data-theme="dark"] .text-\[\#C43232\],
 html[data-theme="dark"] .text-\[\#D92D20\],
@@ -220,7 +304,7 @@ html[data-theme="dark"] .text-\[\#881337\] { color: #FB7185; }
 html[data-theme="dark"] .text-\[\#C11574\],
 html[data-theme="dark"] .text-\[\#A91E4E\] { color: #F472B6; }
 
-/* Teks kuning/oranye → kuning terang */
+/* — 5E · Teks kuning/oranye: peringatan, menunggu, Interaktif — */
 html[data-theme="dark"] .text-\[\#B54708\],
 html[data-theme="dark"] .text-\[\#AD6504\],
 html[data-theme="dark"] .text-\[\#D97706\],
@@ -236,7 +320,7 @@ html[data-theme="dark"] .text-\[\#78350F\] { color: #F5B74B; }
 html[data-theme="dark"] .text-\[\#C2410C\],
 html[data-theme="dark"] .text-\[\#B93815\] { color: #FB923C; }
 
-/* Teks ungu & sian */
+/* — 5F · Teks ungu, indigo & sian — */
 html[data-theme="dark"] .text-\[\#6941C6\],
 html[data-theme="dark"] .text-\[\#7F56D9\] { color: #B79CFF; }
 html[data-theme="dark"] .text-\[\#7C3AED\],
@@ -255,16 +339,25 @@ html[data-theme="dark"] .text-\[\#0C4A6E\] { color: #38BDF8; }
 html[data-theme="dark"] .text-\[\#0E9384\],
 html[data-theme="dark"] .text-\[\#155E6B\] { color: #2DD4BF; }
 
-/* ---------- Garis tepi & pembagi ---------- */
+
+/* ================================================================
+   SEKSI 6 — GARIS TEPI & PEMBAGI
+   Border kartu/panel/modal, garis pembagi baris tabel (divide),
+   dan cincin fokus. Urutan: netral → biru → status berwarna.
+   ================================================================ */
+
+/* — Netral: border kartu & panel (yang paling dominan) — */
 html[data-theme="dark"] .border-\[\#E7EBF2\],
 html[data-theme="dark"] .border-\[\#EFF2F7\],
 html[data-theme="dark"] .border-\[\#EAECF0\],
 html[data-theme="dark"] .border-\[\#E4E7EC\],
 html[data-theme="dark"] .border-slate-200 { border-color: #1C3560; }
+/* Pembagi baris (daftar & tabel) */
 html[data-theme="dark"] .divide-\[\#E7EBF2\] > :not([hidden]) ~ :not([hidden]) { border-color: #1C3560; }
 html[data-theme="dark"] .divide-\[\#EFF2F7\] > :not([hidden]) ~ :not([hidden]),
 html[data-theme="dark"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #16294D; }
 html[data-theme="dark"] .border-slate-100 { border-color: #16294D; }
+/* Border yang sedikit lebih tegas */
 html[data-theme="dark"] .border-\[\#E2E8F0\],
 html[data-theme="dark"] .border-\[\#CBD5E1\],
 html[data-theme="dark"] .border-\[\#CBD5E3\],
@@ -273,8 +366,10 @@ html[data-theme="dark"] .border-\[\#D8DEE9\],
 html[data-theme="dark"] .border-slate-300,
 html[data-theme="dark"] .border-slate-700 { border-color: #22345C; }
 html[data-theme="dark"] .border-\[\#D0D5DD\] { border-color: #2A3D63; }
+/* Cincin fokus avatar & elemen melingkar */
 html[data-theme="dark"] .ring-\[\#E7EBF2\] { --tw-ring-color: #1C3560; }
 
+/* — Biru: border chip & kartu bernuansa biru — */
 html[data-theme="dark"] .border-\[\#BFDBFE\],
 html[data-theme="dark"] .border-\[\#D1E0FF\],
 html[data-theme="dark"] .border-\[\#BCD2F7\],
@@ -286,6 +381,7 @@ html[data-theme="dark"] .border-\[\#C5D9F6\],
 html[data-theme="dark"] .border-\[\#C7D5EE\] { border-color: #22386B; }
 html[data-theme="dark"] .border-\[\#B2CCFF\] { border-color: #2A4A8F; }
 
+/* — Status: border kotak galat / sukses / peringatan / ungu — */
 html[data-theme="dark"] .border-\[\#F5C6C0\],
 html[data-theme="dark"] .border-\[\#F8D3CE\],
 html[data-theme="dark"] .border-\[\#FECDCA\],
@@ -303,6 +399,12 @@ html[data-theme="dark"] .border-\[\#F2D492\] { border-color: #6B4E12; }
 html[data-theme="dark"] .border-\[\#DDD6FE\],
 html[data-theme="dark"] .border-\[\#D9D6FE\] { border-color: #3B2A6B; }
 
-/* Bayangan kartu dilembutkan di latar gelap */
+
+/* ================================================================
+   SEKSI 7 — BAYANGAN
+   Bayangan kartu dilembutkan supaya tidak jadi noda terang
+   di atas latar gelap.
+   ================================================================ */
+
 html[data-theme="dark"] .shadow-xs,
 html[data-theme="dark"] .shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
