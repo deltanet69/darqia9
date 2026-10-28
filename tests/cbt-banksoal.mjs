@@ -137,8 +137,10 @@ vm.moveQuestion(1, -1)
 assert.deepEqual([...vm.selectedQuestionIds.value], [ids[2], ids[0]])
 vm.newExam.value.name = 'Ujian uji'
 await vm.saveSchedule()
-assert.equal(calls.at(-1).name, 'save_assessment_exam')
-assert.deepEqual([...calls.at(-1).args.question_ids], [ids[2], ids[0]])
+const saveCall = calls.filter(call => call.name === 'save_assessment_exam').at(-1)
+assert.deepEqual([...saveCall.args.question_ids], [ids[2], ids[0]])
+assert.equal(saveCall.args.source, 'cbt')
+assert.equal(calls.at(-1).name, 'issue_exam_tokens', 'Token peserta diterbitkan tepat setelah ujian disimpan')
 assert.equal(calls.at(-1).args.source, 'cbt')
 states.get('cbt-bank-packages').value = [bank]
 vm.newExam.value.questionBankId = bankId
@@ -174,7 +176,9 @@ daily.subjects.value = [{ id: subjectId, grade: 'SMK' }]
 daily.bankPackages.value = [bank]
 tablesRead.length = 0
 await daily.saveExam({ name: 'Ujian harian uji', classId, subjectId, questionBankId: bankId, questionIds: [ids[0]], startsAt: new Date().toISOString(), duration: 30 })
-assert.equal(calls.at(-1).args.source, 'ujian_harian')
+assert.equal(calls.filter(call => call.name === 'save_assessment_exam').at(-1).args.source, 'ujian_harian')
+assert.equal(calls.at(-1).name, 'issue_exam_tokens')
+assert.equal(calls.at(-1).args.source, 'ujian_harian', 'Token peserta ujian harian diterbitkan dari sumber yang sama')
 assert.ok(tablesRead.includes('ujian_harian_banks'))
 assert.ok(tablesRead.includes('ujian_harian'))
 assert.ok(!tablesRead.includes('question_banks'))
@@ -408,7 +412,20 @@ for (const name of ['matematika', 'fisika', 'biologi', 'arab']) {
   fs.writeFileSync(path.join(folder, `${name}-render.html`), '<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bukti render '+name+'</title>'+cssLinks+'<link rel="stylesheet" href="../../node_modules/katex/dist/katex.min.css"><style>'+componentStyles+'</style><body><h1>Editor</h1>'+editor+'<h1>Aplikasi siswa</h1>'+student+'</body></html>')
   evidence.push({ name, status: 'LULUS SSR', formula: result.containsFormula, rtl: result.isRtl })
 }
+// Token per siswa: migrasi 0017 mengikat token ke assignment siswa (bukan kode
+// bersama ujian), gerbang eligible di students, dan login mencocokkan token pribadi.
+const migration17 = fs.readFileSync(path.join(root, 'supabase/migrations/0017_token_peserta.sql'), 'utf8')
+for (const needle of ['access_token', 'exam_eligible', 'issue_exam_tokens', 'issue_student_token', 'regenerate_exam_token', 'generate_student_token'])
+  assert.ok(migration17.includes(needle), `Migrasi 0017 memuat ${needle}`)
+assert.ok(migration17.includes('a.access_token = upper($2)'), 'Login siswa mencocokkan token pribadi pada assignment')
+assert.ok(!migration17.includes('where code ='), 'Kode bersama ujian tidak lagi menjadi kredensial masuk')
+const examsSource = fs.readFileSync(path.join(root, 'app/components/adminV2/cbt/CbtV2Exams.vue'), 'utf8')
+assert.ok(examsSource.includes('CbtV2ExamTokens') && examsSource.includes('Token Peserta'), 'Daftar Ujian membuka panel Token Peserta per ujian')
+const tokensSource = fs.readFileSync(path.join(root, 'app/components/adminV2/cbt/CbtV2ExamTokens.vue'), 'utf8')
+for (const needle of ['loadExamParticipants', 'issueExamTokens', 'regenerateStudentToken', 'setStudentExamEligible', 'Export Excel', 'Cetak Kartu Ujian'])
+  assert.ok(tokensSource.includes(needle), `Panel token memuat ${needle}`)
+
 await nextTick()
-const summary = { parser: 'LULUS', retryDanPenolakanRumusInvalid: 'LULUS (penyedia tiruan)', ocrIndependenDanHasilKedaluwarsa: 'LULUS (penyedia tiruan)', daftarBankDanPemisahanJenjang: 'LULUS (Supabase tiruan + SSR)', opsiPilihanGanda: 'LULUS SMP 4 / SMK 5', templateDanImpor: 'LULUS SMP/SMK', pemilihanUrutanDanRpc: 'LULUS (Supabase tiruan)', pemuatanSiswa: 'LULUS (respons server tiruan)', pemisahanSumber: 'LULUS (Supabase tiruan)', monitoringDanDataKosong: 'LULUS (Supabase tiruan + SSR)', kompatibilitasLama: 'LULUS', formulir: 'LULUS', evidence }
+const summary = { parser: 'LULUS', retryDanPenolakanRumusInvalid: 'LULUS (penyedia tiruan)', ocrIndependenDanHasilKedaluwarsa: 'LULUS (penyedia tiruan)', daftarBankDanPemisahanJenjang: 'LULUS (Supabase tiruan + SSR)', opsiPilihanGanda: 'LULUS SMP 4 / SMK 5', templateDanImpor: 'LULUS SMP/SMK', pemilihanUrutanDanRpc: 'LULUS (Supabase tiruan)', pemuatanSiswa: 'LULUS (respons server tiruan)', pemisahanSumber: 'LULUS (Supabase tiruan)', monitoringDanDataKosong: 'LULUS (Supabase tiruan + SSR)', kompatibilitasLama: 'LULUS', formulir: 'LULUS', tokenPerSiswa: 'LULUS (migrasi 0017 + Supabase tiruan)', evidence }
 fs.writeFileSync(path.join(folder, 'hasil-uji.json'), JSON.stringify(summary, null, 2))
 console.log(JSON.stringify(summary, null, 2))

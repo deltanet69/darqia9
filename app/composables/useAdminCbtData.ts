@@ -36,6 +36,18 @@ export interface CbtSubject {
   kkm: number
 }
 
+export interface ExamParticipant {
+  studentId: string
+  name: string
+  nis: string
+  classroom: string
+  eligible: boolean
+  assignmentId?: string
+  assignmentStatus?: string
+  token?: string
+  tokenIssuedAt?: string
+}
+
 export interface CbtExamInput {
   id?: string
   name: string
@@ -433,12 +445,18 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       updated_at: new Date().toISOString()
     }
 
-    const { error: saveError } = await client.rpc('save_assessment_exam', {
+    const { data: savedExamId, error: saveError } = await client.rpc('save_assessment_exam', {
       source,
       exam_data: payload,
       question_ids: input.questionIds
     })
     if (saveError) throw new Error(saveError.message)
+    // Token peserta diterbitkan otomatis untuk siswa yang eligible. Kegagalan di
+    // sini (misalnya migrasi 0017 belum diterapkan) tidak membatalkan penyimpanan
+    // ujian; token tetap dapat diterbitkan dari panel Token Peserta.
+    if (typeof savedExamId === 'string' && savedExamId) {
+      try { await client.rpc('issue_exam_tokens', { target_exam_id: savedExamId, source }) } catch { /* diabaikan */ }
+    }
     await load(true)
     return token
   }
@@ -447,6 +465,55 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const { error: deleteError } = await client.from(tables.exams).delete().eq('id', id)
     if (deleteError) throw deleteError
     await load(true)
+  }
+
+  const loadExamParticipants = async (examId: string): Promise<ExamParticipant[]> => {
+    const exam = exams.value.find(item => item.id === examId)
+    if (!exam?.classId) throw new Error('Ujian tidak ditemukan.')
+    const [studentResult, assignmentResult] = await Promise.all([
+      client.from('students').select('id, nis, name, exam_eligible').eq('class_id', exam.classId).eq('active', true).order('name'),
+      client.from(tables.assignments).select('id, student_id, status, access_token, token_issued_at').eq('exam_id', examId)
+    ])
+    if (studentResult.error) throw new Error(studentResult.error.message)
+    if (assignmentResult.error) throw new Error(assignmentResult.error.message)
+    const byStudent = new Map((assignmentResult.data ?? []).map((row: any) => [row.student_id, row]))
+    return (studentResult.data ?? []).map((row: any) => {
+      const assignment: any = byStudent.get(row.id)
+      return {
+        studentId: row.id,
+        name: row.name,
+        nis: row.nis || '',
+        classroom: exam.classroom,
+        eligible: row.exam_eligible !== false,
+        assignmentId: assignment?.id,
+        assignmentStatus: assignment?.status,
+        token: assignment?.access_token || undefined,
+        tokenIssuedAt: assignment?.token_issued_at || undefined
+      } as ExamParticipant
+    })
+  }
+
+  const issueExamTokens = async (examId: string) => {
+    const { data, error: rpcError } = await client.rpc('issue_exam_tokens', { target_exam_id: examId, source })
+    if (rpcError) throw new Error(rpcError.message)
+    return typeof data === 'number' ? data : 0
+  }
+
+  const issueStudentToken = async (examId: string, studentId: string) => {
+    const { data, error: rpcError } = await client.rpc('issue_student_token', { target_exam_id: examId, target_student_id: studentId, source })
+    if (rpcError) throw new Error(rpcError.message)
+    return typeof data === 'string' ? data : ''
+  }
+
+  const regenerateStudentToken = async (assignmentId: string) => {
+    const { data, error: rpcError } = await client.rpc('regenerate_exam_token', { target_assignment_id: assignmentId, source })
+    if (rpcError) throw new Error(rpcError.message)
+    return typeof data === 'string' ? data : ''
+  }
+
+  const setStudentExamEligible = async (studentId: string, eligible: boolean) => {
+    const { error: updateError } = await client.from('students').update({ exam_eligible: eligible }).eq('id', studentId)
+    if (updateError) throw new Error(updateError.message)
   }
 
   const saveClass = async (input: { id?: string; name: string; grade: GradeType; major: string; room: string; homeroomTeacherId: string }) => {
@@ -510,6 +577,11 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     deleteBankPackage,
     saveExam,
     deleteExam,
+    loadExamParticipants,
+    issueExamTokens,
+    issueStudentToken,
+    regenerateStudentToken,
+    setStudentExamEligible,
     saveClass,
     archiveClass,
     gradeClasses,

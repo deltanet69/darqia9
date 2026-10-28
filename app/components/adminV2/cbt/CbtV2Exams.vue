@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import AdminV2Icon from '../AdminV2Icon.vue'
+import CbtV2ExamTokens from './CbtV2ExamTokens.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 
@@ -22,6 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const examView = ref<'list' | 'classes' | 'detail'>('list')
+const tokenExam = ref<ExamItem | null>(null)
 const selectedClass = ref('')
 const isCreateModalOpen = ref(false)
 const scheduleDialog = ref<HTMLElement | null>(null)
@@ -235,14 +237,14 @@ const saveSchedule = async () => {
   }
   isSaving.value = true
   try {
-    const token = await cbtData.saveExam({
+    await cbtData.saveExam({
       ...newExam.value,
       name: newExam.value.name.trim(),
       questionIds: selectedQuestionIds.value,
       token: newExam.value.token || undefined
     })
     isCreateModalOpen.value = false
-    emit('toast', `Ujian berhasil ditayangkan. Token: ${token}`)
+    emit('toast', 'Ujian berhasil ditayangkan. Token peserta diterbitkan untuk siswa yang eligible.')
   } catch (saveError) {
     emit('toast', saveError instanceof Error ? saveError.message : 'Jadwal ujian gagal disimpan.')
   } finally { isSaving.value = false }
@@ -304,7 +306,7 @@ const removeSchedule = async (exam: ExamItem) => {
           <div class="flex items-start justify-between gap-3">
             <div>
               <h3 class="text-base font-extrabold text-[#101828]">{{ e.name }}</h3>
-              <p class="text-xs text-[#667085] mt-0.5">{{ e.subject }} &middot; {{ e.classroom }} &middot; Token <b class="font-mono text-[#0A2A5C]">{{ e.token }}</b></p>
+              <p class="text-xs text-[#667085] mt-0.5">{{ e.subject }} &middot; {{ e.classroom }} &middot; Token per siswa</p>
             </div>
             <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shrink-0" :class="statusKey(e) === 'berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : statusKey(e) === 'siap' ? 'bg-[#E8F0FE] text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#344054]'">{{ statusLabel(e) }}</span>
           </div>
@@ -315,6 +317,7 @@ const removeSchedule = async (exam: ExamItem) => {
             <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Soal</span><b class="text-xs font-bold text-[#101828]">{{ soalLabel(e) }}</b></div>
           </div>
           <div class="flex items-center justify-end gap-3 pt-3 mt-3.5 border-t border-[#E7EBF2]">
+            <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = e">Token Peserta</button>
             <button type="button" class="text-xs font-bold text-[#667085] hover:underline" @click="openDetail(e.classroom)">Detail Rombel</button>
             <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">Ubah</button>
             <button type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">Hapus</button>
@@ -461,7 +464,7 @@ const removeSchedule = async (exam: ExamItem) => {
                 <td class="py-3 px-4">
                   <div class="cell-title font-extrabold text-[#101828]">{{ e.name }}</div>
                   <div class="text-[10.5px] text-[#667085] mt-0.5">
-                    {{ e.subject }} · Token <b class="font-mono text-[#0A2A5C]">{{ e.token }}</b>
+                    {{ e.subject }} · Token per siswa
                   </div>
                 </td>
                 <td class="py-3 px-4">
@@ -488,6 +491,9 @@ const removeSchedule = async (exam: ExamItem) => {
                 </td>
                 <td class="py-3 px-4 text-right">
                   <div class="inline-flex items-center gap-3">
+                    <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = e">
+                      Token Peserta
+                    </button>
                     <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">
                       Ubah
                     </button>
@@ -538,7 +544,7 @@ const removeSchedule = async (exam: ExamItem) => {
           <div class="p-5 space-y-3.5 text-xs">
             <div class="p-3 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] flex items-center gap-2 font-semibold">
               <AdminV2Icon name="cal" :size="16" class="shrink-0" />
-              <span>{{ source === 'ujian_harian' ? 'Bank Soal LMS untuk ujian harian.' : 'Bank Soal CBT untuk PTS/PAS.' }} Token dibuat otomatis.</span>
+              <span>{{ source === 'ujian_harian' ? 'Bank Soal LMS untuk ujian harian.' : 'Bank Soal CBT untuk PTS/PAS.' }} Token peserta dibuat otomatis per siswa yang eligible saat ujian ditayangkan.</span>
             </div>
 
             <div v-if="wizardStep === 1" class="space-y-3.5">
@@ -585,8 +591,8 @@ const removeSchedule = async (exam: ExamItem) => {
                   <input v-model="newExam.startsAt" type="datetime-local" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
                 </div>
                 <div>
-                  <label class="block font-bold text-[#344054] mb-1">Token Ujian</label>
-                  <input :value="newExam.token || 'Dibuat otomatis saat disimpan'" readonly class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#667085] bg-[#F6F8FC] outline-none">
+                  <label class="block font-bold text-[#344054] mb-1">Token Peserta</label>
+                  <input value="Dibuat otomatis per siswa saat ditayangkan" readonly class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#667085] bg-[#F6F8FC] outline-none">
                 </div>
               </div>
               <div>
@@ -673,5 +679,13 @@ const removeSchedule = async (exam: ExamItem) => {
         </div>
       </div>
     </Teleport>
+
+    <CbtV2ExamTokens
+      v-if="tokenExam"
+      :exam="tokenExam"
+      :source="source"
+      @close="tokenExam = null"
+      @toast="emit('toast', $event)"
+    />
   </div>
 </template>
