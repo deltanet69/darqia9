@@ -50,7 +50,7 @@ const ringOffset = computed(() => {
         <!-- Avatar Wrapper -->
         <div class="relative shrink-0 w-[84px]">
           <div
-            class="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-gradient-to-br text-[28px] font-bold tracking-wide text-white shadow-[0_0_0_3px_rgba(255,255,255,0.85),0_10px_22px_rgba(2,6,23,0.35)]"
+            class="profil-v2-avatar flex h-[84px] w-[84px] items-center justify-center rounded-full bg-gradient-to-br text-[28px] font-bold tracking-wide text-white shadow-[0_0_0_3px_rgba(255,255,255,0.85),0_10px_22px_rgba(2,6,23,0.35)]"
             :class="AVATAR_GRADIENTS[themeIdx] || AVATAR_GRADIENTS[0]"
           >
             {{ initials(profile.name) }}

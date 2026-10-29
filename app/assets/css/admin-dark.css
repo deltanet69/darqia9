@@ -776,3 +776,24 @@ html[data-theme="dark"] .profil-v2-hero { background: radial-gradient(560px 260p
 /* Kartu RFID (tab Data Profil) & panel Smartcard (tab Overview):
    ujung gradien biru terang diturunkan agar tidak menyala sendiri. */
 html[data-theme="dark"] .from-\[\#0E2547\].to-\[\#1D4ED8\] { --tw-gradient-from: #0A1C38; --tw-gradient-to: #17479E; }
+
+/* Elemen putih di dalam hero (cincin avatar, chip kaca, pil kontak,
+   garis pemisah) diredupkan ke slate agar tidak menyala sendiri.
+   Terkurung .profil-v2-hero: hero halaman lain tidak ikut berubah,
+   dan teks putih hero (judul/nama) memang dipertahankan. */
+html[data-theme="dark"] .profil-v2-avatar { box-shadow: 0 0 0 3px rgba(147,165,196,.45), 0 10px 22px rgba(2,6,23,.35); }
+html[data-theme="dark"] .profil-v2-hero .border-white\/22 { border-color: rgba(147,165,196,.35); }
+html[data-theme="dark"] .profil-v2-hero .bg-white\/13 { background-color: rgba(255,255,255,.07); }
+html[data-theme="dark"] .profil-v2-hero .border-white\/16 { border-color: rgba(147,165,196,.30); }
+html[data-theme="dark"] .profil-v2-hero .bg-white\/8 { background-color: rgba(255,255,255,.05); }
+html[data-theme="dark"] .profil-v2-hero .hover\:bg-white\/16:hover { background-color: rgba(255,255,255,.10); }
+html[data-theme="dark"] .profil-v2-hero .border-white\/15 { border-color: rgba(147,165,196,.28); }
+html[data-theme="dark"] .profil-v2-hero .border-white\/14 { border-color: rgba(147,165,196,.24); }
+html[data-theme="dark"] .profil-v2-hero .border-white\/25 { border-color: rgba(147,165,196,.35); }
+html[data-theme="dark"] .profil-v2-hero .bg-white\/12 { background-color: rgba(255,255,255,.08); }
+html[data-theme="dark"] .profil-v2-hero .hover\:bg-white\/20:hover { background-color: rgba(255,255,255,.13); }
+html[data-theme="dark"] .profil-v2-hero .border-white\/30 { border-color: rgba(147,165,196,.40); }
+html[data-theme="dark"] .profil-v2-hero .bg-white\/10 { background-color: rgba(255,255,255,.06); }
+html[data-theme="dark"] .profil-v2-hero .border-white { border-color: #93A5C4; }
+html[data-theme="dark"] .profil-v2-hero .ring-white\/50 { --tw-ring-color: rgba(147,165,196,.5); }
+html[data-theme="dark"] .profil-v2-hero .stroke-white\/18 { stroke: #2A3D63; }
