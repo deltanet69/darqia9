@@ -19,6 +19,8 @@
      SEKSI 10 GAYA BAWAAN ....... gaya <style> komponen (Agenda)
      SEKSI 11 HALAMAN PROFIL .... hero, cincin kelengkapan, kartu RFID
      SEKSI 12 KONTEN WEBSITE .... formulir tambah/edit & editor isi
+     SEKSI 13 JADWAL PELAJARAN .. biru-950 & varian tembus pandang
+                                   timetable (Akademik) & Rekap Mengajar
      SEKSI 9  GRAFIK (SVG) ....... garis kisi, sumbu, label grafik
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
 
@@ -836,3 +838,41 @@ html[data-theme="dark"] .konten-form-page dd { color: #E9EFFA; }
 html[data-theme="dark"] .admin-content-editor .tool { border-color: #1C3560; background-color: #12294D; color: #C4D0E4; }
 html[data-theme="dark"] .admin-content-editor .tool:hover,
 html[data-theme="dark"] .admin-content-editor .tool:focus-visible { border-color: #1B5FD9; outline-color: #2A4A8F; }
+
+
+/* ================================================================
+   SEKSI 13 — JADWAL PELAJARAN (Akademik) & REKAP MENGAJAR
+   Komponen jadwal memakai rumpun biru-950 dan beberapa varian
+   tembus pandang yang belum terpetakan di seksi-seksi awal:
+   judul & teks pemilih nyaris tak terbaca, kolom jam dan strip
+   pantau tampil sebagai blok terang, dan garis slate-50
+   menyilaukan. Kelas-kelas ini saat ini hanya dipakai komponen
+   jadwal, jadi penambahannya tidak mengubah halaman lain.
+   ================================================================ */
+
+/* — Teks biru-950/900: judul halaman & kartu, nilai KPI, teks
+      pemilih kelas/guru, chip KKM — setara teks utama & penegas — */
+html[data-theme="dark"] .text-blue-950 { color: #E9EFFA; }
+html[data-theme="dark"] .text-blue-900 { color: #C4D0E4; }
+
+/* — Permukaan biru-950: tab mode aktif & toast — setara permukaan
+      gelap lain (slate-900 / #101828 di Seksi 2) — */
+html[data-theme="dark"] .bg-blue-950 { background-color: #22345C; }
+
+/* — Varian tembus pandang timetable & strip pantau: kolom jam,
+      strip kehadiran hari ini, sel jam yang sedang berlangsung — */
+html[data-theme="dark"] .bg-slate-50\/50 { background-color: rgba(12, 30, 58, 0.5); }
+html[data-theme="dark"] .bg-blue-50\/60 { background-color: rgba(18, 41, 77, 0.6); }
+html[data-theme="dark"] .bg-blue-100\/70 { background-color: rgba(18, 41, 77, 0.7); }
+html[data-theme="dark"] .hover\:bg-blue-50\/60:hover { background-color: rgba(18, 41, 77, 0.6); }
+
+/* — Garis pucat yang belum terpetakan: pembagi slate-50 (baris
+      KKM & rekap), border chip biru-100, chip status 100, cincin
+      sesi live, dan hover border biru-300 — */
+html[data-theme="dark"] .border-slate-50 { border-color: #16294D; }
+html[data-theme="dark"] .border-blue-100 { border-color: #22386B; }
+html[data-theme="dark"] .border-emerald-100 { border-color: #175C3A; }
+html[data-theme="dark"] .border-red-100 { border-color: #5C2A24; }
+html[data-theme="dark"] .border-amber-100 { border-color: #6B4E12; }
+html[data-theme="dark"] .ring-blue-200 { --tw-ring-color: #22386B; }
+html[data-theme="dark"] .hover\:border-blue-300:hover { border-color: #2A4A8F; }
