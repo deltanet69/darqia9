@@ -100,3 +100,6 @@ sulit dibaca di Dark Navy. Hasil diagnosis:
 - Total aturan 185 → 253; selain 6 nilai biru itu, semua aturan lama
   utuh (terverifikasi otomatis). Mode terang tetap nol perubahan.
   Tes exit 0, build exit 0.
+
+## Ronde 4 — Halaman Profil (29 Okt 2026, siang)
+Atas permintaan user agar Profil Saya selaras dengan halaman lain di mode gelap. Tiga akar masalah: (1) jalur cincin Kelengkapan Profil memakai KELAS `stroke-[#EFF2F7]` — pemetaan Seksi 9 hanya menangkap atribut SVG, jadi jalurnya tetap putih; (2) hero profil memakai gradien sebaris yang jauh lebih cerah daripada kartu Dark Navy lain; (3) ujung gradien kartu RFID & panel Smartcard (#1D4ED8) menyala sendiri di atas kartu gelap. Perbaikan = **Seksi 11** baru di `admin-dark.css` (aturan kelas stroke → #1C3560; gradien RFID/Smartcard diturunkan via variabel --tw-gradient; latar hero dipergelap via kelas kait baru `profil-v2-hero` + !important karena latarnya style sebaris) + 1 baris kelas kait di `ProfilV2Hero.vue`. Desain Profil v4 yang terkunci tidak berubah; light mode nol perubahan. Backup `backup/dark-profil-20261029`; tes + build exit 0.
