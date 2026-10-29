@@ -17,6 +17,7 @@
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
      SEKSI 8  FORMULIR & MODAL ... keadaan fokus kolom isian
      SEKSI 10 GAYA BAWAAN ....... gaya <style> komponen (Agenda)
+     SEKSI 11 HALAMAN PROFIL .... hero, cincin kelengkapan, kartu RFID
      SEKSI 9  GRAFIK (SVG) ....... garis kisi, sumbu, label grafik
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
 
@@ -756,3 +757,22 @@ html[data-theme="dark"] .journal-body input,
 html[data-theme="dark"] .journal-body textarea { border-color: #1C3560; background: #0C1E3A; color: #E9EFFA; }
 html[data-theme="dark"] .journal-summary { background: #0C1E3A; color: #93A5C4; }
 
+/* ================================================================
+   SEKSI 11 — HALAMAN PROFIL (Profil Saya)
+   Penyesuaian khusus halaman profil agar selaras dengan kartu
+   gelap halaman lain: hero tidak secerah versi terangnya, jalur
+   cincin kelengkapan tidak putih, dan ujung gradien kartu
+   RFID/Smartcard diturunkan nadanya.
+   ================================================================ */
+
+/* Jalur cincin kelengkapan — kelas stroke Tailwind (bukan atribut SVG) */
+html[data-theme="dark"] .stroke-\[\#EFF2F7\] { stroke: #1C3560; }
+
+/* Hero profil: gradien dipergelap agar senada kartu Dark Navy lain.
+   Latar hero ditulis sebagai style sebaris di komponen, jadi aturan
+   ini memakai kelas kait .profil-v2-hero + !important. */
+html[data-theme="dark"] .profil-v2-hero { background: radial-gradient(560px 260px at 88% -10%, rgba(56,189,248,.14), transparent 60%), radial-gradient(480px 300px at -10% 115%, rgba(29,78,216,.22), transparent 60%), linear-gradient(125deg,#071630 0%,#0A1F3F 55%,#10294F 130%) !important; }
+
+/* Kartu RFID (tab Data Profil) & panel Smartcard (tab Overview):
+   ujung gradien biru terang diturunkan agar tidak menyala sendiri. */
+html[data-theme="dark"] .from-\[\#0E2547\].to-\[\#1D4ED8\] { --tw-gradient-from: #0A1C38; --tw-gradient-to: #17479E; }

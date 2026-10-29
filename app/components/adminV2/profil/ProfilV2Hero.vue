@@ -35,7 +35,7 @@ const ringOffset = computed(() => {
 </script>
 <template>
   <section
-    class="relative overflow-hidden rounded-[22px] p-[22px] text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)] mb-4"
+    class="profil-v2-hero relative overflow-hidden rounded-[22px] p-[22px] text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)] mb-4"
     style="background: radial-gradient(560px 260px at 88% -10%, rgba(56,189,248,.35), transparent 60%), radial-gradient(480px 300px at -10% 115%, rgba(29,78,216,.5), transparent 60%), linear-gradient(125deg,#0B1F3A 0%,#122E57 55%,#1D4ED8 130%);"
   >
     <!-- Highlight overlay -->
