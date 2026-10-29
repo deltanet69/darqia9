@@ -53,11 +53,11 @@ const roster = computed<StudentRosterItem[]>(() => {
   return rosterOf(parsedSession.value.level, parsedSession.value.kelas)
 })
 
-const toggleStudentAlpa = (name: string) => {
-  if (alpaSet.value.has(name)) {
-    alpaSet.value.delete(name)
+const toggleStudentAlpa = (nis: string) => {
+  if (alpaSet.value.has(nis)) {
+    alpaSet.value.delete(nis)
   } else {
-    alpaSet.value.add(name)
+    alpaSet.value.add(nis)
   }
 }
 
@@ -227,10 +227,10 @@ const getInitials = (name: string): string => {
                 :key="stu.nis"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors"
-                :class="alpaSet.has(stu.name)
+                :class="alpaSet.has(stu.nis)
                   ? 'border-[#F04438] bg-[#FEE4E2] text-[#B42318]'
                   : 'border-[#E7EBF2] bg-white text-[#344054] hover:bg-[#F8FAFD]'"
-                @click="toggleStudentAlpa(stu.name)"
+                @click="toggleStudentAlpa(stu.nis)"
               >
                 <span
                   class="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-extrabold"
@@ -240,7 +240,7 @@ const getInitials = (name: string): string => {
                 </span>
                 <span>{{ stu.name }}</span>
                 <span
-                  v-if="alpaSet.has(stu.name)"
+                  v-if="alpaSet.has(stu.nis)"
                   class="ml-0.5 rounded-full bg-[#F04438] px-1.5 py-0.2 text-[9px] font-extrabold text-white"
                 >
                   ALPA

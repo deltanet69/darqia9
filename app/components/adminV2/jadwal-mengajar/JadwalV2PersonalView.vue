@@ -17,7 +17,7 @@ import {
 const props = defineProps<{
   jenjang: Jenjang
   persona: PersonaInfo
-  simDayIdx: DayIndex
+  simDayIdx: number
   simMin: number
   sessions: Record<string, LessonSession>
   extraSchedules: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }>
@@ -100,7 +100,7 @@ const schoolName = computed(() => {
         </div>
         <div class="inline-flex items-center gap-2 rounded-full bg-[#0B1F3A] px-3.5 py-1.5 text-xs font-bold text-white shadow-xs">
           <span class="h-2 w-2 rounded-full bg-[#34D399]" />
-          <span>Simulasi: {{ DAYS[simDayIdx] }}, {{ fmtMin(simMin) }} WIB</span>
+          <span>{{ simDayIdx >= 0 && simDayIdx <= 4 ? DAYS[simDayIdx] + ', ' + fmtMin(simMin) + ' WIB' : 'Akhir Pekan' }}</span>
         </div>
       </div>
     </section>
@@ -150,7 +150,7 @@ const schoolName = computed(() => {
               {{ activeHeroLesson.mapel }}
             </h3>
             <p class="mt-1 text-xs font-semibold text-[#B9CCF5]">
-              Kelas {{ activeHeroLesson.kelas }} &bull; {{ activeHeroLesson.room }} &bull; Jam ke-{{ activeHeroLesson.si + 1 }}
+              Kelas {{ activeHeroLesson.kelas }} &bull; {{ activeHeroLesson.room }} &bull; Jam ke-{{ activeHeroLesson.si + 1 }}{{ activeHeroLesson.siAkhir > activeHeroLesson.si ? '–' + (activeHeroLesson.siAkhir + 1) : '' }}
             </p>
           </div>
 
@@ -158,7 +158,7 @@ const schoolName = computed(() => {
           <div class="flex flex-col items-start gap-3 sm:items-end">
             <div class="text-left sm:text-right">
               <span class="text-xl font-extrabold">{{ fmtMin(slotMin(activeHeroLesson.si)[0]) }}</span>
-              <span class="text-xs font-semibold text-[#B9CCF5]"> s.d. {{ fmtMin(slotMin(activeHeroLesson.si)[1]) }}</span>
+              <span class="text-xs font-semibold text-[#B9CCF5]"> s.d. {{ fmtMin(slotMin(activeHeroLesson.siAkhir)[1]) }}</span>
             </div>
 
             <!-- Tombol Mulai / Akhiri -->
@@ -308,8 +308,8 @@ const schoolName = computed(() => {
               <div class="flex items-start gap-3.5">
                 <div class="flex w-20 shrink-0 flex-col items-center justify-center rounded-xl bg-[#F3F5F9] p-2.5 text-center">
                   <b class="text-xs text-[#101828]">{{ fmtMin(slotMin(l.si)[0]) }}</b>
-                  <span class="text-[10px] font-semibold text-[#667085]">{{ fmtMin(slotMin(l.si)[1]) }}</span>
-                  <span class="mt-0.5 text-[9.5px] font-bold text-[#98A2B3]">Jam ke-{{ l.si + 1 }}</span>
+                  <span class="text-[10px] font-semibold text-[#667085]">{{ fmtMin(slotMin(l.siAkhir)[1]) }}</span>
+                  <span class="mt-0.5 text-[9.5px] font-bold text-[#98A2B3]">Jam ke-{{ l.si + 1 }}{{ l.siAkhir > l.si ? '–' + (l.siAkhir + 1) : '' }}</span>
                 </div>
 
                 <div class="min-w-0">

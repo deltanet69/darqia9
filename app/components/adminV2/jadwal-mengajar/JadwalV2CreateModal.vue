@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import {
   DAYS,
@@ -42,6 +42,16 @@ const form = ref({
   guru: teachersOf(props.jenjang)[0] || '',
   jam: '07:00',
   ket: ''
+})
+
+watch(() => props.isOpen, (terbuka) => {
+  if (!terbuka) return
+  form.value.kelas = props.currentClass || KELAS[props.jenjang][0]?.name || ''
+  form.value.mapel = MAPEL[props.jenjang][0]?.name || ''
+  form.value.guru = teachersOf(props.jenjang)[0] || ''
+  form.value.hari = (props.simDayIdx >= 0 && props.simDayIdx <= 4 ? props.simDayIdx : 0) as DayIndex
+  errorMessage.value = ''
+  isWarningReplace.value = false
 })
 
 const errorMessage = ref('')
@@ -246,7 +256,7 @@ const handleSubmit = (force: boolean = false) => {
         </div>
 
         <p class="text-[11px] font-semibold text-[#667085] leading-relaxed">
-          Pilihan jam awal sesi: 07:00, 07:45, 08:30, 09:30, 10:15, 11:00, 12:30. Sistem secara otomatis mencegah jadwal bentrok guru &amp; rombel.
+          Pilihan jam awal sesi mengikuti pola jam jenjang ini: {{ SLOT_TIMES.map(t => t.split('–')[0]).join(', ') }}. Sistem secara otomatis mencegah jadwal bentrok guru &amp; rombel.
         </p>
 
         <!-- Actions -->

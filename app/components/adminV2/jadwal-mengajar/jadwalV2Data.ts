@@ -1,8 +1,19 @@
+import { reactive } from 'vue'
+
+// ================================================================
+//  Data Jadwal Mengajar v2 — REGISTRY DATA ASLI (bukan demo).
+//  Seluruh isi registry diisi oleh useJadwalMengajar() dari tabel
+//  resmi: classes, subjects, teachers, students, class_schedules,
+//  jadwal_settings, dan teaching_sessions. Fungsi-fungsi di file
+//  ini hanya MEMBACA registry sehingga komponen tampilan tidak
+//  berubah; sumber kebenarannya satu: basis data Darqia.
+// ================================================================
+
 export type DayIndex = 0 | 1 | 2 | 3 | 4
 export type DayName = 'Senin' | 'Selasa' | 'Rabu' | 'Kamis' | 'Jumat'
 export type RoleKey = 'operator' | 'wali' | 'guru' | 'staff'
 export type Jenjang = 'smp' | 'smk'
-export type GuruStatus = 'Hadir' | 'Terlambat' | 'Berlangsung' | 'Terjadwal'
+export type GuruStatus = 'Hadir' | 'Terlambat' | 'Berlangsung' | 'Terjadwal' | 'Tidak Hadir'
 
 export interface ClassMeta {
   name: string
@@ -34,21 +45,25 @@ export interface LessonSlot {
 }
 
 export interface LessonItem {
-  id: string
+  id: string // id baris class_schedules
   level: Jenjang
   kelas: string
   room: string
   di: DayIndex
-  si: number
+  si: number // indeks slot mulai (0 = jam ke-1)
+  siAkhir: number // indeks slot selesai (multi-JP: > si)
   time: string
   mapel: string
   guru: string
   ket?: string
+  classId: string
+  subjectId: string
+  teacherId: string
 }
 
 export interface LessonSession {
   hadir: number
-  alpa: string[]
+  alpa: string[] // daftar NIS siswa alpa
   done: boolean
 }
 
@@ -64,140 +79,140 @@ export interface PersonaInfo {
   kelas?: string
 }
 
+export interface SesiDb {
+  tanggal: string // YYYY-MM-DD (lokal)
+  status: 'belum' | 'berlangsung' | 'selesai' | 'tidak_hadir'
+  startedAt: string | null // ISO timestamptz
+  endedAt: string | null
+  hadir: number | null
+  alpa: string[]
+}
+
+export interface JedaSlot {
+  setelahSi: number // jeda tampil setelah indeks slot ini
+  label: string
+  rentang: string
+}
+
+export interface GuruRingkas {
+  id: string
+  nama: string
+}
+
 export const DAYS: DayName[] = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat']
-export const SLOT_TIMES: string[] = [
-  '07:00–07:45',
-  '07:45–08:30',
-  '08:30–09:15',
-  '09:30–10:15',
-  '10:15–11:00',
-  '11:00–11:45',
-  '12:30–13:15'
-]
 
-export const KELAS: Record<Jenjang, ClassMeta[]> = {
-  smk: [
-    { name: 'X RPL 1', major: 'RPL', room: 'Gedung A · R.101', wali: 'H. Abdul Muiz, S.Pd', nip: '19680512 199803 1 002', boys: 18, girls: 14, att: 96.4, avg: 82.5 },
-    { name: 'X RPL 2', major: 'RPL', room: 'Gedung A · R.102', wali: 'Siti Maryam, S.Pd', nip: '19820314 200801 2 005', boys: 17, girls: 15, att: 95.1, avg: 80.2 },
-    { name: 'X TKJ 1', major: 'TKJ', room: 'Gedung A · R.103', wali: 'Budi Hartono, S.Pd', nip: '19791120 200502 1 008', boys: 20, girls: 12, att: 94.8, avg: 79.6 },
-    { name: 'XI RPL 1', major: 'RPL', room: 'Gedung B · R.201', wali: 'Dewi Sartika, S.Si', nip: '19850608 201001 2 011', boys: 16, girls: 16, att: 93.5, avg: 81.8 },
-    { name: 'XII RPL 1', major: 'RPL', room: 'Gedung B · R.202', wali: 'Agus Setiawan, S.Pd', nip: '19750228 199901 1 004', boys: 15, girls: 15, att: 97.2, avg: 84.1 },
-    { name: 'XII TKJ 1', major: 'TKJ', room: 'Gedung B · R.203', wali: 'Rina Marlina, S.Pd', nip: '19891201 201503 2 009', boys: 19, girls: 13, att: 92.9, avg: 78.4 }
-  ],
-  smp: [
-    { name: 'VII-A', major: '', room: 'Gedung C · R.301', wali: 'Drs. H. Ahmad Yani', nip: '19670115 199203 1 001', boys: 16, girls: 16, att: 97.8, avg: 83.2 },
-    { name: 'VII-B', major: '', room: 'Gedung C · R.302', wali: 'Nina Kurnia, S.Pd', nip: '19880419 201201 2 014', boys: 15, girls: 17, att: 96.9, avg: 81.5 },
-    { name: 'VIII-A', major: '', room: 'Gedung C · R.303', wali: 'Fajar Sidik, S.Pd', nip: '19900123 201801 1 017', boys: 17, girls: 15, att: 95.6, avg: 80.9 },
-    { name: 'VIII-B', major: '', room: 'Gedung D · R.401', wali: 'Wulan Dari, S.Pd', nip: '19920530 201902 2 020', boys: 16, girls: 16, att: 94.2, avg: 79.8 },
-    { name: 'IX-A', major: '', room: 'Gedung D · R.402', wali: 'Hendra Gunawan, S.Pd', nip: '19820817 200701 1 012', boys: 15, girls: 17, att: 96.1, avg: 82.7 },
-    { name: 'IX-B', major: '', room: 'Gedung D · R.403', wali: 'Sri Wahyuni, S.Pd', nip: '19851111 201001 2 016', boys: 16, girls: 16, att: 93.8, avg: 78.9 }
-  ]
+// ---------------- Registry (diisi useJadwalMengajar) ----------------
+
+export const stateV2 = reactive({
+  siap: false,
+  tahunAjaran: '',
+  kelas: { smp: [] as ClassMeta[], smk: [] as ClassMeta[] },
+  mapel: { smp: [] as MapelMeta[], smk: [] as MapelMeta[] },
+  polaSlot: { smp: [] as string[], smk: [] as string[] },
+  polaJeda: { smp: [] as JedaSlot[], smk: [] as JedaSlot[] },
+  pelajaran: [] as LessonItem[],
+  roster: {} as Record<string, StudentRosterItem[]>, // kunci `${level}|${kelas}`
+  sesi: {} as Record<string, SesiDb>, // kunci `${scheduleId}|${tanggal}`
+  guru: { smp: [] as GuruRingkas[], smk: [] as GuruRingkas[] },
+  idKelas: {} as Record<string, string>, // `${level}|${namaKelas}` -> id kelas
+  idMapel: {} as Record<string, string>, // `${level}|${namaMapel}` -> id mapel
+  idGuru: {} as Record<string, string>, // nama guru -> id guru
+  waliDari: {} as Record<string, string> // `${level}|${namaKelas}` -> id guru wali kelas
+})
+
+export const KELAS = stateV2.kelas
+export const MAPEL = stateV2.mapel
+
+// Slot & jeda jenjang yang sedang tampil (ditukar terapkanJenjang)
+export const SLOT_TIMES = reactive<string[]>([])
+export const JEDA = reactive<JedaSlot[]>([])
+
+export const terapkanJenjang = (j: Jenjang) => {
+  SLOT_TIMES.splice(0, SLOT_TIMES.length, ...stateV2.polaSlot[j])
+  JEDA.splice(0, JEDA.length, ...stateV2.polaJeda[j])
 }
 
-export const MAPEL: Record<Jenjang, MapelMeta[]> = {
-  smk: [
-    { code: 'SMK-PAI', name: 'Pendidikan Agama Islam', cat: 'Keagamaan', kkm: 75, hours: 2, coord: 'Ust. H. Mahmud, S.Pd.I' },
-    { code: 'SMK-BIN', name: 'Bahasa Indonesia', cat: 'Umum', kkm: 75, hours: 3, coord: 'Siti Maryam, S.Pd' },
-    { code: 'SMK-MTK', name: 'Matematika Terapan', cat: 'Umum', kkm: 75, hours: 4, coord: 'Budi Hartono, S.Pd' },
-    { code: 'SMK-PBO', name: 'Pemrograman Berorientasi Objek', cat: 'Kejuruan', kkm: 78, hours: 6, coord: 'Andi Wijaya, S.Kom' },
-    { code: 'SMK-BD', name: 'Basis Data', cat: 'Kejuruan', kkm: 78, hours: 4, coord: 'Rina Marlina, S.Kom' },
-    { code: 'SMK-AIJ', name: 'Administrasi Infrastruktur Jaringan', cat: 'Kejuruan', kkm: 78, hours: 6, coord: 'Agus Setiawan, S.T' },
-    { code: 'SMK-PKK', name: 'Produk Kreatif & Kewirausahaan', cat: 'Kejuruan', kkm: 78, hours: 2, coord: 'Dewi Sartika, S.Si' }
-  ],
-  smp: [
-    { code: 'SMP-PAI', name: 'Pendidikan Agama Islam', cat: 'Keagamaan', kkm: 75, hours: 3, coord: 'Ust. H. Mahmud, S.Pd.I' },
-    { code: 'SMP-TAH', name: 'Tahfidz Al-Qur\'an', cat: 'Keagamaan', kkm: 75, hours: 4, coord: 'Ustzh. Fatimah, S.Pd.I' },
-    { code: 'SMP-BIN', name: 'Bahasa Indonesia', cat: 'Umum', kkm: 75, hours: 4, coord: 'Nina Kurnia, S.Pd' },
-    { code: 'SMP-MTK', name: 'Matematika', cat: 'Umum', kkm: 75, hours: 5, coord: 'Fajar Sidik, S.Pd' },
-    { code: 'SMP-IPA', name: 'Ilmu Pengetahuan Alam', cat: 'Umum', kkm: 75, hours: 5, coord: 'Wulan Dari, S.Si' },
-    { code: 'SMP-IPS', name: 'Ilmu Pengetahuan Sosial', cat: 'Umum', kkm: 75, hours: 4, coord: 'Hendra Gunawan, S.Pd' },
-    { code: 'SMP-ING', name: 'Bahasa Inggris', cat: 'Umum', kkm: 75, hours: 3, coord: 'Sri Wahyuni, S.Pd' },
-    { code: 'SMP-INF', name: 'Informatika', cat: 'Muatan Lokal', kkm: 75, hours: 2, coord: 'Andi Wijaya, S.Kom' }
-  ]
+// ---------------- Kunci & tanggal ----------------
+
+export const kunciSesi = (scheduleId: string, tanggal: string): string => `${scheduleId}|${tanggal}`
+
+export const kunciPelajaran = (l: Pick<LessonItem, 'level' | 'kelas' | 'di' | 'si'>): string =>
+  `${l.level}|${l.kelas}|${l.di}|${l.si}`
+
+export const isoTanggalLokal = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+// Indeks hari Senin=0 .. Jumat=4; akhir pekan = -1
+export const diHariIni = (acuan: Date = new Date()): number => {
+  const d = acuan.getDay()
+  return d >= 1 && d <= 5 ? d - 1 : -1
 }
 
-export const PERSONAS: Record<RoleKey, Record<Jenjang, PersonaInfo>> = {
-  operator: {
-    smk: { name: 'Dewi Sartika, S.Si', label: 'Operator / Admin Akademik' },
-    smp: { name: 'Dewi Sartika, S.Si', label: 'Operator / Admin Akademik' }
-  },
-  wali: {
-    smk: { name: 'Agus Setiawan, S.Pd', label: 'Wali Kelas XII RPL 1', kelas: 'XII RPL 1' },
-    smp: { name: 'Fajar Sidik, S.Pd', label: 'Wali Kelas VIII-A', kelas: 'VIII-A' }
-  },
-  guru: {
-    smk: { name: 'Budi Hartono, S.Pd', label: 'Guru Matematika Terapan' },
-    smp: { name: 'Nina Kurnia, S.Pd', label: 'Guru Bahasa Indonesia' }
-  },
-  staff: {
-    smk: { name: 'Tono Wibowo', label: 'Staff Tata Usaha' },
-    smp: { name: 'Tono Wibowo', label: 'Staff Tata Usaha' }
-  }
+// Tanggal (YYYY-MM-DD) dari indeks hari pada minggu berjalan
+export const tanggalDariDi = (di: number, acuan: Date = new Date()): string => {
+  const senin = new Date(acuan)
+  senin.setDate(acuan.getDate() - ((acuan.getDay() + 6) % 7) + di)
+  return isoTanggalLokal(senin)
 }
 
-export const OVERRIDES: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string }> = [
-  { level: 'smk', kelas: 'X TKJ 1', di: 4, si: 0, mapel: 'Matematika Terapan', guru: 'Budi Hartono, S.Pd' },
-  { level: 'smk', kelas: 'XII TKJ 1', di: 4, si: 2, mapel: 'Matematika Terapan', guru: 'Budi Hartono, S.Pd' },
-  { level: 'smk', kelas: 'XI RPL 1', di: 4, si: 4, mapel: 'Matematika Terapan', guru: 'Budi Hartono, S.Pd' },
-  { level: 'smk', kelas: 'X TKJ 1', di: 0, si: 1, mapel: 'Matematika Terapan', guru: 'Budi Hartono, S.Pd' },
-  { level: 'smk', kelas: 'XII TKJ 1', di: 2, si: 1, mapel: 'Matematika Terapan', guru: 'Budi Hartono, S.Pd' },
-  { level: 'smk', kelas: 'X RPL 2', di: 3, si: 5, mapel: 'Matematika Terapan', guru: 'Budi Hartono, S.Pd' },
-  { level: 'smk', kelas: 'XII RPL 1', di: 4, si: 1, mapel: 'Produk Kreatif & Kewirausahaan', guru: 'Dewi Sartika, S.Si' },
-  { level: 'smk', kelas: 'XI RPL 1', di: 4, si: 2, mapel: 'Produk Kreatif & Kewirausahaan', guru: 'Dewi Sartika, S.Si' },
-  { level: 'smk', kelas: 'XI RPL 1', di: 1, si: 3, mapel: 'Produk Kreatif & Kewirausahaan', guru: 'Dewi Sartika, S.Si' },
-  { level: 'smp', kelas: 'VII-A', di: 4, si: 0, mapel: 'Bahasa Indonesia', guru: 'Nina Kurnia, S.Pd' },
-  { level: 'smp', kelas: 'VIII-A', di: 4, si: 2, mapel: 'Bahasa Indonesia', guru: 'Nina Kurnia, S.Pd' },
-  { level: 'smp', kelas: 'IX-A', di: 4, si: 4, mapel: 'Bahasa Indonesia', guru: 'Nina Kurnia, S.Pd' },
-  { level: 'smp', kelas: 'VII-B', di: 1, si: 1, mapel: 'Bahasa Indonesia', guru: 'Nina Kurnia, S.Pd' }
-]
+// ---------------- Waktu slot ----------------
+
+const menitDariTeks = (s: string): number => {
+  const [h = '0', m = '0'] = s.split(':')
+  return (+h) * 60 + (+m)
+}
+
+export const rentangSlot = (level: Jenjang, si: number): [number, number] => {
+  const [mulai = '00:00', selesai = '00:00'] = (stateV2.polaSlot[level][si] || '').split('–')
+  return [menitDariTeks(mulai), menitDariTeks(selesai)]
+}
 
 export const slotMin = (si: number): [number, number] => {
-  const [start = '00:00', end = '00:00'] = (SLOT_TIMES[si] || '').split('–')
-  const f = (s: string) => {
-    const [hour = '0', minute = '0'] = s.split(':')
-    return (+hour) * 60 + (+minute)
-  }
-  return [f(start), f(end)]
+  const [mulai = '00:00', selesai = '00:00'] = (SLOT_TIMES[si] || '').split('–')
+  return [menitDariTeks(mulai), menitDariTeks(selesai)]
 }
 
 export const fmtMin = (m: number): string => {
   return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
 }
 
-export const teachersOf = (level: Jenjang): string[] => {
-  const s = new Set<string>()
-  MAPEL[level].forEach(m => s.add(m.coord))
-  KELAS[level].forEach(k => s.add(k.wali))
-  return [...s].sort()
-}
+// ---------------- Pembaca registry untuk komponen ----------------
+
+export const teachersOf = (level: Jenjang): string[] => stateV2.guru[level].map(g => g.nama)
 
 export const genGrid = (
   level: Jenjang,
   kelasName: string,
   extra: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }> = []
 ): Record<DayIndex, LessonSlot[]> => {
-  const kIdx = Math.max(0, KELAS[level].findIndex(k => k.name === kelasName))
-  const pool = MAPEL[level]
+  const jumlahSlot = Math.max(stateV2.polaSlot[level].length, SLOT_TIMES.length, 1)
   const g: Record<number, LessonSlot[]> = {}
-
   DAYS.forEach((_, di) => {
-    g[di] = SLOT_TIMES.map((_, si) => {
-      const m = pool[(si * 3 + di + kIdx) % pool.length]
-      if (!m) return { mapel: '', guru: '', code: '' }
-      return { mapel: m.name, guru: m.coord, code: m.code }
+    g[di] = Array.from({ length: jumlahSlot }, () => ({ mapel: '', guru: '', code: '' }))
+  })
+  stateV2.pelajaran
+    .filter(l => l.level === level && l.kelas === kelasName)
+    .forEach(l => {
+      for (let si = l.si; si <= l.siAkhir; si++) {
+        const sel = g[l.di]?.[si]
+        if (sel) {
+          sel.mapel = l.mapel
+          sel.guru = l.guru
+          sel.ket = l.ket
+        }
+      }
     })
-  })
-
-  OVERRIDES.filter(o => o.level === level && o.kelas === kelasName).forEach(o => {
-    const day = g[o.di]
-    if (day) day[o.si] = { mapel: o.mapel, guru: o.guru, code: '' }
-  })
-
-  extra.filter(e => e.level === level && e.kelas === kelasName).forEach(e => {
-    const day = g[e.di]
-    if (day) day[e.si] = { mapel: e.mapel, guru: e.guru, code: '', ket: e.ket, baru: true }
-  })
-
+  extra
+    .filter(e => e.level === level && e.kelas === kelasName)
+    .forEach(e => {
+      const sel = g[e.di]?.[e.si]
+      if (sel) {
+        sel.mapel = e.mapel
+        sel.guru = e.guru
+        sel.ket = e.ket
+        sel.baru = true
+      }
+    })
   return g as Record<DayIndex, LessonSlot[]>
 }
 
@@ -205,30 +220,27 @@ export const allLessons = (
   level: Jenjang,
   extra: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }> = []
 ): LessonItem[] => {
-  const out: LessonItem[] = []
-  KELAS[level].forEach(k => {
-    const g = genGrid(level, k.name, extra)
-    DAYS.forEach((_, di) => {
-      const dIndex = di as DayIndex
-      SLOT_TIMES.forEach((t, si) => {
-        const c = g[dIndex][si]
-        if (c) {
-          out.push({
-            id: `${level}-${k.name}-${dIndex}-${si}`,
-            level,
-            kelas: k.name,
-            room: k.room,
-            di: dIndex,
-            si,
-            time: t,
-            mapel: c.mapel,
-            guru: c.guru,
-            ket: c.ket
-          })
-        }
+  const out = stateV2.pelajaran.filter(l => l.level === level)
+  extra
+    .filter(e => e.level === level)
+    .forEach(e => {
+      out.push({
+        id: `lokal-${e.kelas}-${e.di}-${e.si}`,
+        level,
+        kelas: e.kelas,
+        room: stateV2.kelas[level].find(k => k.name === e.kelas)?.room || '',
+        di: e.di,
+        si: e.si,
+        siAkhir: e.si,
+        time: stateV2.polaSlot[level][e.si] || '',
+        mapel: e.mapel,
+        guru: e.guru,
+        ket: e.ket,
+        classId: '',
+        subjectId: '',
+        teacherId: ''
       })
     })
-  })
   return out
 }
 
@@ -239,7 +251,39 @@ export const lessonsOf = (
 ): LessonItem[] => {
   return allLessons(level, extra)
     .filter(l => l.guru === guruName)
-    .sort((a, b) => a.di - b.di || slotMin(a.si)[0] - slotMin(b.si)[0])
+    .sort((a, b) => a.di - b.di || rentangSlot(level, a.si)[0] - rentangSlot(level, b.si)[0])
+}
+
+export const rosterOf = (level: Jenjang, kelasName: string): StudentRosterItem[] => {
+  return stateV2.roster[`${level}|${kelasName}`] || []
+}
+
+// ---------------- Status kehadiran guru ----------------
+
+// Logika murni status satu sel timetable — diuji di tests/jadwal-mengajar.mjs.
+// "Tidak Hadir" hanya disimpulkan dari data: hari sudah lewat (atau jam hari
+// ini sudah berakhir) tanpa sesi yang pernah dimulai.
+export const statusGuruMurni = (input: {
+  adaJadwal: boolean
+  sesi: SesiDb | null
+  posisi: 'lalu' | 'ini' | 'depan'
+  menitKini: number
+  mulai: number
+  selesai: number
+}): GuruStatus => {
+  if (!input.adaJadwal) return 'Terjadwal'
+  const s = input.sesi
+  if (s?.status === 'berlangsung') return 'Berlangsung'
+  if (s?.status === 'tidak_hadir') return 'Tidak Hadir'
+  if (s?.startedAt) {
+    const d = new Date(s.startedAt)
+    const menitMulai = d.getHours() * 60 + d.getMinutes()
+    return menitMulai > input.mulai + 10 ? 'Terlambat' : 'Hadir'
+  }
+  if (s?.status === 'selesai') return 'Hadir'
+  if (input.posisi === 'depan') return 'Terjadwal'
+  if (input.posisi === 'lalu') return 'Tidak Hadir'
+  return input.menitKini >= input.selesai ? 'Tidak Hadir' : 'Terjadwal'
 }
 
 export const guruStatus = (
@@ -247,39 +291,19 @@ export const guruStatus = (
   kelasName: string,
   di: DayIndex,
   si: number,
-  simDayIdx: DayIndex,
+  simDayIdx: number,
   simMin: number
 ): GuruStatus => {
-  const kIdx = Math.max(0, KELAS[level].findIndex(k => k.name === kelasName))
-  if (di < simDayIdx) return ((di * 7 + si * 3 + kIdx) % 9 === 4) ? 'Terlambat' : 'Hadir'
-  if (di > simDayIdx) return 'Terjadwal'
-  const sm = slotMin(si)
-  if (simMin >= sm[1]) return ((di * 3 + si + kIdx) % 8 === 5) ? 'Terlambat' : 'Hadir'
-  if (simMin >= sm[0]) return 'Berlangsung'
-  return 'Terjadwal'
-}
-
-const NAME_POOL = [
-  'Raka Aditya Pratama', 'Nabila Zahra', 'Dimas Aryo Nugroho', 'Salsabila Putri',
-  'Farhan Rizky Ramadhan', 'Aisyah Nur Rahma', 'Galih Permana', 'Kirana Ayu Lestari',
-  'Bagas Wicaksono', 'Tiara Andini', 'Ilham Fauzan', 'Mega Puspita Sari',
-  'Reza Pahlevi', 'Intan Nuraini', 'Yusuf Hamdani', 'Laras Sekar Wangi'
-]
-
-export const rosterOf = (level: Jenjang, kelasName: string): StudentRosterItem[] => {
-  const kIdx = Math.max(0, KELAS[level].findIndex(k => k.name === kelasName))
-  const out: StudentRosterItem[] = []
-  let n = 0
-  while (out.length < 14) {
-    const nm = NAME_POOL[(kIdx * 3 + n * 5) % NAME_POOL.length]
-    n++
-    if (!nm) break
-    if (out.some(s => s.name === nm)) continue
-    out.push({
-      name: nm,
-      gender: n % 2 ? 'P' : 'L',
-      nis: String(2026100 + kIdx * 40 + n * 3)
-    })
-  }
-  return out
+  const les = stateV2.pelajaran.find(
+    l => l.level === level && l.kelas === kelasName && l.di === di && si >= l.si && si <= l.siAkhir
+  )
+  if (!les) return 'Terjadwal'
+  const posisi = di < simDayIdx ? 'lalu' : di > simDayIdx ? 'depan' : 'ini'
+  const sesi = stateV2.sesi[kunciSesi(les.id, tanggalDariDi(di))] ?? null
+  // Keterlambatan & akhir sesi dinilai dari rentang PELAJARAN (si..siAkhir),
+  // bukan dari sel yang sedang dilihat — pelajaran 2 JP yang dimulai 08:52
+  // untuk jam mulai 08:30 tetap terlambat di sel jam keduanya.
+  const [mulai] = rentangSlot(level, les.si)
+  const [, selesai] = rentangSlot(level, les.siAkhir)
+  return statusGuruMurni({ adaJadwal: true, sesi, posisi, menitKini: simMin, mulai, selesai })
 }

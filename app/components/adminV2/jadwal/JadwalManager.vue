@@ -7,7 +7,7 @@ import JadwalGuruView from './JadwalGuruView.vue'
 import {
   HARI_NAMA, bangunSlotJam, cariBentrok, jamBerlangsung,
   useJadwalPelajaran,
-  type EntriInput, type JadwalEntri, type JadwalSetelan
+  type EntriInput, type JadwalEntri, type JadwalSetelan, type SesiHariIni
 } from '~/composables/useJadwalPelajaran'
 
 const props = defineProps<{ jenjang: 'SMP' | 'SMK' }>()
@@ -94,6 +94,21 @@ const stripHariIni = computed(() => {
     belum: hitungStatus('belum'),
     tidak: hitungStatus('tidak_hadir')
   }
+})
+
+// Sesi tampil: entri hari ini yang belum punya baris teaching_sessions
+// berarti memang belum dimulai — chip "Belum mulai" ditampilkan jujur
+// tanpa menulis baris kosong ke basis data.
+const sesiTampil = computed(() => {
+  const peta: Record<string, SesiHariIni> = { ...store.sesiMap.value }
+  if (hariIni.value !== null) {
+    for (const j of store.entriList.value) {
+      if (j.day === hariIni.value && !peta[j.id]) {
+        peta[j.id] = { status: 'belum', startedAt: null, endedAt: null }
+      }
+    }
+  }
+  return peta
 })
 
 const kkmPanel = computed(() => store.mapelList.value.map(m => {
@@ -272,7 +287,7 @@ onUnmounted(() => { if (jamTimer) clearInterval(jamTimer) })
 
           <JadwalTimetable
             :slots="slots" :daftar="entriKelas" :mapel-map="mapelMap" :guru-map="guruMap" :kelas-map="kelasMap"
-            :sesi-map="store.sesiMap.value" :hari-ini="hariIni" :jam-berjalan-ke="jamBerjalanKe"
+            :sesi-map="sesiTampil" :hari-ini="hariIni" :jam-berjalan-ke="jamBerjalanKe"
             @tambah="(d, ke) => bukaTambah(d, ke)" @ubah="bukaUbah"
           />
         </div>
@@ -311,7 +326,7 @@ onUnmounted(() => { if (jamTimer) clearInterval(jamTimer) })
       v-else
       :guru-list="store.guruList.value" :entri-list="store.entriList.value"
       :mapel-map="mapelMap" :kelas-map="kelasMap" :slots="slots"
-      :sesi-map="store.sesiMap.value" :hari-ini="hariIni" :jam-berjalan-ke="jamBerjalanKe" :jenjang="jenjang"
+      :sesi-map="sesiTampil" :hari-ini="hariIni" :jam-berjalan-ke="jamBerjalanKe" :jenjang="jenjang"
     />
 
     <JadwalFormModal

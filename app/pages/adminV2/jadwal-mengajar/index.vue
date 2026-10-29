@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -14,17 +14,14 @@ import JadwalV2PersonalView from '~/components/adminV2/jadwal-mengajar/JadwalV2P
 import JadwalV2CreateModal from '~/components/adminV2/jadwal-mengajar/JadwalV2CreateModal.vue'
 import JadwalV2SessionSheet from '~/components/adminV2/jadwal-mengajar/JadwalV2SessionSheet.vue'
 import JadwalV2LiveBar from '~/components/adminV2/jadwal-mengajar/JadwalV2LiveBar.vue'
-import JadwalV2DemoPanel from '~/components/adminV2/jadwal-mengajar/JadwalV2DemoPanel.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import {
-  PERSONAS,
-  KELAS,
-  genGrid,
-  type Jenjang,
-  type RoleKey,
-  type DayIndex,
-  type LessonSession
+  stateV2, terapkanJenjang, kunciSesi, kunciPelajaran, isoTanggalLokal, diHariIni,
+  type Jenjang, type RoleKey, type DayIndex, type LessonSession, type PersonaInfo
 } from '~/components/adminV2/jadwal-mengajar/jadwalV2Data'
+import { useAdminGrade } from '~/composables/useAdminGrade'
+import { useJadwalMengajar } from '~/composables/useJadwalMengajar'
+import { useJadwalPelajaran } from '~/composables/useJadwalPelajaran'
 
 definePageMeta({
   layout: false
@@ -41,9 +38,16 @@ useHead({
 })
 
 const router = useRouter()
+const mengajar = useJadwalMengajar()
+const jp = useJadwalPelajaran()
 
 /* ================= STATE GLOBAL ================= */
-const jenjang = ref<Jenjang>('smk')
+// Jenjang mengikuti switcher global top navbar (sumber yang sama dengan Jadwal Pelajaran)
+const grade = useAdminGrade()
+const jenjang = computed<Jenjang>({
+  get: () => grade.value.toLowerCase() as Jenjang,
+  set: v => { grade.value = v.toUpperCase() as 'SMP' | 'SMK' }
+})
 const role = ref<RoleKey>('operator')
 const activeSubmenu = ref<'grade' | 'saya'>('grade')
 
@@ -69,63 +73,99 @@ const triggerToast = (msg: string) => {
   }, 2600)
 }
 
-// Simulasi Waktu (Default: Jumat, 08:24)
-const simDayIdx = ref<DayIndex>(4)
-const simMin = ref<number>(8 * 60 + 24)
+/* ================= JAM NYATA (bukan simulasi) ================= */
+const sekarang = ref(new Date())
+let jamTimer: ReturnType<typeof setInterval> | null = null
+const simDayIdx = computed(() => diHariIni(sekarang.value))
+const simMin = computed(() => sekarang.value.getHours() * 60 + sekarang.value.getMinutes())
+const simDayIdxModal = computed<DayIndex>(() => (simDayIdx.value >= 0 && simDayIdx.value <= 4 ? simDayIdx.value : 0) as DayIndex)
 
 // State Kelas Terpilih
-const selectedClass = ref<Record<Jenjang, string>>({
-  smk: 'XII TKJ 1',
-  smp: 'VII-A'
-})
-
-// State Sesi Mengajar & Jadwal Tambahan
-const extraSchedules = ref<Array<{
-  level: Jenjang
-  kelas: string
-  di: DayIndex
-  si: number
-  mapel: string
-  guru: string
-  ket?: string
-}>>([])
-
-const sessions = ref<Record<string, LessonSession>>({})
-const liveStartTime = ref<number | null>(null)
+const selectedClass = ref<Record<Jenjang, string>>({ smk: '', smp: '' })
 
 // Modal & Sheet States
 const isCreateModalOpen = ref(false)
 const sessionSheetKey = ref<string | null>(null)
 
-// Persona info dari role & jenjang aktif
-const currentPersona = computed(() => {
-  return PERSONAS[role.value][jenjang.value]
+/* ================= GURU AKTIF & PERSONA ASLI =================
+   Sampai RBAC akun guru aktif, guru yang ditampilkan di "Jadwal Saya"
+   dipilih secara terbuka lewat pemilih "Guru aktif" — tidak ada
+   persona karangan. Sesi yang dicatat selalu atas nama guru ini. */
+const guruAktifId = ref('')
+const guruAktif = computed(() => stateV2.guru[jenjang.value].find(g => g.id === guruAktifId.value) || stateV2.guru[jenjang.value][0] || null)
+
+const currentPersona = computed<PersonaInfo>(() => {
+  const g = guruAktif.value
+  if (!g) return { name: '—', label: 'Belum ada data guru' }
+  const waliKelas = stateV2.kelas[jenjang.value].find(k => stateV2.waliDari[`${jenjang.value}|${k.name}`] === g.id)
+  const mapelKu = [...new Set(stateV2.pelajaran.filter(l => l.level === jenjang.value && l.teacherId === g.id).map(l => l.mapel))]
+  return {
+    name: g.nama,
+    label: waliKelas ? `Wali Kelas ${waliKelas.name}` : mapelKu.length ? `Guru ${mapelKu[0]}` : 'Guru',
+    kelas: waliKelas?.name
+  }
 })
 
-// Sesi Aktif untuk LiveBar
-const activeLiveSession = computed(() => {
-  const activeKey = Object.keys(sessions.value).find(k => !sessions.value[k]?.done)
-  if (!activeKey || !liveStartTime.value) return null
-  const [level, kelas, diStr, siStr] = activeKey.split('|')
-  if (!level || !kelas || diStr === undefined || siStr === undefined) return null
-  const grid = genGrid(level as Jenjang, kelas, extraSchedules.value)
-  const cell = grid[+diStr as DayIndex]?.[+siStr]
-  const sess = sessions.value[activeKey]
-  if (!cell || !sess) return null
+const kelasWali = computed(() => currentPersona.value.kelas || selectedClass.value[jenjang.value])
 
-  return {
-    key: activeKey,
-    mapel: cell.mapel,
-    kelas,
-    hadir: sess.hadir,
-    alpaCount: sess.alpa.length,
-    startTime: liveStartTime.value
+const pastikanPilihan = () => {
+  for (const j of ['smp', 'smk'] as Jenjang[]) {
+    const daftar = stateV2.kelas[j]
+    if (daftar.length && !daftar.some(k => k.name === selectedClass.value[j])) {
+      selectedClass.value[j] = daftar[0]!.name
+    }
   }
+  const daftarGuru = stateV2.guru[jenjang.value]
+  if (daftarGuru.length && !daftarGuru.some(g => g.id === guruAktifId.value)) {
+    guruAktifId.value = stateV2.pelajaran.find(l => l.level === jenjang.value)?.teacherId || daftarGuru[0]!.id
+  }
+}
+
+watch(jenjang, j => {
+  terapkanJenjang(j)
+  pastikanPilihan()
+})
+
+/* ================= SESI HARI INI (dari teaching_sessions) ================= */
+const sesiRecord = computed<Record<string, LessonSession>>(() => {
+  const rec: Record<string, LessonSession> = {}
+  const tgl = isoTanggalLokal(sekarang.value)
+  for (const l of stateV2.pelajaran) {
+    const s = stateV2.sesi[kunciSesi(l.id, tgl)]
+    if (s && s.startedAt) {
+      const total = stateV2.roster[`${l.level}|${l.kelas}`]?.length ?? 0
+      rec[kunciPelajaran(l)] = {
+        hadir: s.hadir ?? Math.max(0, total - s.alpa.length),
+        alpa: s.alpa,
+        done: s.status === 'selesai'
+      }
+    }
+  }
+  return rec
+})
+
+const activeLiveSession = computed(() => {
+  const tgl = isoTanggalLokal(sekarang.value)
+  for (const l of stateV2.pelajaran) {
+    const s = stateV2.sesi[kunciSesi(l.id, tgl)]
+    if (s && s.startedAt && s.status === 'berlangsung') {
+      const total = stateV2.roster[`${l.level}|${l.kelas}`]?.length ?? 0
+      return {
+        key: kunciPelajaran(l),
+        mapel: l.mapel,
+        kelas: l.kelas,
+        hadir: s.hadir ?? Math.max(0, total - s.alpa.length),
+        alpaCount: s.alpa.length,
+        startTime: new Date(s.startedAt).getTime()
+      }
+    }
+  }
+  return null
 })
 
 // Format Tanggal Hari Ini
 const formattedTodayDate = computed(() => {
-  const d = new Date()
+  const d = sekarang.value
   const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
   return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
@@ -155,8 +195,9 @@ const handleSelectModule = (title: string) => {
   triggerToast(`${title} — modul demo`)
 }
 
-// Handler Buat Jadwal
-const handleScheduleSaved = (payload: {
+// Handler Buat Jadwal — menulis ke class_schedules lewat mesin yang sama
+// dengan Jadwal Pelajaran (anti-bentrok guru/kelas/ruangan identik).
+const handleScheduleSaved = async (payload: {
   level: Jenjang
   kelas: string
   di: DayIndex
@@ -165,7 +206,32 @@ const handleScheduleSaved = (payload: {
   guru: string
   ket: string
 }) => {
-  extraSchedules.value.push(payload)
+  const gradeDb = (payload.level === 'smp' ? 'SMP' : 'SMK') as 'SMP' | 'SMK'
+  await jp.load(gradeDb)
+  const classId = stateV2.idKelas[`${payload.level}|${payload.kelas}`]
+  const subjectId = stateV2.idMapel[`${payload.level}|${payload.mapel}`]
+  const teacherId = stateV2.idGuru[payload.guru]
+  if (!classId || !subjectId || !teacherId) {
+    triggerToast('Data kelas, mapel, atau guru tidak ditemukan di Data Induk.')
+    return
+  }
+  // Sel yang sudah terisi pada jam yang sama diganti (sesuai konfirmasi di modal)
+  const lama = jp.entriList.value.find(j => j.classId === classId && j.day === payload.di + 1 && j.mulaiKe === payload.si + 1)
+  const hasil = await jp.simpanEntri(gradeDb, {
+    classId,
+    subjectId,
+    teacherId,
+    day: payload.di + 1,
+    mulaiKe: payload.si + 1,
+    selesaiKe: payload.si + 1,
+    room: '',
+    notes: payload.ket || ''
+  }, lama?.id)
+  if (!hasil.ok) {
+    triggerToast(hasil.pesan)
+    return
+  }
+  await mengajar.muatJadwalUlang()
   selectedClass.value[payload.level] = payload.kelas
   if (role.value === 'operator') {
     activeSubmenu.value = 'grade'
@@ -173,44 +239,45 @@ const handleScheduleSaved = (payload: {
   triggerToast(`Jadwal tersimpan: ${payload.mapel} · ${payload.kelas}`)
 }
 
-// Handler Sesi Mengajar
+// Handler Sesi Mengajar — menulis ke teaching_sessions
 const openMulaiSession = (key: string) => {
   sessionSheetKey.value = key
 }
 
-const handleSessionStarted = (payload: { key: string; hadir: number; alpa: string[] }) => {
-  sessions.value[payload.key] = {
-    hadir: payload.hadir,
-    alpa: payload.alpa,
-    done: false
+const handleSessionStarted = async (payload: { key: string; hadir: number; alpa: string[] }) => {
+  const les = stateV2.pelajaran.find(l => kunciPelajaran(l) === payload.key)
+  if (!les) return
+  const hasil = await mengajar.mulaiSesi(les, payload.hadir, payload.alpa)
+  if (!hasil.ok) {
+    triggerToast(`Gagal mencatat sesi: ${hasil.pesan || 'periksa koneksi basis data'}`)
+    return
   }
-  liveStartTime.value = Date.now()
-  triggerToast(`Sesi mengajar dimulai: Hadir ${payload.hadir} · Alpa ${payload.alpa.length}`)
+  triggerToast(hasil.kehadiranTersimpan
+    ? `Sesi mengajar dimulai: Hadir ${payload.hadir} · Alpa ${payload.alpa.length}`
+    : 'Sesi dimulai, tetapi catatan kehadiran siswa belum tersimpan — jalankan migrasi 0021 di Supabase SQL Editor.')
 }
 
-const endLiveSession = (key: string) => {
-  if (sessions.value[key]) {
-    sessions.value[key].done = true
-    liveStartTime.value = null
-    triggerToast('Sesi mengajar diakhiri. Kehadiran siswa telah tersimpan.')
-  }
+const endLiveSession = async (key: string) => {
+  const les = stateV2.pelajaran.find(l => kunciPelajaran(l) === key)
+  if (!les) return
+  const ok = await mengajar.selesaikanSesi(les)
+  triggerToast(ok
+    ? 'Sesi mengajar diakhiri. Kehadiran siswa telah tersimpan.'
+    : 'Gagal mengakhiri sesi — periksa koneksi basis data.')
 }
 
-// Handler Simulasi Cepat
-const handleSimulateStart = () => {
-  jenjang.value = 'smk'
-  role.value = 'guru'
-  simDayIdx.value = 4
-  simMin.value = 504 // 08:24
-  activeSubmenu.value = 'saya'
-  openMulaiSession('smk|XII TKJ 1|4|2')
-}
+onMounted(async () => {
+  jamTimer = setInterval(() => {
+    sekarang.value = new Date()
+  }, 30000)
+  terapkanJenjang(jenjang.value)
+  await mengajar.muatSemua()
+  terapkanJenjang(jenjang.value)
+  pastikanPilihan()
+})
 
-onMounted(() => {
-  // Pastikan class terpilih sesuai jenjang awal
-  if (!selectedClass.value[jenjang.value]) {
-    selectedClass.value[jenjang.value] = KELAS[jenjang.value][0]?.name || ''
-  }
+onUnmounted(() => {
+  if (jamTimer) clearInterval(jamTimer)
 })
 </script>
 
@@ -291,7 +358,7 @@ onMounted(() => {
             {{ formattedTodayDate }}
           </span>
           <span class="rounded-full border border-dashed border-[#CBD5E1] bg-white px-3 py-1.5 text-xs font-bold text-[#475467]">
-            Porting Modul v2
+            Data Induk Terintegrasi
           </span>
         </div>
       </div>
@@ -324,8 +391,28 @@ onMounted(() => {
         </button>
       </div>
 
+      <!-- KEADAAN MEMUAT -->
+      <section v-if="!stateV2.siap" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center shadow-xs">
+        <p class="text-sm font-bold text-[#344054]">Memuat jadwal dari Data Induk…</p>
+        <p class="mt-1 text-xs font-semibold text-[#667085]">Kelas, mapel, guru, siswa, jadwal, dan sesi minggu ini sedang diambil dari basis data.</p>
+      </section>
+
+      <!-- GURU AKTIF: penentu Jadwal Saya & pencatatan sesi -->
+      <div v-if="stateV2.siap" class="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#E7EBF2] bg-white px-4 py-3 shadow-xs">
+        <label for="guru-aktif" class="text-xs font-bold text-[#344054]">Guru aktif</label>
+        <select
+          id="guru-aktif"
+          v-model="guruAktifId"
+          class="min-h-9 rounded-xl border border-[#D0D5DD] bg-[#F8FAFD] px-3 text-xs font-semibold text-[#101828] focus:border-[#1B5FD9] focus:bg-white focus:outline-none"
+        >
+          <option v-for="g in stateV2.guru[jenjang]" :key="g.id" :value="g.id">{{ g.nama }}</option>
+        </select>
+        <span class="text-[11px] font-semibold text-[#667085]">Tampilan &quot;Jadwal Saya&quot; dan tombol Mulai Mengajar mencatat sesi atas nama guru ini.</span>
+      </div>
+
       <!-- VIEW KONTEN BERDASARKAN PERAN -->
 
+      <template v-if="stateV2.siap">
       <!-- 1. Peran OPERATOR: Bisa switch antara Jadwal Sekolah dan Jadwal Saya -->
       <template v-if="role === 'operator'">
         <JadwalV2GradeTimetable
@@ -335,7 +422,7 @@ onMounted(() => {
           :editable="true"
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
-          :extra-schedules="extraSchedules"
+          :extra-schedules="[]"
           @update:jenjang="jenjang = $event"
           @update:selected-class="selectedClass[jenjang] = $event"
           @open-create="isCreateModalOpen = true"
@@ -347,8 +434,8 @@ onMounted(() => {
           :persona="currentPersona"
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
-          :sessions="sessions"
-          :extra-schedules="extraSchedules"
+          :sessions="sesiRecord"
+          :extra-schedules="[]"
           @mulai="openMulaiSession"
           @akhiri="endLiveSession"
         />
@@ -362,19 +449,19 @@ onMounted(() => {
             <AdminV2Icon name="info" :size="18" />
           </div>
           <div>
-            Anda melihat <b>jadwal lengkap kelas perwalian Anda ({{ currentPersona.kelas }})</b> (Senin–Jumat, jam ke-1 s.d. terakhir) beserta <b>status kehadiran guru</b> di setiap jam pelajaran. Role Wali Kelas berfokus pada monitoring kelas — penugasan kurikulum dikelola oleh operator/admin.
+            Anda melihat <b>jadwal lengkap kelas perwalian Anda ({{ kelasWali }})</b> (Senin–Jumat, jam ke-1 s.d. terakhir) beserta <b>status kehadiran guru</b> di setiap jam pelajaran. Role Wali Kelas berfokus pada monitoring kelas — penugasan kurikulum dikelola oleh operator/admin.
           </div>
         </div>
 
         <JadwalV2GradeTimetable
           :jenjang="jenjang"
-          :selected-class="currentPersona.kelas || selectedClass[jenjang]"
+          :selected-class="kelasWali"
           :editable="false"
-          :fixed-kelas="currentPersona.kelas"
+          :fixed-kelas="kelasWali"
           :mine-teacher-name="currentPersona.name"
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
-          :extra-schedules="extraSchedules"
+          :extra-schedules="[]"
           @update:jenjang="jenjang = $event"
           @update:selected-class="selectedClass[jenjang] = $event"
         />
@@ -387,32 +474,22 @@ onMounted(() => {
           :persona="currentPersona"
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
-          :sessions="sessions"
-          :extra-schedules="extraSchedules"
+          :sessions="sesiRecord"
+          :extra-schedules="[]"
           @mulai="openMulaiSession"
           @akhiri="endLiveSession"
         />
       </template>
+      </template>
     </main>
-
-    <!-- FLOATING DEMO PANEL (SIMULASI ROLE & WAKTU) -->
-    <JadwalV2DemoPanel
-      :role="role"
-      :jenjang="jenjang"
-      :sim-min="simMin"
-      :persona="currentPersona"
-      @update:role="role = $event; if (role === 'operator') activeSubmenu = 'grade'"
-      @update:sim-min="simMin = $event"
-      @simulate-start="handleSimulateStart"
-    />
 
     <!-- MODAL BUAT JADWAL MENGAJAR (OPERATOR) -->
     <JadwalV2CreateModal
       :is-open="isCreateModalOpen"
       :jenjang="jenjang"
       :current-class="selectedClass[jenjang]"
-      :sim-day-idx="simDayIdx"
-      :extra-schedules="extraSchedules"
+      :sim-day-idx="simDayIdxModal"
+      :extra-schedules="[]"
       @close="isCreateModalOpen = false"
       @saved="handleScheduleSaved"
     />
@@ -421,7 +498,7 @@ onMounted(() => {
     <JadwalV2SessionSheet
       :is-open="!!sessionSheetKey"
       :session-key="sessionSheetKey"
-      :extra-schedules="extraSchedules"
+      :extra-schedules="[]"
       @close="sessionSheetKey = null"
       @started="handleSessionStarted"
     />

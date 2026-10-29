@@ -4,6 +4,7 @@ import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import {
   DAYS,
   SLOT_TIMES,
+  JEDA,
   KELAS,
   slotMin,
   fmtMin,
@@ -20,7 +21,7 @@ const props = defineProps<{
   editable: boolean
   fixedKelas?: string
   mineTeacherName?: string
-  simDayIdx: DayIndex
+  simDayIdx: number
   simMin: number
   extraSchedules: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }>
 }>()
@@ -31,7 +32,7 @@ const emit = defineEmits<{
   (e: 'open-create'): void
 }>()
 
-const mobileDay = ref<DayIndex>(props.simDayIdx)
+const mobileDay = ref<DayIndex>(props.simDayIdx >= 0 && props.simDayIdx <= 4 ? props.simDayIdx as DayIndex : 0)
 const isDropdownOpen = ref(false)
 
 const currentClassMeta = computed(() => {
@@ -58,6 +59,8 @@ const statusBadgeClasses = (st: GuruStatus): string => {
       return 'bg-[#FFFAEB] text-[#B54708]'
     case 'Berlangsung':
       return 'bg-[#EAF0FE] text-[#1D4ED8]'
+    case 'Tidak Hadir':
+      return 'bg-[#FEF3F2] text-[#B42318]'
     case 'Terjadwal':
     default:
       return 'bg-[#F1F5F9] text-[#64748B]'
@@ -72,6 +75,8 @@ const statusDotClasses = (st: GuruStatus): string => {
       return 'bg-[#B54708]'
     case 'Berlangsung':
       return 'bg-[#1D4ED8]'
+    case 'Tidak Hadir':
+      return 'bg-[#B42318]'
     case 'Terjadwal':
     default:
       return 'bg-[#64748B]'
@@ -84,7 +89,8 @@ const selectClass = (className: string) => {
 }
 
 const simLabel = computed(() => {
-  return `${DAYS[props.simDayIdx]}, ${fmtMin(props.simMin)} WIB`
+  if (props.simDayIdx < 0 || props.simDayIdx > 4) return 'Akhir Pekan'
+  return `${DAYS[props.simDayIdx as DayIndex]}, ${fmtMin(props.simMin)} WIB`
 })
 </script>
 
@@ -176,7 +182,7 @@ const simLabel = computed(() => {
         </div>
         <div class="ml-auto inline-flex items-center gap-2 rounded-full bg-[#0B1F3A] px-3 py-1 text-[11px] font-bold text-white">
           <span class="h-1.5 w-1.5 rounded-full bg-[#34D399]" />
-          <span>Simulasi: {{ simLabel }}</span>
+          <span>Sekarang: {{ simLabel }}</span>
         </div>
       </div>
     </section>
@@ -258,23 +264,14 @@ const simLabel = computed(() => {
               </div>
             </div>
 
-            <!-- Istirahat 1 setelah jam ke-3 -->
+            <!-- Baris jeda mengikuti pola jam & istirahat dari Jadwal Pelajaran -->
             <div
-              v-if="si === 2"
+              v-for="jeda in JEDA.filter(j => j.setelahSi === si)"
+              :key="'jeda-' + si + '-' + jeda.label"
               class="col-span-6 my-1 flex items-center gap-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-[#667085]"
             >
               <div class="h-px flex-1 border-t border-dashed border-[#CBD5E1]" />
-              <span>Istirahat · 09:15–09:30</span>
-              <div class="h-px flex-1 border-t border-dashed border-[#CBD5E1]" />
-            </div>
-
-            <!-- Istirahat & Dzuhur setelah jam ke-6 -->
-            <div
-              v-if="si === 5"
-              class="col-span-6 my-1 flex items-center gap-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-[#667085]"
-            >
-              <div class="h-px flex-1 border-t border-dashed border-[#CBD5E1]" />
-              <span>Istirahat &amp; Shalat Dzuhur · 11:45–12:30</span>
+              <span>{{ jeda.label }} · {{ jeda.rentang }}</span>
               <div class="h-px flex-1 border-t border-dashed border-[#CBD5E1]" />
             </div>
           </template>
