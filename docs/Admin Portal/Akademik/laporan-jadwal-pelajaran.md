@@ -54,3 +54,7 @@ Penanda kehadiran (Belum mulai / Sedang mengajar / Selesai / Tidak hadir) dan Re
 - Regresi: `tests/spmb-admin.mjs` 10 kelompok lolos; `tests/cbt-banksoal.mjs` exit 0.
 - `npm run build` → exit 0; rute `jadwal-pelajaran` terdaftar di hasil build.
 - Uji klik manual dengan akun staf asli (membuat jadwal pertama, memicu bentrok, mengubah pola jam) tetap perlu dilakukan pemilik.
+
+## Addendum 30 Okt 2026 — Dark mode (Seksi 13)
+
+Uji live pemilik dalam Mode Gelap menemukan komponen jadwal memakai rumpun warna yang belum terpetakan di `app/assets/css/admin-dark.css`: judul/teks `blue-950` nyaris tak terbaca di atas kartu gelap, kolom jam (`bg-slate-50/50`) dan strip pantau (`bg-blue-50/60`, `bg-blue-100/70`) tampil sebagai blok terang, chip KKM kosong (teks hilang + border `blue-100` pucat), dan pembagi `slate-50` menyilaukan. Ditambahkan **Seksi 13** pada file yang sama (14 aturan, nilai mengikuti palet terkunci: teks utama #E9EFFA, penegas #C4D0E4, permukaan #22345C, garis #16294D/#22386B) — mode terang dan seksi lain tidak diubah. Kelas-kelas tersebut saat ini hanya dipakai komponen jadwal (terverifikasi grep), jadi halaman lain tidak terpengaruh. Diverifikasi dengan harness visual statis (markup kelas yang sama + CSS asli) sebelum/sesudah: semua elemen terbaca dan senada Dark Navy.
