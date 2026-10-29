@@ -20,7 +20,6 @@ const props = defineProps<{
   simDayIdx: number
   simMin: number
   sessions: Record<string, LessonSession>
-  extraSchedules: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }>
 }>()
 
 const emit = defineEmits<{
@@ -32,7 +31,7 @@ const emit = defineEmits<{
 const selectedDayFilter = ref<DayIndex | 'all'>('all')
 
 const myLessons = computed<LessonItem[]>(() => {
-  return lessonsOf(props.jenjang, props.persona.name, props.extraSchedules)
+  return lessonsOf(props.jenjang, props.persona.name)
 })
 
 const lessonKey = (l: LessonItem): string => {

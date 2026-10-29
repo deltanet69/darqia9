@@ -14,6 +14,16 @@ import { bangunSlotJam, jamKeDariWaktu, setelanBawaan, type JadwalSetelan } from
 
 const jenjangDariGrade = (grade: string): Jenjang => (grade === 'SMP' ? 'smp' : 'smk')
 
+// Peta referensi hasil muatSemua — dipakai ulang oleh muatJadwalUlang
+// agar penyegaran setelah menyimpan jadwal cukup 2 query (jadwal + sesi),
+// bukan mengulang seluruh data referensi.
+let petaCache: {
+  kelasById: Map<string, { id: string; name: string; grade: string; room: string | null }>
+  mapelById: Map<string, { id: string; name: string }>
+  guruById: Map<string, { id: string; name: string }>
+  pola: Record<Jenjang, ReturnType<typeof bangunSlotJam>>
+} | null = null
+
 export function useJadwalMengajar() {
   const client = useSupabaseClient()
 
@@ -21,7 +31,13 @@ export function useJadwalMengajar() {
     // 1) Pola jam per jenjang dari jadwal_settings (bawaan bila belum ada)
     const pola: Record<Jenjang, ReturnType<typeof bangunSlotJam>> = { smp: [], smk: [] }
     const setelanPer: Record<Jenjang, JadwalSetelan> = { smp: setelanBawaan(), smk: setelanBawaan() }
-    const { data: barisSetelan } = await client.from('jadwal_settings').select('jenjang, config')
+    // Empat data referensi independen diambil paralel (satu gelombang)
+    const [{ data: barisSetelan }, { data: barisGuru }, { data: barisKelas }, { data: barisMapel }] = await Promise.all([
+      client.from('jadwal_settings').select('jenjang, config'),
+      client.from('teachers').select('id, name, nip, grade').eq('active', true).order('name'),
+      client.from('classes').select('id, name, grade, major, room, homeroom_teacher_id, academic_year').eq('active', true).order('name'),
+      client.from('subjects').select('id, code, name, grade, category, kkm, hours_per_week').eq('active', true).order('name')
+    ])
     for (const b of barisSetelan || []) {
       const cfg = (b as { config: JadwalSetelan }).config
       if (cfg && typeof cfg.mulai === 'string' && Array.isArray(cfg.istirahat)) {
@@ -42,22 +58,12 @@ export function useJadwalMengajar() {
     }
 
     // 2) Guru (untuk wali, daftar guru, dan pemetaan nama -> id)
-    const { data: barisGuru } = await client
-      .from('teachers')
-      .select('id, name, nip, grade')
-      .eq('active', true)
-      .order('name')
     const guruSemua = (barisGuru || []) as Array<{ id: string; name: string; nip: string | null; grade: string }>
     const guruById = new Map(guruSemua.map(g => [g.id, g]))
     stateV2.idGuru = {}
     guruSemua.forEach(g => { stateV2.idGuru[g.name] = g.id })
 
     // 3) Kelas aktif — satu tahun ajaran (2026/2027 bila ada, selain itu terbaru)
-    const { data: barisKelas } = await client
-      .from('classes')
-      .select('id, name, grade, major, room, homeroom_teacher_id, academic_year')
-      .eq('active', true)
-      .order('name')
     const kelasSemua = (barisKelas || []) as Array<{ id: string; name: string; grade: string; major: string | null; room: string | null; homeroom_teacher_id: string | null; academic_year: string }>
     const tahunTersedia = [...new Set(kelasSemua.map(k => k.academic_year))].sort()
     const tahun = tahunTersedia.includes('2026/2027') ? '2026/2027' : (tahunTersedia[tahunTersedia.length - 1] || '2026/2027')
@@ -75,11 +81,6 @@ export function useJadwalMengajar() {
     })
 
     // 4) Mapel per jenjang dari Master Mapel
-    const { data: barisMapel } = await client
-      .from('subjects')
-      .select('id, code, name, grade, category, kkm, hours_per_week')
-      .eq('active', true)
-      .order('name')
     const mapelSemua = (barisMapel || []) as Array<{ id: string; code: string; name: string; grade: string; category: string | null; kkm: number | null; hours_per_week: number | null }>
     const mapelById = new Map(mapelSemua.map(m => [m.id, m]))
     stateV2.idMapel = {}
@@ -87,7 +88,7 @@ export function useJadwalMengajar() {
     mapelSemua.forEach(m => {
       const j = jenjangDariGrade(m.grade)
       stateV2.idMapel[`${j}|${m.name}`] = m.id
-      stateV2.mapel[j].push({ code: m.code, name: m.name, cat: m.category || '', kkm: m.kkm ?? 0, hours: m.hours_per_week ?? 0, coord: '' } satisfies MapelMeta)
+      stateV2.mapel[j].push({ code: m.code, name: m.name, cat: m.category || '', kkm: m.kkm ?? 0, hours: m.hours_per_week ?? 0 } satisfies MapelMeta)
     })
 
     // 5) Siswa — roster per kelas + hitungan L/P untuk meta kelas
@@ -122,9 +123,7 @@ export function useJadwalMengajar() {
         wali: wali?.name || '',
         nip: wali?.nip || '',
         boys: h.boys,
-        girls: h.girls,
-        att: 0,
-        avg: 0
+        girls: h.girls
       } satisfies ClassMeta)
     })
 
@@ -140,6 +139,7 @@ export function useJadwalMengajar() {
     })
 
     // 6) Jadwal + sesi minggu berjalan
+    petaCache = { kelasById, mapelById, guruById, pola }
     await muatJadwalDanSesi(kelasById, mapelById, guruById, pola)
     stateV2.siap = true
   }
@@ -150,8 +150,15 @@ export function useJadwalMengajar() {
     guruById?: Map<string, { id: string; name: string }>,
     pola?: Record<Jenjang, ReturnType<typeof bangunSlotJam>>
   ): Promise<void> => {
-    // Bila dipanggil ulang (setelah simpan jadwal), bangun ulang peta dari registry
+    // Dipanggil ulang setelah simpan jadwal: pakai peta cache bila ada
     if (!kelasById || !mapelById || !guruById || !pola) {
+      if (petaCache) {
+        kelasById = petaCache.kelasById
+        mapelById = petaCache.mapelById
+        guruById = petaCache.guruById
+        pola = petaCache.pola
+        return muatJadwalDanSesi(kelasById, mapelById, guruById, pola)
+      }
       const [k, m, g, s] = await Promise.all([
         client.from('classes').select('id, name, grade, room').eq('active', true),
         client.from('subjects').select('id, name'),
@@ -198,7 +205,6 @@ export function useJadwalMengajar() {
         di: (b.day_of_week - 1) as LessonItem['di'],
         si: rentang.mulaiKe - 1,
         siAkhir: rentang.selesaiKe - 1,
-        time: stateV2.polaSlot[j][rentang.mulaiKe - 1] || '',
         mapel: m.name,
         guru: g.name,
         ket: b.notes || undefined,

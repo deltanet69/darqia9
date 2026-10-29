@@ -422,8 +422,7 @@ onUnmounted(() => {
           :editable="true"
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
-          :extra-schedules="[]"
-          @update:jenjang="jenjang = $event"
+              @update:jenjang="jenjang = $event"
           @update:selected-class="selectedClass[jenjang] = $event"
           @open-create="isCreateModalOpen = true"
         />
@@ -435,8 +434,7 @@ onUnmounted(() => {
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
           :sessions="sesiRecord"
-          :extra-schedules="[]"
-          @mulai="openMulaiSession"
+              @mulai="openMulaiSession"
           @akhiri="endLiveSession"
         />
       </template>
@@ -461,8 +459,7 @@ onUnmounted(() => {
           :mine-teacher-name="currentPersona.name"
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
-          :extra-schedules="[]"
-          @update:jenjang="jenjang = $event"
+              @update:jenjang="jenjang = $event"
           @update:selected-class="selectedClass[jenjang] = $event"
         />
       </template>
@@ -475,8 +472,7 @@ onUnmounted(() => {
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
           :sessions="sesiRecord"
-          :extra-schedules="[]"
-          @mulai="openMulaiSession"
+              @mulai="openMulaiSession"
           @akhiri="endLiveSession"
         />
       </template>
@@ -489,7 +485,6 @@ onUnmounted(() => {
       :jenjang="jenjang"
       :current-class="selectedClass[jenjang]"
       :sim-day-idx="simDayIdxModal"
-      :extra-schedules="[]"
       @close="isCreateModalOpen = false"
       @saved="handleScheduleSaved"
     />
@@ -498,7 +493,6 @@ onUnmounted(() => {
     <JadwalV2SessionSheet
       :is-open="!!sessionSheetKey"
       :session-key="sessionSheetKey"
-      :extra-schedules="[]"
       @close="sessionSheetKey = null"
       @started="handleSessionStarted"
     />

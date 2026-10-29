@@ -23,7 +23,6 @@ const props = defineProps<{
   mineTeacherName?: string
   simDayIdx: number
   simMin: number
-  extraSchedules: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }>
 }>()
 
 const emit = defineEmits<{
@@ -44,7 +43,7 @@ const classOptions = computed(() => {
 })
 
 const gridData = computed(() => {
-  return genGrid(props.jenjang, props.fixedKelas || props.selectedClass, props.extraSchedules)
+  return genGrid(props.jenjang, props.fixedKelas || props.selectedClass)
 })
 
 const getStatus = (di: DayIndex, si: number): GuruStatus => {

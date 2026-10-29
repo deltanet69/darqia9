@@ -23,8 +23,6 @@ export interface ClassMeta {
   nip: string
   boys: number
   girls: number
-  att: number
-  avg: number
 }
 
 export interface MapelMeta {
@@ -33,7 +31,6 @@ export interface MapelMeta {
   cat: string
   kkm: number
   hours: number
-  coord: string
 }
 
 export interface LessonSlot {
@@ -52,7 +49,6 @@ export interface LessonItem {
   di: DayIndex
   si: number // indeks slot mulai (0 = jam ke-1)
   siAkhir: number // indeks slot selesai (multi-JP: > si)
-  time: string
   mapel: string
   guru: string
   ket?: string
@@ -182,8 +178,7 @@ export const teachersOf = (level: Jenjang): string[] => stateV2.guru[level].map(
 
 export const genGrid = (
   level: Jenjang,
-  kelasName: string,
-  extra: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }> = []
+  kelasName: string
 ): Record<DayIndex, LessonSlot[]> => {
   const jumlahSlot = Math.max(stateV2.polaSlot[level].length, SLOT_TIMES.length, 1)
   const g: Record<number, LessonSlot[]> = {}
@@ -202,54 +197,18 @@ export const genGrid = (
         }
       }
     })
-  extra
-    .filter(e => e.level === level && e.kelas === kelasName)
-    .forEach(e => {
-      const sel = g[e.di]?.[e.si]
-      if (sel) {
-        sel.mapel = e.mapel
-        sel.guru = e.guru
-        sel.ket = e.ket
-        sel.baru = true
-      }
-    })
   return g as Record<DayIndex, LessonSlot[]>
 }
 
-export const allLessons = (
-  level: Jenjang,
-  extra: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }> = []
-): LessonItem[] => {
-  const out = stateV2.pelajaran.filter(l => l.level === level)
-  extra
-    .filter(e => e.level === level)
-    .forEach(e => {
-      out.push({
-        id: `lokal-${e.kelas}-${e.di}-${e.si}`,
-        level,
-        kelas: e.kelas,
-        room: stateV2.kelas[level].find(k => k.name === e.kelas)?.room || '',
-        di: e.di,
-        si: e.si,
-        siAkhir: e.si,
-        time: stateV2.polaSlot[level][e.si] || '',
-        mapel: e.mapel,
-        guru: e.guru,
-        ket: e.ket,
-        classId: '',
-        subjectId: '',
-        teacherId: ''
-      })
-    })
-  return out
+export const allLessons = (level: Jenjang): LessonItem[] => {
+  return stateV2.pelajaran.filter(l => l.level === level)
 }
 
 export const lessonsOf = (
   level: Jenjang,
-  guruName: string,
-  extra: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }> = []
+  guruName: string
 ): LessonItem[] => {
-  return allLessons(level, extra)
+  return allLessons(level)
     .filter(l => l.guru === guruName)
     .sort((a, b) => a.di - b.di || rentangSlot(level, a.si)[0] - rentangSlot(level, b.si)[0])
 }

@@ -14,7 +14,6 @@ import {
 const props = defineProps<{
   isOpen: boolean
   sessionKey: string | null
-  extraSchedules: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }>
 }>()
 
 const emit = defineEmits<{

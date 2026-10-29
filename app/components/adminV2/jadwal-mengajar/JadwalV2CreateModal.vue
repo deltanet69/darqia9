@@ -19,7 +19,6 @@ const props = defineProps<{
   jenjang: Jenjang
   currentClass: string
   simDayIdx: DayIndex
-  extraSchedules: Array<{ level: Jenjang; kelas: string; di: DayIndex; si: number; mapel: string; guru: string; ket?: string }>
 }>()
 
 const emit = defineEmits<{
@@ -85,7 +84,7 @@ const handleSubmit = (force: boolean = false) => {
 
   const di = form.value.hari
   // Periksa bentrok guru di kelas lain
-  const allCurrent = allLessons(props.jenjang, props.extraSchedules)
+  const allCurrent = allLessons(props.jenjang)
   const guruClash = allCurrent.find(
     l => l.guru === form.value.guru && l.di === di && l.si === si && l.kelas !== form.value.kelas
   )
@@ -96,7 +95,7 @@ const handleSubmit = (force: boolean = false) => {
   }
 
   // Periksa apakah kelas sudah terisi pada jam itu
-  const currentCell = genGrid(props.jenjang, form.value.kelas, props.extraSchedules)[di]?.[si]
+  const currentCell = genGrid(props.jenjang, form.value.kelas)[di]?.[si]
   if (currentCell && !force) {
     isWarningReplace.value = true
     errorMessage.value = `Kelas ${form.value.kelas} sudah terisi ${currentCell.mapel} oleh ${currentCell.guru} pada jam ini. Klik "Ganti & Simpan Jadwal" untuk mengganti penugasan tersebut.`
