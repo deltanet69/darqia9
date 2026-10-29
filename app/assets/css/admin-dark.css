@@ -18,6 +18,7 @@
      SEKSI 8  FORMULIR & MODAL ... keadaan fokus kolom isian
      SEKSI 10 GAYA BAWAAN ....... gaya <style> komponen (Agenda)
      SEKSI 11 HALAMAN PROFIL .... hero, cincin kelengkapan, kartu RFID
+     SEKSI 12 KONTEN WEBSITE .... formulir tambah/edit & editor isi
      SEKSI 9  GRAFIK (SVG) ....... garis kisi, sumbu, label grafik
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
 
@@ -442,6 +443,7 @@ html[data-theme="dark"] .text-purple-800,
 html[data-theme="dark"] .text-purple-900,
 html[data-theme="dark"] .text-purple-950 { color: #B79CFF; }
 html[data-theme="dark"] .text-amber-700 { color: #F5B74B; }
+html[data-theme="dark"] .text-amber-600 { color: #F5B74B; }
 
 /* Teks tembus pandang */
 html[data-theme="dark"] .text-\[\#667085\]\/60 { color: rgba(147, 165, 196, 0.6); }
@@ -560,6 +562,7 @@ html[data-theme="dark"] .border-emerald-200 { border-color: #175C3A; }
 html[data-theme="dark"] .border-rose-200,
 html[data-theme="dark"] .border-red-200 { border-color: #5C2A24; }
 html[data-theme="dark"] .border-amber-200 { border-color: #6B4E12; }
+html[data-theme="dark"] .border-blue-400 { border-color: #2A4A8F; }
 html[data-theme="dark"] .border-\[\#FEDF89\],
 html[data-theme="dark"] .border-\[\#FED7AA\],
 html[data-theme="dark"] .border-\[\#FCD34D\],
@@ -619,6 +622,8 @@ html[data-theme="dark"] .focus\:ring-blue-200:focus,
 html[data-theme="dark"] .focus\:ring-blue-100:focus { --tw-ring-color: #22386B; }
 html[data-theme="dark"] .focus-within\:ring-red-100:focus-within { --tw-ring-color: #5C2A24; }
 html[data-theme="dark"] .focus-within\:ring-blue-100:focus-within { --tw-ring-color: #22386B; }
+html[data-theme="dark"] .focus\:ring-blue-500:focus { --tw-ring-color: #2A4A8F; }
+html[data-theme="dark"] .focus\:border-blue-600:focus { border-color: #1B5FD9; }
 html[data-theme="dark"] .focus-within\:ring-emerald-100:focus-within { --tw-ring-color: #175C3A; }
 
 /* Tombol nonaktif */
@@ -797,3 +802,37 @@ html[data-theme="dark"] .profil-v2-hero .bg-white\/10 { background-color: rgba(2
 html[data-theme="dark"] .profil-v2-hero .border-white { border-color: #93A5C4; }
 html[data-theme="dark"] .profil-v2-hero .ring-white\/50 { --tw-ring-color: rgba(147,165,196,.5); }
 html[data-theme="dark"] .profil-v2-hero .stroke-white\/18 { stroke: #2A3D63; }
+
+/* ===== 12 — Halaman Konten Website (formulir & editor) =====
+   Formulir tambah/edit konten memakai <style scoped> (.panel, .field,
+   .upload, .action) dan editor isi memakai .tool — warnanya ditimpa
+   dari sini, terkurung kelas kait pada akar halaman & editor supaya
+   tidak menyentuh komponen lain. Chip warna banner (navy/emerald/
+   amber/rose) dan tombol biru merek di daftar konten memang warna
+   konten — tidak diubah. */
+html[data-theme="dark"] .konten-form-page .panel { background-color: #0A1830; border-color: #1C3560; box-shadow: 0 1px 2px rgba(2,6,23,.4); }
+html[data-theme="dark"] .konten-form-page .panel-head { border-bottom-color: #1C3560; }
+html[data-theme="dark"] .konten-form-page .panel-head p { color: #93A5C4; }
+html[data-theme="dark"] .konten-form-page .field { color: #C4D0E4; }
+html[data-theme="dark"] .konten-form-page .field span:not([class]) { color: #93A5C4; }
+html[data-theme="dark"] .konten-form-page .field input,
+html[data-theme="dark"] .konten-form-page .field select,
+html[data-theme="dark"] .konten-form-page .field textarea { border-color: #1C3560; background-color: #0C1E3A; color: #E9EFFA; }
+html[data-theme="dark"] .konten-form-page .field input:focus,
+html[data-theme="dark"] .konten-form-page .field select:focus,
+html[data-theme="dark"] .konten-form-page .field textarea:focus { border-color: #1B5FD9; box-shadow: 0 0 0 4px rgba(27,95,217,.18); }
+html[data-theme="dark"] .konten-form-page .field input[readonly] { background-color: #0A1830; color: #93A5C4; }
+html[data-theme="dark"] .konten-form-page .upload { border-color: #2A3D63; background-color: #0C1E3A; color: #C4D0E4; }
+html[data-theme="dark"] .konten-form-page .upload:hover,
+html[data-theme="dark"] .konten-form-page .upload:focus-within { border-color: #1B5FD9; background-color: #0E2A52; box-shadow: 0 0 0 4px rgba(27,95,217,.15); }
+html[data-theme="dark"] .konten-form-page .upload-icon { background-color: #12294D; color: #6EA8FE; }
+html[data-theme="dark"] .konten-form-page .upload-title { color: #E9EFFA; }
+html[data-theme="dark"] .konten-form-page .upload-copy { color: #93A5C4; }
+html[data-theme="dark"] .konten-form-page .upload-meta { color: #93A5C4; }
+html[data-theme="dark"] .konten-form-page .action.secondary { border-color: #1C3560; background-color: #0C1E3A; color: #C4D0E4; }
+html[data-theme="dark"] .konten-form-page .action.danger { border-color: #5C2A24; background-color: #33130F; color: #F97066; }
+html[data-theme="dark"] .konten-form-page dt { color: #93A5C4; }
+html[data-theme="dark"] .konten-form-page dd { color: #E9EFFA; }
+html[data-theme="dark"] .admin-content-editor .tool { border-color: #1C3560; background-color: #12294D; color: #C4D0E4; }
+html[data-theme="dark"] .admin-content-editor .tool:hover,
+html[data-theme="dark"] .admin-content-editor .tool:focus-visible { border-color: #1B5FD9; outline-color: #2A4A8F; }

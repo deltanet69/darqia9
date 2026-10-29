@@ -191,7 +191,7 @@ const formatDate = (value: string) => value ? new Intl.DateTimeFormat('id-ID', {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F3F5F9] pb-24 font-sans text-[#101828] antialiased lg:pb-10">
+  <div class="konten-form-page min-h-screen bg-[#F3F5F9] pb-24 font-sans text-[#101828] antialiased lg:pb-10">
     <div class="sticky top-0 z-50">
       <AdminV2Header :jenjang="jenjang" :role="role" :groups="GROUPS" current-route="aplikasi" :active-group-id="activeMegaGroup?.id" :is-mega-open="isMegaOpen" @update:jenjang="jenjang=$event" @toggle-mega="toggleMega" @open-mobile-menu="isMobileMenuOpen=true"/>
       <AdminV2Breadcrumb :items="[{label:'Portal Admin',to:'/adminV2'},{label:'Aplikasi'},{label:'Konten Website',to:'/adminV2/konten'},{label:isNew?'Tambah Konten':isEditing?'Edit Konten':'Detail Konten'}]" :badge="jenjang==='smp'?'SMP IT BCA':'SMK IT Attaqwa 9'" :jenjang="jenjang"/>
