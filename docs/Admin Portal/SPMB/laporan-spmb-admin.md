@@ -81,5 +81,9 @@ Menindaklanjuti pertanyaan user soal kepastian aliran data publik → admin:
   `recordKeRow` teruji di `tests/spmb-admin.mjs` (10 kelompok, lolos).
 - Bukti tampil di admin: baris uji `SPMB27-SMK-UJITES` ("UJI INTEGRASI HAPUS") yang
   diinsert sebagai anon tampil di Manajemen SPMB (SMK) setelah user login — verifikasi
-  visual oleh user; baris uji dihapus permanen sesudahnya lewat SQL pembersihan.
+  visual oleh user. Pembersihan baris uji: baris tabel bisa dihapus lewat SQL biasa,
+  TETAPI berkas di storage TIDAK bisa dihapus lewat SQL (Supabase menjaga
+  `storage.objects` dengan `protect_delete` — error 42501); berkas dihapus lewat
+  Dashboard Storage / Storage API. Catatan migrasi: mengubah jumlah kolom
+  `RETURNS TABLE` pada fungsi wajib `DROP FUNCTION` dulu (error 42P13 bila tidak).
 - Build produksi exit 0; regresi CBT exit 0. Backup: `backup/spmb-db-20261029`.
