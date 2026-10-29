@@ -4,6 +4,10 @@
 -- Jalankan sekali di Supabase SQL Editor (aman dijalankan ulang).
 -- ==============================================================================
 
+-- Return type berubah dari migrasi 0018 (5 -> 7 kolom): CREATE OR REPLACE
+-- tidak bisa mengubah return type, fungsi lama wajib di-DROP dulu.
+drop function if exists public.spmb_lacak(text);
+
 create or replace function public.spmb_lacak(p_id text)
 returns table (
   id text,
