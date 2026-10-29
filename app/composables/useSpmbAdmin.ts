@@ -71,6 +71,7 @@ export interface SpmbAdminRecord {
   kelas: string
   nis: string
   deleted: boolean
+  bukti_path?: string
 }
 
 const BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -173,7 +174,56 @@ export function normalizeRecord(raw: Record<string, unknown>): SpmbAdminRecord {
     bukti: str('bukti'),
     kelas: str('kelas'),
     nis: str('nis'),
-    deleted: raw.deleted === true
+    deleted: raw.deleted === true,
+    bukti_path: str('bukti_path')
+  }
+}
+
+const strKolom = (row: Record<string, unknown>, k: string) => (typeof row[k] === 'string' ? (row[k] as string) : '')
+
+/** Baris tabel spmb_registrations -> record admin. */
+export function recordDariRow(row: Record<string, unknown>): SpmbAdminRecord {
+  const pre: Record<string, unknown> = { ...row }
+  pre.waktu = strKolom(row, 'created_at')
+  pre.deleted = row.deleted_at != null
+  const path = strKolom(row, 'bukti_path')
+  pre.bukti = path ? path.split('/').pop() || path : strKolom(row, 'bukti')
+  const r = normalizeRecord(pre)
+  r.bukti_path = path
+  return r
+}
+
+/** Record admin -> baris tabel spmb_registrations (untuk upsert). */
+export function recordKeRow(r: SpmbAdminRecord): Record<string, unknown> {
+  return {
+    id: r.id,
+    jenjang: r.jenjang,
+    jurusan: r.jurusan || null,
+    s_nama: r.s_nama,
+    s_nisn: r.s_nisn,
+    s_jk: r.s_jk || null,
+    s_tempat: r.s_tempat || null,
+    s_tgl: r.s_tgl || null,
+    s_hp: r.s_hp || null,
+    s_email: r.s_email || null,
+    s_sekolah: r.s_sekolah || null,
+    s_alsekolah: r.s_alsekolah || null,
+    o_nama: r.o_nama || null,
+    o_hub: r.o_hub || null,
+    o_nik: r.o_nik || null,
+    o_hp: r.o_hp || null,
+    o_email: r.o_email || null,
+    o_tempat: r.o_tempat || null,
+    o_tgl: r.o_tgl || null,
+    o_alamat: r.o_alamat || null,
+    via: r.via,
+    oleh: r.oleh || null,
+    metode: r.metode || null,
+    bukti_path: r.bukti_path || null,
+    status: r.status,
+    kelas: r.kelas || null,
+    nis: r.nis || null,
+    deleted_at: r.deleted ? new Date().toISOString() : null
   }
 }
 
@@ -337,6 +387,41 @@ export function useSpmbAdmin() {
       if (rb && Array.isArray(rb.SMP) && Array.isArray(rb.SMK)) rombel.value = rb
     } catch { /* abaikan */ }
     termuat.value = true
+    void muatDariDb()
+  }
+
+  // Database pusat adalah sumber utama: hasil baca Supabase menggantikan
+  // data lokal untuk ID yang sama; data lokal yang belum ada di database
+  // (pendaftaran lama / cadangan luring) tetap ditampilkan.
+  async function muatDariDb() {
+    try {
+      const supabase = useSupabaseClient()
+      const { data, error } = await supabase
+        .from('spmb_registrations')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (!error && data) {
+        const dariDb = (data as Record<string, unknown>[]).map(recordDariRow)
+        const idDb = new Set(dariDb.map(r => r.id))
+        records.value = [...dariDb, ...records.value.filter(r => !idDb.has(r.id))]
+      }
+      const { data: st } = await supabase.from('spmb_settings').select('key, value')
+      if (st) {
+        for (const row of st as { key: string; value: unknown }[]) {
+          if (row.key === 'kuota' && row.value && typeof row.value === 'object') kuota.value = row.value as Record<SpmbJenjangKey, number>
+          if (row.key === 'rombel' && row.value && typeof row.value === 'object') rombel.value = row.value as Record<SpmbJenjangKey, SpmbRombel[]>
+        }
+      }
+    } catch { /* tetap memakai data lokal */ }
+  }
+
+  // Tulis satu record ke database (insert bila baru, update bila sudah ada).
+  async function simpanRecordDb(r: SpmbAdminRecord) {
+    try {
+      const supabase = useSupabaseClient()
+      const { error } = await supabase.from('spmb_registrations').upsert(recordKeRow(r), { onConflict: 'id' })
+      if (error) console.warn('SPMB admin: gagal menulis ke database.', error.message)
+    } catch { /* abaikan — data tetap tersimpan lokal */ }
   }
 
   function simpan() {
@@ -345,12 +430,22 @@ export function useSpmbAdmin() {
   }
 
   function simpanPengaturan() {
-    if (typeof localStorage === 'undefined') return
-    try {
-      localStorage.setItem(SPMB_KUOTA_KEY, JSON.stringify(kuota.value))
-      localStorage.setItem(SPMB_ROMBEL_KEY, JSON.stringify(rombel.value))
-    } catch { /* abaikan */ }
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(SPMB_KUOTA_KEY, JSON.stringify(kuota.value))
+        localStorage.setItem(SPMB_ROMBEL_KEY, JSON.stringify(rombel.value))
+      } catch { /* abaikan */ }
+    }
+    void (async () => {
+      try {
+        const supabase = useSupabaseClient()
+        await supabase.from('spmb_settings').upsert([
+          { key: 'kuota', value: kuota.value },
+          { key: 'rombel', value: rombel.value }
+        ], { onConflict: 'key' })
+      } catch { /* abaikan */ }
+    })()
   }
 
-  return { records, termuat, kuota, rombel, muat, simpan, simpanPengaturan }
+  return { records, termuat, kuota, rombel, muat, simpan, simpanPengaturan, simpanRecordDb }
 }

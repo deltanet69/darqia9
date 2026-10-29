@@ -92,11 +92,23 @@ const chipStatusKelas: Record<string, string> = {
 function bukaDetail(id: string) { pilihanId.value = id; tampilan.value = 'detail' }
 function bukaFormulir(id = '') { editId.value = id; tampilan.value = 'formulir' }
 
-function simpanFormulir(record: SpmbAdminRecord) {
+async function simpanFormulir(record: SpmbAdminRecord, berkas?: File | null) {
+  if (berkas) {
+    try {
+      const supabase = useSupabaseClient()
+      const nama = berkas.name.replace(/[^\w.\-]+/g, '_')
+      const { error } = await supabase.storage.from('spmb-bukti').upload(`${record.id}/${nama}`, berkas)
+      if (!error) {
+        record.bukti_path = `${record.id}/${nama}`
+        record.bukti = nama
+      }
+    } catch { /* nama berkas tetap tercatat dari formulir */ }
+  }
   const i = admin.records.value.findIndex(r => r.id === record.id)
   if (i >= 0) admin.records.value[i] = record
   else admin.records.value.push(record)
   admin.simpan()
+  void admin.simpanRecordDb(record)
   toast(i >= 0 ? `Data ${record.s_nama} diperbarui.` : `Pendaftaran manual ${record.s_nama} tersimpan dengan ID ${record.id}.`)
   tampilan.value = 'daftar'
 }
@@ -110,6 +122,7 @@ function ubahStatus(id: string, status: SpmbStatus) {
   }
   r.status = status
   admin.simpan()
+  void admin.simpanRecordDb(r)
   toast(`Status ${r.s_nama} sekarang: ${status}.`)
 }
 
@@ -118,6 +131,7 @@ function hapus(id: string) {
   if (!r) return
   r.deleted = true
   admin.simpan()
+  void admin.simpanRecordDb(r)
   tampilan.value = 'daftar'
   toast(`${r.s_nama} dipindahkan ke sampah (soft delete).`)
 }
@@ -126,6 +140,7 @@ function pulihkan(id: string) {
   if (!r) return
   r.deleted = false
   admin.simpan()
+  void admin.simpanRecordDb(r)
   toast(`${r.s_nama} dipulihkan ke daftar pendaftar.`)
 }
 

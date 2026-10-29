@@ -11,7 +11,7 @@ const props = defineProps<{
   records: SpmbAdminRecord[]
 }>()
 const emit = defineEmits<{
-  simpan: [record: SpmbAdminRecord]
+  simpan: [record: SpmbAdminRecord, berkas?: File | null]
   batal: []
 }>()
 
@@ -43,9 +43,13 @@ const galat = ref('')
 const nonTunai = computed(() => f.metode !== 'Tunai di sekolah')
 const judul = computed(() => (props.record ? 'Ubah Pendaftaran Manual' : 'Tambah Pendaftaran Manual'))
 
+const berkasBukti = ref<File | null>(null)
 function onBukti(e: Event) {
   const input = e.target as HTMLInputElement
-  f.bukti = input.files && input.files[0] ? input.files[0].name : f.bukti
+  if (input.files && input.files[0]) {
+    berkasBukti.value = input.files[0]
+    f.bukti = input.files[0].name
+  }
 }
 
 function angkaSaja(field: 's_nisn' | 'o_nik') {
@@ -97,7 +101,7 @@ function simpan() {
   dasar.metode = f.metode
   dasar.bukti = f.metode === 'Tunai di sekolah' ? '—' : f.bukti
   if (!props.record) dasar.status = f.bayar === 'sudah' ? 'Pembayaran terverifikasi' : 'Menunggu verifikasi'
-  emit('simpan', dasar)
+  emit('simpan', dasar, berkasBukti.value)
 }
 
 const labelKelas = 'mb-1.5 block text-[13px] font-medium text-[#344054]'

@@ -55,6 +55,7 @@ function tempatkanTerpilih() {
     s.nis = nisBerikutnya(admin.records.value, props.jenjang)
   }
   admin.simpan()
+  for (const s of siswa) void admin.simpanRecordDb(s)
   terpilih.value = new Set()
   emit('toast', `${siswa.length} siswa ditempatkan ke ${rombel.nama} dan tercatat sebagai data siswa resmi.`)
 }
@@ -62,13 +63,16 @@ function tempatkanTerpilih() {
 function bagiRata() {
   if (!pool.value.length) return emit('toast', 'Tidak ada siswa yang menunggu penempatan.')
   const { pasangan, sisa } = bagiRataPenempatan(pool.value, rombelUntuk, terisi.value)
+  const berubah: SpmbAdminRecord[] = []
   for (const p of pasangan) {
     const s = admin.records.value.find(r => r.id === p.id)
     if (!s) continue
     s.kelas = p.rombel
     s.nis = nisBerikutnya(admin.records.value, props.jenjang)
+    berubah.push(s)
   }
   admin.simpan()
+  for (const s of berubah) void admin.simpanRecordDb(s)
   terpilih.value = new Set()
   emit('toast', sisa.length
     ? `Sebagian siswa tidak tertampung — ${sisa.length} siswa tetap menunggu (semua rombel tujuannya penuh).`
@@ -82,6 +86,7 @@ function batalkan(id: string) {
   s.kelas = ''
   s.nis = ''
   admin.simpan()
+  void admin.simpanRecordDb(s)
   emit('toast', `${s.s_nama} kembali ke daftar belum ditempatkan.`)
 }
 

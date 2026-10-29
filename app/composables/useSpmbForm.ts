@@ -37,6 +37,7 @@ export interface SpmbRegistration {
 export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
   const step = ref(1)
   const wizEl = ref<HTMLElement | null>(null)
+  const supabase = useSupabaseClient()
 
   const form = reactive({
     jenjang: initialJenjang,
@@ -177,7 +178,7 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       step.value++
       scrollToTop()
     } else {
-      submitForm()
+      void submitForm()
     }
   }
 
@@ -228,7 +229,7 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
   }
 
-  const submitForm = () => {
+  const submitForm = async () => {
     const id = genId()
     const jenjFull = form.jenjang === 'smp' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9'
     const reg: SpmbRegistration = {
@@ -256,6 +257,57 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       o_alamat: form.o_alamat.trim(),
       waktu: new Date().toISOString(),
       status: 'Menunggu verifikasi'
+    }
+
+    // Simpan ke database pusat (Supabase) + unggah bukti pembayaran, agar
+    // pendaftaran langsung terbaca di Manajemen SPMB admin dari perangkat
+    // mana pun. Bila jaringan/database gagal, data tetap tersimpan lokal
+    // di perangkat ini sebagai cadangan (perilaku lama).
+    try {
+      let buktiPath: string | null = null
+      if (fileObj.value) {
+        const namaBerkas = fileObj.value.name.replace(/[^\w.\-]+/g, '_')
+        const { error: errUp } = await supabase.storage.from('spmb-bukti').upload(`${id}/${namaBerkas}`, fileObj.value)
+        if (!errUp) buktiPath = `${id}/${namaBerkas}`
+      }
+      const { error: errIns } = await supabase.from('spmb_registrations').insert({
+        id: reg.id,
+        jenjang: reg.jenjang,
+        jurusan: reg.jurusan ?? null,
+        s_nama: reg.s_nama,
+        s_nisn: reg.s_nisn,
+        s_jk: reg.s_jk,
+        s_tempat: form.s_tempat.trim(),
+        s_tgl: form.s_tgl || null,
+        s_hp: reg.s_hp,
+        s_email: reg.s_email,
+        s_sekolah: reg.s_sekolah,
+        s_alsekolah: reg.s_alsekolah,
+        o_nama: reg.o_nama,
+        o_hub: reg.o_hub,
+        o_nik: reg.o_nik,
+        o_hp: reg.o_hp,
+        o_email: reg.o_email,
+        o_tempat: form.o_tempat.trim(),
+        o_tgl: form.o_tgl || null,
+        o_alamat: reg.o_alamat,
+        via: 'Online',
+        metode: null,
+        bukti_path: buktiPath,
+        status: 'Menunggu verifikasi'
+      })
+      if (errIns) {
+        if ((errIns as { code?: string }).code === '23505') {
+          // Dijaga unik oleh database: NISN sudah terdaftar di jenjang ini.
+          errs.s_nisn = true
+          step.value = 1
+          scrollToTop()
+          return
+        }
+        console.warn('SPMB: gagal menyimpan ke database, memakai simpanan lokal.', errIns.message)
+      }
+    } catch (e) {
+      console.warn('SPMB: database tidak terjangkau, memakai simpanan lokal.', e)
     }
 
     if (typeof localStorage !== 'undefined') {
@@ -306,9 +358,41 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     modalTrack.value = true
   }
 
-  const doTrack = () => {
+  const doTrack = async () => {
     const id = trackQuery.value.trim().toUpperCase()
     if (!id) return
+    // Utama: database pusat lewat RPC spmb_lacak — publik hanya dapat
+    // melihat status untuk ID pendaftarannya sendiri.
+    try {
+      const { data, error } = await supabase.rpc('spmb_lacak', { p_id: id })
+      if (!error && data && data.length) {
+        const r = data[0] as { id: string; s_nama: string; jenjang: string; jurusan?: string; s_sekolah?: string; status: string; created_at: string }
+        trackNotFound.value = false
+        trackResult.value = {
+          id: r.id,
+          jenjang: r.jenjang,
+          jurusan: r.jurusan || '',
+          s_nama: r.s_nama,
+          s_nisn: '',
+          s_jk: '',
+          s_ttl: '',
+          s_hp: '',
+          s_email: '',
+          s_sekolah: r.s_sekolah || '',
+          s_alsekolah: '',
+          o_nama: '',
+          o_hub: '',
+          o_nik: '',
+          o_hp: '',
+          o_email: '',
+          o_ttl: '',
+          o_alamat: '',
+          waktu: r.created_at,
+          status: r.status
+        }
+        return
+      }
+    } catch { /* lanjut ke simpanan lokal */ }
     let regs: SpmbRegistration[] = []
     if (typeof localStorage !== 'undefined') {
       try {

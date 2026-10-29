@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict'
 import {
   parseTtl, gabungTtl, fmtTanggalPanjang, normalizeRecord, validasiManual,
-  nisBerikutnya, bagiRataPenempatan, csvSpmb, samarNik, jenjangKeyDari
+  nisBerikutnya, bagiRataPenempatan, csvSpmb, samarNik, jenjangKeyDari,
+  recordDariRow, recordKeRow
 } from '../app/composables/useSpmbAdmin.ts'
 
 let lolos = 0
@@ -111,6 +112,33 @@ cek('csvSpmb memuat kolom TTL terpisah + penempatan; samarNik menyamarkan', () =
   assert.match(csv, /"Bekasi";"14 Maret 2011"/)
   assert.match(csv, /"X TKJ 1";"2700101"/)
   assert.equal(samarNik('3201121403800001'), '3201••••••••••01')
+})
+
+cek('mapper database: baris spmb_registrations <-> record admin', () => {
+  const row = {
+    id: 'SPMB27-SMK-DB1234', jenjang: 'SMK IT Attaqwa 9', jurusan: 'Teknik Komputer & Jaringan',
+    s_nama: 'Siswa DB', s_nisn: '0012345678', s_jk: 'Laki-laki', s_tempat: 'Bekasi', s_tgl: '2011-03-14',
+    s_hp: '081200000000', s_email: 'db@example.com', s_sekolah: 'SMPN 9', s_alsekolah: 'Jl. DB',
+    o_nama: 'Wali DB', o_hub: 'Ayah', o_nik: '3201121403800001', o_hp: '081200000001', o_email: 'wali@example.com',
+    o_tempat: 'Jakarta', o_tgl: '1980-03-14', o_alamat: 'Jl. Wali',
+    via: 'Online', oleh: null, metode: 'Transfer BSI', bukti_path: 'SPMB27-SMK-DB1234/bukti-db.jpg',
+    status: 'Diterima', kelas: 'X TKJ 1', nis: '2700101',
+    deleted_at: null, created_at: '2026-10-29T02:00:00.000Z', updated_at: '2026-10-29T02:00:00.000Z'
+  }
+  const r = recordDariRow(row)
+  assert.equal(r.waktu, '2026-10-29T02:00:00.000Z')
+  assert.equal(r.bukti, 'bukti-db.jpg')
+  assert.equal(r.bukti_path, 'SPMB27-SMK-DB1234/bukti-db.jpg')
+  assert.equal(r.deleted, false)
+  assert.equal(r.s_tgl, '2011-03-14')
+  const kembali = recordKeRow(r)
+  assert.equal(kembali.s_tgl, '2011-03-14')
+  assert.equal(kembali.bukti_path, 'SPMB27-SMK-DB1234/bukti-db.jpg')
+  assert.equal(kembali.deleted_at, null)
+  assert.equal(kembali.status, 'Diterima')
+  const terhapus = recordDariRow({ ...row, deleted_at: '2026-10-29T03:00:00.000Z' })
+  assert.equal(terhapus.deleted, true)
+  assert.ok(recordKeRow(terhapus).deleted_at)
 })
 
 console.log(`\nSEMUA ${lolos} KELOMPOK TES SPMB LOLOS`)

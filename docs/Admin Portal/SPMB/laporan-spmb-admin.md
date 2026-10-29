@@ -53,3 +53,33 @@ port setia dari preview v5 yang disetujui user, **Tailwind penuh tanpa CSS konve
   NIS berurutan, bagi rata + kapasitas, CSV) — LOLOS (exit 0).
 - `tests/cbt-banksoal.mjs` (regresi): exit 0.
 - `npm run build`: exit 0.
+
+## Integrasi Database (29 Okt 2026, malam) — menggantikan fase localStorage
+
+Menindaklanjuti pertanyaan user soal kepastian aliran data publik → admin:
+
+- **Migrasi `supabase/migrations/0018_spmb.sql`** (dijalankan user di SQL Editor):
+  tabel `spmb_registrations` (satu sumber online+manual, TTL terpisah, NISN unik per
+  jenjang via partial index, soft delete `deleted_at`, kolom penempatan kelas/nis),
+  tabel `spmb_settings` (kuota & rombel), RLS (anon hanya INSERT pendaftaran online;
+  staf = pemilik `profiles` via `is_staff()`; select khusus staf), RPC `spmb_lacak`
+  (security definer — publik melacak hanya dengan ID miliknya), bucket privat
+  `spmb-bukti` (anon upload, staf baca).
+- **Migrasi `0019_spmb_lacak_lengkap.sql`**: RPC lacak ikut mengembalikan jurusan &
+  sekolah asal (sesuai modal Lacak publik).
+- **Verifikasi lapisan database (skrip anon dari laptop, tanpa login): 5/5 lolos** —
+  RPC lacak OK, insert anon payload formulir OK, lacak menemukan barisnya, select
+  anon langsung terbaca 0 baris (RLS melindungi), upload bucket OK (catatan: upload
+  TIDAK memakai upsert — upsert menuntut policy UPDATE untuk anon).
+- **Rewiring kode**: `useSpmbForm.submitForm` kini async — unggah bukti ke bucket +
+  insert ke `spmb_registrations` (duplikat NISN dari database, kode 23505, dikembalikan
+  sebagai galat field NISN; kegagalan jaringan jatuh ke simpanan lokal lama sebagai
+  cadangan). `doTrack` memakai RPC dulu, fallback lokal. `useSpmbAdmin` membaca
+  Supabase sebagai sumber utama (data lokal non-DB tetap digabung), semua mutasi admin
+  (status, hapus/pulihkan, simpan manual + unggah buktinya, penempatan) ditulis tembus
+  via upsert; kuota & rombel di-upsert ke `spmb_settings`. Mapper `recordDariRow` /
+  `recordKeRow` teruji di `tests/spmb-admin.mjs` (10 kelompok, lolos).
+- Bukti tampil di admin: baris uji `SPMB27-SMK-UJITES` ("UJI INTEGRASI HAPUS") yang
+  diinsert sebagai anon tampil di Manajemen SPMB (SMK) setelah user login — verifikasi
+  visual oleh user; baris uji dihapus permanen sesudahnya lewat SQL pembersihan.
+- Build produksi exit 0; regresi CBT exit 0. Backup: `backup/spmb-db-20261029`.
