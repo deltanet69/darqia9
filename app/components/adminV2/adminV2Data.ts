@@ -1,4 +1,4 @@
-﻿export interface SchoolData {
+export interface SchoolData {
   label: string
   heroValue: string
   heroSub: string
@@ -192,7 +192,7 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'Manajemen CBT': '/adminV2/cbt',
   'LMS': '/adminV2/lms',
   'Konten Website': '/adminV2/konten',
-  'SPMB': '/spmb',
+  'SPMB': '/adminV2/spmb',
   'Perpustakaan digital': '#',
   'Manajemen user': '/adminV2/users',
   'Hak Akses (RBAC)': '/admin/rbac',

@@ -21,6 +21,17 @@ export interface SpmbRegistration {
   o_alamat: string
   waktu: string
   status: string
+  s_tempat?: string
+  s_tgl?: string
+  o_tempat?: string
+  o_tgl?: string
+  via?: string
+  oleh?: string
+  metode?: string
+  bukti?: string
+  kelas?: string
+  nis?: string
+  deleted?: boolean
 }
 
 export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
@@ -228,6 +239,8 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       s_nisn: form.s_nisn,
       s_jk: form.s_jk,
       s_ttl: `${form.s_tempat.trim()}, ${fmtDate(form.s_tgl)}`,
+      s_tempat: form.s_tempat.trim(),
+      s_tgl: form.s_tgl,
       s_hp: form.s_hp || '-',
       s_email: form.s_email || '-',
       s_sekolah: form.s_sekolah.trim(),
@@ -238,6 +251,8 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       o_hp: form.o_hp,
       o_email: form.o_email || '-',
       o_ttl: `${form.o_tempat.trim()}, ${fmtDate(form.o_tgl)}`,
+      o_tempat: form.o_tempat.trim(),
+      o_tgl: form.o_tgl,
       o_alamat: form.o_alamat.trim(),
       waktu: new Date().toISOString(),
       status: 'Menunggu verifikasi'
