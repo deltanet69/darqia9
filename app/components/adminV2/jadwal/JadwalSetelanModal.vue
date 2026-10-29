@@ -51,7 +51,7 @@ const kirim = () => {
 <template>
   <div v-if="open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="absolute inset-0 bg-blue-950/50" @click="emit('tutup')" />
-    <div class="relative bg-white w-full sm:max-w-[520px] rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto">
+    <div class="jadwal-modal relative bg-white w-full sm:max-w-[520px] rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto">
       <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-2 sticky top-0 bg-white z-10">
         <div>
           <div class="text-[15px] font-semibold text-blue-950">Pengaturan Jam &amp; Istirahat</div>

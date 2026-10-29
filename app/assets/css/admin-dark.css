@@ -21,6 +21,8 @@
      SEKSI 12 KONTEN WEBSITE .... formulir tambah/edit & editor isi
      SEKSI 13 JADWAL PELAJARAN .. biru-950 & varian tembus pandang
                                    timetable (Akademik) & Rekap Mengajar
+     SEKSI 14 MODAL JADWAL ...... kartu jeda istirahat & kolom isian
+                                   tanpa kelas latar di modal jadwal
      SEKSI 9  GRAFIK (SVG) ....... garis kisi, sumbu, label grafik
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
 
@@ -876,3 +878,31 @@ html[data-theme="dark"] .border-red-100 { border-color: #5C2A24; }
 html[data-theme="dark"] .border-amber-100 { border-color: #6B4E12; }
 html[data-theme="dark"] .ring-blue-200 { --tw-ring-color: #22386B; }
 html[data-theme="dark"] .hover\:border-blue-300:hover { border-color: #2A4A8F; }
+
+
+/* ================================================================
+   SEKSI 14 — MODAL JADWAL (CRUD Jadwal & Pengaturan Jam)
+   Dua cacat dari tangkapan layar 30 Okt: (1) kartu jeda istirahat
+   memakai bg-slate-50/60 — satu-satunya varian tembus pandang
+   slate-50 yang belum terpetakan (saudaranya /50 /70 /80 /90
+   sudah) — sehingga tampil sebagai blok pucat dan label
+   slate-500 di atasnya nyaris tak terbaca; (2) kolom isian modal
+   jadwal tidak memakai kelas latar sama sekali, sehingga
+   peramban menggambarnya dengan abu bawaan skema gelap
+   (abu kecokelatan) yang asing di palet Dark Navy. Perbaikannya
+   mengikuti pola Seksi 12: kelas kait .jadwal-modal pada panel
+   modal, nilai kolom mengikuti kolom formulir konten (#0C1E3A).
+   ================================================================ */
+
+/* — Kartu jeda istirahat: setara varian slate-50 tembus pandang
+      lain di Seksi 2 & 13 — */
+html[data-theme="dark"] .bg-slate-50\/60 { background-color: rgba(12, 30, 58, 0.6); }
+
+/* — Kolom isian modal jadwal (input, select, textarea) — */
+html[data-theme="dark"] .jadwal-modal input,
+html[data-theme="dark"] .jadwal-modal select,
+html[data-theme="dark"] .jadwal-modal textarea { border-color: #1C3560; background-color: #0C1E3A; color: #E9EFFA; }
+html[data-theme="dark"] .jadwal-modal input:focus,
+html[data-theme="dark"] .jadwal-modal select:focus,
+html[data-theme="dark"] .jadwal-modal textarea:focus { border-color: #1B5FD9; box-shadow: 0 0 0 4px rgba(27, 95, 217, 0.18); }
+html[data-theme="dark"] .jadwal-modal input::placeholder { color: #5F7396; }
