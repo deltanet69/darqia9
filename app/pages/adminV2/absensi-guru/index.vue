@@ -10,6 +10,7 @@ import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import AbsensiGuruDetailModal, { type TeacherAttendance } from '~/components/adminV2/absensi-guru/AbsensiGuruDetailModal.vue'
 import AbsensiGuruCharts from '~/components/adminV2/absensi-guru/AbsensiGuruCharts.vue'
+import RekapMengajar from '~/components/adminV2/jadwal/RekapMengajar.vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useAdminTeachers } from '~/composables/useAdminTeachers'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
@@ -29,6 +30,7 @@ useHead({
 const activeGrade = useAdminGrade()
 const teachersStore = useAdminTeachers()
 const rawTeachers = teachersStore.attendanceList
+const tampilanAbsensi = ref<'presensi' | 'rekap'>('presensi')
 
 const jenjang = ref<'smp' | 'smk'>(activeGrade.value.toLowerCase() as 'smp' | 'smk')
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
@@ -488,6 +490,13 @@ onMounted(() => {
 
     <!-- MAIN PAGE CONTAINER -->
     <main class="max-w-[1440px] mx-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 space-y-6">
+      <!-- TAB: PRESENSI HARIAN | REKAP MENGAJAR -->
+      <div class="inline-flex bg-white border border-[#E7EBF2] rounded-xl p-1 shadow-xs" role="tablist" aria-label="Tampilan Absensi Guru">
+        <button type="button" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" :class="tampilanAbsensi === 'presensi' ? 'bg-[#1B5FD9] text-white' : 'text-[#344054] hover:bg-[#F8FAFC]'" @click="tampilanAbsensi = 'presensi'">Presensi Harian</button>
+        <button type="button" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" :class="tampilanAbsensi === 'rekap' ? 'bg-[#1B5FD9] text-white' : 'text-[#344054] hover:bg-[#F8FAFC]'" @click="tampilanAbsensi = 'rekap'">Rekap Mengajar</button>
+      </div>
+
+      <div v-show="tampilanAbsensi === 'presensi'" class="space-y-6">
       <!-- PAGE HEAD & AKSI -->
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
@@ -951,6 +960,11 @@ onMounted(() => {
             </div>
           </div>
         </div>
+      </div>
+      </div>
+
+      <div v-show="tampilanAbsensi === 'rekap'">
+        <RekapMengajar />
       </div>
     </main>
 

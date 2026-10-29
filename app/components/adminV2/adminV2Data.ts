@@ -179,7 +179,7 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'Data siswa': '/adminV2/siswa',
   'Absensi siswa': '/adminV2/absensi',
   'Manajemen kelas': '/adminV2/kelas',
-  'Jadwal pelajaran': '/admin/jadwal-pelajaran',
+  'Jadwal pelajaran': '/adminV2/jadwal-pelajaran',
   'Master mapel': '/adminV2/mapel',
   'Raport siswa': '/adminV2/raport',
   'Data guru & staff': '/adminV2/guru',
