@@ -23,6 +23,12 @@ logs
 .env.*
 !.env.example
 
+
+# confidential
+/docs
+/supabase/migrations
+
+
 /dummy
 /docs/*
 !/docs/laporan-cbt-banksoal.md
