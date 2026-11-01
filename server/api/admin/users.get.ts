@@ -47,7 +47,23 @@ export default defineEventHandler(async (event) => {
   const callerRole = normalizeRole(caller.app_metadata?.role || caller.user_metadata?.role)
   const isPrimarySuperadmin = callerEmail === PRIMARY_SUPERADMIN_EMAIL
 
-  if (!isPrimarySuperadmin && !ADMIN_ROLES.has(callerRole)) {
+  // Gerbang modern: pemegang peran terkunci (Superadmin) menurut penugasan
+  // RBAC (Hak Akses) juga berhak — subjek penugasan bisa berupa uid auth
+  // atau id guru yang terhubung lewat teachers.user_id.
+  let rbacSuperadmin = false
+  try {
+    const { data: guru } = await supabase.from('teachers').select('id').eq('user_id', claims.sub).maybeSingle()
+    const subjek = [claims.sub, guru?.id ? String(guru.id) : null].filter(Boolean) as string[]
+    if (subjek.length) {
+      const { data: tugas } = await supabase
+        .from('rbac_assignments')
+        .select('peran_id, rbac_roles!inner(terkunci)')
+        .in('subjek_id', subjek)
+      rbacSuperadmin = (tugas || []).some((t: any) => t.rbac_roles?.terkunci)
+    }
+  } catch { /* tabel RBAC belum tersedia — gerbang lama tetap berlaku */ }
+
+  if (!isPrimarySuperadmin && !ADMIN_ROLES.has(callerRole) && !rbacSuperadmin) {
     throw createError({ statusCode: 403, statusMessage: 'Akun tidak memiliki hak mengelola pengguna.' })
   }
 
