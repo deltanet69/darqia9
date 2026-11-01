@@ -23,12 +23,14 @@ const muatDraf = () => {
   const tersimpan = peranAktif.value ? state.value.izin[peranAktif.value.id] : null
   draf.value = JSON.parse(JSON.stringify(tersimpan || izinKosong()))
 }
-watch(() => state.value.termuat, selesai => {
-  if (selesai && !aktifId.value) {
-    const awal = state.value.peran.find(r => r.kunci === 'operator') || state.value.peran[0]
-    if (awal) aktifId.value = awal.id
-  }
-})
+const pilihAwal = () => {
+  const awal = state.value.peran.find(r => r.kunci === 'operator') || state.value.peran[0]
+  if (awal) aktifId.value = awal.id
+}
+watch(() => state.value.termuat, selesai => { if (selesai && !aktifId.value) pilihAwal() })
+// Kunjungan ulang: state bersama sudah termuat dari halaman sebelumnya,
+// watch di atas tidak akan menyala lagi — pilih peran awal di sini juga.
+onMounted(() => { if (state.value.termuat && !aktifId.value) pilihAwal() })
 watch(aktifId, () => { muatDraf(); modeForm.value = null; konfirmasiHapus.value = false })
 
 const jumlahDraf = computed(() => hitungIzin(draf.value))

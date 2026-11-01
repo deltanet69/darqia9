@@ -26,7 +26,8 @@ const searchQuery = ref('')
 const supabase = useSupabaseClient()
 const authUser = useSupabaseUser()
 const { isDark, toggleTheme, initTheme } = useAdminTheme()
-onMounted(() => initTheme())
+const rbac = useRbac()
+onMounted(() => { initTheme(); rbac.muat() })
 
 const profileName = computed(() => {
   const metadata = authUser.value?.user_metadata
@@ -35,6 +36,12 @@ const profileName = computed(() => {
 
 const profileEmail = computed(() => authUser.value?.email || 'Email tidak tersedia')
 const profileRole = computed(() => {
+  // Peran resmi = penugasan RBAC pengguna ini (Hak Akses), bila sudah ada.
+  const peran = rbac.peranSaya.value
+  if (peran) {
+    const cakupan = rbac.penugasanSaya.value?.jenjang
+    return cakupan?.length ? `${peran.nama} · ${cakupan.join(' + ')}` : peran.nama
+  }
   const rawRole = String(authUser.value?.app_metadata?.role || authUser.value?.user_metadata?.role || '').toLowerCase()
   if (authUser.value?.email?.toLowerCase() === 'betadev94@gmail.com') return 'Superadmin Utama'
   if (rawRole === 'superadmin' || rawRole === 'super_admin') return 'Superadmin'
