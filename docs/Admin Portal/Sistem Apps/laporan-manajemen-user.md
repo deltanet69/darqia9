@@ -39,3 +39,22 @@ tidak bisa dinonaktifkan/dihapus; pengguna tidak bisa menonaktifkan/menghapus ak
 
 - Build production exit 0; tabel rute .output memuat keempat rute di atas.
 - Tes klik manual oleh pemilik (buat akun uji, ubah, nonaktifkan, impor 1–2 guru) masih menyusul.
+
+## Lanjutan 1 Nov 2026 (sore): kata sandi awal & wajib ganti sandi
+
+- Impor guru: kata sandi awal terisi bawaan **"Darqia9"** (masih bisa diubah admin
+  sebelum impor); peran bawaan Guru dipilih otomatis begitu daftar peran RBAC termuat.
+- Setiap akun yang kata sandinya dibuatkan admin (impor, tambah manual, dan reset
+  lewat Ubah) ditandai `user_metadata.must_change_password = true` di endpoint server.
+- Middleware `app/middleware/ganti-password.global.ts` (jalan setelah admin-auth):
+  selama tanda itu ada, semua halaman /adminV2 diarahkan ke halaman ganti sandi.
+- Halaman `app/pages/adminV2/ganti-password.vue`: form sandi baru + konfirmasi
+  (min. 8), menyimpan lewat `auth.updateUser` sekaligus menghapus tanda, sesi
+  di-refresh, lalu masuk portal normal; tersedia tombol Keluar. Akun lama yang
+  sudah ada (tanpa tanda) tidak terpengaruh.
+- Integrasi impor terverifikasi di kode: akun Auth → teachers.user_id terisi →
+  penugasan RBAC bersubjek id guru (bentuk yang dicari useRbac lewat tautan
+  user_id) → label peran & popover profil konsisten; jenjang penugasan mengikuti
+  grade guru (Yayasan = SMK + SMP).
+- Build production exit 0; chunk halaman ganti sandi + tanda must_change_password
+  terverifikasi ada di .output.
