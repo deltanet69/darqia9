@@ -35,7 +35,7 @@ const crumbs = computed(() => {
       <AdminV2Breadcrumb :items="crumbs" :badge="jenjang === 'smp' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'" :jenjang="jenjang" />
       <AdminV2MegaPanel :open="isMegaOpen" :group="activeMegaGroup" :jenjang="jenjang" @close="isMegaOpen = false" @select-item="selectModule" />
     </div>
-    <main class="mx-auto w-full max-w-[1100px] px-4 py-5 sm:px-6 lg:px-8">
+    <main class="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
       <slot :jenjang="grade" :role="role" />
     </main>
     <AdminV2MobileMenu :open="isMobileMenuOpen" :role="role" :groups="GROUPS" :jenjang="jenjang" @close="isMobileMenuOpen = false" @select-item="selectModule" />

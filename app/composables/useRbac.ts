@@ -30,6 +30,7 @@ interface RbacState {
   tabelSiap: boolean
   termuat: boolean
   subjekSaya: string | null
+  namaSaya: string | null
 }
 
 const seedState = (): RbacState => {
@@ -42,7 +43,8 @@ const seedState = (): RbacState => {
     kandidat: [],
     tabelSiap: false,
     termuat: false,
-    subjekSaya: null
+    subjekSaya: null,
+    namaSaya: null
   }
 }
 
@@ -79,11 +81,11 @@ export const useRbac = () => {
       }))
     } catch { /* tabel belum ada — tetap pada data awal lokal */ }
     try {
-      const { data: guruRows } = await client.from('teachers').select('id, name, unit')
+      const { data: guruRows } = await client.from('teachers').select('id, name, grade').eq('active', true).order('name')
       if (guruRows) {
         state.value.kandidat = guruRows.map((g: any) => ({
           subjekId: String(g.id), nama: g.name || String(g.id),
-          keterangan: g.unit ? `Guru/Staff · ${g.unit}` : 'Guru/Staff'
+          keterangan: g.grade ? `Guru/Staff · ${g.grade}` : 'Guru/Staff'
         }))
       }
     } catch { /* tabel guru tidak tersedia — penugasan manual tetap bisa */ }
@@ -92,9 +94,13 @@ export const useRbac = () => {
       const uid = data?.user?.id
       if (uid) {
         state.value.subjekSaya = uid
+        state.value.namaSaya = data?.user?.email || 'Akun saya'
         try {
-          const { data: guru } = await client.from('teachers').select('id').eq('user_id', uid).maybeSingle()
-          if (guru?.id) state.value.subjekSaya = String(guru.id)
+          const { data: guru } = await client.from('teachers').select('id, name').eq('user_id', uid).maybeSingle()
+          if (guru?.id) {
+            state.value.subjekSaya = String(guru.id)
+            if (guru.name) state.value.namaSaya = guru.name
+          }
         } catch { /* kolom user_id belum ada — pakai uid */ }
       }
     } catch { /* belum login */ }

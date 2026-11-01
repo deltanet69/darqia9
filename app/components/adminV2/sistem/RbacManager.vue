@@ -129,6 +129,20 @@ const lepaskan = async (subjekId: string, nama: string) => {
   kabar(galat || `${nama} dilepaskan dari peran ${peranAktif.value?.nama}.`, !!galat)
 }
 
+// ===== Tugaskan akun yang sedang login (mis. pemilik sebagai Superadmin) =====
+const sudahDiPeranIni = computed(() => !!state.value.subjekSaya && anggota.value.some(a => a.subjekId === state.value.subjekSaya))
+const peringatanSaya = computed(() => {
+  const sekarang = rbac.penugasanSaya.value
+  if (!sekarang || sekarang.peranId === aktifId.value) return ''
+  const peranLama = state.value.peran.find(r => r.id === sekarang.peranId)
+  return `Akun Anda saat ini berperan sebagai ${peranLama?.nama || 'peran lain'} — menugaskannya di sini akan memindahkannya.`
+})
+const tugaskanSaya = async () => {
+  if (!state.value.subjekSaya || !peranAktif.value) { kabar('Akun login tidak terbaca — muat ulang halaman ini.', true); return }
+  const galat = await rbac.tugaskan(state.value.subjekSaya, state.value.namaSaya || 'Akun saya', peranAktif.value.id, [...jenjangPilihan.value])
+  kabar(galat || `Akun Anda ditugaskan sebagai ${peranAktif.value.nama} (${jenjangPilihan.value.join(' + ')}).`, !!galat)
+}
+
 const bolehKelola = computed(() => rbac.bisaSaya('Hak Akses (RBAC)', 'ubah'))
 const terkunci = computed(() => !!peranAktif.value?.terkunci)
 </script>
@@ -191,11 +205,11 @@ const terkunci = computed(() => !!peranAktif.value?.terkunci)
           <span v-for="a in anggota" :key="a.subjekId" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-3 pr-1.5 text-[11.5px]">
             <span class="font-medium text-slate-700">{{ a.nama }}</span>
             <span v-for="j in a.jenjang" :key="j" class="rounded px-1 py-px text-[9.5px] font-bold" :class="j === 'SMK' ? 'bg-[#EFF4FF] text-[#1B5FD9]' : 'bg-[#E7F6ED] text-[#166534]'">{{ j }}</span>
-            <button v-if="!terkunci && bolehKelola" class="flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm transition hover:text-red-600" title="Lepaskan dari peran ini" @click="lepaskan(a.subjekId, a.nama)">&times;</button>
+            <button v-if="bolehKelola" class="flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm transition hover:text-red-600" title="Lepaskan dari peran ini" @click="lepaskan(a.subjekId, a.nama)">&times;</button>
           </span>
           <span v-if="!anggota.length" class="text-[12.5px] text-slate-400">Belum ada pengguna — tugaskan dari daftar di bawah.</span>
         </div>
-        <div v-if="!terkunci" class="mt-3 flex flex-wrap items-center gap-2">
+        <div class="mt-3 flex flex-wrap items-center gap-2">
           <select v-model="pilihanSubjek" class="min-w-0 flex-1 bg-white border border-slate-300 rounded-lg px-2.5 py-2.5 text-[12.5px] text-slate-600 outline-none focus:border-blue-600 sm:max-w-xs">
             <option value="">Pilih guru / staff…</option>
             <option v-for="k in state.kandidat" :key="k.subjekId" :value="k.subjekId">{{ k.nama }} — {{ k.keterangan }}</option>
@@ -206,9 +220,11 @@ const terkunci = computed(() => !!peranAktif.value?.terkunci)
             <label class="flex items-center gap-1.5"><input v-model="jenjangPilihan" type="checkbox" value="SMP" class="h-4 w-4 accent-blue-600"> SMP</label>
           </span>
           <button :disabled="!bolehKelola" class="text-[12.5px] font-medium text-blue-700 border border-blue-200 hover:bg-blue-50 rounded-lg px-3 py-2 transition disabled:opacity-50" @click="tugaskan">+ Tugaskan</button>
+          <button v-if="state.subjekSaya && !sudahDiPeranIni" :disabled="!bolehKelola" class="text-[12.5px] font-medium text-slate-600 border border-slate-300 hover:bg-slate-50 rounded-lg px-3 py-2 transition disabled:opacity-50" @click="tugaskanSaya">Tugaskan akun saya</button>
         </div>
         <p v-if="peringatanPindah" class="mt-2 text-[12px] text-amber-700">{{ peringatanPindah }}</p>
-        <p v-if="terkunci" class="mt-2 text-[12px] text-slate-400">Peran Superadmin terkunci — penggunanya diatur dari Manajemen User.</p>
+        <p v-if="peringatanSaya" class="mt-2 text-[12px] text-amber-700">{{ peringatanSaya }}</p>
+        <p v-if="terkunci" class="mt-2 text-[12px] text-slate-400">Nama dan izin peran Superadmin terkunci — tetapi penggunanya tetap bisa ditugaskan dan dilepaskan di sini.</p>
         <p class="mt-2 text-[12px] text-slate-400">Satu pengguna hanya memegang satu peran. Centang jenjang menentukan di jenjang mana peran ini berlaku — guru yang hanya mengajar di SMK cukup dicentang SMK.</p>
       </div>
     </div>
@@ -252,7 +268,7 @@ const terkunci = computed(() => !!peranAktif.value?.terkunci)
     </div>
 
     <div class="fixed inset-x-0 bottom-0 bg-white border-t border-slate-200 z-30">
-      <div class="mx-auto flex max-w-[1100px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div class="mx-auto flex max-w-[1440px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <p class="text-[12.5px]" :class="kotor ? 'font-medium text-amber-700' : 'text-slate-500'">{{ kotor ? 'Ada perubahan izin belum disimpan.' : 'Tidak ada perubahan izin.' }}</p>
         <div class="ml-auto flex gap-2">
           <button class="text-[13px] font-medium text-slate-600 border border-slate-300 rounded-lg px-4 py-2 transition hover:bg-slate-50" @click="batalkanIzin">Batalkan</button>
