@@ -1,10 +1,10 @@
 <template>
 <!-- ======= FLOATING & ASSISTANCE ATTAQWA 9 ======= -->
-<button :class="['fixed right-[24px] bottom-[max(96px,calc(84px+env(safe-area-inset-bottom,16px)))] w-[44px] h-[44px] rounded-[14px] bg-navy text-white grid place-items-center shadow-sh-lg transition-all duration-250 z-[55]', showToTop ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-[12px]']" @click="scrollToTop" aria-label="Kembali ke atas">
+<button v-if="!diAdmin" :class="['fixed right-[24px] bottom-[max(96px,calc(84px+env(safe-area-inset-bottom,16px)))] w-[44px] h-[44px] rounded-[14px] bg-navy text-white grid place-items-center shadow-sh-lg transition-all duration-250 z-[55]', showToTop ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-[12px]']" @click="scrollToTop" aria-label="Kembali ke atas">
   <IconsAnimatedChevUp size="20px"/>
 </button>
 
-<div class="fixed right-[20px] bottom-[max(20px,calc(14px+env(safe-area-inset-bottom,14px)))] z-[65] flex flex-col items-end gap-[8px] pointer-events-none [&>*]:pointer-events-auto">
+<div v-if="!diAdmin" class="fixed right-[20px] bottom-[max(20px,calc(14px+env(safe-area-inset-bottom,14px)))] z-[65] flex flex-col items-end gap-[8px] pointer-events-none [&>*]:pointer-events-auto">
   <div class="bg-white text-[#0F2042] text-[12px] font-bold py-[7px] px-[14px] rounded-[12px] shadow-[0_8px_24px_rgba(8,26,58,.18)] border border-[rgba(15,32,66,.08)] flex items-center gap-[6px] animate-[aiBubbleBounce_4s_ease-in-out_infinite] whitespace-nowrap cursor-pointer" role="button" tabindex="0" aria-label="Tanya Assistance Attaqwa 9" @click="toggleChat">
     <span>🤖 Butuh info pendaftaran?</span>
     <span class="bg-[#FEF3C7] text-[#92400E] text-[10.5px] py-[2px] px-[7px] rounded-[6px] font-extrabold">Tanya AI</span>
@@ -22,7 +22,7 @@
 </div>
 
 <!-- ======= AI ASSISTANT CHAT DRAWER ======= -->
-<div :class="['fixed right-[20px] bottom-[max(88px,calc(74px+env(safe-area-inset-bottom,16px)))] w-[min(390px,calc(100vw-32px))] h-[min(570px,calc(100vh-110px))] bg-white rounded-[22px] shadow-[0_24px_60px_rgba(8,26,58,.35),0_0_0_1px_rgba(15,32,66,.08)] flex flex-col overflow-hidden z-[70] origin-bottom-right transition-all duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)]', chatOpen ? 'opacity-100 visible translate-y-0 scale-100' : 'opacity-0 invisible translate-y-[18px] scale-95']" role="dialog" aria-modal="true" aria-label="Assistance Attaqwa 9 Chat">
+<div v-if="!diAdmin" :class="['fixed right-[20px] bottom-[max(88px,calc(74px+env(safe-area-inset-bottom,16px)))] w-[min(390px,calc(100vw-32px))] h-[min(570px,calc(100vh-110px))] bg-white rounded-[22px] shadow-[0_24px_60px_rgba(8,26,58,.35),0_0_0_1px_rgba(15,32,66,.08)] flex flex-col overflow-hidden z-[70] origin-bottom-right transition-all duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)]', chatOpen ? 'opacity-100 visible translate-y-0 scale-100' : 'opacity-0 invisible translate-y-[18px] scale-95']" role="dialog" aria-modal="true" aria-label="Assistance Attaqwa 9 Chat">
   <div class="bg-gradient-to-br from-[#0B2B64] to-[#0F3277] text-white py-[14px] px-[16px] flex items-center justify-between border-b border-white/10">
     <div class="flex items-center gap-[10px]">
       <div class="w-[40px] h-[40px] rounded-[12px] bg-[radial-gradient(circle,#3B82F6_0%,#1D4ED8_100%)] flex items-center justify-center overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,.25)] shrink-0">
@@ -83,7 +83,7 @@
 </div>
 
 <!-- ======= MODAL ======= -->
-<div :class="['fixed inset-0 z-[80] grid place-items-center p-[18px] transition-all duration-250', modalOpen ? 'opacity-100 visible' : 'opacity-0 invisible']" role="dialog" aria-modal="true">
+<div v-if="!diAdmin" :class="['fixed inset-0 z-[80] grid place-items-center p-[18px] transition-all duration-250', modalOpen ? 'opacity-100 visible' : 'opacity-0 invisible']" role="dialog" aria-modal="true">
   <div class="absolute inset-0 bg-[#08142D]/60 backdrop-blur-[4px]" @click="closeModal"></div>
   <div :class="['relative bg-white rounded-[22px] max-w-[560px] w-full max-h-[86vh] overflow-y-auto p-[30px] transition-all duration-250 shadow-sh-lg', modalOpen ? 'translate-y-0 scale-100' : 'translate-y-[18px] scale-98']">
     <button class="absolute top-[16px] right-[16px] w-[38px] h-[38px] rounded-[11px] bg-bg grid place-items-center transition-colors hover:bg-gray-200" @click="closeModal" aria-label="Tutup"><IconsAnimatedX size="16px"/></button>
@@ -97,6 +97,11 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import type { ChatMessage } from '~/types/chatbot'
 
 const { settings, suggestions, matchAnswer } = useChatbot()
+
+// Widget ini untuk halaman publik (info pendaftaran) — jangan tampil di
+// portal admin (/admin & /adminV2), termasuk halaman login admin.
+const route = useRoute()
+const diAdmin = computed(() => route.path.toLowerCase().startsWith('/admin'))
 
 const showToTop = ref(false)
 const chatOpen = ref(false)
