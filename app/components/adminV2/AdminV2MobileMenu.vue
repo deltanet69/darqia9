@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AdminV2Icon from './AdminV2Icon.vue'
 import { getAdminDestination } from './adminV2Data'
+import { useRbac } from '~/composables/useRbac'
 
 interface GroupItem {
   id: string
@@ -30,6 +31,10 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+
+// RBAC: sembunyikan item modul yang tidak boleh dilihat peran pengguna.
+const rbac = useRbac()
+onMounted(() => rbac.muat())
 const supabase = useSupabaseClient()
 const searchQuery = ref('')
 const openGroups = ref<Set<string>>(new Set(['dashboard']))
@@ -89,6 +94,7 @@ const filteredGroups = computed(() => {
     .map(g => {
       const matchedItems = g.items.filter(([title, desc]) => {
         if (!isAvailable(title)) return false
+        if (!rbac.bolehJudulMenu(title)) return false
         return !q || `${g.label} ${title} ${desc}`.toLowerCase().includes(q)
       })
       return { ...g, matchedItems }

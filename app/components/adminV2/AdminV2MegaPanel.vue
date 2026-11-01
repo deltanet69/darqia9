@@ -1,6 +1,8 @@
 ﻿<script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import AdminV2Icon from './AdminV2Icon.vue'
 import { getAdminDestination } from './adminV2Data'
+import { useRbac } from '~/composables/useRbac'
 
 interface GroupItem {
   id: string
@@ -15,7 +17,7 @@ interface Props {
   jenjang?: 'smp' | 'smk'
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   jenjang: 'smk'
 })
 
@@ -26,6 +28,11 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const isAvailable = (title: string) => getAdminDestination(title) !== '#'
+
+// RBAC: sembunyikan item modul yang tidak boleh dilihat peran pengguna.
+const rbac = useRbac()
+onMounted(() => rbac.muat())
+const itemsTerlihat = computed(() => (props.group?.items || []).filter(([title]) => rbac.bolehJudulMenu(title)))
 
 
 const isPageActive = (title: string) => {
@@ -154,7 +161,7 @@ const handleSelect = async (title: string, event?: Event) => {
 
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
             <a
-              v-for="([title, desc, icon], idx) in group.items"
+              v-for="([title, desc, icon], idx) in itemsTerlihat"
               :key="idx"
               :href="getAdminDestination(title)"
               :aria-disabled="!isAvailable(title)"
