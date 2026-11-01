@@ -56,3 +56,9 @@ Halaman **Hak Akses (RBAC)** di `/adminV2/rbac` (menu Sistem Apps → Hak Akses 
 2. **Tombol aksi per halaman** disembunyikan/dinonaktifkan memakai `bisaSaya(modul, 'buat'|'ubah'|'hapus')` — infrastruktur sudah siap, penerapannya per modul bertahap.
 3. **Log Aktivitas** masih menunjuk halaman lama `/admin/log`.
 4. Penugasan massal dari Manajemen User (saat ini penugasan dilakukan dari halaman RBAC; Manajemen User masih memakai store contoh lama).
+
+## Perbaikan 1 Nov 2026 (sore) — temuan uji pakai user
+
+1. **Lebar layout disamakan dengan halaman Sistem Apps lain.** Cangkang halaman semula meniru Modul Pembelajaran (`max-w-[1100px]`), padahal Manajemen User dan Profil memakai `max-w-[1440px]` — kini `SistemPageShell` dan bar Simpan Izin memakai 1440px persis halaman Sistem Apps lainnya.
+2. **Daftar kandidat guru kosong — diperbaiki.** Query kandidat semula meminta kolom `unit` yang tidak ada di tabel `teachers` (skema aslinya `id, nip, name, grade, active`), sehingga query gagal diam-diam dan dropdown kosong. Kini memakai `select('id, name, grade').eq('active', true).order('name')`, sama seperti composable lain.
+3. **Peran terkunci (Superadmin) kini bisa ditugaskan penggunanya.** Sebelumnya baris penugasan disembunyikan untuk peran terkunci sehingga tidak ada jalan menugaskan siapa pun sebagai Superadmin. Kini: yang terkunci hanya nama & izin peran; penugasan dan pelepasan pengguna tetap bisa. Ditambah tombol **Tugaskan akun saya** untuk menugaskan akun yang sedang login (subjek terikat ke `teachers.user_id`/uid auth, sehingga penegakan mengenali akun itu), lengkap dengan peringatan pemindahan bila akun sudah memegang peran lain.
