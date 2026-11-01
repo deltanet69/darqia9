@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 export interface BarisPengguna {
   id: string
@@ -26,6 +26,7 @@ const emit = defineEmits<{
   hapus: [id: string]
 }>()
 
+const peranAman = computed(() => (Array.isArray(props.peranList) ? props.peranList : []))
 const form = reactive({ nama: '', email: '', password: '', peranId: '', smk: true, smp: false })
 const konfirmasiHapus = ref(false)
 
@@ -103,7 +104,7 @@ const kelasInput = 'w-full min-h-11 px-3.5 rounded-xl border border-[#D0D5DD] bg
           <label class="block text-xs font-bold text-[#344054] mb-1.5" for="uf-peran">Peran (Hak Akses / RBAC)</label>
           <select id="uf-peran" v-model="form.peranId" :class="kelasInput">
             <option value="">Tanpa peran</option>
-            <option v-for="p in peranList" :key="p.id" :value="p.id">{{ p.nama }}</option>
+            <option v-for="p in peranAman" :key="p.id" :value="p.id">{{ p.nama }}</option>
           </select>
         </div>
         <fieldset v-if="form.peranId" class="flex items-center gap-5">

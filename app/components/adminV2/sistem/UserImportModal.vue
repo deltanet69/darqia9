@@ -19,6 +19,7 @@ const props = defineProps<{
 const emit = defineEmits<{ tutup: [], selesai: [] }>()
 
 const client = useSupabaseClient()
+const peranAman = computed(() => (Array.isArray(props.peranList) ? props.peranList : []))
 const memuat = ref(false)
 const guru = ref<GuruBaris[]>([])
 const terpilih = ref<Set<string>>(new Set())
@@ -27,7 +28,7 @@ const peranId = ref('')
 
 // Peran bawaan impor: peran Guru — dipilih begitu daftar peran RBAC tersedia
 // (daftar bisa tiba setelah modal dibuka).
-watch(() => props.peranList, (list) => {
+watch(peranAman, (list) => {
   if (peranId.value || !list.length) return
   const guruPengajar = list.find(p => p.nama.toLowerCase().includes('guru'))
   if (guruPengajar) peranId.value = guruPengajar.id
@@ -60,7 +61,7 @@ const muatGuru = async () => {
       email: r.email || '', terhubung: !!r.user_id
     }))
     terpilih.value = new Set(guru.value.filter(g => g.email).map(g => g.id))
-    const guruPengajar = props.peranList.find(p => p.nama.toLowerCase().includes('guru'))
+    const guruPengajar = peranAman.value.find(p => p.nama.toLowerCase().includes('guru'))
     if (guruPengajar) peranId.value = guruPengajar.id
   } catch {
     pesan.value = 'Daftar guru gagal dimuat. Coba lagi.'
@@ -137,7 +138,7 @@ const kelasInput = 'w-full min-h-11 px-3.5 rounded-xl border border-[#D0D5DD] bg
             <label class="block text-xs font-bold text-[#344054] mb-1.5" for="ui-peran">Peran RBAC</label>
             <select id="ui-peran" v-model="peranId" :class="kelasInput">
               <option value="">Tanpa peran</option>
-              <option v-for="p in peranList" :key="p.id" :value="p.id">{{ p.nama }}</option>
+              <option v-for="p in peranAman" :key="p.id" :value="p.id">{{ p.nama }}</option>
             </select>
           </div>
         </div>

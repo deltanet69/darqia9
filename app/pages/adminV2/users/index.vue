@@ -129,6 +129,7 @@ const refreshUsers = async () => {
 
 // ——— CRUD pengguna (endpoint /api/admin/users, gerbang RBAC di server) ———
 const rbac = useRbac()
+const daftarPeran = computed(() => rbac.state.value.peran)
 onMounted(() => { rbac.muat() })
 
 const modalForm = ref<{ mode: 'tambah' | 'ubah', user: AuthUserRow | null } | null>(null)
@@ -603,7 +604,7 @@ const handleSelectModule = (title: string) => {
       :open="!!modalForm"
       :mode="modalForm?.mode || 'tambah'"
       :user="modalForm?.user || null"
-      :peran-list="rbac.peran"
+      :peran-list="daftarPeran"
       :akun-saya-id="akunSayaId"
       :busy="formBusy"
       :error="formError"
@@ -614,7 +615,7 @@ const handleSelectModule = (title: string) => {
 
     <UserImportModal
       :open="modalImpor"
-      :peran-list="rbac.peran"
+      :peran-list="daftarPeran"
       :akun-emails="daftarEmail"
       @tutup="modalImpor = false"
       @selesai="refresh()"
