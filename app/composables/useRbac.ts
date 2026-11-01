@@ -27,6 +27,7 @@ interface RbacState {
   izin: Record<string, IzinPeran>
   penugasan: PenugasanRbac[]
   kandidat: KandidatRbac[]
+  kandidatAkunTermuat: boolean
   tabelSiap: boolean
   termuat: boolean
   subjekSaya: string | null
@@ -41,6 +42,7 @@ const seedState = (): RbacState => {
     izin,
     penugasan: [],
     kandidat: [],
+    kandidatAkunTermuat: false,
     tabelSiap: false,
     termuat: false,
     subjekSaya: null,
@@ -52,8 +54,29 @@ export const useRbac = () => {
   const state = useState<RbacState>('rbac-state', seedState)
   const grade = useAdminGrade()
 
+  // Kandidat dari akun login (dibuat langsung di Manajemen Pengguna, tanpa
+  // record guru) HANYA bisa dimuat dari klien: endpoint daftar akun butuh
+  // sesi browser. Pemuatan utama bisa lebih dulu jalan di server (state
+  // ter-serialisasi dengan termuat=true), jadi fungsi ini berkawal sendiri
+  // dan dipanggil juga dari jalur pintas muat() di bawah.
+  const muatKandidatAkun = async () => {
+    if (!import.meta.client || state.value.kandidatAkunTermuat) return
+    state.value.kandidatAkunTermuat = true
+    try {
+      const hasil = await $fetch<any>('/api/admin/users').catch(() => null)
+      const akun: any[] = Array.isArray(hasil?.users) ? hasil.users : []
+      const tambahan = akun
+        .filter((u: any) => u?.id && !u.guruId && !state.value.kandidat.some(k => k.subjekId === String(u.id)))
+        .map((u: any) => ({
+          subjekId: String(u.id), nama: u.name || u.email || String(u.id),
+          keterangan: `Akun login · ${u.email || ''}`, punyaAkun: true
+        }))
+      if (tambahan.length) state.value.kandidat = [...state.value.kandidat, ...tambahan]
+    } catch { /* kandidat akun dilewati */ }
+  }
+
   const muat = async () => {
-    if (state.value.termuat) return
+    if (state.value.termuat) { void muatKandidatAkun(); return }
     state.value.termuat = true
     const client = useSupabaseClient()
     try {
@@ -90,21 +113,7 @@ export const useRbac = () => {
         }))
       }
     } catch { /* tabel guru tidak tersedia — penugasan manual tetap bisa */ }
-    // Akun login yang dibuat langsung di Manajemen Pengguna (tanpa record
-    // guru) ikut jadi kandidat dengan subjek = uid akunnya, supaya bisa
-    // ditugaskan peran dari halaman ini juga. Akun yang tertaut guru sudah
-    // terwakili kandidat gurunya. Gagal muat (bukan pengelola user) = lewati.
-    try {
-      const hasil = await $fetch<any>('/api/admin/users').catch(() => null)
-      const akun: any[] = Array.isArray(hasil?.users) ? hasil.users : []
-      const tambahan = akun
-        .filter((u: any) => u?.id && !u.guruId && !state.value.kandidat.some(k => k.subjekId === String(u.id)))
-        .map((u: any) => ({
-          subjekId: String(u.id), nama: u.name || u.email || String(u.id),
-          keterangan: `Akun login · ${u.email || ''}`, punyaAkun: true
-        }))
-      if (tambahan.length) state.value.kandidat = [...state.value.kandidat, ...tambahan]
-    } catch { /* kandidat akun dilewati */ }
+    await muatKandidatAkun()
     try {
       const { data } = await client.auth.getUser()
       const uid = data?.user?.id
