@@ -115,6 +115,17 @@ const peringatanPindah = computed(() => {
   const peranLama = state.value.peran.find(r => r.id === sekarang.peranId)
   return `${subjek.nama} saat ini berperan sebagai ${peranLama?.nama || 'peran lain'} — menugaskan di sini akan memindahkannya, karena satu pengguna hanya memegang satu peran.`
 })
+// Deteksi dari data guru: yang dipilih belum tertaut akun login mana pun,
+// artinya belum terdaftar di Manajemen Pengguna.
+const peringatanBelumTerdaftar = computed(() => {
+  const subjek = subjekTerpilih.value
+  if (!subjek || subjek.subjekId.startsWith('manual:')) return ''
+  const kandidat = state.value.kandidat.find(k => k.subjekId === subjek.subjekId)
+  if (!kandidat || kandidat.punyaAkun) return ''
+  return `${subjek.nama} belum terdaftar di Manajemen Pengguna (belum punya akun login). Peran tetap dapat ditugaskan sekarang, tetapi ia belum bisa masuk portal — daftarkan akunnya lewat Manajemen Pengguna → Impor dari Guru.`
+})
+const alertAkun = ref('')
+watch(aktifId, () => { alertAkun.value = '' })
 watch(pilihanSubjek, id => {
   const kandidat = state.value.kandidat.find(k => k.subjekId === id)
   if (!kandidat) return
@@ -128,10 +139,14 @@ const tugaskan = async () => {
   const galat = await rbac.tugaskan(subjek.subjekId, subjek.nama, peranAktif.value.id, [...jenjangPilihan.value])
   if (galat) { kabar(galat, true); return }
   kabar(`${subjek.nama} ditugaskan sebagai ${peranAktif.value.nama} (${jenjangPilihan.value.join(' + ')}).`)
+  alertAkun.value = tanpaAkun(subjek.subjekId)
+    ? `${subjek.nama} belum terdaftar di Manajemen Pengguna (belum punya akun login), jadi ia belum bisa masuk portal. Harap daftarkan akunnya dulu.`
+    : ''
   pilihanSubjek.value = ''
   namaManual.value = ''
 }
 const lepaskan = async (subjekId: string, nama: string) => {
+  alertAkun.value = ''
   const galat = await rbac.lepaskan(subjekId)
   kabar(galat || `${nama} dilepaskan dari peran ${peranAktif.value?.nama}.`, !!galat)
 }
@@ -167,6 +182,10 @@ const terkunci = computed(() => !!peranAktif.value?.terkunci)
       Tabel RBAC belum tersedia. Jalankan migrasi <span class="font-medium">0023_rbac.sql</span> di Supabase SQL Editor — sementara itu halaman berjalan dengan data awal lokal dan perubahan belum tersimpan ke database.
     </div>
     <div v-if="pesan" class="mt-4 rounded-xl px-4 py-3 text-[13px]" :class="pesanGalat ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-800'">{{ pesan }}</div>
+    <div v-if="alertAkun" class="mt-3 flex items-start justify-between gap-3 rounded-xl border border-[#FEDF89] bg-[#FFFAEB] px-4 py-3 text-[13px] text-[#B54708]" role="alert">
+      <p><strong>Pengguna belum terdaftar.</strong> {{ alertAkun }} <NuxtLink to="/adminV2/users" class="font-bold underline">Buka Manajemen Pengguna</NuxtLink></p>
+      <button type="button" class="shrink-0 font-bold opacity-70 hover:opacity-100" aria-label="Tutup peringatan" @click="alertAkun = ''">✕</button>
+    </div>
     <div v-if="rbac.penegakanAktif.value && !bolehKelola" class="mt-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-[13px]">
       Peran Anda ({{ rbac.peranSaya.value?.nama }}) hanya boleh melihat halaman ini — tombol pengelolaan dinonaktifkan sesuai izin yang diberikan.
     </div>
@@ -231,6 +250,7 @@ const terkunci = computed(() => !!peranAktif.value?.terkunci)
           <button v-if="state.subjekSaya && !sudahDiPeranIni" :disabled="!bolehKelola" class="text-[12.5px] font-medium text-slate-600 border border-slate-300 hover:bg-slate-50 rounded-lg px-3 py-2 transition disabled:opacity-50" @click="tugaskanSaya">Tugaskan akun saya</button>
         </div>
         <p v-if="peringatanPindah" class="mt-2 text-[12px] text-amber-700">{{ peringatanPindah }}</p>
+        <p v-if="peringatanBelumTerdaftar" class="mt-2 text-[12px] font-medium text-[#B54708]">{{ peringatanBelumTerdaftar }}</p>
         <p v-if="peringatanSaya" class="mt-2 text-[12px] text-amber-700">{{ peringatanSaya }}</p>
         <p v-if="terkunci" class="mt-2 text-[12px] text-slate-400">Nama dan izin peran Superadmin terkunci — tetapi penggunanya tetap bisa ditugaskan dan dilepaskan di sini.</p>
         <p class="mt-2 text-[12px] text-slate-400">Satu pengguna hanya memegang satu peran. Centang jenjang menentukan di jenjang mana peran ini berlaku — guru yang hanya mengajar di SMK cukup dicentang SMK.</p>
