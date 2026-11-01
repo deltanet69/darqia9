@@ -20,6 +20,8 @@ const emit = defineEmits<{ tutup: [], selesai: [] }>()
 
 const client = useSupabaseClient()
 const peranAman = computed(() => (Array.isArray(props.peranList) ? props.peranList : []))
+// Penugasan RBAC yang sudah ada per id guru — peran dari Hak Akses dipertahankan saat impor.
+const petaPeran = ref(new Map<string, { nama: string, jenjang: string[] }>())
 const memuat = ref(false)
 const guru = ref<GuruBaris[]>([])
 const terpilih = ref<Set<string>>(new Set())
@@ -60,6 +62,19 @@ const muatGuru = async () => {
       id: String(r.id), nip: r.nip || null, name: r.name || '', grade: r.grade || '',
       email: r.email || '', terhubung: !!r.user_id
     }))
+    try {
+      const { data: tugasRows } = await client
+        .from('rbac_assignments')
+        .select('subjek_id, jenjang, rbac_roles(nama)')
+      const peta = new Map<string, { nama: string, jenjang: string[] }>()
+      for (const t of tugasRows || []) {
+        peta.set(String(t.subjek_id), {
+          nama: (t as any).rbac_roles?.nama || '',
+          jenjang: Array.isArray(t.jenjang) ? t.jenjang : []
+        })
+      }
+      petaPeran.value = peta
+    } catch { /* peta peran hanya penanda tampilan */ }
     terpilih.value = new Set(guru.value.filter(g => g.email).map(g => g.id))
     const guruPengajar = peranAman.value.find(p => p.nama.toLowerCase().includes('guru'))
     if (guruPengajar) peranId.value = guruPengajar.id
@@ -142,6 +157,7 @@ const kelasInput = 'w-full min-h-11 px-3.5 rounded-xl border border-[#D0D5DD] bg
             </select>
           </div>
         </div>
+        <p class="text-[11px] text-[#98A2B3] -mt-2">Peran di atas hanya berlaku untuk guru yang belum punya penugasan. Guru yang sudah ditugaskan lewat Hak Akses (bertanda "Peran: …") tetap memakai peran tersebut.</p>
 
         <div v-if="memuat" class="space-y-2" aria-live="polite">
           <div v-for="i in 4" :key="i" class="h-12 rounded-xl bg-[#F2F4F7] animate-pulse" />
@@ -159,6 +175,9 @@ const kelasInput = 'w-full min-h-11 px-3.5 rounded-xl border border-[#D0D5DD] bg
               <p class="text-sm font-bold text-[#101828] truncate">{{ g.name }}</p>
               <p class="text-xs text-[#667085] truncate">{{ g.email || 'Email belum terisi di Data Guru' }}<span v-if="g.nip"> · NIP {{ g.nip }}</span></p>
             </div>
+            <span v-if="petaPeran.has(g.id)" class="shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#EFF4FF] text-[#1B5FD9]" :title="'Peran dari Hak Akses — dipertahankan saat impor'">
+              Peran: {{ petaPeran.get(g.id)?.nama }}<span v-if="petaPeran.get(g.id)?.jenjang.length"> · {{ petaPeran.get(g.id)?.jenjang.join(' + ') }}</span>
+            </span>
             <span class="shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#EFF2F7] text-[#344054]">{{ g.grade || '—' }}</span>
             <span v-if="g.sudahAda" class="shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#ECFDF3] text-[#027A48]">Sudah punya akun</span>
             <span v-else-if="!g.email" class="shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#FFFAEB] text-[#B54708]">Email kosong</span>

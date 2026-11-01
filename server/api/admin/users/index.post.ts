@@ -46,7 +46,19 @@ export default defineEventHandler(async (event) => {
     subjek = guruId
   }
 
-  if (peranId) {
+  // Penugasan yang sudah dibuat lewat halaman Hak Akses selalu dipertahankan:
+  // impor hanya membuatkan akun + tautan guru, tidak memindahkan peran orang.
+  let sudahDitugaskan = false
+  if (guruId) {
+    const { data: eksis } = await supabase
+      .from('rbac_assignments')
+      .select('subjek_id')
+      .eq('subjek_id', guruId)
+      .maybeSingle()
+    sudahDitugaskan = !!eksis
+  }
+
+  if (peranId && !sudahDitugaskan) {
     await supabase.from('rbac_assignments').upsert(
       { subjek_id: subjek, nama, peran_id: peranId, jenjang: jenjang.length ? jenjang : ['SMK', 'SMP'] },
       { onConflict: 'subjek_id' }

@@ -92,6 +92,11 @@ const hapusPeran = async () => {
 
 // ===== Penugasan pengguna (satu pengguna = satu peran) =====
 const anggota = computed(() => state.value.penugasan.filter(p => p.peranId === aktifId.value))
+// Anggota dari data guru yang record-nya belum tertaut akun login mana pun.
+const tanpaAkun = (subjekId: string) => {
+  const k = state.value.kandidat.find(x => x.subjekId === subjekId)
+  return !!k && !k.punyaAkun
+}
 const pilihanSubjek = ref('')
 const namaManual = ref('')
 const jenjangPilihan = ref<JenjangRbac[]>(['SMK', 'SMP'])
@@ -207,6 +212,7 @@ const terkunci = computed(() => !!peranAktif.value?.terkunci)
           <span v-for="a in anggota" :key="a.subjekId" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-3 pr-1.5 text-[11.5px]">
             <span class="font-medium text-slate-700">{{ a.nama }}</span>
             <span v-for="j in a.jenjang" :key="j" class="rounded px-1 py-px text-[9.5px] font-bold" :class="j === 'SMK' ? 'bg-[#EFF4FF] text-[#1B5FD9]' : 'bg-[#E7F6ED] text-[#166534]'">{{ j }}</span>
+            <span v-if="tanpaAkun(a.subjekId)" class="rounded bg-[#FFFAEB] px-1 py-px text-[9.5px] font-bold text-[#B54708]" title="Guru ini belum memiliki akun login — buatkan lewat Manajemen Pengguna (Impor dari Guru)">belum punya akun</span>
             <button v-if="bolehKelola" class="flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm transition hover:text-red-600" title="Lepaskan dari peran ini" @click="lepaskan(a.subjekId, a.nama)">&times;</button>
           </span>
           <span v-if="!anggota.length" class="text-[12.5px] text-slate-400">Belum ada pengguna — tugaskan dari daftar di bawah.</span>

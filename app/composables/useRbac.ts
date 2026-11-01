@@ -20,7 +20,7 @@ import {
 
 export * from './rbacCore'
 
-export interface KandidatRbac { subjekId: string; nama: string; keterangan: string }
+export interface KandidatRbac { subjekId: string; nama: string; keterangan: string; punyaAkun: boolean }
 
 interface RbacState {
   peran: PeranRbac[]
@@ -81,11 +81,12 @@ export const useRbac = () => {
       }))
     } catch { /* tabel belum ada — tetap pada data awal lokal */ }
     try {
-      const { data: guruRows } = await client.from('teachers').select('id, name, grade').eq('active', true).order('name')
+      const { data: guruRows } = await client.from('teachers').select('id, name, grade, user_id').eq('active', true).order('name')
       if (guruRows) {
         state.value.kandidat = guruRows.map((g: any) => ({
           subjekId: String(g.id), nama: g.name || String(g.id),
-          keterangan: g.grade ? `Guru/Staff · ${g.grade}` : 'Guru/Staff'
+          keterangan: g.grade ? `Guru/Staff · ${g.grade}` : 'Guru/Staff',
+          punyaAkun: !!g.user_id
         }))
       }
     } catch { /* tabel guru tidak tersedia — penugasan manual tetap bisa */ }
