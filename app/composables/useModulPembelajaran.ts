@@ -291,10 +291,12 @@ export const useModulPembelajaran = () => {
     if (m.id) {
       const { data, error } = await client.from('learning_modules').update(baris).eq('id', m.id).select('*').single()
       if (error) { pesan.value = `Gagal menyimpan: ${error.message}`; return null }
+      useLogAktivitas().catat('Modul Pembelajaran', 'ubah modul', `Modul diubah: ${m.judul}`)
       return modulDariBaris(data)
     }
     const { data, error } = await client.from('learning_modules').insert(baris).select('*').single()
     if (error) { pesan.value = `Gagal menyimpan: ${error.message}`; return null }
+    useLogAktivitas().catat('Modul Pembelajaran', 'buat modul', `Modul baru: ${m.judul}`)
     return modulDariBaris(data)
   }
 
@@ -304,11 +306,11 @@ export const useModulPembelajaran = () => {
     return true
   }
 
-  const kumpulkan = async (m: ModulPembelajaran) => ubahSebagian(m.id, { status: 'menunggu', submitted_at: new Date().toISOString(), approved_at: null, approved_by: null })
-  const setujui = async (m: ModulPembelajaran, namaAdmin: string) => ubahSebagian(m.id, { status: 'disetujui', approved_at: new Date().toISOString(), approved_by: namaAdmin })
-  const kembalikan = async (m: ModulPembelajaran) => ubahSebagian(m.id, { status: 'draf', submitted_at: null })
-  const arsipkan = async (m: ModulPembelajaran) => ubahSebagian(m.id, { deleted_at: new Date().toISOString() })
-  const pulihkan = async (m: ModulPembelajaran) => ubahSebagian(m.id, { deleted_at: null })
+  const kumpulkan = async (m: ModulPembelajaran) => { const ok = await ubahSebagian(m.id, { status: 'menunggu', submitted_at: new Date().toISOString(), approved_at: null, approved_by: null }); if (ok) useLogAktivitas().catat('Modul Pembelajaran', 'kirim persetujuan', `Modul diajukan: ${m.judul}`); return ok }
+  const setujui = async (m: ModulPembelajaran, namaAdmin: string) => { const ok = await ubahSebagian(m.id, { status: 'disetujui', approved_at: new Date().toISOString(), approved_by: namaAdmin }); if (ok) useLogAktivitas().catat('Modul Pembelajaran', 'setujui modul', `Modul disetujui: ${m.judul}`); return ok }
+  const kembalikan = async (m: ModulPembelajaran) => { const ok = await ubahSebagian(m.id, { status: 'draf', submitted_at: null }); if (ok) useLogAktivitas().catat('Modul Pembelajaran', 'kembalikan modul', `Modul dikembalikan ke draf: ${m.judul}`); return ok }
+  const arsipkan = async (m: ModulPembelajaran) => { const ok = await ubahSebagian(m.id, { deleted_at: new Date().toISOString() }); if (ok) useLogAktivitas().catat('Modul Pembelajaran', 'arsipkan modul', `Modul diarsipkan: ${m.judul}`); return ok }
+  const pulihkan = async (m: ModulPembelajaran) => { const ok = await ubahSebagian(m.id, { deleted_at: null }); if (ok) useLogAktivitas().catat('Modul Pembelajaran', 'pulihkan modul', `Modul dipulihkan: ${m.judul}`); return ok }
   const aturTahap = async (m: ModulPembelajaran, tahap: number) => ubahSebagian(m.id, { tahap_berjalan: tahap })
 
   return { daftar, arsip, guruDaftar, penulisAktifId, memuat, tabelSiap, pesan, muat, muatArsip, ambil, simpan, kumpulkan, setujui, kembalikan, arsipkan, pulihkan, aturTahap }

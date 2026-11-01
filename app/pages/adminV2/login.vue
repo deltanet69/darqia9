@@ -270,6 +270,7 @@ const handleLogin = async () => {
     const metadata = authData.user.user_metadata
     successGreetingName.value = metadata?.name || metadata?.full_name || authData.user.email || email
     isSuccess.value = true
+    useLogAktivitas().catat('Sistem', 'login', 'Masuk ke portal admin', 'info', { id: authData.user.id, nama: successGreetingName.value })
 
     const redirectQuery = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     const destination = redirectQuery.startsWith('/adminV2') && !redirectQuery.startsWith('/adminV2/login')

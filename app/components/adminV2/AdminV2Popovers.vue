@@ -90,6 +90,7 @@ const handleProfileAction = async (label: string) => {
   emit('close-all')
 
   if (label === 'Keluar') {
+    useLogAktivitas().catat('Sistem', 'logout', 'Keluar dari portal admin')
     await supabase.auth.signOut({ scope: 'local' })
     await navigateTo('/adminV2/login', { replace: true })
     return

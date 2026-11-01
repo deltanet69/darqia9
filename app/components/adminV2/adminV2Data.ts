@@ -196,7 +196,7 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'Perpustakaan digital': '#',
   'Manajemen user': '/adminV2/users',
   'Hak Akses (RBAC)': '/adminV2/rbac',
-  'Log Aktivitas': '/admin/log',
+  'Log Aktivitas': '/adminV2/log-aktivitas',
   'Profil saya': '/adminV2/profil',
   'Pengaturan': '/adminV2/profil?tab=pengaturan'
 }

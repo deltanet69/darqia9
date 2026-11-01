@@ -8,7 +8,7 @@ import AdminV2Popovers from '~/components/adminV2/AdminV2Popovers.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 
-const props = defineProps<{ crumb?: string; judul?: string }>()
+const props = defineProps<{ crumb?: string; judul?: string; modulLabel?: string; modulTo?: string }>()
 useHead({ title: `${props.judul || 'Hak Akses (RBAC)'} | Admin Portal` })
 
 const grade = useAdminGrade()
@@ -30,7 +30,7 @@ const crumbs = computed(() => {
   const dasar = [
     { label: 'Portal Admin', to: '/adminV2' },
     { label: 'Sistem Apps' },
-    { label: 'Hak Akses (RBAC)', to: '/adminV2/rbac' }
+    { label: props.modulLabel || 'Hak Akses (RBAC)', to: props.modulTo || '/adminV2/rbac' }
   ]
   return props.crumb ? [...dasar, { label: props.crumb }] : dasar
 })

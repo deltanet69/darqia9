@@ -1,11 +1,13 @@
 import { gerbangAdminUsers } from '../../../utils/adminUsersGate'
+import { catatLogServer } from '../../../utils/catatLogServer'
 
 const EMAIL_VALID = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const jenjangValid = (nilai: unknown): string[] =>
   Array.isArray(nilai) ? nilai.filter((j): j is string => j === 'SMK' || j === 'SMP') : []
 
 export default defineEventHandler(async (event) => {
-  const { supabase } = await gerbangAdminUsers(event, 'buat')
+  const konteks = await gerbangAdminUsers(event, 'buat')
+  const { supabase } = konteks
   const body = await readBody(event)
 
   const nama = String(body?.nama || '').trim()
@@ -65,5 +67,6 @@ export default defineEventHandler(async (event) => {
     )
   }
 
+  await catatLogServer(supabase, { id: konteks.uid, nama: konteks.caller.user_metadata?.name || konteks.email }, 'Manajemen User', 'buat akun', `${guruId ? 'Akun guru dibuat' : 'Akun dibuat'}: ${nama} (${email})`)
   return { id: uidBaru, email }
 })

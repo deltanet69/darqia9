@@ -1,4 +1,5 @@
 import { gerbangAdminUsers, PRIMARY_SUPERADMIN_EMAIL } from '../../../utils/adminUsersGate'
+import { catatLogServer } from '../../../utils/catatLogServer'
 
 const jenjangValid = (nilai: unknown): string[] =>
   Array.isArray(nilai) ? nilai.filter((j): j is string => j === 'SMK' || j === 'SMP') : []
@@ -66,5 +67,11 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const aksiLog = (typeof body?.password === 'string' && body.password)
+    ? 'reset sandi'
+    : typeof body?.aktif === 'boolean'
+      ? (body.aktif ? 'aktifkan akun' : 'nonaktifkan akun')
+      : 'ubah akun'
+  await catatLogServer(supabase, { id: konteks.uid, nama: konteks.caller.user_metadata?.name || konteks.email }, 'Manajemen User', aksiLog, `Akun ${target.user_metadata?.name || target.email} (${target.email})`)
   return { ok: true }
 })

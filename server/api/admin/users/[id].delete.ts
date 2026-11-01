@@ -1,4 +1,5 @@
 import { gerbangAdminUsers, PRIMARY_SUPERADMIN_EMAIL } from '../../../utils/adminUsersGate'
+import { catatLogServer } from '../../../utils/catatLogServer'
 
 export default defineEventHandler(async (event) => {
   const konteks = await gerbangAdminUsers(event, 'hapus')
@@ -29,5 +30,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: `Akun gagal dihapus: ${error.message}` })
   }
 
+  await catatLogServer(supabase, { id: konteks.uid, nama: konteks.caller.user_metadata?.name || konteks.email }, 'Manajemen User', 'hapus akun', `Akun dihapus: ${target.user_metadata?.name || target.email} (${target.email})`)
   return { ok: true }
 })

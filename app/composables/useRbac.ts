@@ -118,6 +118,7 @@ export const useRbac = () => {
     }
     state.value.peran = [...state.value.peran, peran]
     state.value.izin = { ...state.value.izin, [id]: izinKosong() }
+    useLogAktivitas().catat('Hak Akses (RBAC)', 'buat peran', `Peran baru: ${nama}`)
     return null
   }
 
@@ -130,6 +131,7 @@ export const useRbac = () => {
     }
     peran.nama = nama
     peran.deskripsi = deskripsi
+    useLogAktivitas().catat('Hak Akses (RBAC)', 'ubah peran', `Peran diubah: ${nama}`)
     return null
   }
 
@@ -149,6 +151,7 @@ export const useRbac = () => {
     const izin = { ...state.value.izin }
     delete izin[id]
     state.value.izin = izin
+    useLogAktivitas().catat('Hak Akses (RBAC)', 'hapus peran', `Peran dihapus: ${peran.nama}`)
     return null
   }
 
@@ -166,6 +169,7 @@ export const useRbac = () => {
       if (error) return error.message
     }
     state.value.izin = { ...state.value.izin, [peranId]: JSON.parse(JSON.stringify(izinBaru)) }
+    useLogAktivitas().catat('Hak Akses (RBAC)', 'ubah izin', `Matriks izin diperbarui untuk peran ${peran.nama}`)
     return null
   }
 
@@ -181,15 +185,18 @@ export const useRbac = () => {
       ...state.value.penugasan.filter(p => p.subjekId !== subjekId),
       { subjekId, nama, peranId, jenjang }
     ]
+    useLogAktivitas().catat('Hak Akses (RBAC)', 'tugaskan peran', `${nama} ditugaskan sebagai ${state.value.peran.find(r => r.id === peranId)?.nama || 'peran'} (${jenjang.join(' + ')})`)
     return null
   }
 
   const lepaskan = async (subjekId: string): Promise<string | null> => {
+    const lama = state.value.penugasan.find(p => p.subjekId === subjekId)
     if (state.value.tabelSiap) {
       const { error } = await useSupabaseClient().from('rbac_assignments').delete().eq('subjek_id', subjekId)
       if (error) return error.message
     }
     state.value.penugasan = state.value.penugasan.filter(p => p.subjekId !== subjekId)
+    useLogAktivitas().catat('Hak Akses (RBAC)', 'lepaskan peran', `${lama?.nama || subjekId} dilepaskan dari peran ${state.value.peran.find(r => r.id === lama?.peranId)?.nama || ''}`.trim())
     return null
   }
 
