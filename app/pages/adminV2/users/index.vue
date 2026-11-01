@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
@@ -7,6 +7,8 @@ import AdminV2BottomNav from '~/components/adminV2/AdminV2BottomNav.vue'
 import AdminV2MobileMenu from '~/components/adminV2/AdminV2MobileMenu.vue'
 import AdminV2Popovers from '~/components/adminV2/AdminV2Popovers.vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
+import UserFormModal from '~/components/adminV2/sistem/UserFormModal.vue'
+import UserImportModal from '~/components/adminV2/sistem/UserImportModal.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 
 interface AuthUserRow {
@@ -14,6 +16,9 @@ interface AuthUserRow {
   name: string
   email: string
   role: string
+  peranId: string | null
+  jenjang: string[]
+  guruId: string | null
   status: 'Aktif' | 'Tidak Aktif'
   emailConfirmed: boolean
   lastSignInAt: string | null
@@ -122,6 +127,72 @@ const refreshUsers = async () => {
   }
 }
 
+// ——— CRUD pengguna (endpoint /api/admin/users, gerbang RBAC di server) ———
+const rbac = useRbac()
+onMounted(() => { rbac.muat() })
+
+const modalForm = ref<{ mode: 'tambah' | 'ubah', user: AuthUserRow | null } | null>(null)
+const modalImpor = ref(false)
+const formBusy = ref(false)
+const formError = ref('')
+const pesanAksi = ref('')
+const pesanAksiBuruk = ref(false)
+const umumkan = (teks: string, buruk = false) => { pesanAksi.value = teks; pesanAksiBuruk.value = buruk }
+const sibukBaris = ref('')
+const akunSayaId = computed(() => String((authUser.value as any)?.id || ''))
+const daftarEmail = computed(() => users.value.map(u => u.email.toLowerCase()))
+
+const pesanError = (e: any) => e?.data?.statusMessage || e?.statusMessage || 'Terjadi kesalahan. Coba lagi.'
+
+const simpanForm = async (payload: Record<string, any>) => {
+  formBusy.value = true
+  formError.value = ''
+  try {
+    if (modalForm.value?.mode === 'tambah') {
+      await $fetch('/api/admin/users', { method: 'POST', body: payload })
+      umumkan(`Akun ${payload.email} berhasil dibuat.`)
+    } else if (modalForm.value?.user) {
+      await $fetch(`/api/admin/users/${modalForm.value.user.id}`, { method: 'PATCH', body: payload })
+      umumkan(`Akun ${modalForm.value.user.email} berhasil diperbarui.`)
+    }
+    modalForm.value = null
+    await refresh()
+  } catch (e) {
+    formError.value = pesanError(e)
+  } finally {
+    formBusy.value = false
+  }
+}
+
+const alihStatus = async (user: AuthUserRow) => {
+  if (sibukBaris.value) return
+  sibukBaris.value = user.id
+  try {
+    await $fetch(`/api/admin/users/${user.id}`, { method: 'PATCH', body: { aktif: user.status !== 'Aktif' } })
+    umumkan(`Akun ${user.email} ${user.status === 'Aktif' ? 'dinonaktifkan' : 'diaktifkan kembali'}.`)
+    await refresh()
+  } catch (e) {
+    umumkan(pesanError(e), true)
+  } finally {
+    sibukBaris.value = ''
+  }
+}
+
+const hapusUser = async (id: string) => {
+  formBusy.value = true
+  formError.value = ''
+  try {
+    await $fetch(`/api/admin/users/${id}`, { method: 'DELETE' })
+    umumkan('Akun berhasil dihapus permanen.')
+    modalForm.value = null
+    await refresh()
+  } catch (e) {
+    formError.value = pesanError(e)
+  } finally {
+    formBusy.value = false
+  }
+}
+
 const closeAllModals = () => {
   isMegaOpen.value = false
   isMobileMenuOpen.value = false
@@ -199,16 +270,42 @@ const handleSelectModule = (title: string) => {
           </p>
         </div>
 
-        <button
-          type="button"
-          class="min-h-11 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#101828] text-white text-sm font-bold hover:bg-[#1D2939] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B5FD9] focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition"
-          :disabled="isRefreshing || status === 'pending'"
-          @click="refreshUsers"
-        >
-          <span v-if="isRefreshing" class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-          {{ isRefreshing ? 'Memuat ulang…' : 'Muat Ulang Data' }}
-        </button>
+        <div class="flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            class="min-h-11 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#D0D5DD] bg-white text-[#344054] text-sm font-bold hover:bg-[#F8FAFC] transition"
+            @click="modalImpor = true"
+          >
+            Impor dari Guru
+          </button>
+          <button
+            type="button"
+            class="min-h-11 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1B5FD9] text-white text-sm font-bold hover:bg-[#1750B8] transition"
+            @click="formError = ''; modalForm = { mode: 'tambah', user: null }"
+          >
+            Tambah Pengguna
+          </button>
+          <button
+            type="button"
+            class="min-h-11 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#101828] text-white text-sm font-bold hover:bg-[#1D2939] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B5FD9] focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition"
+            :disabled="isRefreshing || status === 'pending'"
+            @click="refreshUsers"
+          >
+            <span v-if="isRefreshing" class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+            {{ isRefreshing ? 'Memuat ulang…' : 'Muat Ulang Data' }}
+          </button>
+        </div>
       </header>
+
+      <p
+        v-if="pesanAksi"
+        class="flex items-center justify-between gap-3 text-sm font-semibold rounded-2xl px-4 py-3"
+        :class="pesanAksiBuruk ? 'text-[#B42318] bg-[#FEF3F2] border border-[#FECDCA]' : 'text-[#027A48] bg-[#ECFDF3] border border-[#ABEFC6]'"
+        role="status"
+      >
+        <span>{{ pesanAksi }}</span>
+        <button type="button" class="shrink-0 opacity-70 hover:opacity-100" aria-label="Tutup pesan" @click="pesanAksi = ''">✕</button>
+      </p>
 
       <section
         v-if="error"
@@ -327,6 +424,7 @@ const handleSelectModule = (title: string) => {
                     <th class="px-4 py-3.5 font-extrabold">Status</th>
                     <th class="px-4 py-3.5 font-extrabold">Verifikasi Email</th>
                     <th class="px-5 py-3.5 font-extrabold">Login Terakhir</th>
+                    <th class="px-5 py-3.5 font-extrabold text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-[#EFF2F7]">
@@ -361,6 +459,27 @@ const handleSelectModule = (title: string) => {
                       {{ user.emailConfirmed ? 'Terverifikasi' : 'Belum terverifikasi' }}
                     </td>
                     <td class="px-5 py-4 text-sm text-[#475467] whitespace-nowrap">{{ formatDate(user.lastSignInAt) }}</td>
+                    <td class="px-5 py-4 whitespace-nowrap text-right">
+                      <div class="inline-flex gap-1.5">
+                        <button
+                          type="button"
+                          class="min-h-9 px-3 rounded-lg border border-[#D0D5DD] bg-white text-xs font-bold text-[#344054] hover:bg-[#F8FAFC]"
+                          @click="formError = ''; modalForm = { mode: 'ubah', user }"
+                        >
+                          Ubah
+                        </button>
+                        <button
+                          v-if="!user.isPrimarySuperadmin"
+                          type="button"
+                          class="min-h-9 px-3 rounded-lg border text-xs font-bold disabled:opacity-50"
+                          :class="user.status === 'Aktif' ? 'border-[#FECDCA] bg-white text-[#B42318] hover:bg-[#FEF3F2]' : 'border-[#ABEFC6] bg-white text-[#027A48] hover:bg-[#ECFDF3]'"
+                          :disabled="sibukBaris === user.id"
+                          @click="alihStatus(user)"
+                        >
+                          {{ sibukBaris === user.id ? 'Memproses…' : (user.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan') }}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -404,6 +523,26 @@ const handleSelectModule = (title: string) => {
                     <dd class="font-bold text-[#344054] mt-0.5">{{ formatDate(user.lastSignInAt) }}</dd>
                   </div>
                 </dl>
+
+                <div class="flex gap-2 mt-4">
+                  <button
+                    type="button"
+                    class="flex-1 min-h-10 px-3 rounded-lg border border-[#D0D5DD] bg-white text-xs font-bold text-[#344054]"
+                    @click="formError = ''; modalForm = { mode: 'ubah', user }"
+                  >
+                    Ubah
+                  </button>
+                  <button
+                    v-if="!user.isPrimarySuperadmin"
+                    type="button"
+                    class="flex-1 min-h-10 px-3 rounded-lg border text-xs font-bold disabled:opacity-50"
+                    :class="user.status === 'Aktif' ? 'border-[#FECDCA] text-[#B42318]' : 'border-[#ABEFC6] text-[#027A48]'"
+                    :disabled="sibukBaris === user.id"
+                    @click="alihStatus(user)"
+                  >
+                    {{ sibukBaris === user.id ? 'Memproses…' : (user.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan') }}
+                  </button>
+                </div>
               </article>
             </div>
 
@@ -458,6 +597,27 @@ const handleSelectModule = (title: string) => {
       :jenjang="jenjang"
       @close-all="closeAllModals"
       @item-click="handleSelectModule"
+    />
+
+    <UserFormModal
+      :open="!!modalForm"
+      :mode="modalForm?.mode || 'tambah'"
+      :user="modalForm?.user || null"
+      :peran-list="rbac.peran"
+      :akun-saya-id="akunSayaId"
+      :busy="formBusy"
+      :error="formError"
+      @tutup="modalForm = null"
+      @simpan="simpanForm"
+      @hapus="hapusUser"
+    />
+
+    <UserImportModal
+      :open="modalImpor"
+      :peran-list="rbac.peran"
+      :akun-emails="daftarEmail"
+      @tutup="modalImpor = false"
+      @selesai="refresh()"
     />
   </div>
 </template>
