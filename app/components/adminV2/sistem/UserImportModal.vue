@@ -22,8 +22,16 @@ const client = useSupabaseClient()
 const memuat = ref(false)
 const guru = ref<GuruBaris[]>([])
 const terpilih = ref<Set<string>>(new Set())
-const password = ref('')
+const password = ref('Darqia9')
 const peranId = ref('')
+
+// Peran bawaan impor: peran Guru — dipilih begitu daftar peran RBAC tersedia
+// (daftar bisa tiba setelah modal dibuka).
+watch(() => props.peranList, (list) => {
+  if (peranId.value || !list.length) return
+  const guruPengajar = list.find(p => p.nama.toLowerCase().includes('guru'))
+  if (guruPengajar) peranId.value = guruPengajar.id
+}, { immediate: true })
 const berjalan = ref(false)
 const hasil = ref<{ nama: string, ok: boolean, pesan: string }[]>([])
 const pesan = ref('')
@@ -39,6 +47,7 @@ const muatGuru = async () => {
   memuat.value = true
   hasil.value = []
   pesan.value = ''
+  password.value = 'Darqia9'
   try {
     const { data, error } = await client
       .from('teachers')
@@ -122,6 +131,7 @@ const kelasInput = 'w-full min-h-11 px-3.5 rounded-xl border border-[#D0D5DD] bg
           <div>
             <label class="block text-xs font-bold text-[#344054] mb-1.5" for="ui-pass">Kata sandi awal (semua akun)</label>
             <input id="ui-pass" v-model="password" type="text" :class="kelasInput" placeholder="Minimal 8 karakter">
+            <p class="text-[11px] text-[#98A2B3] mt-1">Bawaan: Darqia9 — setiap guru wajib menggantinya saat pertama kali masuk.</p>
           </div>
           <div>
             <label class="block text-xs font-bold text-[#344054] mb-1.5" for="ui-peran">Peran RBAC</label>

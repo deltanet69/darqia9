@@ -26,7 +26,8 @@ export default defineEventHandler(async (event) => {
     email,
     password,
     email_confirm: true,
-    user_metadata: { name: nama }
+    // Kata sandi dibuatkan admin — pengguna WAJIB menggantinya saat masuk pertama.
+    user_metadata: { name: nama, must_change_password: true }
   })
   if (error || !data?.user) {
     throw createError({

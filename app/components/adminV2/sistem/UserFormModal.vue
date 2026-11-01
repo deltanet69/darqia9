@@ -95,6 +95,9 @@ const kelasInput = 'w-full min-h-11 px-3.5 rounded-xl border border-[#D0D5DD] bg
             {{ mode === 'tambah' ? 'Kata sandi awal' : 'Kata sandi baru (opsional)' }}
           </label>
           <input id="uf-pass" v-model="form.password" type="text" :required="mode === 'tambah'" minlength="8" :class="kelasInput" :placeholder="mode === 'tambah' ? 'Minimal 8 karakter' : 'Kosongkan bila tidak diganti'">
+          <p class="text-[11px] text-[#98A2B3] mt-1">
+            {{ mode === 'tambah' ? 'Pengguna wajib mengganti kata sandi ini saat pertama kali masuk.' : 'Bila diisi, pengguna wajib menggantinya saat masuk berikutnya.' }}
+          </p>
         </div>
         <div>
           <label class="block text-xs font-bold text-[#344054] mb-1.5" for="uf-peran">Peran (Hak Akses / RBAC)</label>

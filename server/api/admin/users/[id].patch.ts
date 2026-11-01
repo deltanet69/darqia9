@@ -18,14 +18,20 @@ export default defineEventHandler(async (event) => {
   const utama = (target.email || '').toLowerCase() === PRIMARY_SUPERADMIN_EMAIL
 
   const atribut: Record<string, any> = {}
+  const metadataBaru: Record<string, any> = {}
   if (typeof body?.nama === 'string' && body.nama.trim()) {
-    atribut.user_metadata = { ...(target.user_metadata || {}), name: body.nama.trim() }
+    metadataBaru.name = body.nama.trim()
   }
   if (typeof body?.password === 'string' && body.password) {
     if (body.password.length < 8) {
       throw createError({ statusCode: 400, statusMessage: 'Kata sandi baru minimal 8 karakter.' })
     }
     atribut.password = body.password
+    // Kata sandi diatur ulang oleh admin — pengguna wajib menggantinya saat masuk.
+    metadataBaru.must_change_password = true
+  }
+  if (Object.keys(metadataBaru).length) {
+    atribut.user_metadata = { ...(target.user_metadata || {}), ...metadataBaru }
   }
   if (typeof body?.aktif === 'boolean') {
     if (!body.aktif && utama) {
