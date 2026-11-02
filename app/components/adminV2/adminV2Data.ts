@@ -154,6 +154,7 @@ export const GROUPS: GroupItem[] = [
       ['Manajemen user', 'Akun pengguna', 'i-users'],
       ['Hak Akses (RBAC)', 'Peran & izin', 'i-shield'],
       ['Log Aktivitas', 'Audit trail', 'i-doc'],
+      ['Tiketing', 'Aduan & bantuan pengguna', 'i-mail'],
       ['Pengaturan', 'Konfigurasi', 'i-gear'],
       ['Profil saya', 'Akun admin', 'i-users']
     ]
@@ -197,6 +198,7 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'Manajemen user': '/adminV2/users',
   'Hak Akses (RBAC)': '/adminV2/rbac',
   'Log Aktivitas': '/adminV2/log-aktivitas',
+  'Tiketing': '/adminV2/tiketing',
   'Profil saya': '/adminV2/profil',
   'Pengaturan': '/adminV2/profil?tab=pengaturan'
 }
