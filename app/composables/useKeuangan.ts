@@ -333,7 +333,10 @@ export const useKeuangan = () => {
       return
     }
     const { error } = await client.rpc('keuangan_hapus_cutoff', { p_id: c.id })
-    if (error) { tanganiGalat(error); throw error }
+    // Sengaja TIDAK lewat tanganiGalat: fungsi RPC yang belum ada (migrasi
+    // 0027 belum dijalankan) pesannya mengandung "schema cache" dan akan
+    // keliru membalik halaman ke mode contoh lokal.
+    if (error) throw new Error('Hapus cut-off belum bisa: jalankan dulu migrasi 0027_keuangan_cutoff_crud.sql di Supabase SQL Editor.')
     state.value.cutoffs = state.value.cutoffs.filter(x => x.kode !== c.kode)
     catat('Keuangan', 'Hapus cut-off', `${c.kode} - ${c.trx} transaksi dibuka kembali`)
   }
