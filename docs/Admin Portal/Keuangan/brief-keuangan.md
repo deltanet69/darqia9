@@ -59,3 +59,27 @@ ringan & instan tanpa overengineering).
   "Keuangan Sekolah"); RLS membatasi tabel untuk pengguna terotentikasi.
 - Notifikasi wali: tombol di rincian membuka WhatsApp dengan teks otomatis
   dari angka rincian yang sama (gateway WA server = tahap berikutnya).
+
+## Pembaruan — 4 Nov 2026 (perintah pemilik)
+
+1. **Input Pembayaran global**: tombol "+ Input Pembayaran" selalu tampil di
+   header halaman Keuangan (semua tab). Popup-nya: cari Nama/NIS -> tagihan
+   siswa tampil per tingkat (Total/Dibayar/Sisa) -> pilih pembayaran untuk
+   tingkat & keterangan apa -> submit -> layar berhasil berisi nomor
+   kwitansi + tombol input berikutnya. Komponen yang sama
+   (`KeuanganBayar.vue`) tetap dipakai Rincian Siswa (prop siswa terisi,
+   alur lama tidak berubah: tersimpan -> cetak kwitansi).
+2. **Pagination Data Keuangan**: daftar siswa kini terpaginasi
+   (25/50/100 per halaman, pager Sebelumnya/Berikutnya + nomor halaman
+   jendela 5) mengikuti listing lain; filter/pencarian/urut/jenjang/ganti
+   ukuran halaman mengembalikan ke halaman 1. Logika murni
+   `potongHalaman` + `nomorHalaman` di keuanganCore (teruji).
+3. **CRUD Cut-off Harian**: selain Buat (RPC 0026), catatan cut-off kini
+   bisa **Ubah** (penanggung jawab serah + status bukti serah; rentang/trx/
+   total terkunci karena berasal dari transaksi) dan **Hapus** — menghapus
+   cut-off membuka kembali seluruh transaksinya dan dana dianggap belum
+   diserahkan ke keuangan pusat. Hapus berjalan lewat RPC baru
+   `keuangan_hapus_cutoff` (migrasi **0027_keuangan_cutoff_crud.sql**,
+   dijalankan manual setelah 0026): trigger penjaga kunci 0026 diganti
+   versi sadar konteks yang hanya menembus kunci bila penanda
+   transaksi-lokal dinyalakan fungsi RPC itu.
