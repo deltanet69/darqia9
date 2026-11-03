@@ -175,6 +175,28 @@ export function saringSiswa(baris: BarisSiswa[], f: { cari?: string, kelas?: str
   return list
 }
 
+// Potong daftar menjadi satu halaman (murni — pagination Data Keuangan).
+export interface Halaman<T> { rows: T[], halaman: number, totalHalaman: number, total: number, dari: number, sampai: number }
+export function potongHalaman<T>(items: T[], halaman: number, perHalaman: number): Halaman<T> {
+  const total = items.length
+  const totalHalaman = Math.max(1, Math.ceil(total / Math.max(1, perHalaman)))
+  const h = Math.min(Math.max(1, Math.floor(halaman) || 1), totalHalaman)
+  const mulai = (h - 1) * perHalaman
+  const rows = items.slice(mulai, mulai + perHalaman)
+  return { rows, halaman: h, totalHalaman, total, dari: total ? mulai + 1 : 0, sampai: mulai + rows.length }
+}
+
+// Nomor halaman ringkas untuk pager: jendela maks 5 di sekitar halaman aktif,
+// selalu menempel ke tepi daftar (1..totalHalaman).
+export function nomorHalaman(halaman: number, totalHalaman: number): number[] {
+  const total = Math.max(1, totalHalaman)
+  const aktif = Math.min(Math.max(1, halaman), total)
+  let awal = Math.max(1, Math.min(aktif - 2, total - 4))
+  const hasil: number[] = []
+  for (let i = awal; i <= Math.min(total, awal + 4); i++) hasil.push(i)
+  return hasil
+}
+
 export function rekapPerKelas(baris: BarisSiswa[]): Array<{ kelas: string, siswa: number, tagihan: number, dibayar: number, sisa: number }> {
   const peta = new Map<string, { kelas: string, siswa: number, tagihan: number, dibayar: number, sisa: number }>()
   for (const s of baris) {

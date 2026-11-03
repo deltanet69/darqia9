@@ -3,9 +3,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useKeuangan } from '~/composables/useKeuangan'
 import {
-  LABEL_TINGKAT, inisialNama, persenTeks, rekapPerKelas, rp, saringSiswa,
-  type Grade
+  LABEL_TINGKAT, inisialNama, nomorHalaman, persenTeks, potongHalaman, rekapPerKelas, rp, saringSiswa,
+  type Grade, type Pembayaran
 } from '~/composables/keuanganCore'
+import KeuanganBayar from './KeuanganBayar.vue'
 import KeuanganKode from './KeuanganKode.vue'
 import KeuanganCutoff from './KeuanganCutoff.vue'
 import KeuanganRiwayat from './KeuanganRiwayat.vue'
@@ -31,6 +32,9 @@ const urut = ref('sisa')
 const pasangNis = ref('')
 const pasangKode = ref('')
 const notif = ref('')
+const bayarGlobal = ref(false)
+const halaman = ref(1)
+const perHalaman = ref(25)
 
 onMounted(() => K.muatSemua(grade.value))
 watch(grade, g => K.muatSemua(g))
@@ -48,6 +52,8 @@ const perTingkat = computed(() => [0, 1, 2, 3].map(t => ({
 })))
 const bayarTerakhir = computed(() => [...K.state.value.bayarLokal].reverse().slice(0, 5))
 const daftarTampil = computed(() => saringSiswa(baris.value, { cari: cari.value, kelas: fKelas.value, status: fStatus.value, urut: urut.value }))
+const hal = computed(() => potongHalaman(daftarTampil.value, halaman.value, perHalaman.value))
+watch([cari, fKelas, fStatus, urut, grade, perHalaman], () => { halaman.value = 1 })
 const kelasList = computed(() => [...new Set(baris.value.map(s => s.kelas))].sort())
 const hasilCepat = computed(() => {
   const q = cariCepat.value.trim().toLowerCase()
@@ -57,6 +63,10 @@ const hasilCepat = computed(() => {
 const cutoffTerakhir = computed(() => K.state.value.cutoffs.find(c => c.grade === grade.value))
 
 const tampilNotif = (teks: string) => { notif.value = teks; setTimeout(() => { notif.value = '' }, 3200) }
+const setelahBayarGlobal = (b: Pembayaran) => {
+  const s = baris.value.find(x => x.nis === b.nis)
+  tampilNotif(`Pembayaran ${b.no} tersimpan untuk ${s?.nama || b.nis} — ${rp(b.nominal)} (${b.keterangan}). Total Dibayar & sisa sudah dihitung ulang.`)
+}
 const simpanPasang = async () => {
   const s = baris.value.find(x => x.nis === pasangNis.value)
   if (!s || !pasangKode.value) return
@@ -79,6 +89,7 @@ defineExpose({ judulHalaman })
         <h1 class="text-[22px] font-semibold leading-7 text-blue-950">{{ judulHalaman }}</h1>
         <p class="text-[13px] text-slate-500 mt-0.5">Tagihan flat per Kode Keuangan berdasarkan tahun masuk. NIS adalah ID pembayaran resmi siswa sampai lulus.</p>
       </div>
+      <button type="button" @click="bayarGlobal = true" class="rounded-xl bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white hover:bg-blue-700">+ Input Pembayaran</button>
     </div>
 
     <div v-if="K.lokal.value" class="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
@@ -215,12 +226,12 @@ defineExpose({ judulHalaman })
         </div>
         <button type="button" :disabled="!pasangNis || !pasangKode" @click="simpanPasang" class="rounded-xl bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white disabled:opacity-40">Pasang Kode</button>
       </div>
-      <p class="mt-3 text-[12.5px] text-slate-500">Menampilkan <b class="text-slate-700">{{ daftarTampil.length }} dari {{ baris.length }} data</b> keuangan siswa {{ grade }}. Data siswa berasal dari <b>Data Induk</b>; di sini petugas hanya memasang Kode Keuangan, tidak membuat siswa baru.</p>
+      <p class="mt-3 text-[12.5px] text-slate-500">Menampilkan <b class="text-slate-700">{{ hal.dari }}–{{ hal.sampai }} dari {{ daftarTampil.length }} data</b> hasil saring (total {{ baris.length }} siswa {{ grade }}). Data siswa berasal dari <b>Data Induk</b>; di sini petugas hanya memasang Kode Keuangan, tidak membuat siswa baru.</p>
       <div class="mt-3 overflow-hidden rounded-xl border border-slate-300 bg-white">
         <div class="hidden bg-slate-100 px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 lg:grid" style="grid-template-columns:250px 105px 150px 1fr 1fr 1fr 130px 105px">
           <span>Siswa</span><span>Status</span><span>Paket</span><span>Total Tagihan</span><span>Dibayar</span><span>Sisa</span><span>Progress</span><span>Status Bayar</span>
         </div>
-        <button v-for="s in daftarTampil" :key="s.nis" type="button" @click="emit('buka', s.nis)" class="grid w-full grid-cols-2 items-center gap-x-3 gap-y-1.5 border-t border-slate-200 px-4 py-3 text-left hover:bg-slate-50 lg:grid-cols-[250px_105px_150px_1fr_1fr_1fr_130px_105px]">
+        <button v-for="s in hal.rows" :key="s.nis" type="button" @click="emit('buka', s.nis)" class="grid w-full grid-cols-2 items-center gap-x-3 gap-y-1.5 border-t border-slate-200 px-4 py-3 text-left hover:bg-slate-50 lg:grid-cols-[250px_105px_150px_1fr_1fr_1fr_130px_105px]">
           <span class="col-span-2 flex min-w-0 items-center gap-3 lg:col-span-1">
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[12px] font-bold" :class="grade === 'SMP' ? 'bg-[#E7F6ED] text-[#14532D]' : 'bg-[#E8F0FE] text-[#0A2A5C]'">{{ inisialNama(s.nama) }}</span>
             <span class="min-w-0"><b class="block truncate text-[13.5px] font-semibold text-slate-800">{{ s.nama }}</b><span class="block text-[12px] text-slate-500"><span class="font-semibold" :class="grade === 'SMP' ? 'text-[#067647]' : 'text-[#1B5FD9]'">NIS {{ s.nis }}</span> &middot; {{ s.kelas }}</span></span>
@@ -235,11 +246,22 @@ defineExpose({ judulHalaman })
         </button>
         <div v-if="!daftarTampil.length" class="px-4 py-10 text-center"><b class="text-[14px] text-slate-700">Tidak ada siswa yang cocok</b><p class="mt-1 text-[13px] text-slate-500">Ubah pencarian atau filter untuk melihat siswa lain.</p></div>
       </div>
+      <div v-if="daftarTampil.length" class="mt-3 flex flex-wrap items-center gap-2">
+        <p class="text-[12.5px] text-slate-500">Halaman <b class="text-slate-700">{{ hal.halaman }}</b> dari <b class="text-slate-700">{{ hal.totalHalaman }}</b></p>
+        <select v-model.number="perHalaman" class="bg-white rounded-lg border border-slate-300 px-2.5 py-2 text-[12.5px] text-slate-600"><option :value="25">25 / halaman</option><option :value="50">50 / halaman</option><option :value="100">100 / halaman</option></select>
+        <div class="ml-auto flex items-center gap-1.5">
+          <button type="button" :disabled="hal.halaman <= 1" @click="halaman--" class="rounded-lg bg-white px-3 py-2 text-[12.5px] font-medium text-slate-600 ring-1 ring-slate-300 disabled:opacity-40">Sebelumnya</button>
+          <button v-for="n in nomorHalaman(hal.halaman, hal.totalHalaman)" :key="n" type="button" @click="halaman = n" :class="n === hal.halaman ? 'rounded-lg bg-[#101828] px-3 py-2 text-[12.5px] font-semibold text-white' : 'rounded-lg bg-white px-3 py-2 text-[12.5px] font-medium text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'">{{ n }}</button>
+          <button type="button" :disabled="hal.halaman >= hal.totalHalaman" @click="halaman++" class="rounded-lg bg-white px-3 py-2 text-[12.5px] font-medium text-slate-600 ring-1 ring-slate-300 disabled:opacity-40">Berikutnya</button>
+        </div>
+      </div>
       <p class="mt-3 text-[12.5px] text-slate-500">Klik baris siswa untuk membuka rincian tagihan lengkapnya.</p>
     </template>
 
     <KeuanganKode v-else-if="tab === 'kode'" />
     <KeuanganCutoff v-else-if="tab === 'cutoff'" />
     <KeuanganRiwayat v-else-if="tab === 'riwayat'" @buka="emit('buka', $event)" />
+
+    <KeuanganBayar v-if="bayarGlobal" @tutup="bayarGlobal = false" @tersimpan="setelahBayarGlobal" />
   </div>
 </template>

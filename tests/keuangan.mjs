@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import {
   BAYAR_CONTOH, KETERANGAN_AWAL, PAKET_CONTOH, PENETAPAN_CONTOH, SISWA_CONTOH,
-  formatTanggal, hitungSiswa, rekapPerKelas, rp, saringSiswa, selisihHari,
+  formatTanggal, hitungSiswa, nomorHalaman, potongHalaman, rekapPerKelas, rp, saringSiswa, selisihHari,
   statusDari, terbilangRupiah, totalPaket
 } from '../app/composables/keuanganCore.ts'
 
@@ -81,6 +81,33 @@ cek('Siswa tanpa paket: total 0 & status Belum Bayar (bukan error)', () => {
   const h = hitungSiswa(undefined, [0, 0, 0, 0], [])
   assert.equal(h.total, 0)
   assert.equal(statusDari(h), 'Belum Bayar')
+})
+cek('Pagination: 413 baris per 25 -> 17 halaman, halaman terakhir 13 baris', () => {
+  const items = Array.from({ length: 413 }, (_, i) => i + 1)
+  const h1 = potongHalaman(items, 1, 25)
+  assert.equal(h1.totalHalaman, 17)
+  assert.equal(h1.rows.length, 25)
+  assert.equal(h1.dari, 1)
+  assert.equal(h1.sampai, 25)
+  const h17 = potongHalaman(items, 17, 25)
+  assert.equal(h17.rows.length, 13)
+  assert.equal(h17.dari, 401)
+  assert.equal(h17.sampai, 413)
+})
+cek('Pagination: halaman di luar rentang dijepit; daftar kosong aman', () => {
+  const items = Array.from({ length: 30 }, (_, i) => i)
+  assert.equal(potongHalaman(items, 99, 25).halaman, 2)
+  assert.equal(potongHalaman(items, 0, 25).halaman, 1)
+  const kosong = potongHalaman([], 3, 25)
+  assert.equal(kosong.totalHalaman, 1)
+  assert.equal(kosong.rows.length, 0)
+  assert.equal(kosong.dari, 0)
+})
+cek('Nomor halaman pager: jendela maks 5 menempel tepi', () => {
+  assert.deepEqual(nomorHalaman(1, 17), [1, 2, 3, 4, 5])
+  assert.deepEqual(nomorHalaman(9, 17), [7, 8, 9, 10, 11])
+  assert.deepEqual(nomorHalaman(17, 17), [13, 14, 15, 16, 17])
+  assert.deepEqual(nomorHalaman(2, 3), [1, 2, 3])
 })
 
 console.log(`\n${lulus} uji lulus`)

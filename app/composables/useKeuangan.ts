@@ -310,10 +310,38 @@ export const useKeuangan = () => {
     if (error) tanganiGalat(error)
   }
 
+  // Ubah catatan cut-off (penanggung jawab + status bukti serah). Rentang,
+  // jumlah transaksi, dan total TIDAK bisa diubah — angka itu berasal dari
+  // transaksi yang terkunci di dalamnya.
+  const ubahCutoff = async (c: Cutoff, oleh: string, bukti: boolean) => {
+    const target = state.value.cutoffs.find(x => x.kode === c.kode)
+    if (target) { target.oleh = oleh; target.bukti = bukti }
+    if (lokal.value || !c.id) return
+    const { error } = await client.from('keuangan_cutoff').update({ oleh, bukti }).eq('id', c.id)
+    if (error) { tanganiGalat(error); throw error }
+    catat('Keuangan', 'Ubah cut-off', c.kode)
+  }
+
+  // Hapus cut-off: seluruh transaksinya dibuka kembali (cutoff_id dikosongkan
+  // oleh RPC migrasi 0027 yang menembus kunci secara resmi), lalu catatan
+  // cut-off dihapus. Dana dianggap belum diserahkan lagi.
+  const hapusCutoff = async (c: Cutoff) => {
+    if (lokal.value) {
+      const label = c.dari + ' – ' + c.sampai
+      state.value.bayarLokal.forEach(b => { if (b.cutoff === label) b.cutoff = null })
+      state.value.cutoffs = state.value.cutoffs.filter(x => x.kode !== c.kode)
+      return
+    }
+    const { error } = await client.rpc('keuangan_hapus_cutoff', { p_id: c.id })
+    if (error) { tanganiGalat(error); throw error }
+    state.value.cutoffs = state.value.cutoffs.filter(x => x.kode !== c.kode)
+    catat('Keuangan', 'Hapus cut-off', `${c.kode} - ${c.trx} transaksi dibuka kembali`)
+  }
+
   return {
     state, lokal, pesanGalat, muatSemua, barisSiswa, siswaSatu,
     muatRiwayat, muatBayarSiswa, simpanBayar, hapusBayar,
     simpanPenetapan, simpanPaket, hapusPaket,
-    tambahKeterangan, hapusKeterangan, buatCutoff, unggahBuktiCutoff
+    tambahKeterangan, hapusKeterangan, buatCutoff, unggahBuktiCutoff, ubahCutoff, hapusCutoff
   }
 }
