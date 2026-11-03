@@ -133,7 +133,7 @@ defineExpose({ judulHalaman })
         <p class="mt-0.5 text-[12.5px] text-slate-500">Wali murid umumnya hafal NIS anaknya — ketik NIS atau nama, klik hasilnya untuk membuka rincian &amp; input pembayaran.</p>
         <div class="relative mt-3 max-w-xl">
           <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#98A2B3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input v-model="cariCepat" placeholder="Contoh: 2324090134 atau Anisa" class="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-[13.5px] outline-none focus:border-[#1B5FD9]">
+          <input v-model="cariCepat" placeholder="Contoh: 2324090134 atau Anisa" class="bg-white w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-[13.5px] outline-none focus:border-[#1B5FD9]">
         </div>
         <div v-if="hasilCepat.length" class="mt-2 max-w-xl divide-y divide-slate-100 rounded-xl border border-slate-200">
           <button v-for="s in hasilCepat" :key="s.nis" type="button" @click="emit('buka', s.nis)" class="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-50">
@@ -198,20 +198,20 @@ defineExpose({ judulHalaman })
       <div class="mt-5 flex flex-wrap items-center gap-2">
         <div class="relative w-full max-w-xs">
           <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#98A2B3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input v-model="cari" placeholder="Cari NIS atau Nama Siswa..." class="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-[13px] outline-none focus:border-[#1B5FD9]">
+          <input v-model="cari" placeholder="Cari NIS atau Nama Siswa..." class="bg-white w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-[13px] outline-none focus:border-[#1B5FD9]">
         </div>
-        <select v-model="fKelas" class="rounded-lg border border-slate-300 px-2.5 py-2.5 text-[12.5px] text-slate-600"><option value="">Semua Kelas</option><option v-for="k in kelasList" :key="k" :value="k">{{ k }}</option></select>
-        <select v-model="fStatus" class="rounded-lg border border-slate-300 px-2.5 py-2.5 text-[12.5px] text-slate-600"><option value="">Semua Status</option><option>Lunas</option><option>Kurang</option><option>Belum Bayar</option></select>
-        <select v-model="urut" class="rounded-lg border border-slate-300 px-2.5 py-2.5 text-[12.5px] text-slate-600"><option value="sisa">Urut: Sisa Terbesar</option><option value="progress">Urut: Progress Terendah</option><option value="nama">Urut: Nama A-Z</option><option value="nis">Urut: NIS</option></select>
+        <select v-model="fKelas" class="bg-white rounded-lg border border-slate-300 px-2.5 py-2.5 text-[12.5px] text-slate-600"><option value="">Semua Kelas</option><option v-for="k in kelasList" :key="k" :value="k">{{ k }}</option></select>
+        <select v-model="fStatus" class="bg-white rounded-lg border border-slate-300 px-2.5 py-2.5 text-[12.5px] text-slate-600"><option value="">Semua Status</option><option>Lunas</option><option>Kurang</option><option>Belum Bayar</option></select>
+        <select v-model="urut" class="bg-white rounded-lg border border-slate-300 px-2.5 py-2.5 text-[12.5px] text-slate-600"><option value="sisa">Urut: Sisa Terbesar</option><option value="progress">Urut: Progress Terendah</option><option value="nama">Urut: Nama A-Z</option><option value="nis">Urut: NIS</option></select>
       </div>
       <div class="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-slate-300 bg-white p-4">
         <div class="min-w-[220px] flex-1">
           <label class="mb-1 block text-[12px] font-medium text-slate-500">Pasang Kode Keuangan — pilih siswa</label>
-          <select v-model="pasangNis" class="w-full rounded-lg border border-slate-300 px-2.5 py-2.5 text-[13px]"><option value="">— pilih siswa —</option><option v-for="s in baris" :key="s.nis" :value="s.nis">{{ s.nis }} — {{ s.nama }}{{ s.kode ? ` (kode saat ini: ${s.kode})` : ' (belum ada kode)' }}</option></select>
+          <select v-model="pasangNis" class="bg-white w-full rounded-lg border border-slate-300 px-2.5 py-2.5 text-[13px]"><option value="">— pilih siswa —</option><option v-for="s in baris" :key="s.nis" :value="s.nis">{{ s.nis }} — {{ s.nama }}{{ s.kode ? ` (kode saat ini: ${s.kode})` : ' (belum ada kode)' }}</option></select>
         </div>
         <div class="min-w-[180px]">
           <label class="mb-1 block text-[12px] font-medium text-slate-500">Kode Keuangan</label>
-          <select v-model="pasangKode" class="w-full rounded-lg border border-slate-300 px-2.5 py-2.5 text-[13px]"><option value="">— pilih kode —</option><option v-for="p in paketGrade" :key="p.kode" :value="p.kode">{{ p.kode }} — {{ p.nama }}</option></select>
+          <select v-model="pasangKode" class="bg-white w-full rounded-lg border border-slate-300 px-2.5 py-2.5 text-[13px]"><option value="">— pilih kode —</option><option v-for="p in paketGrade" :key="p.kode" :value="p.kode">{{ p.kode }} — {{ p.nama }}</option></select>
         </div>
         <button type="button" :disabled="!pasangNis || !pasangKode" @click="simpanPasang" class="rounded-xl bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white disabled:opacity-40">Pasang Kode</button>
       </div>

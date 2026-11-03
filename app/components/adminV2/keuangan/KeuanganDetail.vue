@@ -135,8 +135,8 @@ const simpanTambahan = async () => {
         <p class="text-[16px] font-semibold text-slate-900">Tambah Biaya — {{ LABEL_TINGKAT[grade][tambahanUntuk] }}</p>
         <p class="mt-0.5 text-[13px] text-slate-500">Berlaku untuk {{ siswa.nama }} saja (biaya khusus per siswa), tidak mengubah paket {{ siswa.kode }} untuk siswa lain.</p>
         <div class="mt-4 grid gap-3">
-          <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Nama Biaya</label><input v-model="namaBiaya" placeholder="cth: Kegiatan Tambahan" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
-          <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Nominal (Rp)</label><input v-model="nominalBiaya" inputmode="numeric" placeholder="cth: 150000" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
+          <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Nama Biaya</label><input v-model="namaBiaya" placeholder="cth: Kegiatan Tambahan" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
+          <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Nominal (Rp)</label><input v-model="nominalBiaya" inputmode="numeric" placeholder="cth: 150000" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
         </div>
         <p class="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[12.5px] text-slate-600">Nominal Tambahan tingkat ini saat ini {{ rp(siswa.hitung.per[tambahanUntuk].tambahan) }} — nominal baru akan ditambahkan ke angka itu.</p>
         <div class="mt-5 flex justify-end gap-2">

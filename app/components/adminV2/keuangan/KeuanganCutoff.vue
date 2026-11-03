@@ -49,8 +49,8 @@ tampilkan()
       <p class="text-[14.5px] font-semibold text-slate-800">Cut-off Keuangan</p>
       <p class="mt-0.5 text-[13px] text-slate-500">Pilih rentang tanggal, periksa rinciannya, lalu buat cut-off untuk memindahkan dana ke yayasan dan mengunci transaksi dalam rentang itu.</p>
       <div class="mt-3 flex flex-wrap items-end gap-2">
-        <div class="min-w-[150px] flex-1"><label class="mb-1 block text-[12px] font-medium text-slate-500">Dari Tanggal</label><input v-model="dari" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
-        <div class="min-w-[150px] flex-1"><label class="mb-1 block text-[12px] font-medium text-slate-500">Sampai Tanggal</label><input v-model="sampai" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
+        <div class="min-w-[150px] flex-1"><label class="mb-1 block text-[12px] font-medium text-slate-500">Dari Tanggal</label><input v-model="dari" type="date" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
+        <div class="min-w-[150px] flex-1"><label class="mb-1 block text-[12px] font-medium text-slate-500">Sampai Tanggal</label><input v-model="sampai" type="date" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
         <button type="button" @click="tampilkan" class="rounded-xl bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white">Tampilkan</button>
         <button type="button" :disabled="!belum.length || sibuk" @click="buat" class="rounded-xl bg-[#067647] px-4 py-2.5 text-[13px] font-medium text-white disabled:opacity-40">Buat Cut-off ({{ belum.length }} transaksi)</button>
       </div>

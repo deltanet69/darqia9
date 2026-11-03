@@ -25,6 +25,8 @@
                                    tanpa kelas latar di modal jadwal
      SEKSI 15 LISTING RBAC ....... garis pembagi baris tabel
                                    (divide-slate-200)
+     SEKSI 16 KEUANGAN .......... spanduk jenjang, kolom isian,
+                                   lencana & kertas cetak Keuangan
      SEKSI 9  GRAFIK (SVG) ....... garis kisi, sumbu, label grafik
      SEKSI 7  BAYANGAN ........... bayangan kartu di tema gelap
 
@@ -916,3 +918,29 @@ html[data-theme="dark"] .jadwal-modal input::placeholder { color: #5F7396; }
    terpetakan — sebelumnya tampil putih terang di tema gelap.
    ================================================================ */
 html[data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #1C3560; }
+
+
+/* ================================================================
+   SEKSI 16 — KEUANGAN (Keuangan Sekolah)
+   Token baru dari komponen adminV2/keuangan yang belum terpetakan:
+   spanduk jenjang aktif (biru lembut keluarga Seksi 3), garis tepi
+   spanduk, spanduk peringatan mode contoh (amber bernama), teks
+   galat merah bernama, cincin tombol sekunder, dan kertas cetak
+   (surat tagihan & kwitansi) yang memang harus tetap terang.
+   ================================================================ */
+html[data-theme="dark"] .bg-\[\#EAF1FC\] { background-color: #12294D; }
+html[data-theme="dark"] .border-\[\#1B5FD9\]\/30 { border-color: #2A4A8F; }
+html[data-theme="dark"] .border-amber-300 { border-color: #6B4E12; }
+html[data-theme="dark"] .text-amber-800 { color: #F5B74B; }
+html[data-theme="dark"] .text-red-700 { color: #F97066; }
+html[data-theme="dark"] .ring-slate-300 { --tw-ring-color: #1C3560; }
+
+/* Kertas cetak Keuangan: dokumen resmi — tetap terang di tema gelap,
+   persis tampilannya saat dicetak. */
+html[data-theme="dark"] .keu-paper { background-color: #FFFFFF !important; color: #1E293B !important; }
+html[data-theme="dark"] .keu-paper .text-slate-800 { color: #1E293B !important; }
+html[data-theme="dark"] .keu-paper .text-slate-500 { color: #64748B !important; }
+html[data-theme="dark"] .keu-paper .bg-slate-100 { background-color: #F1F5F9 !important; }
+html[data-theme="dark"] .keu-paper .bg-slate-50 { background-color: #F8FAFC !important; }
+html[data-theme="dark"] .keu-paper .border-slate-300,
+html[data-theme="dark"] .keu-paper .border-slate-800 { border-color: #94A3B8 !important; }

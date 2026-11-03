@@ -75,7 +75,7 @@ const tambahKet = async () => {
           <button type="button" @click="K.hapusKeterangan(k)" class="text-[13px] font-semibold text-[#B42318]">Hapus</button>
         </div>
         <div class="mt-3 flex gap-2">
-          <input v-model="ketBaru" placeholder="Nama keterangan baru" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-[13px] outline-none focus:border-[#1B5FD9]">
+          <input v-model="ketBaru" placeholder="Nama keterangan baru" class="bg-white min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-[13px] outline-none focus:border-[#1B5FD9]">
           <button type="button" @click="tambahKet" class="rounded-xl bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white">+ Tambah</button>
         </div>
       </div>
@@ -96,9 +96,9 @@ const tambahKet = async () => {
         <p class="text-[16px] font-semibold text-slate-900">{{ modal.lama ? 'Ubah Paket Kode Keuangan' : 'Tambah Paket Kode Keuangan' }}</p>
         <p class="mt-0.5 text-[13px] text-slate-500">Nominal diisi angka saja (rupiah) per tingkat untuk jenjang {{ grade }}.</p>
         <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Kode Paket</label><input v-model="modal.kode" :disabled="!!modal.lama" placeholder="cth: R-2728" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px] disabled:bg-slate-50"></div>
-          <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Nama Paket</label><input v-model="modal.nama" placeholder="cth: Siswa Reguler" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
-          <div v-for="i in [0, 1, 2, 3]" :key="i"><label class="mb-1 block text-[12px] font-medium text-slate-500">Nominal {{ LABEL_TINGKAT[grade][i] }}</label><input v-model="modal.n[i]" inputmode="numeric" placeholder="0 = belum diset" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
+          <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Kode Paket</label><input v-model="modal.kode" :disabled="!!modal.lama" placeholder="cth: R-2728" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px] disabled:bg-slate-50"></div>
+          <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Nama Paket</label><input v-model="modal.nama" placeholder="cth: Siswa Reguler" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
+          <div v-for="i in [0, 1, 2, 3]" :key="i"><label class="mb-1 block text-[12px] font-medium text-slate-500">Nominal {{ LABEL_TINGKAT[grade][i] }}</label><input v-model="modal.n[i]" inputmode="numeric" placeholder="0 = belum diset" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
         </div>
         <label class="mt-3 flex items-center gap-2 text-[13px] text-slate-600"><input v-model="modal.aktif" type="checkbox" class="h-4 w-4"> Paket aktif (bisa dipasang ke siswa)</label>
         <div class="mt-5 flex justify-end gap-2">

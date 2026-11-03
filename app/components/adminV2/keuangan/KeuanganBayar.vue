@@ -42,13 +42,13 @@ const simpan = async () => {
       <p class="mt-0.5 text-[13px] text-slate-500">{{ siswa.nama }} &middot; NIS {{ siswa.nis }} &middot; {{ siswa.kelas }}</p>
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
         <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Untuk Tingkat</label>
-          <select v-model.number="tingkat" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"><option v-for="(l, i) in LABEL_TINGKAT[siswa.grade]" :key="i" :value="i">{{ l }} (sisa {{ rp(siswa.hitung.per[i].sisa) }})</option></select></div>
-        <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Tanggal Bayar</label><input v-model="tanggal" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
-        <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Nominal Bayar (Rp)</label><input v-model="nominal" inputmode="numeric" placeholder="cth: 500000" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
+          <select v-model.number="tingkat" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"><option v-for="(l, i) in LABEL_TINGKAT[siswa.grade]" :key="i" :value="i">{{ l }} (sisa {{ rp(siswa.hitung.per[i].sisa) }})</option></select></div>
+        <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Tanggal Bayar</label><input v-model="tanggal" type="date" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
+        <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Nominal Bayar (Rp)</label><input v-model="nominal" inputmode="numeric" placeholder="cth: 500000" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"></div>
         <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Keterangan Bayar</label>
-          <select v-model="keterangan" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"><option v-for="k in K.state.value.keterangan" :key="k">{{ k }}</option></select></div>
+          <select v-model="keterangan" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"><option v-for="k in K.state.value.keterangan" :key="k">{{ k }}</option></select></div>
         <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Metode Pembayaran</label>
-          <select v-model="metode" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"><option v-for="m in METODE_BAYAR" :key="m">{{ m }}</option></select></div>
+          <select v-model="metode" class="bg-white w-full rounded-lg border border-slate-300 px-3 py-2.5 text-[13.5px]"><option v-for="m in METODE_BAYAR" :key="m">{{ m }}</option></select></div>
         <div><label class="mb-1 block text-[12px] font-medium text-slate-500">Petugas / Teller</label><input value="Anis Azyzy, S.T" disabled class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-[13.5px]"></div>
       </div>
       <p class="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[12.5px] text-slate-600">Sisa tagihan tingkat ini: <b>{{ rp(sisaTingkat) }}</b>. Nomor kwitansi dibuat otomatis oleh sistem dan pembayaran langsung tercatat di Riwayat Pembayaran.</p>

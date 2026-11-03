@@ -56,9 +56,9 @@ const ekspor = () => {
     <div class="mt-5 flex flex-wrap items-center gap-2">
       <div class="relative w-full max-w-sm">
         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#98A2B3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-        <input v-model="cari" placeholder="Cari No Kwitansi atau NIS..." class="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-[13px] outline-none focus:border-[#1B5FD9]">
+        <input v-model="cari" placeholder="Cari No Kwitansi atau NIS..." class="bg-white w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-[13px] outline-none focus:border-[#1B5FD9]">
       </div>
-      <select v-model="fMetode" class="rounded-lg border border-slate-300 px-2.5 py-2.5 text-[12.5px] text-slate-600"><option value="">Semua Metode</option><option>Tunai</option><option>Transfer</option><option>QRIS</option></select>
+      <select v-model="fMetode" class="bg-white rounded-lg border border-slate-300 px-2.5 py-2.5 text-[12.5px] text-slate-600"><option value="">Semua Metode</option><option>Tunai</option><option>Transfer</option><option>QRIS</option></select>
       <button type="button" @click="ekspor" class="ml-auto rounded-xl bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white">Ekspor Riwayat (CSV)</button>
     </div>
     <p class="mt-3 text-[12.5px] text-slate-500">Satu-satunya sumber angka Total Dibayar siswa. Menampilkan {{ rows.length }} dari {{ total }} transaksi (maks 100 per muat agar ringan). Baris yang sudah masuk cut-off <b>terkunci</b> — tidak bisa diubah / dihapus.</p>

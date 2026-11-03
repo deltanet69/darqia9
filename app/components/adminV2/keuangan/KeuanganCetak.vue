@@ -44,7 +44,7 @@ const tautanWA = computed(() => {
 
       <!-- Surat tagihan -->
       <template v-else-if="jenis === 'surat'">
-        <div class="border border-slate-300 p-6 text-[13px] leading-6 text-slate-800">
+        <div class="keu-paper border border-slate-300 p-6 text-[13px] leading-6 text-slate-800">
           <div class="border-b-2 border-slate-800 pb-3 text-center">
             <p class="text-[16px] font-bold uppercase tracking-wide">{{ sekolah }}</p>
             <p class="text-[12px] text-slate-500">Tata Usaha &middot; Informasi Keuangan Siswa</p>
@@ -79,7 +79,7 @@ const tautanWA = computed(() => {
 
       <!-- Kwitansi -->
       <template v-else-if="bayar">
-        <div class="border border-slate-300 p-6 text-[13px] leading-6 text-slate-800">
+        <div class="keu-paper border border-slate-300 p-6 text-[13px] leading-6 text-slate-800">
           <div class="border-b-2 border-slate-800 pb-3 text-center">
             <p class="text-[16px] font-bold uppercase tracking-wide">{{ sekolah }}</p>
             <p class="text-[12px] text-slate-500">Kwitansi Pembayaran &middot; No: {{ bayar.no }}</p>
