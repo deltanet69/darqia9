@@ -8,7 +8,7 @@ import AdminV2Popovers from '~/components/adminV2/AdminV2Popovers.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 
-const props = defineProps<{ crumb?: string; judul?: string; modulLabel?: string; modulTo?: string }>()
+const props = defineProps<{ crumb?: string; judul?: string; modulLabel?: string; modulTo?: string; grupLabel?: string; routeId?: string }>()
 useHead({ title: `${props.judul || 'Hak Akses (RBAC)'} | Admin Portal` })
 
 const grade = useAdminGrade()
@@ -29,7 +29,7 @@ const selectModule = async (title: string) => { isMegaOpen.value = false; isMobi
 const crumbs = computed(() => {
   const dasar = [
     { label: 'Portal Admin', to: '/adminV2' },
-    { label: 'Sistem Apps' },
+    { label: props.grupLabel || 'Sistem Apps' },
     { label: props.modulLabel || 'Hak Akses (RBAC)', to: props.modulTo || '/adminV2/rbac' }
   ]
   return props.crumb ? [...dasar, { label: props.crumb }] : dasar
@@ -39,7 +39,7 @@ const crumbs = computed(() => {
 <template>
   <div class="min-h-screen bg-[#F3F5F9] text-[#101828] font-sans antialiased pb-24 lg:pb-8">
     <div class="sticky top-0 z-50">
-      <AdminV2Header :jenjang="jenjang" :role="role" :groups="GROUPS" current-route="sistem" :active-group-id="activeMegaGroup?.id" :is-mega-open="isMegaOpen" @update:jenjang="jenjang = $event" @toggle-mega="group => { activeMegaGroup = group; isMegaOpen = !isMegaOpen }" @open-mobile-menu="isMobileMenuOpen = true" @toggle-search="toggleSearch" @toggle-notif="toggleNotif" @toggle-profile="toggleProfile" />
+      <AdminV2Header :jenjang="jenjang" :role="role" :groups="GROUPS" :current-route="props.routeId || 'sistem'" :active-group-id="activeMegaGroup?.id" :is-mega-open="isMegaOpen" @update:jenjang="jenjang = $event" @toggle-mega="group => { activeMegaGroup = group; isMegaOpen = !isMegaOpen }" @open-mobile-menu="isMobileMenuOpen = true" @toggle-search="toggleSearch" @toggle-notif="toggleNotif" @toggle-profile="toggleProfile" />
       <AdminV2Breadcrumb :items="crumbs" :badge="jenjang === 'smp' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'" :jenjang="jenjang" />
       <AdminV2MegaPanel :open="isMegaOpen" :group="activeMegaGroup" :jenjang="jenjang" @close="isMegaOpen = false" @select-item="selectModule" />
     </div>
