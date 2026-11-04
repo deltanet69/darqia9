@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import type { StaffItem } from '~/composables/useAdminTeachers'
+import { JENIS_NOMOR_OPSI, PENDIDIKAN_OPSI, jenisNomorDari, labelAsalInstitusi } from '~/composables/guruCore'
 
 const props = defineProps<{
   isOpen: boolean
@@ -27,8 +28,8 @@ const formData = ref<Omit<StaffItem, 'id'> & { id?: string }>({
   status: 'Aktif',
   rfidUid: '',
   nik: '',
-  noKk: '',
   nuptk: '',
+  jenisNomor: 'NIP',
   email: '',
   birthPlace: '',
   birthDate: '',
@@ -37,6 +38,7 @@ const formData = ref<Omit<StaffItem, 'id'> & { id?: string }>({
   kecamatan: '',
   kabKota: '',
   education: '',
+  asalInstitusi: '',
   gender: 'Laki laki',
   isUserSynced: false
 })
@@ -52,6 +54,7 @@ watch(
       if (props.editingStaff) {
         formData.value = {
           ...props.editingStaff,
+          jenisNomor: jenisNomorDari(props.editingStaff.jenisNomor, props.editingStaff.nip, props.editingStaff.nuptk),
           status: ['tidak aktif', 'nonaktif', 'inactive'].includes(props.editingStaff.status.toLowerCase()) ? 'Tidak Aktif' : 'Aktif'
         }
         syncUserAccount.value = !!props.editingStaff.isUserSynced
@@ -66,8 +69,8 @@ watch(
           status: 'Aktif',
           rfidUid: '',
           nik: '',
-          noKk: '',
           nuptk: '',
+          jenisNomor: 'NIP',
           email: '',
           birthPlace: 'Bekasi',
           birthDate: '',
@@ -75,7 +78,8 @@ watch(
           kelurahan: '',
           kecamatan: 'Babelan',
           kabKota: 'Kab. Bekasi',
-          education: 'S1 Pendidikan',
+          education: 'Sarjana',
+          asalInstitusi: '',
           gender: 'Laki laki',
           isUserSynced: false
         }
@@ -113,6 +117,16 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown)
 })
 
+// Nomor pegawai tunggal mengikuti jenisnya (NIP atau NUPTK) — meeting
+// 4 Nov 2026: NUPTK/NIP diberi pilihan/keterangan jenis nomor.
+const nomorAktif = computed({
+  get: () => formData.value.jenisNomor === 'NUPTK' ? (formData.value.nuptk || '') : formData.value.nip,
+  set: (v: string) => {
+    if (formData.value.jenisNomor === 'NUPTK') formData.value.nuptk = v
+    else formData.value.nip = v
+  }
+})
+
 const handleSubmit = () => {
   if (!formData.value.name.trim()) {
     activeTab.value = 'identitas'
@@ -120,7 +134,7 @@ const handleSubmit = () => {
     return
   }
 
-  if (!formData.value.nip.trim()) {
+  if (!nomorAktif.value.trim()) {
     activeTab.value = 'kepegawaian'
     errorMessage.value = 'NIP / NUPTK wajib diisi untuk registrasi kepegawaian!'
     return
@@ -239,14 +253,15 @@ const handleSubmit = () => {
 
               <div>
                 <label class="block text-xs font-bold text-[#344054] mb-1.5">
-                  Nomor Kartu Keluarga (No KK)
+                  Pendidikan Terakhir
                 </label>
-                <input
-                  v-model="formData.noKk"
-                  maxlength="16"
-                  placeholder="16 digit No. KK"
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#D0D5DD] bg-[#F8FAFC] focus:bg-white focus:border-[#1B5FD9] outline-none text-xs sm:text-sm font-mono font-semibold text-[#101828] transition-all"
-                />
+                <select
+                  v-model="formData.education"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#D0D5DD] bg-[#F8FAFC] focus:bg-white focus:border-[#1B5FD9] outline-none text-xs sm:text-sm font-semibold text-[#344054] cursor-pointer transition-all"
+                >
+                  <option value="">— Pilih pendidikan —</option>
+                  <option v-for="p in PENDIDIKAN_OPSI" :key="p" :value="p">{{ p }}</option>
+                </select>
               </div>
             </div>
 
@@ -290,11 +305,11 @@ const handleSubmit = () => {
 
               <div>
                 <label class="block text-xs font-bold text-[#344054] mb-1.5">
-                  Pendidikan Terakhir
+                  {{ labelAsalInstitusi(formData.education) }}
                 </label>
                 <input
-                  v-model="formData.education"
-                  placeholder="Contoh: S1 Pendidikan / S2 Komputer"
+                  v-model="formData.asalInstitusi"
+                  :placeholder="labelAsalInstitusi(formData.education) === 'Asal Sekolah' ? 'Contoh: SMK Negeri 1 Bekasi' : 'Contoh: Universitas Negeri Jakarta'"
                   class="w-full px-3.5 py-2.5 rounded-xl border border-[#D0D5DD] bg-[#F8FAFC] focus:bg-white focus:border-[#1B5FD9] outline-none text-xs sm:text-sm font-medium text-[#101828] transition-all"
                 />
               </div>
@@ -389,25 +404,29 @@ const handleSubmit = () => {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label class="block text-xs font-bold text-[#344054] mb-1.5">
-                  Nomor Induk Pegawai (NIP) <span class="text-[#D92D20]">*</span>
+                  Jenis Nomor Pegawai
                 </label>
-                <input
-                  v-model="formData.nip"
-                  placeholder="18 digit NIP"
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#D0D5DD] bg-[#F8FAFC] focus:bg-white focus:border-[#1B5FD9] focus:ring-4 focus:ring-[#1B5FD9]/10 outline-none text-xs sm:text-sm font-mono font-bold text-[#101828] transition-all"
-                  required
-                />
+                <select
+                  v-model="formData.jenisNomor"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#D0D5DD] bg-[#F8FAFC] focus:bg-white focus:border-[#1B5FD9] outline-none text-xs sm:text-sm font-bold text-[#344054] cursor-pointer transition-all"
+                >
+                  <option v-for="j in JENIS_NOMOR_OPSI" :key="j" :value="j">{{ j }}</option>
+                </select>
+                <span class="text-[11px] text-[#667085] mt-1 block">
+                  Pilih jenis nomor yang dimiliki guru: NIP (ASN) atau NUPTK (nomor unik PTK).
+                </span>
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-[#344054] mb-1.5">
-                  NUPTK (Opsional)
+                  {{ formData.jenisNomor === 'NUPTK' ? 'NUPTK' : 'Nomor Induk Pegawai (NIP)' }} <span class="text-[#D92D20]">*</span>
                 </label>
                 <input
-                  v-model="formData.nuptk"
-                  maxlength="16"
-                  placeholder="16 digit NUPTK"
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#D0D5DD] bg-[#F8FAFC] focus:bg-white focus:border-[#1B5FD9] outline-none text-xs sm:text-sm font-mono font-semibold text-[#101828] transition-all"
+                  v-model="nomorAktif"
+                  :maxlength="formData.jenisNomor === 'NUPTK' ? 16 : undefined"
+                  :placeholder="formData.jenisNomor === 'NUPTK' ? '16 digit NUPTK' : '18 digit NIP'"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-[#D0D5DD] bg-[#F8FAFC] focus:bg-white focus:border-[#1B5FD9] focus:ring-4 focus:ring-[#1B5FD9]/10 outline-none text-xs sm:text-sm font-mono font-bold text-[#101828] transition-all"
+                  required
                 />
               </div>
             </div>
@@ -448,10 +467,10 @@ const handleSubmit = () => {
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-[#344054] mb-1.5">Mata Pelajaran Utama</label>
+                <label class="block text-xs font-bold text-[#344054] mb-1.5">Bidang Studi / Jurusan (Mapel Utama)</label>
                 <input
                   v-model="formData.subject"
-                  placeholder="Contoh: Matematika / PBO"
+                  placeholder="Contoh: Matematika / Teknik Komputer & Jaringan"
                   class="w-full px-3.5 py-2.5 rounded-xl border border-[#D0D5DD] bg-[#F8FAFC] focus:bg-white focus:border-[#1B5FD9] outline-none text-xs sm:text-sm font-medium text-[#101828] transition-all"
                 />
               </div>

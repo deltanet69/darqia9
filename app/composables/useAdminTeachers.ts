@@ -1,4 +1,5 @@
 import { useAdminGrade } from '~/composables/useAdminGrade'
+import { jenisNomorDari, normalisasiPendidikan, type JenisNomor } from '~/composables/guruCore'
 
 export interface StaffItem {
   id: string
@@ -11,9 +12,11 @@ export interface StaffItem {
   status: string
   rfidUid: string
   // Detail Data Induk Guru (docs/Admin Portal/kepegawaian/dataindukguru.md)
+  // Penyesuaian meeting 4 Nov 2026: No KK dihapus; nomor pegawai berjenis
+  // NIP/NUPTK; pendidikan terakhir baku 5 tingkat; ada asal institusi.
   nik?: string
-  noKk?: string
   nuptk?: string
+  jenisNomor?: JenisNomor
   email?: string
   birthPlace?: string
   birthDate?: string
@@ -22,6 +25,7 @@ export interface StaffItem {
   kecamatan?: string
   kabKota?: string
   education?: string
+  asalInstitusi?: string
   gender?: 'Laki laki' | 'Perempuan'
   isUserSynced?: boolean
 }
@@ -77,8 +81,8 @@ export const useAdminTeachers = () => {
     status: normalizeEmploymentStatus(row.employment_status),
     rfidUid: row.rfid_uid || '',
     nik: row.nik || '',
-    noKk: row.no_kk || '',
     nuptk: row.nuptk || '',
+    jenisNomor: jenisNomorDari(row.jenis_nomor, row.nip, row.nuptk),
     email: row.email || '',
     birthPlace: row.birth_place || '',
     birthDate: row.birth_date || '',
@@ -87,6 +91,7 @@ export const useAdminTeachers = () => {
     kecamatan: row.kecamatan || '',
     kabKota: row.kab_kota || '',
     education: row.education || '',
+    asalInstitusi: row.asal_institusi || '',
     gender: row.gender === 'P' ? 'Perempuan' : row.gender === 'L' ? 'Laki laki' : undefined,
     isUserSynced: !!row.user_id
   })
@@ -109,11 +114,11 @@ export const useAdminTeachers = () => {
       genderVal = 'P'
     }
 
-    // Sanitasi NIP (wajib non-kosong, gunakan fallback unik)
+    // Sanitasi nomor pegawai (NIP atau NUPTK sesuai jenisnya)
     const nipVal = String(s.nip || '').trim()
     const nameVal = String(s.name || '').trim()
-    if (!nameVal || (!nipVal && !String(s.nik || '').trim())) {
-      throw new Error('Nama guru serta NIP atau NIK wajib diisi.')
+    if (!nameVal || (!nipVal && !String(s.nuptk || '').trim() && !String(s.nik || '').trim())) {
+      throw new Error('Nama guru serta NIP/NUPTK atau NIK wajib diisi.')
     }
 
     const payload: Record<string, string | boolean | null> = {
@@ -138,8 +143,8 @@ export const useAdminTeachers = () => {
     }
 
     payload.nik = optStr(s.nik)
-    payload.no_kk = optStr(s.noKk)
     payload.nuptk = optStr(s.nuptk)
+    payload.jenis_nomor = s.jenisNomor === 'NUPTK' ? 'NUPTK' : 'NIP'
     payload.email = optStr(s.email)
     payload.birth_place = optStr(s.birthPlace)
     payload.birth_date = null
@@ -147,7 +152,8 @@ export const useAdminTeachers = () => {
     payload.kelurahan = optStr(s.kelurahan)
     payload.kecamatan = optStr(s.kecamatan)
     payload.kab_kota = optStr(s.kabKota)
-    payload.education = optStr(s.education)
+    payload.education = optStr(normalisasiPendidikan(s.education) || s.education)
+    payload.asal_institusi = optStr(s.asalInstitusi)
     payload.rfid_uid = optStr(s.rfidUid)
     payload.subject = optStr(s.subject)
 
@@ -204,15 +210,26 @@ export const useAdminTeachers = () => {
     }
   }
 
+  // Upsert dengan jalan mundur aman: selama migrasi 0029 belum dijalankan,
+  // kolom jenis_nomor/asal_institusi belum ada — kirim ulang tanpa keduanya
+  // agar simpan guru TIDAK rusak sebelum migrasi jalan.
+  const upsertGuru = async (payload: Record<string, any>, conflictColumn: string) => {
+    let hasil = await supabase.from('teachers').upsert(payload, { onConflict: conflictColumn }).select()
+    if (hasil.error && /jenis_nomor|asal_institusi|schema cache|Could not find/i.test(hasil.error.message)) {
+      const salin = { ...payload }
+      delete salin.jenis_nomor
+      delete salin.asal_institusi
+      hasil = await supabase.from('teachers').upsert(salin, { onConflict: conflictColumn }).select()
+    }
+    return hasil
+  }
+
   // Simpan / Perbarui guru tunggal ke database Supabase
   const saveStaffToDb = async (staff: StaffItem) => {
     try {
       const payload = mapStaffToDbPayload(staff)
       const conflictColumn = payload.id ? 'id' : payload.nip ? 'nip' : 'nik'
-      const { data, error } = await supabase
-        .from('teachers')
-        .upsert(payload, { onConflict: conflictColumn })
-        .select()
+      const { data, error } = await upsertGuru(payload, conflictColumn)
 
       if (error) throw error
 
@@ -239,9 +256,7 @@ export const useAdminTeachers = () => {
       for (const item of items) {
         const payload = mapStaffToDbPayload(item)
         const conflictColumn = payload.nip ? 'nip' : 'nik'
-        const { error } = await supabase
-          .from('teachers')
-          .upsert(payload, { onConflict: conflictColumn })
+        const { error } = await upsertGuru(payload, conflictColumn)
 
         if (!error) {
           successCount++

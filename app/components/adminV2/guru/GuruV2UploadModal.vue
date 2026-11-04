@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import type { StaffItem } from '~/composables/useAdminTeachers'
+import { jenisNomorDari, normalisasiPendidikan } from '~/composables/guruCore'
 
 const props = defineProps<{
   isOpen: boolean
@@ -50,9 +51,9 @@ const downloadTemplate = () => {
   const headers = [
     'Nama Guru',
     'NIK',
-    'No KK',
     'NUPTK',
     'NIP',
+    'Jenis Nomor',
     'No Telp/WA',
     'Alamat Email',
     'Tempat Lahir',
@@ -62,8 +63,10 @@ const downloadTemplate = () => {
     'Kecamatan',
     'Kab/Kota',
     'Pendidikan Terakhir',
+    'Asal Institusi',
     'Unit Sekolah',
-    'Jabatan Guru'
+    'Jabatan Guru',
+    'Bidang Studi/Jurusan'
   ]
 
   const csvRows = [
@@ -162,9 +165,9 @@ const parseCsv = (content: string) => {
 
     const name = getColumn(cols, 'nama guru', 'nama lengkap')
     const nik = getColumn(cols, 'nik')
-    const noKk = getColumn(cols, 'no kk')
     const nuptk = getColumn(cols, 'nuptk')
     const nip = getColumn(cols, 'nip')
+    const jenisNomor = jenisNomorDari(getColumn(cols, 'jenis nomor'), nip, nuptk)
     const phone = getColumn(cols, 'no telp/wa')
     const email = getColumn(cols, 'alamat email').toLowerCase()
     const birthPlace = getColumn(cols, 'tempat lahir')
@@ -173,11 +176,13 @@ const parseCsv = (content: string) => {
     const kelurahan = getColumn(cols, 'kelurahan')
     const kecamatan = getColumn(cols, 'kecamatan')
     const kabKota = getColumn(cols, 'kab/kota')
-    const education = getColumn(cols, 'pendidikan terakhir')
+    const educationMentah = getColumn(cols, 'pendidikan terakhir')
+    const education = normalisasiPendidikan(educationMentah) || educationMentah
+    const asalInstitusi = getColumn(cols, 'asal institusi', 'asal sekolah', 'asal kampus')
     const rawUnit = (getColumn(cols, 'unit', 'unit sekolah') || props.currentGrade).toUpperCase()
     const unit: StaffItem['unit'] = rawUnit.includes('SMP') ? 'SMP' : rawUnit.includes('YAYASAN') ? 'Yayasan' : 'SMK'
     const role = getColumn(cols, 'jabatan guru', 'jabatan', 'jabatan & tugas') || 'Guru'
-    const subject = getColumn(cols, 'mapel utama')
+    const subject = getColumn(cols, 'bidang studi/jurusan', 'bidang studi', 'jurusan', 'mapel utama')
     const rawStatus = getColumn(cols, 'status', 'status kepegawaian')
     const status = ['tidak aktif', 'nonaktif', 'inactive'].includes(rawStatus.trim().toLowerCase()) ? 'Tidak Aktif' : 'Aktif'
     const rfidUid = getColumn(cols, 'rfid uid')
@@ -197,9 +202,9 @@ const parseCsv = (content: string) => {
       id: `T-IMP-${Date.now()}-${i}`,
       name,
       nik,
-      noKk,
       nuptk,
       nip,
+      jenisNomor,
       phone,
       email,
       birthPlace,
@@ -209,6 +214,7 @@ const parseCsv = (content: string) => {
       kecamatan,
       kabKota,
       education,
+      asalInstitusi,
       unit,
       role,
       subject,
@@ -283,7 +289,7 @@ const confirmImport = () => {
             <div>
               <b class="text-xs font-bold text-[#101828] block">Belum memiliki format data yang sesuai?</b>
               <p class="text-[11.5px] text-[#64748B] mt-0.5 leading-relaxed">
-                Unduh template CSV dengan 16 kolom data pokok guru. Berkas dapat dibuka dan diisi melalui Microsoft Excel atau Google Sheets.
+                Unduh template CSV dengan 18 kolom data pokok guru. Berkas dapat dibuka dan diisi melalui Microsoft Excel atau Google Sheets.
               </p>
             </div>
             <button

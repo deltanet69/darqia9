@@ -2,6 +2,10 @@
 import { computed } from 'vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import type { StaffItem } from '~/composables/useAdminTeachers'
+import { jenisNomorDari, labelAsalInstitusi, nomorAktif } from '~/composables/guruCore'
+
+const jenisNomor = computed(() => jenisNomorDari(props.staff?.jenisNomor, props.staff?.nip, props.staff?.nuptk))
+const nomorPegawai = computed(() => nomorAktif(jenisNomor.value, props.staff?.nip, props.staff?.nuptk))
 
 const props = defineProps<{
   isOpen: boolean
@@ -87,7 +91,7 @@ const formattedBirthDate = computed(() => {
               </h2>
               <div class="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-[#64748B]">
                 <span class="font-mono font-bold text-[#101828] bg-[#F2F4F7] px-2 py-0.5 rounded">
-                  NIP: {{ staff.nip }}
+                  {{ jenisNomor }}: {{ nomorPegawai || '-' }}
                 </span>
                 <span>&bull;</span>
                 <span class="font-medium text-[#475467]">{{ staff.role }}</span>
@@ -110,13 +114,13 @@ const formattedBirthDate = computed(() => {
               </div>
 
               <div class="p-3 bg-[#F8FAFC] rounded-xl border border-[#EEF2F6]">
-                <span class="text-[#64748B] block mb-0.5 font-medium">Nomor Kartu Keluarga (No KK)</span>
-                <b class="font-mono text-sm text-[#101828] font-bold">{{ staff.noKk || 'Belum diisi' }}</b>
+                <span class="text-[#64748B] block mb-0.5 font-medium">Nomor Pegawai ({{ jenisNomor }})</span>
+                <b class="font-mono text-sm text-[#101828] font-bold">{{ nomorPegawai || '-' }}</b>
               </div>
 
               <div class="p-3 bg-[#F8FAFC] rounded-xl border border-[#EEF2F6]">
-                <span class="text-[#64748B] block mb-0.5 font-medium">NUPTK</span>
-                <b class="font-mono text-sm text-[#101828] font-bold">{{ staff.nuptk || '-' }}</b>
+                <span class="text-[#64748B] block mb-0.5 font-medium">{{ labelAsalInstitusi(staff.education) }}</span>
+                <b class="text-sm text-[#101828] font-bold">{{ staff.asalInstitusi || '-' }}</b>
               </div>
 
               <div class="p-3 bg-[#F8FAFC] rounded-xl border border-[#EEF2F6]">
@@ -243,7 +247,7 @@ const formattedBirthDate = computed(() => {
             </h4>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div class="p-3 bg-[#F8FAFC] rounded-xl border border-[#EEF2F6]">
-                <span class="text-[#64748B] block mb-0.5 font-medium">Mata Pelajaran</span>
+                <span class="text-[#64748B] block mb-0.5 font-medium">Bidang Studi / Jurusan</span>
                 <b class="text-sm text-[#101828] font-bold">{{ staff.subject || '-' }}</b>
               </div>
 
