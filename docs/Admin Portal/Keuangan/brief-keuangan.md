@@ -83,3 +83,33 @@ ringan & instan tanpa overengineering).
    dijalankan manual setelah 0026): trigger penjaga kunci 0026 diganti
    versi sadar konteks yang hanya menembus kunci bila penanda
    transaksi-lokal dinyalakan fungsi RPC itu.
+
+## Pembaruan — Meeting Manajemen 4 Nov 2026 (butir Keuangan, migrasi 0030)
+
+1. **Halaman Pembayaran** (sub-menu baru di grup Keuangan, rute
+   `/adminV2/keuangan/pembayaran`): petugas mencari NIS/Nama di sini,
+   klik siswa -> Rincian Keuangan Siswa. Tombol Input Pembayaran di
+   halaman Keuangan kini mengarah ke halaman ini — TIDAK ada popup lagi.
+2. **Rincian 2 kolom**: kiri = kartu detail siswa + form input pembayaran
+   (nempel, bukan popup); kanan = rincian tagihan & pembayaran + riwayat.
+3. **Release Tagihan** menggantikan tombol "Kirim notifikasi ke wali":
+   per (siswa, tingkat), tersimpan di `keuangan_rilis_tagihan`. Notifikasi
+   ke Portal Orang Tua menyusul setelah portal itu dibangun.
+4. **Keterangan dinamis model LIST**: satu pembayaran = banyak item
+   keterangan (combobox: pilih dari master atau ketik manual; keterangan
+   baru otomatis masuk master). Item tersimpan di
+   `keuangan_pembayaran_item`; kolom keterangan induk = ringkasannya.
+5. **Pembayaran menempel ke siswa (WATERFALL)**: tidak ada pilihan
+   tingkat; `hitungSiswa` mengalokasikan total riwayat berurutan ke
+   Tingkat 1 -> 2 -> 3 -> Akhir; kelebihan = saldo (`HitunganSiswa.saldo`).
+   Ganti Kode Keuangan hanya mengubah total tagihan; terbayar tidak
+   berubah. Kolom tingkat pembayaran baru = null (anotasi historis lama
+   dipertahankan, tidak dipakai hitungan).
+6. **Cut-off = TUNAI saja**: `keuangan_buat_cutoff` (0030) hanya
+   menghitung & mengunci transaksi Tunai. UI: tampilan Harian / Mingguan
+   (Senin–Minggu) / Kustom -> daftar rentang -> Release -> input jumlah
+   diserahkan (`jumlah_setor`) + bukti pemasukan. Transfer/QRIS tampil
+   sebagai info saja.
+7. **Ketahanan pra-0030**: halaman tetap berfungsi sebelum migrasi jalan
+   (simpan bayar mundur ke anotasi tingkat; item & rilis menunggu
+   migrasi; cut-off mundur ke RPC lama dengan catatan di notifikasi).
