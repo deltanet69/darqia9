@@ -16,6 +16,11 @@ withDefaults(defineProps<Props>(), {
   badge: '',
   jenjang: 'smk'
 })
+
+// Tahun Ajaran global (meeting 4 Nov 2026 butir 5): dropdown simple di sisi
+// kanan breadcrumb; opsi dari tahun existing di tabel classes.
+const { tahun, opsi, muatOpsi, pilih } = useTahunAjaran()
+onMounted(muatOpsi)
 </script>
 
 <template>
@@ -73,7 +78,17 @@ withDefaults(defineProps<Props>(), {
 
       <!-- Badge Jenjang & Meta Info Kanan (Informatif di Sub Navbar) -->
       <div v-if="badge" class="flex items-center gap-2 shrink-0 ml-auto pl-2">
-        <span class="text-[11px] text-[#98A2B3] font-medium hidden xl:inline">Tahun Ajaran 2026/2027</span>
+        <label class="hidden xl:inline-flex items-center gap-1 text-[11px] text-[#98A2B3] font-medium">
+          Tahun Ajaran
+          <select
+            :value="tahun"
+            aria-label="Pilih tahun ajaran"
+            class="bg-transparent border-0 p-0 pr-4 text-[11px] font-semibold text-[#667085] hover:text-[#344054] cursor-pointer focus:outline-none"
+            @change="pilih(($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="t in opsi" :key="t" :value="t">{{ t }}</option>
+          </select>
+        </label>
         <span class="w-1 h-1 rounded-full bg-[#CBD5E1] hidden xl:inline" />
         <span
           class="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-[9.5px] sm:text-[10.5px] font-bold tracking-tight border shrink-0"
