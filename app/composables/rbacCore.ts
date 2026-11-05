@@ -131,6 +131,7 @@ const JUDUL_KE_MODUL: Record<string, string | null> = {
   'agenda mengajar': 'Agenda Mengajar',
   'modul pembelajaran': 'Modul Pembelajaran',
   'keuangan sekolah': 'Keuangan Sekolah',
+  'pembayaran': 'Keuangan Sekolah',
   'tabungan siswa': 'Tabungan Siswa',
   'manajemen cbt': 'Manajemen CBT',
   'lms': 'LMS',

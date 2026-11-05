@@ -4,9 +4,8 @@ import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useKeuangan } from '~/composables/useKeuangan'
 import {
   LABEL_TINGKAT, inisialNama, nomorHalaman, persenTeks, potongHalaman, rekapPerKelas, rp, saringSiswa,
-  type Grade, type Pembayaran
+  type Grade
 } from '~/composables/keuanganCore'
-import KeuanganBayar from './KeuanganBayar.vue'
 import KeuanganKode from './KeuanganKode.vue'
 import KeuanganCutoff from './KeuanganCutoff.vue'
 import KeuanganRiwayat from './KeuanganRiwayat.vue'
@@ -14,6 +13,7 @@ import KeuanganRiwayat from './KeuanganRiwayat.vue'
 const emit = defineEmits<{ buka: [nis: string] }>()
 
 const grade = useAdminGrade()
+const router = useRouter()
 const K = useKeuangan()
 const tab = ref<'overview' | 'data' | 'kode' | 'cutoff' | 'riwayat'>('overview')
 const TABS = [
@@ -32,7 +32,6 @@ const urut = ref('sisa')
 const pasangNis = ref('')
 const pasangKode = ref('')
 const notif = ref('')
-const bayarGlobal = ref(false)
 const halaman = ref(1)
 const perHalaman = ref(25)
 
@@ -41,7 +40,7 @@ watch(grade, g => K.muatSemua(g))
 
 const baris = computed(() => K.barisSiswa(grade.value))
 const paketGrade = computed(() => K.state.value.paket.filter(p => p.grade === grade.value))
-const totalSemua = computed(() => baris.value.reduce((a, s) => ({ tagihan: a.tagihan + s.hitung.total, bayar: a.bayar + s.hitung.bayar, sisa: a.sisa + s.hitung.sisa }), { tagihan: 0, bayar: 0, sisa: 0 }))
+const totalSemua = computed(() => baris.value.reduce((a, s) => ({ tagihan: a.tagihan + s.hitung.total, bayar: a.bayar + s.hitung.bayar, totalBayar: a.totalBayar + s.hitung.totalBayar, saldo: a.saldo + s.hitung.saldo, sisa: a.sisa + s.hitung.sisa }), { tagihan: 0, bayar: 0, totalBayar: 0, saldo: 0, sisa: 0 }))
 const belumKode = computed(() => baris.value.filter(s => !s.kode).length)
 const rekapKelas = computed(() => rekapPerKelas(baris.value))
 const perTingkat = computed(() => [0, 1, 2, 3].map(t => ({
@@ -63,10 +62,6 @@ const hasilCepat = computed(() => {
 const cutoffTerakhir = computed(() => K.state.value.cutoffs.find(c => c.grade === grade.value))
 
 const tampilNotif = (teks: string) => { notif.value = teks; setTimeout(() => { notif.value = '' }, 3200) }
-const setelahBayarGlobal = (b: Pembayaran) => {
-  const s = baris.value.find(x => x.nis === b.nis)
-  tampilNotif(`Pembayaran ${b.no} tersimpan untuk ${s?.nama || b.nis} — ${rp(b.nominal)} (${b.keterangan}). Total Dibayar & sisa sudah dihitung ulang.`)
-}
 const simpanPasang = async () => {
   const s = baris.value.find(x => x.nis === pasangNis.value)
   if (!s || !pasangKode.value) return
@@ -89,7 +84,7 @@ defineExpose({ judulHalaman })
         <h1 class="text-[22px] font-semibold leading-7 text-blue-950">{{ judulHalaman }}</h1>
         <p class="text-[13px] text-slate-500 mt-0.5">Tagihan flat per Kode Keuangan berdasarkan tahun masuk. NIS adalah ID pembayaran resmi siswa sampai lulus.</p>
       </div>
-      <button type="button" @click="bayarGlobal = true" class="rounded-xl bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white hover:bg-blue-700">+ Input Pembayaran</button>
+      <button type="button" @click="router.push('/adminV2/keuangan/pembayaran')" class="rounded-xl bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white hover:bg-blue-700">+ Input Pembayaran</button>
     </div>
 
     <div v-if="K.lokal.value" class="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
@@ -124,8 +119,8 @@ defineExpose({ judulHalaman })
         </div>
         <div class="rounded-xl border border-slate-300 bg-white p-4">
           <p class="text-[12px] font-medium text-slate-500">Sudah Dibayar</p>
-          <p class="mt-1 text-[24px] font-semibold leading-8 text-[#067647]">{{ rp(totalSemua.bayar) }}</p>
-          <p class="text-[12px] text-slate-500">dihitung dari Riwayat Pembayaran</p>
+          <p class="mt-1 text-[24px] font-semibold leading-8 text-[#067647]">{{ rp(totalSemua.totalBayar) }}</p>
+          <p class="text-[12px] text-slate-500">uang masuk dari Riwayat Pembayaran<template v-if="totalSemua.saldo > 0"> &middot; termasuk saldo siswa {{ rp(totalSemua.saldo) }}</template></p>
         </div>
         <div class="rounded-xl border border-slate-300 bg-white p-4">
           <p class="text-[12px] font-medium text-slate-500">Sisa Tagihan</p>
@@ -261,7 +256,5 @@ defineExpose({ judulHalaman })
     <KeuanganKode v-else-if="tab === 'kode'" />
     <KeuanganCutoff v-else-if="tab === 'cutoff'" />
     <KeuanganRiwayat v-else-if="tab === 'riwayat'" @buka="emit('buka', $event)" />
-
-    <KeuanganBayar v-if="bayarGlobal" @tutup="bayarGlobal = false" @tersimpan="setelahBayarGlobal" />
   </div>
 </template>

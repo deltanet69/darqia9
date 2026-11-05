@@ -87,7 +87,7 @@ const tautanWA = computed(() => {
           <table class="mt-4 w-full max-w-lg">
             <tr><td class="py-1 pr-3 text-slate-500">Telah terima dari</td><td class="font-semibold">: Wali dari {{ siswa.nama }}</td></tr>
             <tr><td class="py-1 pr-3 text-slate-500">NIS / Kelas</td><td>: {{ siswa.nis }} / {{ siswa.kelas }}</td></tr>
-            <tr><td class="py-1 pr-3 text-slate-500">Untuk pembayaran</td><td>: {{ bayar.keterangan }} — {{ LABEL_TINGKAT[siswa.grade][bayar.tingkat] }}</td></tr>
+            <tr><td class="py-1 pr-3 align-top text-slate-500">Untuk pembayaran</td><td>: <template v-if="bayar.items && bayar.items.length"><span v-for="(it, ii) in bayar.items" :key="ii" class="block">{{ it.keterangan }} — {{ rp(it.nominal) }}</span></template><template v-else>{{ bayar.keterangan }} — {{ bayar.tingkat === null ? 'Waterfall (mengalir menutup tagihan terlama)' : LABEL_TINGKAT[siswa.grade][bayar.tingkat] }}</template></td></tr>
             <tr><td class="py-1 pr-3 text-slate-500">Metode</td><td>: {{ bayar.metode }} &middot; {{ bayar.tanggal }}</td></tr>
             <tr><td class="py-1 pr-3 text-slate-500">Terbilang</td><td class="italic">: {{ terbilangRupiah(bayar.nominal) }}</td></tr>
           </table>

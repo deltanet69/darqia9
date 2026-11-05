@@ -5,6 +5,12 @@
 //   Status diturunkan dari angka — tidak pernah diketik manual.
 // Konsep FLAT: nominal per tingkat ditetapkan manajemen lewat Kode Keuangan
 // berdasarkan tahun masuk; NIS adalah ID pembayaran resmi siswa sampai lulus.
+// WATERFALL (meeting manajemen 4 Nov 2026): pembayaran menempel ke SISWA,
+// bukan ke tingkat/paket — uang yang masuk dialokasikan berurutan menutup
+// tagihan Tingkat 1, lalu 2, lalu 3, lalu Akhir. Kelebihan di atas seluruh
+// tagihan menjadi SALDO yang siap menutup tagihan tahun berikutnya begitu
+// tagihan itu dirilis (Release Tagihan). Kolom tingkat pada pembayaran lama
+// hanya anotasi historis; alokasi selalu dihitung ulang dari total.
 
 export type Grade = 'SMK' | 'SMP'
 
@@ -34,16 +40,24 @@ export interface PenetapanSiswa {
   tambahan: [number, number, number, number]
 }
 
-export interface RekapBayar { nis: string, tingkat: number, dibayar: number }
+// Rekap agregat per siswa: sejak waterfall, yang dipakai hanya TOTAL dibayar
+// per NIS (baris view lama per tingkat pun cukup dijumlahkan semuanya).
+export interface RekapBayar { nis: string, tingkat?: number, dibayar: number }
+
+// Satu baris rincian keterangan dalam satu pembayaran (model LIST —
+// meeting 4 Nov 2026: satu pembayaran boleh berisi banyak keterangan,
+// masing-masing dengan nominalnya sendiri).
+export interface ItemBayar { keterangan: string, nominal: number }
 
 export interface Pembayaran {
   id?: string
   no: string
   nis: string
   grade: Grade
-  tingkat: number // 0..3
+  tingkat: number | null // null = pembayaran waterfall (mengalir); angka = anotasi historis data lama
   nominal: number
-  keterangan: string
+  keterangan: string // ringkasan keterangan (gabungan item)
+  items?: ItemBayar[]
   metode: 'Tunai' | 'Transfer' | 'QRIS'
   petugas: string
   tanggal: string // display dd MMM yyyy
@@ -64,6 +78,7 @@ export interface Cutoff {
   total: number
   oleh: string
   bukti: boolean
+  jumlahSetor?: number | null // uang tunai fisik yang benar-benar diserahkan (Release cut-off)
 }
 
 export interface RincianTingkat {
@@ -78,7 +93,9 @@ export interface RincianTingkat {
 export interface HitunganSiswa {
   per: RincianTingkat[]
   total: number
-  bayar: number
+  bayar: number // teralokasi ke tagihan (<= total tagihan)
+  totalBayar: number // seluruh uang masuk dari riwayat (mentah)
+  saldo: number // kelebihan di atas total tagihan — mengalir ke tahun berikutnya
   sisa: number
   persen: number
 }
@@ -103,19 +120,45 @@ export const inisialNama = (nama: string): string => nama.split(' ').filter(Bool
 
 export const totalPaket = (p: PaketKeuangan): number => p.nominal.reduce((a, b) => a + b, 0)
 
+// Alokasi waterfall: total uang masuk dituang berurutan ke daftar tagihan
+// (indeks 0 dulu). Mengembalikan jatah per tingkat + saldo sisa tuangan.
+export function alokasiWaterfall(tagihanPer: readonly number[], totalBayar: number): { per: number[], saldo: number } {
+  let sisaTuangan = Math.max(0, totalBayar)
+  const per = tagihanPer.map(t => {
+    const jatah = Math.min(Math.max(0, t), sisaTuangan)
+    sisaTuangan -= jatah
+    return jatah
+  })
+  return { per, saldo: sisaTuangan }
+}
+
 export function hitungSiswa(paket: PaketKeuangan | undefined, tambahan: readonly number[], rekap: RekapBayar[]): HitunganSiswa {
+  const totals = [0, 1, 2, 3].map(t => (paket ? paket.nominal[t] : 0) + (tambahan[t] || 0))
+  const totalBayar = rekap.reduce((a, r) => a + (r.dibayar || 0), 0)
+  const alokasi = alokasiWaterfall(totals, totalBayar)
   const per: RincianTingkat[] = [0, 1, 2, 3].map(t => {
-    const master = paket ? paket.nominal[t] : 0
-    const tb = tambahan[t] || 0
-    const total = master + tb
-    const bayar = rekap.filter(r => r.tingkat === t).reduce((a, r) => a + r.dibayar, 0)
+    const total = totals[t]
+    const bayar = alokasi.per[t]
     const sisa = Math.max(0, total - bayar)
-    return { master, tambahan: tb, total, bayar, sisa, persen: total > 0 ? Math.min(100, bayar / total * 100) : 0 }
+    return { master: paket ? paket.nominal[t] : 0, tambahan: tambahan[t] || 0, total, bayar, sisa, persen: total > 0 ? Math.min(100, bayar / total * 100) : 0 }
   })
   const total = per.reduce((a, v) => a + v.total, 0)
   const bayar = per.reduce((a, v) => a + v.bayar, 0)
-  return { per, total, bayar, sisa: Math.max(0, total - bayar), persen: total > 0 ? Math.min(100, bayar / total * 100) : 0 }
+  return { per, total, bayar, totalBayar, saldo: alokasi.saldo, sisa: Math.max(0, total - bayar), persen: total > 0 ? Math.min(100, bayar / total * 100) : 0 }
 }
+
+// Ringkasan keterangan header dari daftar item (disimpan di kolom keterangan
+// pembayaran agar daftar & kwitansi tetap terbaca tanpa memuat item).
+export const ringkasKeterangan = (items: ItemBayar[]): string => {
+  const nama = items.map(i => i.keterangan.trim()).filter(Boolean)
+  if (!nama.length) return ''
+  return nama.length === 1 ? nama[0] : `${nama[0]} +${nama.length - 1} keterangan lain`
+}
+
+// Label aliran pembayaran: waterfall untuk pembayaran baru, tingkat historis
+// untuk data lama.
+export const labelAliran = (tingkat: number | null | undefined): string =>
+  tingkat === null || tingkat === undefined ? 'Waterfall' : TINGKAT_SINGKAT[tingkat]
 
 export type StatusBayar = 'Lunas' | 'Kurang' | 'Belum Bayar'
 export const statusDari = (h: HitunganSiswa): StatusBayar => h.total > 0 && h.sisa <= 0 ? 'Lunas' : h.bayar > 0 ? 'Kurang' : 'Belum Bayar'

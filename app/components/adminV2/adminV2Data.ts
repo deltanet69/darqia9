@@ -131,6 +131,7 @@ export const GROUPS: GroupItem[] = [
     desc: 'Kas & tagihan siswa',
     items: [
       ['Keuangan sekolah', 'Kas & anggaran', 'i-wallet'],
+      ['Pembayaran', 'Input pembayaran siswa', 'i-wallet'],
     ]
   },
   {
@@ -188,6 +189,7 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'Agenda mengajar': '/adminV2/agenda-mengajar',
   'Modul pembelajaran': '/adminV2/modul-ajar',
   'Keuangan sekolah': '/adminV2/keuangan',
+  'Pembayaran': '/adminV2/keuangan/pembayaran',
   'Tabungan siswa': '/admin/tabungan',
   'Manajemen CBT': '/adminV2/cbt',
   'LMS': '/adminV2/lms',

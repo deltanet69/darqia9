@@ -13,10 +13,15 @@ import { computed, ref } from 'vue'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   BAYAR_CONTOH, CUTOFF_CONTOH, KETERANGAN_AWAL, PAKET_CONTOH, PENETAPAN_CONTOH, SISWA_CONTOH,
-  formatTanggal, hitungSiswa, selisihHari, statusDari,
-  type BarisSiswa, type Cutoff, type Grade, type PaketKeuangan, type Pembayaran,
+  formatTanggal, hitungSiswa, ringkasKeterangan, selisihHari, statusDari,
+  type BarisSiswa, type Cutoff, type Grade, type ItemBayar, type PaketKeuangan, type Pembayaran,
   type PenetapanSiswa, type RekapBayar, type SiswaInduk
 } from './keuanganCore'
+
+// Release Tagihan (meeting 4 Nov 2026): tagihan satu tingkat dinyatakan
+// resmi diterbitkan ke wali — nanti tampil sebagai notifikasi di Portal
+// Orang Tua (portalnya belum dibangun; sekarang aksi + datanya dulu).
+export interface RilisTagihan { nis: string, tingkat: number, pada: string, oleh: string }
 
 interface KeadaanKeuangan {
   keadaan: 'siap' | 'belum-migrasi' | 'galat'
@@ -28,13 +33,14 @@ interface KeadaanKeuangan {
   penetapan: PenetapanSiswa[]
   rekap: RekapBayar[]
   cutoffs: Cutoff[]
+  rilis: RilisTagihan[]
   bayarLokal: Pembayaran[]
   urutKwitansiLokal: number
 }
 
 const buatAwal = (): KeadaanKeuangan => ({
   keadaan: 'siap', memuat: false, termuatGrade: null,
-  paket: [], keterangan: [...KETERANGAN_AWAL], siswaInduk: [], penetapan: [], rekap: [], cutoffs: [],
+  paket: [], keterangan: [...KETERANGAN_AWAL], siswaInduk: [], penetapan: [], rekap: [], cutoffs: [], rilis: [],
   bayarLokal: [], urutKwitansiLokal: 100
 })
 
@@ -71,8 +77,8 @@ export const useKeuangan = () => {
   const agregatLokal = (rows: Pembayaran[]): RekapBayar[] => {
     const peta = new Map<string, RekapBayar>()
     for (const b of rows) {
-      const kunci = b.grade + '|' + b.nis + '|' + b.tingkat
-      const r = peta.get(kunci) || { nis: b.nis, tingkat: b.tingkat, dibayar: 0 }
+      const kunci = b.grade + '|' + b.nis
+      const r = peta.get(kunci) || { nis: b.nis, dibayar: 0 }
       r.dibayar += b.nominal
       peta.set(kunci, r)
     }
@@ -116,6 +122,12 @@ export const useKeuangan = () => {
       state.value.cutoffs = (cutoffRes.data || []).map(barisCutoff)
       const ket = (ketRes.data || []).map((k: any) => k.nama)
       if (ket.length) state.value.keterangan = ket
+      // Rilis tagihan dimuat terpisah & toleran: tabelnya baru ada setelah
+      // migrasi 0030 — kegagalannya tidak boleh menjatuhkan seluruh halaman.
+      const rilisRes = await client.from('keuangan_rilis_tagihan').select('*').eq('grade', grade)
+      state.value.rilis = rilisRes.error ? [] : (rilisRes.data || []).map((r: any) => ({
+        nis: r.nis, tingkat: r.tingkat, pada: r.dirilis_pada, oleh: r.oleh || ''
+      }))
       state.value.keadaan = 'siap'
       state.value.termuatGrade = grade
     } catch (e) {
@@ -128,8 +140,26 @@ export const useKeuangan = () => {
   const barisCutoff = (c: any): Cutoff => ({
     id: c.id, kode: c.kode, grade: c.grade,
     dari: formatTanggal(c.dari), sampai: formatTanggal(c.sampai), dariISO: c.dari, sampaiISO: c.sampai,
-    hari: selisihHari(c.dari, c.sampai), trx: c.trx, total: Number(c.total), oleh: c.oleh || '', bukti: !!c.bukti
+    hari: selisihHari(c.dari, c.sampai), trx: c.trx, total: Number(c.total), oleh: c.oleh || '', bukti: !!c.bukti,
+    jumlahSetor: c.jumlah_setor === null || c.jumlah_setor === undefined ? null : Number(c.jumlah_setor)
   })
+
+  // Muat rincian item keterangan untuk sekelompok pembayaran (satu query).
+  // Toleran pra-migrasi 0030: tabel item belum ada -> item dibiarkan kosong,
+  // header keterangan tetap terbaca dari kolom pembayaran.
+  const muatItems = async (rows: Pembayaran[]) => {
+    const ids = rows.map(r => r.id).filter(Boolean) as string[]
+    if (!ids.length || lokal.value) return
+    const { data, error } = await client.from('keuangan_pembayaran_item').select('*').in('pembayaran_id', ids).order('urutan')
+    if (error || !data) return
+    const peta = new Map<string, ItemBayar[]>()
+    for (const it of data) {
+      const daftar = peta.get(it.pembayaran_id) || []
+      daftar.push({ keterangan: it.keterangan, nominal: Number(it.nominal) })
+      peta.set(it.pembayaran_id, daftar)
+    }
+    for (const r of rows) if (r.id && peta.has(r.id)) r.items = peta.get(r.id)
+  }
 
   const barisBayar = (b: any, kodeCutoff?: Map<string, string>): Pembayaran => ({
     id: b.id, no: b.no_kwitansi, nis: b.nis, grade: b.grade, tingkat: b.tingkat,
@@ -176,6 +206,7 @@ export const useKeuangan = () => {
     const { data, error, count } = await q
     if (error) { tanganiGalat(error); return { rows: [], total: 0 } }
     const rows = (data || []).map((b: any) => ({ ...barisBayar(b), cutoff: b.cutoff_id ? (b.keuangan_cutoff?.kode || 'Cut-off') : null }))
+    await muatItems(rows)
     return { rows, total: count || rows.length }
   }
 
@@ -185,31 +216,58 @@ export const useKeuangan = () => {
     const { data, error } = await client.from('keuangan_pembayaran').select('*, keuangan_cutoff(kode)')
       .eq('grade', grade).eq('nis', nis).order('tanggal', { ascending: false }).order('created_at', { ascending: false })
     if (error) { tanganiGalat(error); return [] }
-    return (data || []).map((b: any) => ({ ...barisBayar(b), cutoff: b.cutoff_id ? (b.keuangan_cutoff?.kode || 'Cut-off') : null }))
+    const rows = (data || []).map((b: any) => ({ ...barisBayar(b), cutoff: b.cutoff_id ? (b.keuangan_cutoff?.kode || 'Cut-off') : null }))
+    await muatItems(rows)
+    return rows
   }
 
-  const tambahRekapLokal = (nis: string, tingkat: number, nominal: number) => {
-    const r = state.value.rekap.find(x => x.nis === nis && x.tingkat === tingkat)
-    if (r) r.dibayar += nominal
-    else state.value.rekap.push({ nis, tingkat, dibayar: nominal })
+  const tambahRekapLokal = (nis: string, nominal: number) => {
+    const cocok = state.value.rekap.filter(x => x.nis === nis)
+    if (cocok.length === 1) cocok[0].dibayar += nominal
+    else if (cocok.length > 1) { // baris view lama per tingkat: tuang ke baris pertama, nolkan sisanya (total tetap benar)
+      cocok[0].dibayar += nominal
+    } else state.value.rekap.push({ nis, dibayar: nominal })
   }
 
-  const simpanBayar = async (input: { grade: Grade, nis: string, tingkat: number, nominal: number, keterangan: string, metode: Pembayaran['metode'], petugas: string, tanggalISO: string }): Promise<Pembayaran> => {
+  // Simpan pembayaran model LIST: satu pembayaran, banyak item keterangan.
+  // tingkat selalu null (waterfall) — pembayaran menempel ke siswa; alokasi
+  // ke tingkat dihitung ulang oleh keuanganCore dari total riwayat.
+  const simpanBayar = async (input: { grade: Grade, nis: string, nominal: number, items: ItemBayar[], metode: Pembayaran['metode'], petugas: string, tanggalISO: string }): Promise<Pembayaran> => {
+    const items = input.items.filter(i => i.keterangan.trim() && i.nominal > 0)
+    if (!items.length) throw new Error('Isi minimal satu keterangan pembayaran dengan nominal di atas 0.')
+    const keterangan = ringkasKeterangan(items)
+    // Keterangan yang diketik manual & belum ada di master didaftarkan
+    // otomatis agar muncul sebagai pilihan combobox berikutnya.
+    for (const it of items) if (!state.value.keterangan.includes(it.keterangan.trim())) void tambahKeterangan(it.keterangan.trim())
     if (lokal.value) {
       const no = 'KEU-' + input.tanggalISO.slice(0, 4) + '-' + String(++state.value.urutKwitansiLokal).padStart(4, '0')
-      const b: Pembayaran = { no, nis: input.nis, grade: input.grade, tingkat: input.tingkat, nominal: input.nominal, keterangan: input.keterangan, metode: input.metode, petugas: input.petugas, tanggal: formatTanggal(input.tanggalISO), tanggalISO: input.tanggalISO, cutoff: null }
+      const b: Pembayaran = { no, nis: input.nis, grade: input.grade, tingkat: null, nominal: input.nominal, keterangan, items, metode: input.metode, petugas: input.petugas, tanggal: formatTanggal(input.tanggalISO), tanggalISO: input.tanggalISO, cutoff: null }
       state.value.bayarLokal.push(b)
-      tambahRekapLokal(b.nis, b.tingkat, b.nominal)
+      tambahRekapLokal(b.nis, b.nominal)
       return b
     }
-    const { data, error } = await client.from('keuangan_pembayaran').insert({
-      grade: input.grade, nis: input.nis, tingkat: input.tingkat, nominal: input.nominal,
-      keterangan: input.keterangan, metode: input.metode, petugas: input.petugas, tanggal: input.tanggalISO
+    const sisip = (tingkat: number | null) => client.from('keuangan_pembayaran').insert({
+      grade: input.grade, nis: input.nis, tingkat, nominal: input.nominal,
+      keterangan, metode: input.metode, petugas: input.petugas, tanggal: input.tanggalISO
     }).select('*').single()
+    let { data, error } = await sisip(null)
+    if (error && /tingkat/i.test(String(error.message || ''))) {
+      // Pra-migrasi 0030 kolom tingkat belum boleh null: pakai tingkat pertama
+      // yang masih bersisa sebagai anotasi (alokasi angka tetap waterfall).
+      const h = siswaSatu(input.grade, input.nis)?.hitung
+      const t = h ? h.per.findIndex(p => p.sisa > 0) : -1
+      ;({ data, error } = await sisip(t >= 0 ? t : 0))
+    }
     if (error || !data) { tanganiGalat(error); throw error || new Error('Pembayaran gagal disimpan') }
-    tambahRekapLokal(data.nis, data.tingkat, Number(data.nominal))
+    // Item keterangan: toleran pra-0030 (tabel belum ada -> header cukup).
+    if (items.length) {
+      const barisItem = items.map((it, i) => ({ pembayaran_id: data.id, keterangan: it.keterangan.trim(), nominal: it.nominal, urutan: i + 1 }))
+      const { error: errItem } = await client.from('keuangan_pembayaran_item').insert(barisItem)
+      if (errItem) console.warn('Item keterangan belum tersimpan (migrasi 0030?):', errItem.message)
+    }
+    tambahRekapLokal(data.nis, Number(data.nominal))
     catat('Keuangan', 'Input pembayaran', `${data.no_kwitansi} - NIS ${data.nis}`)
-    return barisBayar(data)
+    return { ...barisBayar(data), items }
   }
 
   const hapusBayar = async (b: Pembayaran) => {
@@ -221,8 +279,8 @@ export const useKeuangan = () => {
     }
     const { error } = await client.from('keuangan_pembayaran').delete().eq('id', b.id)
     if (error) { tanganiGalat(error); throw error }
-    const r = state.value.rekap.find(x => x.nis === b.nis && x.tingkat === b.tingkat)
-    if (r) r.dibayar -= b.nominal
+    const cocok = state.value.rekap.filter(x => x.nis === b.nis)
+    if (cocok.length) cocok[0].dibayar -= b.nominal
     catat('Keuangan', 'Hapus pembayaran', b.no)
   }
 
@@ -284,22 +342,53 @@ export const useKeuangan = () => {
     if (error) tanganiGalat(error)
   }
 
-  const buatCutoff = async (grade: Grade, dariISO: string, sampaiISO: string, oleh: string): Promise<Cutoff> => {
+  // Release Tagihan per (siswa, tingkat): menandai tagihan tingkat itu resmi
+  // diterbitkan ke wali. Saldo waterfall siswa otomatis "menempel" ke
+  // tagihan yang sudah dirilis ini dalam tampilan rincian.
+  const rilisTagihan = async (grade: Grade, nis: string, tingkat: number, oleh: string): Promise<RilisTagihan> => {
+    const r: RilisTagihan = { nis, tingkat, pada: new Date().toISOString(), oleh }
     if (lokal.value) {
-      const rows = state.value.bayarLokal.filter(b => b.grade === grade && !b.cutoff && b.tanggalISO >= dariISO && b.tanggalISO <= sampaiISO)
-      if (!rows.length) throw new Error('Tidak ada transaksi terbuka dalam rentang ini')
+      if (!state.value.rilis.some(x => x.nis === nis && x.tingkat === tingkat)) state.value.rilis.push(r)
+      return r
+    }
+    const { error } = await client.from('keuangan_rilis_tagihan').upsert({ grade, nis, tingkat, oleh }, { onConflict: 'grade,nis,tingkat' })
+    if (error) throw new Error('Release tagihan belum bisa: jalankan dulu migrasi 0030_keuangan_meeting.sql di Supabase SQL Editor.')
+    if (!state.value.rilis.some(x => x.nis === nis && x.tingkat === tingkat)) state.value.rilis.push(r)
+    catat('Keuangan', 'Release tagihan', `NIS ${nis} tingkat ${tingkat + 1}`)
+    return r
+  }
+
+  const sudahDirilis = (nis: string, tingkat: number): RilisTagihan | undefined =>
+    state.value.rilis.find(r => r.nis === nis && r.tingkat === tingkat)
+
+  // Release cut-off (meeting 4 Nov 2026): HANYA uang TUNAI yang masuk
+  // administrasi & diserahkan ke yayasan; Transfer/QRIS langsung ke rekening
+  // dan tidak pernah dikunci cut-off. jumlahSetor = uang fisik yang
+  // diserahkan petugas (bawaan: sama dengan total tunai dalam rentang).
+  const buatCutoff = async (grade: Grade, dariISO: string, sampaiISO: string, oleh: string, jumlahSetor?: number): Promise<{ cutoff: Cutoff, modeLama: boolean }> => {
+    if (lokal.value) {
+      const rows = state.value.bayarLokal.filter(b => b.grade === grade && !b.cutoff && b.metode === 'Tunai' && b.tanggalISO >= dariISO && b.tanggalISO <= sampaiISO)
+      if (!rows.length) throw new Error('Tidak ada transaksi TUNAI terbuka dalam rentang ini')
       const kode = 'CUT-' + sampaiISO.slice(0, 4) + '-' + String(state.value.cutoffs.length + 1).padStart(3, '0')
-      const c: Cutoff = { kode, grade, dari: formatTanggal(dariISO), sampai: formatTanggal(sampaiISO), dariISO, sampaiISO, hari: selisihHari(dariISO, sampaiISO), trx: rows.length, total: rows.reduce((a, b) => a + b.nominal, 0), oleh, bukti: false }
+      const total = rows.reduce((a, b) => a + b.nominal, 0)
+      const c: Cutoff = { kode, grade, dari: formatTanggal(dariISO), sampai: formatTanggal(sampaiISO), dariISO, sampaiISO, hari: selisihHari(dariISO, sampaiISO), trx: rows.length, total, oleh, bukti: false, jumlahSetor: jumlahSetor ?? total }
       rows.forEach(b => { b.cutoff = c.dari + ' – ' + c.sampai })
       state.value.cutoffs.unshift(c)
-      return c
+      return { cutoff: c, modeLama: false }
     }
-    const { data, error } = await client.rpc('keuangan_buat_cutoff', { p_grade: grade, p_dari: dariISO, p_sampai: sampaiISO, p_oleh: oleh })
+    let modeLama = false
+    let { data, error } = await client.rpc('keuangan_buat_cutoff', { p_grade: grade, p_dari: dariISO, p_sampai: sampaiISO, p_oleh: oleh, p_jumlah_setor: jumlahSetor ?? null })
+    if (error) {
+      // Pra-migrasi 0030 fungsi lamanya belum kenal jumlah setor & masih
+      // memproses semua metode — tetap jalan sebagai jalan mundur.
+      ;({ data, error } = await client.rpc('keuangan_buat_cutoff', { p_grade: grade, p_dari: dariISO, p_sampai: sampaiISO, p_oleh: oleh }))
+      modeLama = !error
+    }
     if (error || !data) { tanganiGalat(error); throw error || new Error('Cut-off gagal dibuat') }
     const c = barisCutoff(data)
     state.value.cutoffs.unshift(c)
-    catat('Keuangan', 'Buat cut-off', `${c.kode} - ${c.trx} transaksi`)
-    return c
+    catat('Keuangan', 'Release cut-off', `${c.kode} - ${c.trx} transaksi tunai`)
+    return { cutoff: c, modeLama }
   }
 
   const unggahBuktiCutoff = async (c: Cutoff) => {
@@ -310,14 +399,17 @@ export const useKeuangan = () => {
     if (error) tanganiGalat(error)
   }
 
-  // Ubah catatan cut-off (penanggung jawab + status bukti serah). Rentang,
-  // jumlah transaksi, dan total TIDAK bisa diubah — angka itu berasal dari
-  // transaksi yang terkunci di dalamnya.
-  const ubahCutoff = async (c: Cutoff, oleh: string, bukti: boolean) => {
+  // Ubah catatan cut-off (penanggung jawab + status bukti serah + jumlah
+  // setor). Rentang, jumlah transaksi, dan total TIDAK bisa diubah — angka
+  // itu berasal dari transaksi yang terkunci di dalamnya.
+  const ubahCutoff = async (c: Cutoff, oleh: string, bukti: boolean, jumlahSetor?: number | null) => {
     const target = state.value.cutoffs.find(x => x.kode === c.kode)
-    if (target) { target.oleh = oleh; target.bukti = bukti }
+    if (target) { target.oleh = oleh; target.bukti = bukti; if (jumlahSetor !== undefined) target.jumlahSetor = jumlahSetor }
     if (lokal.value || !c.id) return
-    const { error } = await client.from('keuangan_cutoff').update({ oleh, bukti }).eq('id', c.id)
+    let { error } = await client.from('keuangan_cutoff').update({ oleh, bukti, jumlah_setor: jumlahSetor ?? null }).eq('id', c.id)
+    if (error && /jumlah_setor/i.test(String(error.message || ''))) {
+      ;({ error } = await client.from('keuangan_cutoff').update({ oleh, bukti }).eq('id', c.id))
+    }
     if (error) { tanganiGalat(error); throw error }
     catat('Keuangan', 'Ubah cut-off', c.kode)
   }
@@ -345,6 +437,7 @@ export const useKeuangan = () => {
     state, lokal, pesanGalat, muatSemua, barisSiswa, siswaSatu,
     muatRiwayat, muatBayarSiswa, simpanBayar, hapusBayar,
     simpanPenetapan, simpanPaket, hapusPaket,
-    tambahKeterangan, hapusKeterangan, buatCutoff, unggahBuktiCutoff, ubahCutoff, hapusCutoff
+    tambahKeterangan, hapusKeterangan, buatCutoff, unggahBuktiCutoff, ubahCutoff, hapusCutoff,
+    rilisTagihan, sudahDirilis
   }
 }
