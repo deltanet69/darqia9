@@ -98,8 +98,12 @@ export const cariBentrok = (
 
 // Tingkat/angkatan dibaca dari awalan nama kelas resmi ("X TKJ 1", "VII A").
 export const tingkatDariNamaKelas = (nama: string): string => {
-  const cocok = String(nama).trim().toUpperCase().match(/^(XII|XI|IX|VIII|VII|X)(?=[\s-]|$)/)
-  return cocok ? cocok[1] : ''
+  const teks = String(nama).trim().toUpperCase()
+  const cocok = teks.match(/^(XII|XI|IX|VIII|VII|X)(?=[\s-]|$)/)
+  if (cocok) return cocok[1]
+  // Penamaan angka, mis. "7.1" atau "8 A" (tingkat 7-12).
+  const angka = teks.match(/^(\d{1,2})(?=[\s.\-]|$)/)
+  return angka ? ({ 7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII' } as Record<number, string>)[Number(angka[1])] ?? '' : ''
 }
 
 const PALET_MAPEL = ['#2563EB', '#0F766E', '#B45309', '#7C3AED', '#C2410C', '#047857', '#BE185D', '#334155', '#9333EA', '#0369A1']

@@ -66,7 +66,8 @@ export interface LessonSession {
 export interface StudentRosterItem {
   name: string
   gender: 'L' | 'P'
-  nis: string
+  nis: string // boleh kosong; hanya untuk tampilan & pencarian
+  nisn: string // pengenal unik (kunci daftar alpa)
 }
 
 export interface PersonaInfo {

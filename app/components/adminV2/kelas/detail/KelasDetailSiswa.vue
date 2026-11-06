@@ -62,7 +62,7 @@ const filteredStudents = computed(() => {
 
     <!-- Filters Row -->
     <div class="flex flex-wrap items-center gap-2.5">
-      <div class="relative flex-1 min-w-[200px]">
+      <div class="relative flex-1 min-w-0 basis-full sm:basis-auto">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#98A2B3] pointer-events-none">
           <AdminV2Icon name="search" :size="15" />
         </span>
@@ -85,7 +85,7 @@ const filteredStudents = computed(() => {
     </div>
 
     <!-- Student Table -->
-    <div class="overflow-x-auto">
+    <div class="hidden md:block overflow-x-auto">
       <table class="w-full text-left text-xs">
         <thead class="bg-[#F8FAFC] text-[#475467] uppercase tracking-wider font-bold border-b border-[#E7EBF2] text-[10.5px]">
           <tr>
@@ -93,7 +93,6 @@ const filteredStudents = computed(() => {
             <th class="py-2.5 px-3">Nama Siswa</th>
             <th class="py-2.5 px-3 font-mono">NISN / NIS</th>
             <th class="py-2.5 px-3">L/P</th>
-            <th class="py-2.5 px-3">Presensi</th>
             <th class="py-2.5 px-3">Smartcard</th>
             <th class="py-2.5 px-3">Kontak Wali</th>
             <th class="py-2.5 px-3 text-right">Aksi Manajemen</th>
@@ -111,7 +110,7 @@ const filteredStudents = computed(() => {
             </td>
             <td class="py-2.5 px-3 font-mono text-xs">
               <span class="text-[#101828] font-bold block">{{ s.nisn }}</span>
-              <span class="text-[#98A2B3] text-[11px]">NIS: {{ s.nis }}</span>
+              <span class="text-[#98A2B3] text-[11px]">NIS: {{ s.nis || '—' }}</span>
             </td>
             <td class="py-2.5 px-3 font-bold">
               <span
@@ -120,9 +119,6 @@ const filteredStudents = computed(() => {
               >
                 {{ s.gender === 'L' ? 'Laki laki' : 'Perempuan' }}
               </span>
-            </td>
-            <td class="py-2.5 px-3 font-mono">
-              <span class="text-[#166534] font-bold">{{ s.attendancePct }}%</span>
             </td>
             <td class="py-2.5 px-3">
               <span
@@ -174,12 +170,69 @@ const filteredStudents = computed(() => {
           </tr>
 
           <tr v-if="filteredStudents.length === 0">
-            <td colspan="8" class="py-8 text-center text-[#98A2B3]">
+            <td colspan="7" class="py-8 text-center text-[#98A2B3]">
               Tidak ada data siswa yang cocok dengan filter pencarian.
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <!-- Kartu siswa (mobile): tanpa scroll horizontal -->
+    <ul class="md:hidden space-y-2.5">
+      <li
+        v-for="(s, idx) in filteredStudents"
+        :key="s.id"
+        class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5 space-y-2.5"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-[13px] font-extrabold text-[#101828] break-words">
+              <span class="font-mono text-[#98A2B3] font-bold mr-1">{{ idx + 1 }}.</span>{{ s.name }}
+            </p>
+            <p class="mt-0.5 font-mono text-[11px] text-[#667085] break-all">
+              NIS: {{ s.nis || '—' }} &middot; NISN: {{ s.nisn }}
+            </p>
+          </div>
+          <span
+            class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold"
+            :class="s.gender === 'L' ? 'bg-[#EFF4FF] text-[#1B5FD9]' : 'bg-[#FDF2FA] text-[#C11574]'"
+          >
+            {{ s.gender === 'L' ? 'Laki laki' : 'Perempuan' }}
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[#475467]">
+          <span
+            class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+            :class="s.hasRfid ? 'bg-[#E7F6ED] text-[#166534]' : 'bg-[#FEF3F2] text-[#B42318]'"
+          >
+            {{ s.hasRfid ? 'RFID Aktif' : 'Belum Ada' }}
+          </span>
+          <span class="font-semibold text-[#101828] break-words">{{ s.parentName }}</span>
+          <span v-if="s.parentPhone" class="font-mono">{{ s.parentPhone }}</span>
+        </div>
+        <div class="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            class="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold bg-[#EFF4FF] hover:bg-[#D1E0FF] text-[#1B5FD9] transition cursor-pointer"
+            @click="emit('move-student', s)"
+          >
+            <AdminV2Icon name="swap" :size="12" />
+            <span>Ubah Kelas</span>
+          </button>
+          <button
+            type="button"
+            class="p-2 rounded-xl text-[#F04438] hover:bg-[#FEF3F2] transition cursor-pointer"
+            aria-label="Keluarkan dari rombel"
+            @click="emit('delete-student', s)"
+          >
+            <AdminV2Icon name="trash" :size="14" />
+          </button>
+        </div>
+      </li>
+      <li v-if="filteredStudents.length === 0" class="py-8 text-center text-xs text-[#98A2B3]">
+        Tidak ada data siswa yang cocok dengan filter pencarian.
+      </li>
+    </ul>
   </div>
 </template>

@@ -59,23 +59,28 @@ const triggerToast = (msg: string) => {
 export type SubmenuKey = 'overview' | 'daftar'
 const activeSubmenu = ref<SubmenuKey>('overview')
 
-const rawClasses = computed<ClassRombel[]>(() => cbtData.classes.value
-  .filter(item => item.grade === jenjang.value.toUpperCase())
-  .map(item => ({
-  id: item.id,
-  name: item.name,
-  level: item.grade,
-  major: item.major,
-  room: item.room,
-  homeroomTeacherId: item.homeroomTeacherId,
-  teacher: item.teacher,
-  teacherNip: item.teacherNip,
-  students: item.studentCount,
-  boys: 0,
-  girls: 0,
-  attendance: 0,
-  average: 0
-})))
+// Rombel berasal dari data master siswa: hanya kelas yang punya siswa aktif yang ditampilkan.
+// Kehadiran & rata-rata nilai 0 = belum tersambung ke modul Absensi/Penilaian (tidak diisi angka rekaan).
+const rawClasses = computed<ClassRombel[]>(() => {
+  const currentGrade = jenjang.value.toUpperCase()
+  return cbtData.classes.value
+    .filter(item => item.grade === currentGrade && item.studentCount > 0)
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      level: item.grade as 'SMP' | 'SMK',
+      major: item.major,
+      room: item.room || 'Ruang Belajar',
+      homeroomTeacherId: item.homeroomTeacherId,
+      teacher: item.teacher,
+      teacherNip: item.teacherNip,
+      students: item.studentCount,
+      boys: item.boysCount,
+      girls: item.girlsCount,
+      attendance: 0,
+      average: 0
+    }))
+})
 
 // Navigation to Class Detail
 const goToClassDetail = (className: string) => {
@@ -285,43 +290,75 @@ const handleSelectModule = (title: string) => {
         </div>
       </div>
 
-      <!-- Submenu Navigation Pills (Hanya 2 Tab: Overview & Daftar Rombel Kelas) -->
-      <div class="bg-white border border-[#E7EBF2] rounded-2xl p-1.5 shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        <button
-          type="button"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer shrink-0"
-          :class="activeSubmenu === 'overview'
-            ? 'bg-[#101828] text-white shadow-xs'
-            : 'text-[#475467] hover:text-[#101828] hover:bg-[#F8FAFC] font-semibold'"
-          @click="activeSubmenu = 'overview'"
-        >
-          <AdminV2Icon name="grid" :size="15" />
-          <span>Overview &amp; Kapasitas</span>
-        </button>
-
-        <button
-          type="button"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer shrink-0"
-          :class="activeSubmenu === 'daftar'
-            ? 'bg-[#101828] text-white shadow-xs'
-            : 'text-[#475467] hover:text-[#101828] hover:bg-[#F8FAFC] font-semibold'"
-          @click="activeSubmenu = 'daftar'"
-        >
-          <AdminV2Icon name="layers" :size="15" />
-          <span>Daftar Rombel Kelas</span>
-          <span
-            class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold"
-            :class="activeSubmenu === 'daftar' ? 'bg-white/20 text-white' : 'bg-[#EFF2F7] text-[#344054]'"
+      <!-- SUBMENU NAVIGATION BAR: Identik 1:1 Styling Standar AdminV2 (Keuangan, Absensi, CBT) -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="w-full sm:w-auto overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0">
+          <nav
+            class="inline-flex items-center gap-1 bg-[#EFF2F7] border border-[#E7EBF2] p-1.5 rounded-2xl min-w-max"
+            role="tablist"
+            aria-label="Navigasi Manajemen Kelas"
           >
-            {{ rawClasses.length }} Kelas
-          </span>
-        </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="activeSubmenu === 'overview'"
+              @click="activeSubmenu = 'overview'"
+              class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-bold transition-all cursor-pointer select-none"
+              :class="activeSubmenu === 'overview'
+                ? 'bg-[#101828] text-white shadow-[0_2px_8px_rgba(16,24,40,0.15)]'
+                : 'text-[#475467] hover:text-[#101828] hover:bg-white/60 font-semibold'"
+            >
+              <AdminV2Icon name="grid" :size="15" />
+              <span>Overview &amp; Kapasitas</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="activeSubmenu === 'daftar'"
+              @click="activeSubmenu = 'daftar'"
+              class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-bold transition-all cursor-pointer select-none"
+              :class="activeSubmenu === 'daftar'
+                ? 'bg-[#101828] text-white shadow-[0_2px_8px_rgba(16,24,40,0.15)]'
+                : 'text-[#475467] hover:text-[#101828] hover:bg-white/60 font-semibold'"
+            >
+              <AdminV2Icon name="layers" :size="15" />
+              <span>Daftar Rombel Kelas</span>
+              <span
+                class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold"
+                :class="activeSubmenu === 'daftar' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'"
+              >
+                {{ rawClasses.length }} Kelas
+              </span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Indikator Total Rombel di Data Induk -->
+        <div class="hidden sm:flex items-center gap-2 text-[12px] font-semibold text-slate-500 shrink-0">
+          <span class="inline-block h-2 w-2 rounded-full" :class="jenjang === 'smp' ? 'bg-[#16A34A]' : 'bg-[#1B5FD9]'" />
+          <span>{{ rawClasses.length }} rombel {{ jenjang.toUpperCase() }} terdaftar di Data Induk</span>
+        </div>
+      </div>
+
+      <!-- Strip Identitas Jenjang Terintegrasi (Clean & Sleek) -->
+      <div class="flex items-center justify-between gap-3 rounded-xl border border-[#E7EBF2] bg-white px-4 py-2.5 text-xs text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.03)]">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="flex h-2 w-2 rounded-full shrink-0" :class="jenjang === 'smp' ? 'bg-[#16A34A]' : 'bg-[#1B5FD9]'" />
+          <span class="font-bold text-slate-800 shrink-0">{{ jenjang === 'smk' ? 'SMK IT Attaqwa 9' : 'SMP IT BCA' }}</span>
+          <span class="text-slate-300">|</span>
+          <span class="text-slate-500 truncate">Tahun Ajaran 2026/2027 &middot; Semester Ganjil &middot; Data disinkronkan otomatis dari Data Induk Siswa</span>
+        </div>
+        <span class="shrink-0 text-[11px] font-semibold text-slate-400 hidden md:inline">
+          Ganti jenjang lewat switch SMP/SMK di bilah atas
+        </span>
       </div>
 
       <!-- TAB 1: OVERVIEW & KAPASITAS -->
       <KelasV2OverviewTab
         v-if="activeSubmenu === 'overview'"
         :total-classes="rawClasses.length"
+        :jenjang="jenjang"
         @go-daftar="activeSubmenu = 'daftar'"
         @select-class="goToClassDetail"
       />

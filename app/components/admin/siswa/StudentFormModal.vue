@@ -33,6 +33,32 @@ const sectionTitle = computed(() => {
 
 const form = reactive<Partial<StudentItem>>({})
 
+const pendidikanOptions = ['Tidak sekolah', 'SD / Sederajat', 'SMP / Sederajat', 'SMA / SMK / Sederajat', 'D1 / D2 / D3', 'D4 / S1', 'S2', 'S3']
+const parentGroups = [
+  {
+    title: 'A. Data Ayah / Wali', color: 'text-blue-600',
+    fields: [
+      { key: 'fatherName', label: 'Nama Lengkap', full: true, placeholder: 'cth: H. RIDWAN KAMIL' },
+      { key: 'fatherPhone', label: 'No. HP / WA (untuk notifikasi)', mono: true, placeholder: 'cth: 082210823033' },
+      { key: 'fatherEmail', label: 'Email Aktif (untuk notifikasi)', type: 'email', placeholder: 'cth: nama@email.com' },
+      { key: 'fatherEducation', label: 'Pendidikan Terakhir', list: 'pendidikan-ortu', placeholder: 'Pilih atau ketik pendidikan' },
+      { key: 'fatherJob', label: 'Pekerjaan', placeholder: 'cth: Wiraswasta' },
+      { key: 'fatherIncome', label: 'Penghasilan', full: true, placeholder: 'cth: Rp 2.000.000 - Rp 4.999.999' }
+    ]
+  },
+  {
+    title: 'B. Data Ibu Kandung', color: 'text-pink-600',
+    fields: [
+      { key: 'motherName', label: 'Nama Lengkap', full: true, placeholder: 'cth: NURJANAH' },
+      { key: 'motherPhone', label: 'No. HP / WA (untuk notifikasi)', mono: true, placeholder: 'cth: 082210823033' },
+      { key: 'motherEmail', label: 'Email Aktif (untuk notifikasi)', type: 'email', placeholder: 'cth: nama@email.com' },
+      { key: 'motherEducation', label: 'Pendidikan Terakhir', list: 'pendidikan-ortu', placeholder: 'Pilih atau ketik pendidikan' },
+      { key: 'motherJob', label: 'Pekerjaan', placeholder: 'cth: Mengurus Rumah Tangga' },
+      { key: 'motherIncome', label: 'Penghasilan', full: true, placeholder: 'cth: Rp 500.000 - Rp 1.999.999' }
+    ]
+  }
+] as const
+
 watch(
   () => props.isOpen,
   (open) => {
@@ -51,6 +77,7 @@ onBeforeUnmount(() => {
 watch(
   () => props.initialData,
   (val) => {
+    for (const key of Object.keys(form)) delete (form as Record<string, unknown>)[key]
     Object.assign(form, val)
     if (props.mode === 'add' && !form.id && form.nis) {
       form.id = `${props.grade}-${form.nis}`
@@ -74,7 +101,7 @@ const handleSubmit = () => {
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-5 md:p-6 overflow-y-auto"
+      class="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-5 md:p-6"
     >
       <!-- Backdrop Gelap dengan Blur Halus -->
       <Transition
@@ -102,7 +129,7 @@ const handleSubmit = () => {
         leave-to-class="opacity-0 scale-95 translate-y-2"
       >
         <div
-          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto font-admin"
+          class="relative w-full max-w-2xl sm:max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 z-10 h-[calc(100dvh-1.75rem)] sm:h-[min(800px,calc(100dvh-2.5rem))] flex flex-col overflow-hidden font-admin"
           role="dialog"
           aria-modal="true"
         >
@@ -155,16 +182,16 @@ const handleSubmit = () => {
                   <input v-model="form.name" required class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: AHMAD FAUZI" />
                 </div>
                 <div>
-                  <label class="block font-semibold text-slate-700 mb-1">ID Siswa (Billing) <span class="text-rose-500">*</span></label>
-                  <input v-model="form.id" required class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: SMK-26270120117" />
+                  <label class="block font-semibold text-slate-700 mb-1">ID Siswa (Billing)</label>
+                  <input v-model="form.id" :readonly="mode === 'edit'" class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: SMK-26270120117" />
                 </div>
                 <div>
-                  <label class="block font-semibold text-slate-700 mb-1">NIS <span class="text-rose-500">*</span></label>
-                  <input v-model="form.nis" required class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 26270120117" @input="handleNisInput" />
+                  <label class="block font-semibold text-slate-700 mb-1">NIS</label>
+                  <input v-model="form.nis" class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 26270120117" @input="handleNisInput" />
                 </div>
                 <div>
-                  <label class="block font-semibold text-slate-700 mb-1">NISN (10 Digit) <span class="text-rose-500">*</span></label>
-                  <input v-model="form.nisn" required maxlength="10" class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 0078912345" />
+                  <label class="block font-semibold text-slate-700 mb-1">NISN (minimal 5 digit)<span class="text-rose-500">*</span></label>
+                  <input v-model="form.nisn" required class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 0078912345" />
                 </div>
                 <div>
                   <label class="block font-semibold text-slate-700 mb-1">NIK Siswa (16 Digit)</label>
@@ -193,7 +220,7 @@ const handleSubmit = () => {
                 </div>
                 <div>
                   <label class="block font-semibold text-slate-700 mb-1">Tanggal Lahir</label>
-                  <input v-model="form.birthDate" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 2010-06-08 / 8 Juni 2010" />
+                  <input v-model="form.birthDate" type="date" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" />
                 </div>
                 <div class="sm:col-span-2">
                   <label class="block font-semibold text-slate-700 mb-1">Alamat Lengkap</label>
@@ -208,50 +235,36 @@ const handleSubmit = () => {
 
             <!-- SECTION 2: DATA ORANG TUA -->
             <template v-else-if="currentSection === 'ortu'">
-              <div class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">
-                A. Identitas Ayah / Wali
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-5">
-                <div>
-                  <label class="block font-semibold text-slate-700 mb-1">Nama Ayah</label>
-                  <input v-model="form.fatherName" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: H. RIDWAN KAMIL" />
+              <template v-for="(p, pi) in parentGroups" :key="p.title">
+                <div class="text-xs font-bold uppercase tracking-wider mb-2" :class="[p.color, pi === 0 ? '' : 'mt-5']">
+                  {{ p.title }}
                 </div>
-                <div>
-                  <label class="block font-semibold text-slate-700 mb-1">NIK Ayah</label>
-                  <input v-model="form.fatherNik" class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 3216021405800001" />
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div v-for="f in p.fields" :key="f.key" :class="f.full ? 'sm:col-span-2' : ''">
+                    <label class="block font-semibold text-slate-700 mb-1">{{ f.label }}</label>
+                    <input
+                      v-model="form[f.key]"
+                      :type="f.type || 'text'"
+                      :list="f.list"
+                      class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500"
+                      :class="f.mono ? 'font-mono' : ''"
+                      :placeholder="f.placeholder"
+                    />
+                  </div>
                 </div>
-                <div class="sm:col-span-2">
-                  <label class="block font-semibold text-slate-700 mb-1">No. HP / WhatsApp Ayah</label>
-                  <input v-model="form.fatherPhone" class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 082210823033" />
-                </div>
-              </div>
-
-              <div class="text-xs font-bold text-pink-600 uppercase tracking-wider mb-2">
-                B. Identitas Ibu Kandung
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label class="block font-semibold text-slate-700 mb-1">Nama Ibu</label>
-                  <input v-model="form.motherName" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: NURJANAH" />
-                </div>
-                <div>
-                  <label class="block font-semibold text-slate-700 mb-1">NIK Ibu</label>
-                  <input v-model="form.motherNik" class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 3216024711820001" />
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block font-semibold text-slate-700 mb-1">No. HP / WhatsApp Ibu</label>
-                  <input v-model="form.motherPhone" class="w-full px-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500" placeholder="cth: 082210823033" />
-                </div>
-              </div>
+              </template>
+              <datalist id="pendidikan-ortu">
+                <option v-for="o in pendidikanOptions" :key="o" :value="o" />
+              </datalist>
             </template>
 
             <!-- SECTION 3: AKADEMIK & ASAL SEKOLAH -->
             <template v-else-if="currentSection === 'akademik'">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label class="block font-semibold text-slate-700 mb-1">Kelas / Rombel <span class="text-rose-500">*</span></label>
-                  <select v-model="form.className" required class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500">
-                    <option value="" disabled>Pilih kelas dari Manajemen Kelas</option>
+                  <label class="block font-semibold text-slate-700 mb-1">Kelas / Rombel</label>
+                  <select v-model="form.className" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:border-blue-500">
+                    <option value="">Belum ditempatkan di kelas</option>
                     <option v-for="className in classOptions" :key="className" :value="className">{{ className }}</option>
                   </select>
                 </div>

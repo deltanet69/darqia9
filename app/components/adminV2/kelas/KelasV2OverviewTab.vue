@@ -2,53 +2,21 @@
 import { computed } from 'vue'
 import AdminLineChart from '~/components/admin/AdminLineChart.vue'
 import AdminDonutChart from '~/components/admin/AdminDonutChart.vue'
+import AdminV2Icon from '../AdminV2Icon.vue'
 
 interface Props {
   totalClasses: number
+  jenjang?: 'smp' | 'smk'
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  jenjang: 'smk'
+})
 
 const emit = defineEmits<{
   (e: 'go-daftar'): void
   (e: 'select-class', className: string): void
 }>()
-
-// 4 Canonical Summary KPI Cards
-const summaryCards = computed(() => [
-  {
-    label: 'Total Rombel Kelas',
-    value: `${props.totalClasses}`,
-    unit: 'Kelas',
-    sub: 'T.A 2026/2027',
-    note: '6 SMK · 6 SMP',
-    rate: '100% Aktif'
-  },
-  {
-    label: 'Total Kapasitas Siswa',
-    value: '422',
-    unit: 'Siswa',
-    sub: 'Rata² 35.2/kelas',
-    note: '241 Laki laki · 181 Perempuan',
-    rate: '98.5% Kuota'
-  },
-  {
-    label: 'Wali Kelas Terisi',
-    value: '12/12',
-    unit: 'Guru',
-    sub: 'SK Terbit',
-    note: 'Semua rombel punya wali',
-    rate: '100%'
-  },
-  {
-    label: 'Rata-rata Kehadiran',
-    value: '94.2',
-    unit: '%',
-    sub: '30 Hari Terakhir',
-    note: 'Kehadiran harian terpantau',
-    rate: 'Stabil'
-  }
-])
 
 // Chart Data (Comparing Attendance vs Academic Score per Class)
 const chartLabels = ['VII-A', 'VII-B', 'VIII-A', 'VIII-B', 'IX-A', 'IX-B', 'X RPL 1', 'X RPL 2', 'XI RPL 1', 'XI TKJ 1', 'XII RPL 1', 'XII TKJ 1']
@@ -112,40 +80,117 @@ const gradeGroupSummary = [
 
 <template>
   <div class="space-y-6">
-    <!-- 4 Canonical Summary KPI Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-      <article
-        v-for="(item, idx) in summaryCards"
-        :key="item.label"
-        class="group relative overflow-hidden rounded-3xl p-5 text-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer"
-        :class="[
-          idx === 0 ? 'bg-gradient-to-br from-[#1E40AF] via-[#1B5FD9] to-[#60A5FA]' :
-          idx === 1 ? 'bg-gradient-to-br from-[#065F46] via-[#059669] to-[#34D399]' :
-          idx === 2 ? 'bg-gradient-to-br from-[#92400E] via-[#D97706] to-[#FBBF24]' :
-          'bg-gradient-to-br from-[#5B21B6] via-[#7C3AED] to-[#A78BFA]'
-        ]"
+    <!-- 4 KARTU KPI EXECUTIVE OVERVIEW KELAS (SESUAI LUXURY CARD STYLING) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- KPI 1: Total Rombel Kelas (HERO BLUE/GREEN GRADIENT) -->
+      <section
+        class="rounded-[20px] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(27,95,217,0.3)] flex flex-col justify-between text-white transition-all min-h-[155px] relative overflow-hidden"
+        :class="jenjang === 'smp'
+          ? 'bg-gradient-to-br from-[#16A34A] via-[#15803D] to-[#14532D]'
+          : 'bg-gradient-to-br from-[#1B5FD9] via-[#1651bd] to-[#0A2A5C]'"
       >
-        <div class="flex items-center justify-between relative z-10">
-          <div class="text-xs font-bold uppercase tracking-wider text-white/90">{{ item.label }}</div>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-xs border border-white/25">
-            {{ item.sub }}
+        <!-- Watermark Shield Icon -->
+        <div class="absolute -right-5 -bottom-5 w-28 h-28 opacity-10 pointer-events-none text-white">
+          <AdminV2Icon name="shield" :size="112" />
+        </div>
+
+        <div class="relative z-10">
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-white/80">
+              Total Rombel Kelas
+            </span>
+            <span class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+              <AdminV2Icon name="layers" :size="16" />
+            </span>
+          </div>
+          <div class="text-[26px] sm:text-[28px] font-black tracking-tight text-white mt-1.5 tabular-nums">
+            {{ totalClasses }} Kelas
+          </div>
+        </div>
+
+        <div class="relative z-10 pt-2 border-t border-white/15 mt-3 flex items-center justify-between text-xs text-white/80">
+          <span class="font-medium">T.A 2026/2027 &middot; Semester Ganjil</span>
+          <span class="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-full text-white">100% Aktif</span>
+        </div>
+      </section>
+
+      <!-- KPI 2: Total Kapasitas Siswa (WHITE CARD WITH EMERALD ACCENT) -->
+      <section class="bg-white border border-[#E7EBF2] rounded-[20px] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.08)] hover:shadow-md transition-all flex flex-col justify-between min-h-[155px]">
+        <div>
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Total Kapasitas Siswa
+            </span>
+            <span class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-[#12B76A] shrink-0">
+              <AdminV2Icon name="users" :size="16" />
+            </span>
+          </div>
+          <div class="text-[26px] sm:text-[28px] font-black tracking-tight text-emerald-700 mt-1.5 tabular-nums">
+            422 Siswa
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100 mt-3 flex items-center justify-between text-xs">
+          <span class="text-slate-500 font-medium">241 Laki-laki &middot; 181 Perempuan</span>
+          <span class="inline-flex items-center text-[11px] font-bold py-0.5 px-2 rounded-full text-[#12B76A] bg-[#E7F8F0]">
+            98.5% Kuota
           </span>
         </div>
-        <div class="text-3xl sm:text-4xl font-extrabold font-mono my-2 relative z-10 flex items-baseline gap-1.5">
-          <span>{{ item.value }}</span>
-          <span class="text-xs font-semibold text-white/80 font-sans">{{ item.unit }}</span>
+      </section>
+
+      <!-- KPI 3: Wali Kelas Terisi (WHITE CARD WITH BLUE ACCENT) -->
+      <section class="bg-white border border-[#E7EBF2] rounded-[20px] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.08)] hover:shadow-md transition-all flex flex-col justify-between min-h-[155px]">
+        <div>
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Wali Kelas Terisi
+            </span>
+            <span class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#1B5FD9] shrink-0">
+              <AdminV2Icon name="user" :size="16" />
+            </span>
+          </div>
+          <div class="text-[26px] sm:text-[28px] font-black tracking-tight text-[#1B5FD9] mt-1.5 tabular-nums">
+            12 / 12 Guru
+          </div>
         </div>
-        <div class="text-[11px] font-semibold text-white/85 relative z-10 flex items-center justify-between">
-          <span>{{ item.note }}</span>
-          <span class="text-[10px] font-bold underline decoration-white/40 underline-offset-2">{{ item.rate }}</span>
+
+        <div class="pt-2 border-t border-slate-100 mt-3 flex items-center justify-between text-xs">
+          <span class="text-slate-500 font-medium">Semua rombel punya wali</span>
+          <span class="inline-flex items-center text-[11px] font-bold py-0.5 px-2 rounded-full text-blue-700 bg-blue-50">
+            SK Terbit 100%
+          </span>
         </div>
-      </article>
+      </section>
+
+      <!-- KPI 4: Rata-rata Kehadiran (WHITE CARD WITH PURPLE ACCENT) -->
+      <section class="bg-white border border-[#E7EBF2] rounded-[20px] p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.08)] hover:shadow-md transition-all flex flex-col justify-between min-h-[155px]">
+        <div>
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Rata-rata Kehadiran
+            </span>
+            <span class="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-[#7C3AED] shrink-0">
+              <AdminV2Icon name="clock" :size="16" />
+            </span>
+          </div>
+          <div class="text-[26px] sm:text-[28px] font-black tracking-tight text-purple-700 mt-1.5 tabular-nums">
+            94.2%
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100 mt-3 flex items-center justify-between text-xs">
+          <span class="text-slate-500 font-medium">Kehadiran harian terpantau</span>
+          <span class="inline-flex items-center text-[11px] font-bold py-0.5 px-2 rounded-full text-purple-800 bg-purple-50 border border-purple-200">
+            Status: Stabil
+          </span>
+        </div>
+      </section>
     </div>
 
     <!-- Charts & Visualizations Row -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Attendance Trend Chart (2 Cols) -->
-      <div class="lg:col-span-2 bg-white border border-[#E7EBF2] rounded-3xl p-5 shadow-xs flex flex-col justify-between">
+      <div class="lg:col-span-2 bg-white border border-[#E7EBF2] rounded-[20px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.08)] flex flex-col justify-between">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-[#F1F5F9]">
           <div>
             <div class="flex items-center gap-2">
@@ -173,15 +218,15 @@ const gradeGroupSummary = [
         </div>
 
         <div class="pt-3 border-t border-[#F1F5F9] grid grid-cols-3 gap-2 text-center text-xs">
-          <div class="p-2.5 rounded-2xl bg-[#F8FAFC]">
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
             <span class="text-[11px] font-medium text-[#667085] block">Rombel Tertinggi</span>
             <b class="text-[#059669] font-mono text-sm font-bold">XII RPL 1 (97%)</b>
           </div>
-          <div class="p-2.5 rounded-2xl bg-[#F8FAFC]">
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
             <span class="text-[11px] font-medium text-[#667085] block">Rata-rata Nilai Total</span>
             <b class="text-[#1B5FD9] font-mono text-sm font-bold">84.8 / 100</b>
           </div>
-          <div class="p-2.5 rounded-2xl bg-[#F8FAFC]">
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
             <span class="text-[11px] font-medium text-[#667085] block">Rasio Gender L/P</span>
             <b class="text-[#101828] font-mono text-sm font-bold">57% : 43%</b>
           </div>
@@ -189,7 +234,7 @@ const gradeGroupSummary = [
       </div>
 
       <!-- Donut Composition Chart (1 Col) -->
-      <div class="bg-white border border-[#E7EBF2] rounded-3xl p-5 shadow-xs flex flex-col justify-between">
+      <div class="bg-white border border-[#E7EBF2] rounded-[20px] p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.08)] flex flex-col justify-between">
         <div class="pb-3.5 border-b border-[#F1F5F9]">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -215,7 +260,7 @@ const gradeGroupSummary = [
           <div
             v-for="seg in donutSegments"
             :key="seg.label"
-            class="flex items-center justify-between py-1.5 px-2.5 rounded-xl hover:bg-[#F8FAFC] transition-colors"
+            class="flex items-center justify-between py-1.5 px-2.5 rounded-xl hover:bg-slate-50 transition-colors"
           >
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: seg.color }" />
@@ -251,7 +296,7 @@ const gradeGroupSummary = [
         <div
           v-for="grp in gradeGroupSummary"
           :key="grp.title"
-          class="p-5 rounded-3xl bg-white border border-[#E7EBF2] shadow-xs hover:shadow-md hover:border-[#1B5FD9]/40 transition-all flex flex-col justify-between space-y-4"
+          class="p-5 rounded-[20px] bg-white border border-[#E7EBF2] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.08)] hover:shadow-md hover:border-[#1B5FD9]/40 transition-all flex flex-col justify-between space-y-4"
         >
           <div class="flex items-start justify-between">
             <div>
@@ -264,7 +309,7 @@ const gradeGroupSummary = [
             </span>
           </div>
 
-          <div class="grid grid-cols-3 gap-2 bg-[#F8FAFC] border border-[#F1F5F9] p-3 rounded-2xl text-center text-xs">
+          <div class="grid grid-cols-3 gap-2 bg-[#F8FAFC] border border-[#F1F5F9] p-3 rounded-xl text-center text-xs">
             <div>
               <b class="text-[#101828] font-mono font-bold block text-sm">{{ grp.totalStudents }}</b>
               <span class="text-[10.5px] text-[#667085]">Siswa</span>
@@ -284,7 +329,7 @@ const gradeGroupSummary = [
               v-for="cls in grp.classList"
               :key="cls"
               type="button"
-              class="px-2.5 py-1 rounded-xl text-[11.5px] font-bold bg-[#EFF2F7] text-[#344054] hover:bg-[#EFF4FF] hover:text-[#1B5FD9] cursor-pointer transition-colors"
+              class="px-3 py-1.5 rounded-xl text-[12px] font-bold bg-[#EFF2F7] text-slate-700 hover:bg-[#1B5FD9] hover:text-white cursor-pointer transition-all shadow-2xs"
               @click="emit('select-class', cls)"
             >
               {{ cls }}

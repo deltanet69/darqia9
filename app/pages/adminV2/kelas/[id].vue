@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -16,19 +16,14 @@ import KelasDetailJadwal from '~/components/adminV2/kelas/detail/KelasDetailJadw
 import KelasDetailNilai from '~/components/adminV2/kelas/detail/KelasDetailNilai.vue'
 import KelasDetailUjian from '~/components/adminV2/kelas/detail/KelasDetailUjian.vue'
 import KelasV2MoveStudentModal from '~/components/adminV2/kelas/KelasV2MoveStudentModal.vue'
-import KelasDetailSlotModal from '~/components/adminV2/kelas/detail/KelasDetailSlotModal.vue'
 import KelasDetailImportModal from '~/components/adminV2/kelas/detail/KelasDetailImportModal.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
-import { useAdminStudents } from '~/composables/useAdminStudents'
 import {
-  generateMockSchedule,
-  generateMockAttendance,
   generateMockGrades,
   generateMockExams,
   type ClassRombel,
   type ClassStudentItem,
-  type ClassAttendanceDaily,
   type ClassGradeItem,
   type ClassExamItem
 } from '~/components/adminV2/kelas/kelasV2Data'
@@ -40,14 +35,13 @@ definePageMeta({
 const route = useRoute()
 const router = useRouter()
 const cbtData = useAdminCbtData()
-const studentData = useAdminStudents()
+const supabase = useSupabaseClient()
 
 const classIdParam = computed(() => {
   return decodeURIComponent(String(route.params.id || ''))
 })
 
 const availableClasses = computed<ClassRombel[]>(() => cbtData.classes.value.map(item => {
-  const roster = studentData.students.value.filter(student => student.classId === item.id && student.status === 'Aktif')
   return {
     id: item.id,
     name: item.name,
@@ -56,9 +50,9 @@ const availableClasses = computed<ClassRombel[]>(() => cbtData.classes.value.map
     major: item.major,
     room: item.room,
     capacity: 36,
-    studentsCount: roster.length,
-    boys: roster.filter(student => student.gender === 'L').length,
-    girls: roster.filter(student => student.gender === 'P').length,
+    studentsCount: item.studentCount,
+    boys: item.boysCount,
+    girls: item.girlsCount,
     teacher: item.teacher || 'Belum ditetapkan',
     teacherNip: item.teacherNip,
     teacherPhone: '',
@@ -119,43 +113,64 @@ const triggerToast = (msg: string) => {
 export type DetailSubmenuId = 'overview' | 'siswa' | 'absensi' | 'jadwal' | 'nilai' | 'ujian'
 const activeSubmenu = ref<DetailSubmenuId>('overview')
 
-const studentsList = computed<ClassStudentItem[]>(() => studentData.students.value
-  .filter(student => student.classId === currentClass.value.id && student.status === 'Aktif')
-  .map(student => ({
-    id: student.id,
-    nisn: student.nisn,
-    nis: student.nis,
-    name: student.name,
-    gender: student.gender,
-    className: currentClass.value.name,
-    phone: student.phone ?? '',
-    parentName: student.fatherName || student.motherName || 'Belum diisi',
-    parentPhone: student.fatherPhone || student.motherPhone || '',
-    fatherName: student.fatherName,
-    fatherPhone: student.fatherPhone ?? '',
-    motherName: student.motherName,
-    motherPhone: student.motherPhone ?? '',
-    hasRfid: student.hasRfid,
-    status: 'Aktif',
-    attendancePct: student.attendancePct
-  })))
-const attendanceList = ref<ClassAttendanceDaily[]>([])
+// Daftar siswa rombel: query ringan per kelas (bukan halaman listing Data Siswa), di-cache per kelas
+// agar kunjungan ulang langsung tampil lalu disegarkan di latar belakang.
+const rosterCache = useState<Record<string, ClassStudentItem[]>>('kelas-roster', () => ({}))
+const rosterLoading = ref(false)
+const rosterError = ref('')
+const studentsList = computed<ClassStudentItem[]>(() => rosterCache.value[currentClass.value.id] ?? [])
+
+const loadRoster = async (classId: string, className: string) => {
+  rosterLoading.value = true
+  rosterError.value = ''
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, nis, nisn, name, gender, phone, father_name, father_phone, mother_name, mother_phone, attendance_pct, rfid_cards(active)')
+    .eq('class_id', classId)
+    .eq('active', true)
+    .order('name')
+  rosterLoading.value = false
+  if (error) {
+    rosterError.value = 'Data siswa rombel gagal dimuat: ' + error.message
+    return
+  }
+  rosterCache.value = {
+    ...rosterCache.value,
+    [classId]: (data ?? []).map((row: any) => ({
+      id: row.id,
+      nisn: row.nisn ?? '',
+      nis: row.nis ?? '',
+      name: row.name,
+      gender: row.gender,
+      className,
+      phone: row.phone ?? '',
+      parentName: row.father_name || row.mother_name || 'Belum diisi',
+      parentPhone: row.father_phone || row.mother_phone || '',
+      fatherName: row.father_name ?? '',
+      fatherPhone: row.father_phone ?? '',
+      motherName: row.mother_name ?? '',
+      motherPhone: row.mother_phone ?? '',
+      hasRfid: Boolean(row.rfid_cards?.some((card: any) => card.active)),
+      status: 'Aktif' as const,
+      attendancePct: Number(row.attendance_pct ?? 0)
+    }))
+  }
+}
+watch(() => currentClass.value.id, (id) => {
+  if (id) void loadRoster(id, currentClass.value.name)
+}, { immediate: true })
+
 const gradesList = ref<ClassGradeItem[]>([])
 const examsList = ref<ClassExamItem[]>([])
 
 watch(
   [studentsList, currentClass],
   ([roster, cls]) => {
-    attendanceList.value = generateMockAttendance(roster)
     gradesList.value = generateMockGrades(roster)
     examsList.value = generateMockExams(cls.name, cls.level)
   },
   { immediate: true }
 )
-
-const scheduleList = computed(() => {
-  return generateMockSchedule(currentClass.value.name, currentClass.value.level)
-})
 
 const submenus = computed(() => [
   { id: 'overview' as const, label: 'Overview', icon: 'grid' },
@@ -176,79 +191,30 @@ const handleOpenMoveStudent = (student: ClassStudentItem) => {
 }
 
 const handleConfirmMoveStudent = async (studentId: string, targetClass: string, reason: string) => {
-  const result = await studentData.updateStudentClass(studentId, targetClass)
+  const target = cbtData.classes.value.find(item => item.grade === currentClass.value.level && item.name === targetClass)
   isMoveStudentModalOpen.value = false
-  if (!result.success) {
-    triggerToast(result.message)
+  if (!target) {
+    triggerToast('Kelas tujuan tidak ditemukan.')
     return
   }
-  await cbtData.load(true)
+  const { error } = await supabase.from('students').update({ class_id: target.id }).eq('id', studentId)
+  if (error) {
+    triggerToast('Siswa gagal dipindahkan: ' + error.message)
+    return
+  }
+  await Promise.all([cbtData.load(true), loadRoster(currentClass.value.id, currentClass.value.name)])
   triggerToast(`Peserta didik berhasil dipindahkan ke rombel ${targetClass}. (${reason})`)
 }
 
 const handleDeleteStudent = async (student: ClassStudentItem) => {
   if (!window.confirm('Nonaktifkan ' + student.name + ' dari rombel ini?')) return
-  const result = await studentData.deactivateStudent(student.id)
-  if (!result.success) {
-    triggerToast(result.message)
+  const { error } = await supabase.from('students').update({ active: false, student_status: 'Nonaktif' }).eq('id', student.id)
+  if (error) {
+    triggerToast('Siswa gagal dinonaktifkan: ' + error.message)
     return
   }
-  await cbtData.load(true)
+  await Promise.all([cbtData.load(true), loadRoster(currentClass.value.id, currentClass.value.name)])
   triggerToast(`Siswa ${student.name} dinonaktifkan dari rombel.`)
-}
-
-// Absensi Actions
-const handleMarkAllPresent = () => {
-  attendanceList.value.forEach(a => {
-    a.status = 'Hadir'
-    if (a.time === '-') a.time = '06:50 WIB'
-  })
-  triggerToast(`Seluruh siswa rombel ${currentClass.value.name} ditandai hadir lengkap.`)
-}
-
-const handleUpdateAttendanceStatus = (studentId: string, status: 'Hadir' | 'Sakit' | 'Izin' | 'Alpa') => {
-  const item = attendanceList.value.find(a => a.studentId === studentId)
-  if (item) {
-    item.status = status
-    if (status !== 'Hadir') item.time = '-'
-    triggerToast(`Status absensi ${item.name} diubah menjadi ${status}.`)
-  }
-}
-
-// Jadwal Timetable Actions
-const handleMarkSessionComplete = (sessionId: string) => {
-  const item = scheduleList.value.find(s => s.id === sessionId)
-  if (item) {
-    item.classAttendanceDone = true
-    item.guruPresent = true
-    triggerToast(`Sesi ${item.subject} terkonfirmasi siswa hadir lengkap.`)
-  }
-}
-
-// Modal 2: Set Alpa Per Session
-const isSlotModalOpen = ref(false)
-const selectedSlotForModal = ref<any>(null)
-
-const handleFlagStudentSkip = (sessionId: string) => {
-  const item = scheduleList.value.find(s => s.id === sessionId)
-  if (item) {
-    selectedSlotForModal.value = item
-    isSlotModalOpen.value = true
-  }
-}
-
-const handleSubmitSlotAttendance = (result: { sessionId: string; alpaList: string[]; izinList: string[]; sakitList: string[]; hadirCount: number }) => {
-  const item = scheduleList.value.find(s => s.id === result.sessionId)
-  if (item) {
-    item.alpaStudents = result.alpaList
-    item.classAttendanceDone = true
-    if (result.alpaList.length > 0) {
-      triggerToast(`Presensi tersimpan: ${result.alpaList.length} siswa alpa pada sesi ${item.subject}.`)
-    } else {
-      triggerToast(`Presensi tersimpan: seluruh siswa hadir pada sesi ${item.subject}.`)
-    }
-  }
-  isSlotModalOpen.value = false
 }
 
 // Modal 3: Impor Nilai Excel
@@ -259,15 +225,13 @@ const handleImportGradesDone = (fileName: string) => {
 
 // Export Student List to CSV (1:1 Versi Asli)
 const exportStudentList = () => {
-  const headers = ['No', 'NISN', 'Nama Siswa', 'Gender', 'Presensi (%)', 'Nilai', 'Status']
-  const scores = new Map(gradesList.value.map(grade => [grade.studentId, grade.finalScore]))
+  const headers = ['No', 'NIS', 'NISN', 'Nama Siswa', 'Gender', 'Status']
   const rows = studentsList.value.map((s, idx) => [
     idx + 1,
+    `"${s.nis}"`,
     `"${s.nisn}"`,
     `"${s.name}"`,
     s.gender === 'L' ? 'Putra' : 'Putri',
-    s.attendancePct,
-    scores.get(s.id) ?? '-',
     'Aktif'
   ])
 
@@ -316,12 +280,11 @@ const handleSelectModule = (title: string) => {
 }
 
 onMounted(async () => {
-  await Promise.all([cbtData.load(true), studentData.load()])
+  await cbtData.load()
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeAllModals()
       isMoveStudentModalOpen.value = false
-      isSlotModalOpen.value = false
       isImportModalOpen.value = false
     }
   })
@@ -374,12 +337,12 @@ onMounted(async () => {
     <!-- MAIN CONTAINER -->
     <main class="max-w-[1440px] mx-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 space-y-4">
       <div
-        v-if="studentData.loading.value || cbtData.loading.value || studentData.error.value || cbtData.error.value"
+        v-if="(rosterLoading && !studentsList.length) || cbtData.loading.value || rosterError || cbtData.error.value"
         class="rounded-2xl border px-4 py-3 text-xs font-semibold"
-        :class="studentData.error.value || cbtData.error.value ? 'border-[#F5C6C0] bg-[#FFF8F7] text-[#B42318]' : 'border-[#C9DCFB] bg-[#F5F8FF] text-[#12459B]'"
+        :class="rosterError || cbtData.error.value ? 'border-[#F5C6C0] bg-[#FFF8F7] text-[#B42318]' : 'border-[#C9DCFB] bg-[#F5F8FF] text-[#12459B]'"
         role="status"
       >
-        {{ studentData.error.value || cbtData.error.value || 'Memuat data rombel, wali kelas, dan siswa dari Supabase…' }}
+        {{ rosterError || cbtData.error.value || 'Memuat data rombel, wali kelas, dan siswa…' }}
       </div>
 
       <!-- Breadcrumb & Top Section -->
@@ -479,7 +442,7 @@ onMounted(async () => {
         <KelasDetailOverview
           v-if="activeSubmenu === 'overview'"
           :cls="currentClass"
-          :schedule="scheduleList"
+          :schedule="[]"
           :exams="examsList"
           :jenjang="jenjang"
         />
@@ -496,20 +459,16 @@ onMounted(async () => {
 
         <KelasDetailAbsensi
           v-else-if="activeSubmenu === 'absensi'"
-          :attendance-list="attendanceList"
+          :students="studentsList"
           :class-name="currentClass.name"
           :jenjang="jenjang"
-          @mark-all-present="handleMarkAllPresent"
-          @update-status="handleUpdateAttendanceStatus"
         />
 
         <KelasDetailJadwal
           v-else-if="activeSubmenu === 'jadwal'"
-          :schedule="scheduleList"
+          :class-id="currentClass.id"
           :class-name="currentClass.name"
           :jenjang="jenjang"
-          @mark-session-complete="handleMarkSessionComplete"
-          @flag-student-skip="handleFlagStudentSkip"
         />
 
         <KelasDetailNilai
@@ -536,20 +495,10 @@ onMounted(async () => {
       :open="isMoveStudentModalOpen"
       :student="movingStudent"
       :current-class="currentClass.name"
-      :available-classes="availableClasses"
+      :available-classes="availableClasses.filter(item => item.level === currentClass.level)"
       :jenjang="jenjang"
       @close="isMoveStudentModalOpen = false"
       @move="handleConfirmMoveStudent"
-    />
-
-    <!-- MODAL 2: SET ALPA PER SESI KBM -->
-    <KelasDetailSlotModal
-      :open="isSlotModalOpen"
-      :session="selectedSlotForModal"
-      :students="studentsList"
-      :current-alpa-list="selectedSlotForModal?.alpaStudents || []"
-      @close="isSlotModalOpen = false"
-      @submit="handleSubmitSlotAttendance"
     />
 
     <!-- MODAL 3: IMPOR NILAI EXCEL -->

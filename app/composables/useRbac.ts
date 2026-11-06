@@ -30,6 +30,7 @@ interface RbacState {
   kandidatAkunTermuat: boolean
   tabelSiap: boolean
   termuat: boolean
+  dimuatPada: number
   subjekSaya: string | null
   namaSaya: string | null
 }
@@ -45,6 +46,7 @@ const seedState = (): RbacState => {
     kandidatAkunTermuat: false,
     tabelSiap: false,
     termuat: false,
+    dimuatPada: 0,
     subjekSaya: null,
     namaSaya: null
   }
@@ -75,13 +77,14 @@ export const useRbac = () => {
     } catch { /* kandidat akun dilewati */ }
   }
 
-  const muat = async () => {
-    if (state.value.termuat) { void muatKandidatAkun(); return }
-    state.value.termuat = true
+  // Peran, izin, dan penugasan selalu dibaca dari database (satu-satunya sumber kebenaran);
+  // data awal di kode hanya cadangan sebelum tabel ada. Dipanggil ulang berkala di muat().
+  const muatMatriks = async (): Promise<boolean> => {
+    state.value.dimuatPada = Date.now()
     const client = useSupabaseClient()
     try {
       const { data: peranRows, error } = await client.from('rbac_roles').select('*').order('urutan')
-      if (error || !peranRows) return
+      if (error || !peranRows) return false
       const { data: izinRows } = await client.from('rbac_permissions').select('*')
       const { data: tugasRows } = await client.from('rbac_assignments').select('*')
       state.value.tabelSiap = true
@@ -102,7 +105,20 @@ export const useRbac = () => {
         subjekId: t.subjek_id, nama: t.nama, peranId: t.peran_id,
         jenjang: (t.jenjang || ['SMK', 'SMP']) as JenjangRbac[]
       }))
-    } catch { /* tabel belum ada — tetap pada data awal lokal */ }
+      return true
+    } catch { return false /* tabel belum ada — tetap pada data awal lokal */ }
+  }
+
+  const muat = async () => {
+    if (state.value.termuat) {
+      void muatKandidatAkun()
+      // Perubahan izin dari admin lain ikut terbaca tanpa muat ulang halaman (maks. 1 menit).
+      if (import.meta.client && Date.now() - state.value.dimuatPada > 60_000) await muatMatriks()
+      return
+    }
+    state.value.termuat = true
+    const client = useSupabaseClient()
+    if (!(await muatMatriks())) return
     try {
       const { data: guruRows } = await client.from('teachers').select('id, name, grade, user_id').eq('active', true).order('name')
       if (guruRows) {

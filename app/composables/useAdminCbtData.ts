@@ -16,6 +16,8 @@ export interface CbtClass {
   room: string
   academicYear: string
   studentCount: number
+  boysCount: number
+  girlsCount: number
   teacher: string
   homeroomTeacherId: string | null
   teacherNip: string
@@ -100,6 +102,16 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const questionsLoaded = useState(`${stateKey}-questions-loaded`, () => false)
 
   const questionsLoading = useState(`${stateKey}-questions-loading`, () => false)
+  // PostgREST membatasi 1000 baris per permintaan; ambil bertahap agar hitungan siswa per kelas tidak terpotong.
+  const fetchSiswaAktif = async () => {
+    const rows: any[] = []
+    for (let from = 0; ; from += 1000) {
+      const page = await client.from('students').select('class_id, gender').eq('active', true).order('id').range(from, from + 999)
+      if (page.error) return { data: null, error: page.error }
+      rows.push(...(page.data ?? []))
+      if ((page.data?.length ?? 0) < 1000) return { data: rows, error: null }
+    }
+  }
   const load = async (force = false) => {
     if (loading.value || (loaded.value && !force)) return
     loading.value = true
@@ -112,7 +124,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
         client.from(tables.exams).select('*').order('starts_at', { ascending: false }),
         client.from(tables.assignments).select('id, exam_id, status'),
-        client.from('students').select('class_id').eq('active', true),
+        fetchSiswaAktif(),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
         client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
         client.from(tables.violations).select('assignment_id'),
@@ -129,8 +141,11 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       const teacherRows = teacherResult.data ?? []
       const teacherById = new Map(teacherRows.map((row: any) => [row.id, row]))
       const studentCounts = new Map<string, number>()
+      const boysCounts = new Map<string, number>()
       for (const student of studentResult.data ?? []) {
-        if (student.class_id) studentCounts.set(student.class_id, (studentCounts.get(student.class_id) ?? 0) + 1)
+        if (!student.class_id) continue
+        studentCounts.set(student.class_id, (studentCounts.get(student.class_id) ?? 0) + 1)
+        if (student.gender === 'L') boysCounts.set(student.class_id, (boysCounts.get(student.class_id) ?? 0) + 1)
       }
 
       classes.value = classRows.map((row: any) => ({
@@ -141,6 +156,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         room: row.room ?? '',
         academicYear: row.academic_year,
         studentCount: studentCounts.get(row.id) ?? 0,
+        boysCount: boysCounts.get(row.id) ?? 0,
+        girlsCount: (studentCounts.get(row.id) ?? 0) - (boysCounts.get(row.id) ?? 0),
         teacher: teacherById.get(row.homeroom_teacher_id)?.name ?? '',
         homeroomTeacherId: row.homeroom_teacher_id ?? null,
         teacherNip: teacherById.get(row.homeroom_teacher_id)?.nip ?? ''

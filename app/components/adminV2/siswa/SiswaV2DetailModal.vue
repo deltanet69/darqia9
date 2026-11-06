@@ -55,7 +55,7 @@ const statusChipClass = (status: string): string => {
 <template>
   <div
     v-if="student"
-    class="fixed inset-0 z-50 bg-[#101828]/45 flex items-center justify-center p-4 backdrop-blur-[1px] animate-in fade-in duration-150"
+    class="fixed inset-0 z-90 bg-[#101828]/45 flex items-center justify-center p-4 backdrop-blur-[1px] animate-in fade-in duration-150"
     @click.self="emit('close')"
   >
     <div

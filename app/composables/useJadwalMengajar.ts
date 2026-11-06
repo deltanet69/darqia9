@@ -92,10 +92,15 @@ export function useJadwalMengajar() {
     })
 
     // 5) Siswa — roster per kelas + hitungan L/P untuk meta kelas
-    const { data: barisSiswa } = kelasIds.length
-      ? await client.from('students').select('nis, name, gender, class_id').in('class_id', kelasIds).order('name')
-      : { data: [] }
-    const siswaSemua = (barisSiswa || []) as Array<{ nis: string | null; name: string; gender: string; class_id: string }>
+    // Hanya siswa aktif; diambil bertahap karena PostgREST membatasi 1000 baris per permintaan.
+    const barisSiswa: any[] = []
+    for (let dari = 0; kelasIds.length; dari += 1000) {
+      const { data } = await client.from('students').select('nis, nisn, name, gender, class_id')
+        .in('class_id', kelasIds).eq('active', true).order('name').order('id').range(dari, dari + 999)
+      barisSiswa.push(...(data ?? []))
+      if ((data?.length ?? 0) < 1000) break
+    }
+    const siswaSemua = barisSiswa as Array<{ nis: string | null; nisn: string; name: string; gender: string; class_id: string }>
     stateV2.roster = {}
     const hitungGender = new Map<string, { boys: number; girls: number }>()
     siswaSemua.forEach(s => {
@@ -103,7 +108,7 @@ export function useJadwalMengajar() {
       if (!k) return
       const j = jenjangDariGrade(k.grade)
       const kunci = `${j}|${k.name}`
-      ;(stateV2.roster[kunci] ||= []).push({ name: s.name, gender: s.gender === 'P' ? 'P' : 'L', nis: s.nis || '' })
+      ;(stateV2.roster[kunci] ||= []).push({ name: s.name, gender: s.gender === 'P' ? 'P' : 'L', nis: s.nis || '', nisn: s.nisn })
       const h = hitungGender.get(k.id) || { boys: 0, girls: 0 }
       if (s.gender === 'P') h.girls++
       else h.boys++

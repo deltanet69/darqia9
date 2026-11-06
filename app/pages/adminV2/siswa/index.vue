@@ -10,7 +10,7 @@ import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import StudentFormModal from '~/components/admin/siswa/StudentFormModal.vue'
 import StudentImportModal from '~/components/admin/siswa/StudentImportModal.vue'
-import { useAdminStudents, type RecommendedStudentClass, type StudentItem } from '~/composables/useAdminStudents'
+import { useAdminStudents, type StudentItem } from '~/composables/useAdminStudents'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 
 definePageMeta({
@@ -93,11 +93,6 @@ const handleSaveStudent = async (data: Partial<StudentItem>) => {
 
 const handleImportStudents = async (payload: { students: StudentItem[]; mode: 'append' | 'replace' }) => {
   const result = await studentsStore.importStudents(payload.students, payload.mode)
-  triggerToast(result.message)
-}
-
-const handleCreateRecommendedClasses = async (classes: RecommendedStudentClass[]) => {
-  const result = await studentsStore.createRecommendedClasses(classes)
   triggerToast(result.message)
 }
 
@@ -414,7 +409,7 @@ onMounted(() => {
               <tr>
                 <th class="px-4 py-3.5 w-12 text-center">No</th>
                 <th class="px-4 py-3.5">Peserta Didik</th>
-                <th class="px-4 py-3.5">ID Siswa &amp; NISN</th>
+                <th class="px-4 py-3.5">NIS &amp; NISN</th>
                 <th class="px-4 py-3.5">Kelas</th>
                 <th class="px-4 py-3.5 text-center">Gender</th>
                 <th class="px-4 py-3.5">Orang Tua &amp; Kontak</th>
@@ -457,7 +452,7 @@ onMounted(() => {
                   </div>
                 </td>
                 <td class="px-4 py-3.5">
-                  <div class="font-mono text-xs font-bold text-[#1B5FD9]">{{ s.id }}</div>
+                  <div class="font-mono text-xs font-bold text-[#1B5FD9]">NIS: {{ s.nis || '—' }}</div>
                   <div class="font-mono text-[11px] text-[#64748B]">NISN: {{ s.nisn }}</div>
                 </td>
                 <td class="px-4 py-3.5">
@@ -589,10 +584,8 @@ onMounted(() => {
       :is-open="studentsStore.isImportModalOpen.value"
       :grade="studentsStore.grade.value"
       :available-classes="studentsStore.classOptions.value"
-      :is-creating-classes="studentsStore.creatingClasses.value"
       @close="studentsStore.closeImportModal"
       @import="handleImportStudents"
-      @create-classes="handleCreateRecommendedClasses"
       @download-template="studentsStore.downloadTemplate()"
     />
 

@@ -32,6 +32,7 @@ export interface StudentItem {
   fatherIncome?: string
   fatherNik?: string
   fatherPhone?: string
+  fatherEmail?: string
   motherName: string
   motherBirthYear?: string
   motherEducation?: string
@@ -39,6 +40,7 @@ export interface StudentItem {
   motherIncome?: string
   motherNik?: string
   motherPhone?: string
+  motherEmail?: string
   prevSchool?: string
   prevDiplomaNo?: string
   birthOrder?: number
@@ -87,7 +89,7 @@ const numberOrNull = (value: unknown) => {
 const mutationErrorMessage = (prefix: string, cause: any) => {
   const message = cause?.message ?? 'kesalahan tidak diketahui'
   if (cause?.code === 'PGRST204' || message.includes('schema cache')) {
-    return 'Skema Data Siswa di Supabase belum diperbarui. Jalankan migrasi 0011_students_profile.sql, lalu ulangi proses.'
+    return 'Skema Data Siswa di Supabase belum diperbarui. Jalankan migrasi SQL terbaru (0031_students_email_ortu.sql), lalu ulangi proses.'
   }
   if (cause?.code === '23505' && message.includes('students_nis_key')) {
     return 'Constraint NIS Supabase masih memakai aturan lama. Jalankan migrasi 0012_students_nis_per_jenjang.sql, lalu ulangi impor.'
@@ -137,10 +139,10 @@ export const useAdminStudents = () => {
       livingType: row.living_type ?? '', transportation: row.transportation ?? '', phone: row.phone ?? '',
       fatherName: row.father_name ?? '', fatherBirthYear: row.father_birth_year ? String(row.father_birth_year) : '',
       fatherEducation: row.father_education ?? '', fatherJob: row.father_job ?? '',
-      fatherIncome: row.father_income ?? '', fatherNik: row.father_nik ?? '', fatherPhone: row.father_phone ?? '',
+      fatherIncome: row.father_income ?? '', fatherNik: row.father_nik ?? '', fatherPhone: row.father_phone ?? '', fatherEmail: row.father_email ?? '',
       motherName: row.mother_name ?? '', motherBirthYear: row.mother_birth_year ? String(row.mother_birth_year) : '',
       motherEducation: row.mother_education ?? '', motherJob: row.mother_job ?? '',
-      motherIncome: row.mother_income ?? '', motherNik: row.mother_nik ?? '', motherPhone: row.mother_phone ?? '',
+      motherIncome: row.mother_income ?? '', motherNik: row.mother_nik ?? '', motherPhone: row.mother_phone ?? '', motherEmail: row.mother_email ?? '',
       prevSchool: row.previous_school ?? '', prevDiplomaNo: row.previous_diploma_number ?? '',
       birthOrder: row.birth_order ?? undefined, siblingsCount: row.siblings_count ?? undefined,
       weight: row.weight_kg ?? undefined, height: row.height_cm ?? undefined,
@@ -159,10 +161,10 @@ export const useAdminStudents = () => {
     return classes.value.find(item => item.grade === level && item.name.trim().toLocaleLowerCase('id-ID') === target)
   }
 
-  const toPayload = (data: Partial<StudentItem>, cls: StudentClass) => ({
+  const toPayload = (data: Partial<StudentItem>, cls?: StudentClass) => ({
     nis: textOrNull(data.nis), nisn: clean(data.nisn), nik: textOrNull(data.nik),
     family_card_number: textOrNull(data.noKk), name: clean(data.name), gender: data.gender ?? 'L',
-    grade: data.level ?? grade.value, class_id: cls.id, birth_place: textOrNull(data.birthPlace),
+    grade: data.level ?? grade.value, class_id: cls?.id ?? null, birth_place: textOrNull(data.birthPlace),
     birth_date: textOrNull(data.birthDate), religion: textOrNull(data.religion),
     address: textOrNull(data.address), rt: textOrNull(data.rt), rw: textOrNull(data.rw),
     village: textOrNull(data.village), district: textOrNull(data.district), city: textOrNull(data.city),
@@ -170,11 +172,11 @@ export const useAdminStudents = () => {
     phone: textOrNull(data.phone), father_name: textOrNull(data.fatherName),
     father_birth_year: numberOrNull(data.fatherBirthYear), father_education: textOrNull(data.fatherEducation),
     father_job: textOrNull(data.fatherJob), father_income: textOrNull(data.fatherIncome),
-    father_nik: textOrNull(data.fatherNik), father_phone: textOrNull(data.fatherPhone),
+    father_nik: textOrNull(data.fatherNik), father_phone: textOrNull(data.fatherPhone), father_email: textOrNull(data.fatherEmail),
     mother_name: textOrNull(data.motherName), mother_birth_year: numberOrNull(data.motherBirthYear),
     mother_education: textOrNull(data.motherEducation), mother_job: textOrNull(data.motherJob),
     mother_income: textOrNull(data.motherIncome), mother_nik: textOrNull(data.motherNik),
-    mother_phone: textOrNull(data.motherPhone), previous_school: textOrNull(data.prevSchool),
+    mother_phone: textOrNull(data.motherPhone), mother_email: textOrNull(data.motherEmail), previous_school: textOrNull(data.prevSchool),
     previous_diploma_number: textOrNull(data.prevDiplomaNo), birth_order: numberOrNull(data.birthOrder),
     siblings_count: numberOrNull(data.siblingsCount), weight_kg: numberOrNull(data.weight),
     height_cm: numberOrNull(data.height), head_circumference_cm: numberOrNull(data.headCircumference),
@@ -307,16 +309,27 @@ export const useAdminStudents = () => {
   }
   const openEditModal = (item: StudentItem) => {
     formModalMode.value = 'edit'
-    formStudent.value = structuredClone(item)
+    formStudent.value = { ...item } // salinan datar: structuredClone gagal pada objek reaktif Vue
     isFormModalOpen.value = true
   }
+  const openEditById = async (id: string) => {
+    if (!classes.value.length) await load()
+    const result = await supabase.from('students').select('*, rfid_cards(uid, active)').eq('id', id).maybeSingle()
+    if (result.error || !result.data) {
+      error.value = 'Data siswa tidak ditemukan.'
+      return
+    }
+    openEditModal(mapRow(result.data))
+  }
   const closeFormModal = () => { isFormModalOpen.value = false; formStudent.value = {} }
+  // Hanya nama + NISN yang wajib; NIS dan kelas boleh kosong (data induk belum lengkap).
   const validate = (data: Partial<StudentItem>) => {
     const level = data.level ?? grade.value
-    if (!clean(data.name) || !clean(data.nis)) return { message: 'Nama lengkap dan NIS wajib diisi.' }
-    if (!/^\d{10}$/.test(clean(data.nisn))) return { message: 'NISN wajib terdiri dari tepat 10 digit.' }
+    if (!clean(data.name)) return { message: 'Nama lengkap wajib diisi.' }
+    if (!/^\d{5,}$/.test(clean(data.nisn))) return { message: 'NISN minimal 5 digit.' }
+    if (!clean(data.className)) return { cls: undefined }
     const cls = findClass(data.className, level)
-    if (!cls) return { message: 'Kelas "' + (data.className || '-') + '" tidak ditemukan pada jenjang ' + level + '.' }
+    if (!cls) return { message: 'Kelas "' + data.className + '" tidak ditemukan pada jenjang ' + level + '.' }
     return { cls }
   }
 
@@ -336,8 +349,8 @@ export const useAdminStudents = () => {
   const saveStudent = async (data: Partial<StudentItem>): Promise<StudentMutationResult> => {
     error.value = null
     const checked = validate(data)
-    if (!checked.cls) {
-      error.value = checked.message ?? 'Data siswa tidak valid.'
+    if (checked.message) {
+      error.value = checked.message
       return { success: false, message: error.value }
     }
     const payload = toPayload(data, checked.cls)
@@ -355,7 +368,7 @@ export const useAdminStudents = () => {
     }
     await load()
     closeFormModal()
-    operationMessage.value = 'Data ' + data.name + ' berhasil disimpan dan tersambung ke kelas ' + checked.cls.name + '.'
+    operationMessage.value = 'Data ' + data.name + ' berhasil disimpan' + (checked.cls ? ' dan tersambung ke kelas ' + checked.cls.name : '') + '.'
     return { success: true, message: operationMessage.value }
   }
 
@@ -381,47 +394,68 @@ export const useAdminStudents = () => {
     const payloads: Record<string, any>[] = []
     const seenNisn = new Set<string>()
     const seenNis = new Set<string>()
-    const existingResult = await supabase.from('students').select('id, nis, nisn').eq('grade', grade.value)
-    if (existingResult.error) {
-      return { success: false, message: 'Data siswa yang sudah ada gagal diperiksa: ' + existingResult.error.message }
+    // NISN unik lintas jenjang di database: cek semua jenjang agar impor tidak menimpa/menabrak siswa jenjang lain.
+    const allResult = await supabase.from('students').select('id, nis, nisn, grade')
+    if (allResult.error) {
+      return { success: false, message: 'Data siswa yang sudah ada gagal diperiksa: ' + allResult.error.message }
     }
-    const existingStudents = existingResult.data ?? []
+    const otherGradeNisn = new Set((allResult.data ?? []).filter((item: any) => item.grade !== grade.value).map((item: any) => clean(item.nisn)))
+    const existingStudents = (allResult.data ?? []).filter((item: any) => item.grade === grade.value)
     const existingNisn = new Set(existingStudents.map((item: any) => clean(item.nisn)))
     const existingNis = new Map(existingStudents.map((item: any) => [clean(item.nis), clean(item.nisn)]))
-    const missingClasses = Array.from(new Set(
-      items
-        .map(item => clean(item.className))
-        .filter(name => name && !findClass(name, grade.value))
-    ))
+    // NIK unik lintas jenjang di database; NIK ganda tidak menolak siswa, hanya dikosongkan.
+    const nikResult = await supabase.from('students').select('nik, nisn').not('nik', 'is', null)
+    if (nikResult.error) {
+      return { success: false, message: 'NIK siswa yang sudah ada gagal diperiksa: ' + nikResult.error.message }
+    }
+    const nikOwner = new Map((nikResult.data ?? []).map((item: any) => [clean(item.nik), clean(item.nisn)]))
+    const seenNik = new Set<string>()
+    const nikDikosongkan: string[] = []
+    // Rombel dibuat otomatis dari kolom Kelas + Jurusan CSV; baris tanpa kelas tetap masuk tanpa rombel.
+    const missingClasses = items
+      .filter(item => clean(item.className) && !findClass(item.className, grade.value))
+      .map(item => ({ name: clean(item.className), major: clean(item.major) }))
     if (missingClasses.length) {
-      const message = 'Impor dibatalkan: ' + missingClasses.length + ' kelas belum terdaftar di Manajemen Kelas.'
-      return { success: false, message, successCount: 0, failedRows: missingClasses }
+      const created = await createRecommendedClasses(missingClasses)
+      if (!created.success) return { success: false, message: 'Impor dibatalkan. ' + created.message, successCount: 0, failedRows: [] }
     }
     for (const [index, item] of items.entries()) {
       const label = 'Baris ' + (index + 2) + (item.name ? ' (' + item.name + ')' : '')
-      if (!/^\d{10}$/.test(clean(item.nisn))) {
-        failedRows.push(label + ': NISN wajib tepat 10 digit.')
+      if (!clean(item.name)) {
+        failedRows.push(label + ': nama wajib diisi.')
+        continue
+      }
+      if (!/^\d{5,}$/.test(clean(item.nisn))) {
+        failedRows.push(label + ': NISN minimal 5 digit.')
         continue
       }
       const normalizedNis = clean(item.nis)
       const normalizedNisn = clean(item.nisn)
+      if (otherGradeNisn.has(normalizedNisn)) {
+        failedRows.push(label + ': NISN ' + item.nisn + ' sudah terdaftar di jenjang ' + (grade.value === 'SMP' ? 'SMK' : 'SMP') + '.')
+        continue
+      }
       if (seenNisn.has(normalizedNisn) || (mode === 'append' && existingNisn.has(normalizedNisn))) {
         failedRows.push(label + ': NISN ' + item.nisn + ' duplikat pada jenjang ' + grade.value + '.')
         continue
       }
       const nisOwner = existingNis.get(normalizedNis)
-      if (seenNis.has(normalizedNis) || (nisOwner && (mode === 'append' || nisOwner !== normalizedNisn))) {
+      if (normalizedNis && (seenNis.has(normalizedNis) || (nisOwner && (mode === 'append' || nisOwner !== normalizedNisn)))) {
         failedRows.push(label + ': NIS ' + item.nis + ' sudah digunakan pada jenjang ' + grade.value + '.')
         continue
       }
-      const checked = validate({ ...item, level: grade.value })
-      if (!checked.cls) {
-        failedRows.push(label + ': ' + checked.message)
+      const cls = clean(item.className) ? findClass(item.className, grade.value) : undefined
+      if (clean(item.className) && !cls) {
+        failedRows.push(label + ': kelas "' + item.className + '" gagal dibuat.')
         continue
       }
       seenNisn.add(normalizedNisn)
-      seenNis.add(normalizedNis)
-      payloads.push(toPayload({ ...item, level: grade.value }, checked.cls))
+      if (normalizedNis) seenNis.add(normalizedNis)
+      const nik = clean(item.nik)
+      const nikBentrok = nik && (seenNik.has(nik) || (nikOwner.has(nik) && nikOwner.get(nik) !== normalizedNisn))
+      if (nikBentrok) nikDikosongkan.push(label)
+      else if (nik) seenNik.add(nik)
+      payloads.push(toPayload({ ...item, level: grade.value, nik: nikBentrok ? '' : item.nik }, cls))
     }
     if (!payloads.length) {
       const message = failedRows.join(' ') || 'Tidak ada baris valid untuk diimpor.'
@@ -449,7 +483,9 @@ export const useAdminStudents = () => {
     }
     await load()
     closeImportModal()
-    operationMessage.value = payloads.length + ' siswa berhasil diimpor.' + (failedRows.length ? ' ' + failedRows.length + ' baris ditolak: ' + failedRows.join(' ') : '')
+    operationMessage.value = payloads.length + ' siswa berhasil diimpor.'
+      + (nikDikosongkan.length ? ' NIK dikosongkan karena ganda pada ' + nikDikosongkan.length + ' siswa: ' + nikDikosongkan.join(', ') + '.' : '')
+      + (failedRows.length ? ' ' + failedRows.length + ' baris ditolak: ' + failedRows.join(' ') : '')
     return { success: true, message: operationMessage.value, successCount: payloads.length, failedRows }
   }
 
@@ -556,6 +592,8 @@ export const useAdminStudents = () => {
     if (filterTimer) clearTimeout(filterTimer)
     filterTimer = setTimeout(() => { void load() }, delay)
   }
+  // Filter kelas/jurusan jenjang lama tidak berlaku di jenjang baru (kelas tidak ketemu -> daftar kosong).
+  watch(grade, () => { selectedClass.value = 'all'; selectedMajor.value = 'all' })
   watch([grade, selectedClass, selectedMajor, selectedGender, selectedStatus, selectedRfid], () => {
     page.value = 1
     queueLoad()
@@ -576,7 +614,7 @@ export const useAdminStudents = () => {
     isFormModalOpen, isImportModalOpen, formModalMode, formStudent, deleteConfirmStudent, stats,
     page, pageSize, totalStudents, totalPages, pageStart, pageEnd, goToPage,
     loading, error, operationMessage, creatingClasses, load, viewDetail, closeDetail, openAddModal, openEditModal,
-    closeFormModal, openImportModal, closeImportModal, importStudents, downloadTemplate,
+    closeFormModal, openEditById, openImportModal, closeImportModal, importStudents, downloadTemplate,
     exportStudentsCsv, createRecommendedClasses, saveStudent, confirmDelete, cancelDelete, executeDelete, updateStudentClass,
     deactivateStudent, resetFilters
   }

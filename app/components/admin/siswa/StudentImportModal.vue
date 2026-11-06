@@ -7,14 +7,12 @@ const props = defineProps<{
   isOpen: boolean
   grade: 'SMP' | 'SMK'
   availableClasses?: string[]
-  isCreatingClasses?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'import', data: { students: StudentItem[]; mode: 'append' | 'replace' }): void
   (e: 'downloadTemplate'): void
-  (e: 'createClasses', classes: RecommendedStudentClass[]): void
 }>()
 
 const fileName = ref('')
@@ -24,7 +22,8 @@ const invalidCount = ref(0)
 const invalidRows = ref<string[]>([])
 const errorMessage = ref('')
 const importMode = ref<'append' | 'replace'>('append')
-const requiredCsvHeaders = STUDENT_CSV_HEADERS.filter(header => ['NIS', 'NISN', 'Nama', 'Gender', 'Jenjang', 'Kelas'].includes(header))
+// Hanya identitas (Nama + NISN) yang wajib; sel lain boleh kosong. Kelas & Jurusan dipakai untuk membuat rombel otomatis.
+const requiredCsvHeaders = STUDENT_CSV_HEADERS.filter(header => ['NISN', 'Nama'].includes(header))
 const headerAliases: Record<string, string[]> = {
   NIS: ['nis', 'nomor induk'],
   NISN: ['nisn', 'no nisn'],
@@ -32,6 +31,13 @@ const headerAliases: Record<string, string[]> = {
   Gender: ['gender', 'jk', 'jenis kelamin'],
   Jenjang: ['jenjang'],
   Kelas: ['kelas', 'rombel', 'kelas / rombel']
+}
+// Nama rombel = Kelas + Jurusan (SMK), mis. "XI" + "TKJ" menjadi "XI TKJ". SMP hanya Kelas.
+const buildClassName = (kelas: string, jurusan: string) => {
+  const k = kelas.replace(/\s+/g, ' ').trim()
+  const j = props.grade === 'SMK' ? jurusan.replace(/\s+/g, ' ').trim() : ''
+  if (!k) return ''
+  return j && !k.toLocaleLowerCase('id-ID').includes(j.toLocaleLowerCase('id-ID')) ? k + ' ' + j : k
 }
 const missingClasses = computed<RecommendedStudentClass[]>(() => {
   const available = new Set((props.availableClasses ?? []).map(name => name.trim().toLocaleLowerCase('id-ID')))
@@ -124,12 +130,16 @@ const hasHeader = (headers: string[], aliases: string[]) => aliases.some(alias =
 const normalizeDate = (value: string) => {
   const dateValue = value.trim()
   if (!dateValue) return ''
-  const match = dateValue.match(/^(?:(\d{4})[-/](\d{1,2})[-/](\d{1,2})|(\d{1,2})[-/](\d{1,2})[-/](\d{4}))/)
-  if (!match) return null
-  const [, isoYear, isoMonth, isoDay, localDay, localMonth, localYear] = match
-  const year = Number(isoYear || localYear)
-  let month = Number(isoMonth || localMonth)
-  let day = Number(isoDay || localDay)
+  // Format Dapodik/Excel Indonesia: "08 Juni 2010" (tiga huruf pertama bulan; Agt = Agu)
+  const textMatch = dateValue.match(/^(\d{1,2})[\s-]+([A-Za-z]{3,9})\.?[\s-]+(\d{4})/)
+  const textMonth = textMatch ? ['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'agu', 'sep', 'okt', 'nov', 'des'].indexOf(textMatch[2].slice(0, 3).toLowerCase().replace('agt', 'agu')) + 1 : 0
+  if (textMatch && !textMonth) return null
+  const match = textMatch ? null : dateValue.match(/^(?:(\d{4})[-/](\d{1,2})[-/](\d{1,2})|(\d{1,2})[-/](\d{1,2})[-/](\d{4}))/)
+  if (!textMatch && !match) return null
+  const [, isoYear, isoMonth, isoDay, localDay, localMonth, localYear] = match ?? []
+  const year = Number(textMatch ? textMatch[3] : isoYear || localYear)
+  let month = textMatch ? textMonth : Number(isoMonth || localMonth)
+  let day = Number(textMatch ? textMatch[1] : isoDay || localDay)
   if (localYear && month > 12 && day <= 12) [month, day] = [day, month]
   const date = new Date(Date.UTC(year, month - 1, day))
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null
@@ -194,22 +204,23 @@ const handleFile = (file?: File) => {
         const sourceGrade = String(r['jenjang'] || '').trim().toUpperCase()
         const rawGender = String(r['gender'] || r['jk'] || r['jenis kelamin'] || '').trim().toUpperCase()
         const gender: 'L' | 'P' = rawGender === 'PRIA' || rawGender.startsWith('L') ? 'L' : rawGender === 'WANITA' || rawGender.startsWith('P') || rawGender.startsWith('W') ? 'P' : 'L'
-        const className = r['kelas'] || r['rombel'] || r['kelas / rombel'] || ''
+        const jurusan = r['jurusan'] || r['program keahlian'] || ''
+        const className = buildClassName(r['kelas'] || r['kelas program'] || r['rombel'] || r['kelas / rombel'] || '', jurusan)
+        const rawStatus = (r['status'] || r['status siswa'] || '').trim()
+        const status = (['Aktif', 'Lulus', 'Pindah', 'Nonaktif'] as const).find(s => s.toLowerCase() === rawStatus.toLowerCase())
         const normalizedNisn = nisn.replace(/\D/g, '')
         const birthDate = normalizeDate(r['tanggallahir'] || r['tanggal lahir'] || '')
         const entryDate = normalizeDate(r['tanggalmasuk'] || r['tanggal masuk'] || '')
         const attendancePct = normalizeAttendance(r['presensi'] || r['kehadiran'] || '')
         const reasons: string[] = []
         if (!name.trim()) reasons.push('nama kosong')
-        if (!nis.trim()) reasons.push('NIS kosong')
-        if (!/^\d{10}$/.test(normalizedNisn)) reasons.push('NISN harus tepat 10 digit')
-        if (sourceGrade !== props.grade) reasons.push('jenjang harus ' + props.grade)
-        if (!className.trim()) reasons.push('kelas kosong')
+        if (!/^\d{5,}$/.test(normalizedNisn)) reasons.push('NISN minimal 5 digit')
+        if (sourceGrade && sourceGrade !== props.grade) reasons.push('jenjang harus ' + props.grade)
         if (!['L', 'P', 'PRIA', 'WANITA', 'LAKI-LAKI', 'LAKI LAKI', 'PEREMPUAN'].includes(rawGender)) reasons.push('gender harus L atau P')
         if (birthDate === null) reasons.push('tanggal lahir tidak valid')
         if (entryDate === null) reasons.push('tanggal masuk tidak valid')
         if (attendancePct === null) reasons.push('presensi harus angka 0 sampai 100')
-        if (r['status'] && !['Aktif', 'Lulus', 'Pindah', 'Nonaktif'].includes(r['status'])) reasons.push('status tidak dikenali')
+        if (rawStatus && !status) reasons.push('status "' + rawStatus + '" tidak dikenali (Aktif, Lulus, Pindah, Nonaktif)')
         if (seenNisn.has(normalizedNisn)) reasons.push('NISN duplikat di dalam berkas')
         if (reasons.length) {
           invalidRows.value.push('Baris ' + (idx + 2) + ': ' + reasons.join(', ') + '.')
@@ -227,7 +238,7 @@ const handleFile = (file?: File) => {
           gender,
           level: props.grade,
           className,
-          major: r['jurusan'] || r['program keahlian'] || undefined,
+          major: props.grade === 'SMK' ? jurusan.trim() || undefined : undefined,
           birthPlace: r['tempatlahir'] || r['tempat lahir'] || '',
           birthDate: birthDate || '',
           religion: r['agama'] || 'Islam',
@@ -236,7 +247,7 @@ const handleFile = (file?: File) => {
           rw: r['rw'] || '',
           village: r['kelurahan'] || r['desa'] || '',
           district: r['kecamatan'] || '',
-          city: r['kota'] || r['kabupaten'] || '',
+          city: r['kota'] || r['kabupaten'] || r['kota/kab'] || r['kota / kab'] || r['kota/kabupaten'] || '',
           livingType: r['jenistinggal'] || r['jenis tinggal'] || '',
           transportation: r['transportasi'] || '',
           phone: r['nohpsiswa'] || r['nohp'] || r['hp siswa'] || r['telepon'] || '',
@@ -266,9 +277,9 @@ const handleFile = (file?: File) => {
           ambition: r['citacita'] || r['cita-cita'] || '',
           rfidUid: r['rfid_uid'] || r['rfid'] || r['uid'] || undefined,
           hasRfid: !!(r['rfid_uid'] || r['rfid'] || r['uid']),
-          status: (r['status'] === 'Lulus' || r['status'] === 'Pindah' || r['status'] === 'Nonaktif') ? r['status'] : 'Aktif',
+          status: status ?? 'Aktif',
           attendancePct: attendancePct || 0,
-          entryYear: r['tahunangkatan'] || r['angkatan'] || '',
+          entryYear: (r['tahunangkatan'] || r['angkatan'] || '').match(/\d{4}/)?.[0] ?? '', // "2023/2024" diambil 2023
           entryDate: entryDate || '',
           notes: r['catatan'] || ''
         }
@@ -285,7 +296,7 @@ const handleFile = (file?: File) => {
 }
 
 const handleApplyImport = () => {
-  if (validRows.value.length === 0 || missingClasses.value.length) return
+  if (validRows.value.length === 0) return
   emit('import', {
     students: validRows.value,
     mode: importMode.value
@@ -297,7 +308,7 @@ const handleApplyImport = () => {
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-5 md:p-6 overflow-y-auto"
+      class="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-5 md:p-6 overflow-y-auto"
     >
       <!-- Backdrop Gelap dengan Blur Halus -->
       <Transition
@@ -468,23 +479,14 @@ const handleApplyImport = () => {
           </div>
           <div
             v-if="missingClasses.length"
-            class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-amber-900 text-xs"
-            role="alert"
+            class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 text-blue-900 text-xs"
+            role="status"
             aria-live="polite"
           >
-            <b class="block text-sm mb-1">{{ missingClasses.length }} kelas belum terdaftar</b>
-            <p class="leading-relaxed">Buat daftar kelas rekomendasi dari data CSV agar setiap siswa terhubung ke rombel yang benar.</p>
+            <b class="block text-sm mb-1">{{ missingClasses.length }} kelas baru akan dibuat otomatis</b>
+            <p class="leading-relaxed">Rombel dibentuk dari kolom Kelas dan Jurusan pada CSV, lalu siswa dihubungkan ke rombel tersebut.</p>
             <p class="mt-2 font-semibold leading-relaxed break-words">{{ missingClasses.map(item => item.name).join(', ') }}</p>
             <p class="mt-2 leading-relaxed">Kelas dibuat untuk Tahun Ajaran 2026/2027 tanpa wali kelas. Wali kelas dapat ditetapkan kemudian melalui Manajemen Kelas.</p>
-            <button
-              class="mt-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-amber-900 px-4 py-2 font-bold text-white transition hover:bg-amber-950 disabled:cursor-wait disabled:opacity-60"
-              type="button"
-              :disabled="isCreatingClasses"
-              @click="$emit('createClasses', missingClasses)"
-            >
-              <AdminIcon name="plus" size="15" />
-              <span>{{ isCreatingClasses ? 'Membuat kelas…' : 'Buat ' + missingClasses.length + ' Kelas Rekomendasi' }}</span>
-            </button>
           </div>
         </div>
 
@@ -500,7 +502,7 @@ const handleApplyImport = () => {
           <button
             class="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] cursor-pointer"
             type="button"
-            :disabled="validRows.length === 0 || missingClasses.length > 0"
+            :disabled="validRows.length === 0"
             @click="handleApplyImport"
           >
             <AdminIcon name="plus" size="16" />
