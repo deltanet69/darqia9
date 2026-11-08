@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
 import AdminV2BottomNav from '~/components/adminV2/AdminV2BottomNav.vue'
@@ -44,9 +44,15 @@ const {
 } = teachersStore
 
 // Muat data dari Supabase saat halaman dibuka
+let segarkanTimer: ReturnType<typeof setInterval> | null = null
 onMounted(async () => {
   await fetchTeachersFromDb()
+  // Perubahan dari admin lain / hasil impor ikut terbaca; ditunda saat modal terbuka agar isian tidak terganggu.
+  segarkanTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && !isModalOpen.value && !isUploadModalOpen.value && !isDetailModalOpen.value) void fetchTeachersFromDb()
+  }, 20000)
 })
+onUnmounted(() => { if (segarkanTimer) clearInterval(segarkanTimer) })
 
 const isSyncingDb = ref(false)
 const syncAllToDatabase = async () => {
@@ -218,41 +224,51 @@ const handleSaveStaff = async (data: Omit<StaffItem, 'id'> & { id?: string; sync
   }
 }
 
-// Impor Massal dari Berkas Excel / CSV
-const handleBatchImported = async (items: StaffItem[], syncUsers: boolean) => {
+// Impor Massal dari Berkas CSV
+const handleBatchImported = async (items: StaffItem[], syncUsers: boolean, password: string) => {
+  try {
+    await jalankanImpor(items, syncUsers, password)
+  } catch (e: any) {
+    console.error('Impor guru terhenti:', e)
+    triggerToast(`Impor terhenti: ${e?.message || 'galat tak terduga'}`, 15000)
+  }
+}
+
+const jalankanImpor = async (items: StaffItem[], syncUsers: boolean, password: string) => {
   triggerToast(`Mengimpor ${items.length} data guru ke database...`)
 
-  // Sinkronisasi user management jika diminta
   // Kirim langsung ke Supabase — staffList diisi ulang dari DB setelah selesai
   const dbRes = await batchImportTeachersToDb(items)
+  if (!dbRes.success) {
+    triggerToast(`Impor gagal: ${dbRes.error || 'Periksa koneksi Supabase & RLS'}`, 15000)
+    return
+  }
 
-  if (dbRes.success) {
-    const importedCount = (dbRes as any).count || items.length
-    const failedCount = (dbRes as any).failed || 0
-    const importedItems = (dbRes as any).items || items
+  const importedCount = dbRes.count || 0
+  const failedCount = dbRes.failed || 0
+  const importedItems = dbRes.items || []
+  const infoGagal = failedCount ? `, ${failedCount} baris gagal (${dbRes.gagal.slice(0, 2).join('; ')})` : ''
 
-    if (syncUsers) {
-      const accountRes = await syncTeacherAccounts(importedItems)
-      if (!accountRes.success) {
-        triggerToast(`${importedCount} guru tersimpan, tetapi akun gagal disinkronkan: ${accountRes.error}`)
-        return
-      }
-
+  if (syncUsers) {
+    const accountRes = await syncTeacherAccounts(importedItems, password)
+    if (!accountRes.success) {
+      triggerToast(`${importedCount} guru tersimpan, tetapi akun gagal disinkronkan: ${accountRes.error}`, 15000)
+    } else {
       accountRes.accounts.forEach((account) => {
         const appliesToActiveGrade = account.scope === 'yayasan' || account.scope === grade.value.toLowerCase()
         const exists = systemStore.users.value.some(user => user.username === account.email)
         if (appliesToActiveGrade && !exists) systemStore.addUser(account.name, account.email, 'Guru')
       })
       systemStore.addLog('Administrator', 'Super Admin', `mengimpor ${importedCount} guru dan menyinkronkan ${accountRes.accounts.length} akun login`, 'Kepegawaian')
-      triggerToast(`${importedCount} guru tersimpan, ${accountRes.accounts.length} akun disinkronkan${failedCount ? `, ${failedCount} baris gagal` : ''}.`)
-    } else {
-      triggerToast(`${importedCount} guru berhasil diimpor${failedCount ? `, ${failedCount} baris gagal` : ''}.`)
+      const akunGagal = accountRes.gagal.length ? `, ${accountRes.gagal.length} akun gagal (${accountRes.gagal.slice(0, 2).join('; ')})` : ''
+      const akunLewat = accountRes.skipped ? `, ${accountRes.skipped} sudah punya akun/dilewati` : ''
+      triggerToast(`${importedCount} guru tersimpan, ${accountRes.accounts.length} akun dibuat${akunLewat}${akunGagal}${infoGagal}.`, 12000)
     }
-    // Sinkronisasi attendance dari staffList yang sudah diisi DB
-    staffList.value.forEach(s => syncAttendanceFromStaff(s))
   } else {
-    triggerToast(`Import gagal: ${dbRes.error || 'Periksa koneksi Supabase & RLS'}`)
+    triggerToast(`${importedCount} guru berhasil diimpor${infoGagal}.`, 12000)
   }
+  // Sinkronisasi attendance dari staffList yang sudah diisi DB
+  staffList.value.forEach(s => syncAttendanceFromStaff(s))
 }
 
 // Hapus Guru
@@ -351,13 +367,13 @@ const toastMessage = ref('')
 const isToastVisible = ref(false)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
-const triggerToast = (msg: string) => {
+const triggerToast = (msg: string, durasi = 2600) => {
   toastMessage.value = msg
   isToastVisible.value = true
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => {
     isToastVisible.value = false
-  }, 2600)
+  }, durasi)
 }
 
 const closeAllModals = () => {
@@ -666,7 +682,7 @@ onMounted(() => {
 
     <!-- MODAL KONFIRMASI HAPUS GURU -->
     <Teleport to="body">
-      <div v-if="deletingStaff" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div v-if="deletingStaff" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="fixed inset-0 bg-[#0C111D]/60 backdrop-blur-xs" @click="deletingStaff = null" />
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden z-10 p-6 space-y-4 border border-[#E7EBF2]">
           <div class="flex items-center justify-between">

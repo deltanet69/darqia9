@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -14,14 +14,9 @@ import ProfilV2OverviewTab from '~/components/adminV2/profil/ProfilV2OverviewTab
 import ProfilV2DataProfilTab from '~/components/adminV2/profil/ProfilV2DataProfilTab.vue'
 import ProfilV2AplikasiTab from '~/components/adminV2/profil/ProfilV2AplikasiTab.vue'
 import ProfilV2PengaturanTab from '~/components/adminV2/profil/ProfilV2PengaturanTab.vue'
-import ProfilV2DemoPanel from '~/components/adminV2/profil/ProfilV2DemoPanel.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
-import {
-  PROFILES,
-  type ProfileAccount,
-  type ProfileTabKey,
-  type NotificationPrefs
-} from '~/components/adminV2/profil/profilV2Data'
+import type { ProfileTabKey } from '~/components/adminV2/profil/profilV2Data'
+import { aktivitasTampil, sesiLogin, validasiUbah, type PrefNotifikasi } from '~/composables/profilCore'
 
 definePageMeta({
   layout: false
@@ -39,45 +34,41 @@ useHead({
 
 const router = useRouter()
 const route = useRoute()
+const store = useProfilSaya()
+const rbac = useRbac()
+const grade = useAdminGrade()
+const { tahun, muatOpsi: muatTahunAjaran } = useTahunAjaran()
 
-/* ================= STATE GLOBAL ================= */
-const jenjang = ref<'smk' | 'smp'>('smk')
-const currentWho = ref<string>('budi')
+/* ================= STATE ================= */
+const jenjang = computed<'smp' | 'smk'>({
+  get: () => grade.value.toLowerCase() as 'smp' | 'smk',
+  set: value => { grade.value = value.toUpperCase() as 'SMP' | 'SMK' }
+})
 const isProfileTab = (value: unknown): value is ProfileTabKey => ['overview', 'dataprofil', 'aplikasi', 'pengaturan'].includes(value as ProfileTabKey)
 const activeTab = ref<ProfileTabKey>(isProfileTab(route.query.tab) ? route.query.tab : 'overview')
-const themeIdx = ref<number>(0)
 const themeOpen = ref<boolean>(false)
 const isEditing = ref<boolean>(false)
+const isSaving = ref<boolean>(false)
 
-// State Profil Reaktif (Clone data untuk simulasi demo)
-const profilesState = reactive<Record<string, ProfileAccount>>({ ...PROFILES })
-const currentProfile = computed<ProfileAccount>(() => profilesState[currentWho.value] || PROFILES.budi)
+const profil = store.profil
+const themeIdx = computed(() => store.state.value.akun?.tema ?? 0)
+const prefs = computed<PrefNotifikasi>(() => ({ wa: true, email: true, jadwal: true, ...(store.state.value.akun?.prefs || {}) }))
+const aktivitas = computed(() => aktivitasTampil(store.state.value.aktivitas))
+const sesi = computed(() => sesiLogin(store.state.value.login, 3))
 
-// Form Edit Data Mandiri
-const editForm = reactive({
-  alamat: '',
-  kel: '',
-  kec: '',
-  kab: '',
-  email: '',
-  wa: ''
-})
+// Form Edit Data Mandiri — nilai awal dari baris guru milik akun
+const editForm = reactive({ alamat: '', kel: '', kec: '', kab: '', wa: '', nip: '', nuptk: '' })
 
 const syncEditForm = () => {
-  editForm.alamat = currentProfile.value.alamat
-  editForm.kel = currentProfile.value.kel
-  editForm.kec = currentProfile.value.kec
-  editForm.kab = currentProfile.value.kab
-  editForm.email = currentProfile.value.email
-  editForm.wa = currentProfile.value.wa
+  const g = store.state.value.guru
+  editForm.alamat = g?.address || ''
+  editForm.kel = g?.kelurahan || ''
+  editForm.kec = g?.kecamatan || ''
+  editForm.kab = g?.kab_kota || ''
+  editForm.wa = g?.phone || ''
+  editForm.nip = g?.nip || ''
+  editForm.nuptk = g?.nuptk || ''
 }
-
-// Preferensi Notifikasi
-const prefs = reactive<NotificationPrefs>({
-  wa: true,
-  email: true,
-  jadwal: true
-})
 
 // Popovers & Shell Navigasi
 const isMegaOpen = ref(false)
@@ -101,12 +92,8 @@ const triggerToast = (msg: string) => {
   }, 2600)
 }
 
-// Role map untuk header shell
-const shellRole = computed<'superadmin' | 'admin_tu' | 'guru'>(() => {
-  if (currentProfile.value.roleSys === 'Super Admin') return 'superadmin'
-  if (currentProfile.value.roleSys === 'Staff TU' || currentProfile.value.roleSys === 'Admin Keuangan') return 'admin_tu'
-  return 'guru'
-})
+// Sama seperti SistemPageShell: menu disaring oleh RBAC, bukan oleh prop ini.
+const shellRole = 'superadmin' as const
 
 // Format Tanggal Hari Ini
 const formattedTodayDate = computed(() => {
@@ -137,20 +124,14 @@ const handleSelectModule = (title: string) => {
   closeAllPopovers()
   const dest = getAdminDestination(title)
   if (dest && dest !== '#') return router.push(dest)
-  triggerToast(`${title} — modul demo`)
-}
-
-// Switch Akun Demo
-const handleSwitchAccount = (who: string) => {
-  currentWho.value = who
-  isEditing.value = false
-  themeOpen.value = false
-  syncEditForm()
-  triggerToast(`Beralih akun: ${currentProfile.value.name}`)
 }
 
 // Edit Profil
 const handleStartEdit = () => {
+  if (!profil.value?.adaGuru) {
+    triggerToast('Akun belum terhubung ke Data Induk Pegawai. Hubungi Superadmin.')
+    return
+  }
   syncEditForm()
   isEditing.value = true
   if (activeTab.value !== 'dataprofil' && activeTab.value !== 'pengaturan') {
@@ -162,29 +143,29 @@ const handleCancelEdit = () => {
   isEditing.value = false
 }
 
-const handleSaveEdit = () => {
-  if (!editForm.alamat.trim()) {
-    triggerToast('Alamat domisili tidak boleh kosong.')
+const handleSaveEdit = async () => {
+  if (isSaving.value) return
+  const data = {
+    nip: editForm.nip,
+    nuptk: editForm.nuptk,
+    phone: editForm.wa,
+    address: editForm.alamat,
+    kelurahan: editForm.kel,
+    kecamatan: editForm.kec,
+    kab_kota: editForm.kab
+  }
+  const { galat } = validasiUbah(data, store.state.value.guru || {})
+  if (galat) {
+    triggerToast(galat)
     return
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email.trim())) {
-    triggerToast('Format email tidak valid — periksa kembali.')
+  isSaving.value = true
+  const pesan = await store.simpanData(data)
+  isSaving.value = false
+  if (pesan) {
+    triggerToast(pesan)
     return
   }
-  if (editForm.wa.replace(/\D/g, '').length < 10) {
-    triggerToast('Nomor WhatsApp minimal 10 digit.')
-    return
-  }
-
-  // Simpan perubahan ke state reaktif
-  const p = currentProfile.value
-  p.alamat = editForm.alamat.trim()
-  p.kel = editForm.kel.trim()
-  p.kec = editForm.kec.trim()
-  p.kab = editForm.kab.trim()
-  p.email = editForm.email.trim()
-  p.wa = editForm.wa.trim()
-
   isEditing.value = false
   triggerToast('Profil berhasil diperbarui.')
 }
@@ -200,21 +181,36 @@ const handleCopyText = (text: string) => {
   triggerToast(`${text} tersalin ke clipboard.`)
 }
 
-const handleUploadFoto = () => {
-  triggerToast('Foto terpilih — pada versi produksi foto akan diunggah & disimpan.')
+const handleUploadFoto = async (file: File) => {
+  triggerToast('Mengunggah foto...')
+  const pesan = await store.unggahFoto(file)
+  triggerToast(pesan || 'Foto profil berhasil diperbarui.')
 }
 
-const handleTogglePref = (key: keyof NotificationPrefs) => {
-  prefs[key] = !prefs[key]
-  triggerToast('Preferensi notifikasi diperbarui.')
+const handleTema = async (idx: number) => {
+  const pesan = await store.simpanPengaturan({ tema: idx })
+  if (pesan) triggerToast(pesan)
 }
 
-const handleUpdatePassword = () => {
-  triggerToast('Kata sandi berhasil diperbarui.')
+const handleTogglePref = async (key: keyof PrefNotifikasi) => {
+  const pesan = await store.simpanPengaturan({ prefs: { ...prefs.value, [key]: !prefs.value[key] } })
+  triggerToast(pesan || 'Preferensi notifikasi diperbarui.')
 }
 
-onMounted(() => {
-  syncEditForm()
+// Aktivitas & sesi diperbarui berkala selama halaman terbuka dan tab browser terlihat.
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(async () => {
+  void muatTahunAjaran()
+  await Promise.all([rbac.muat(), store.muat()])
+  pollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && !isEditing.value) void store.muat()
+  }, 15000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+  if (toastTimer) clearTimeout(toastTimer)
 })
 </script>
 
@@ -265,7 +261,7 @@ onMounted(() => {
             </span>
           </h1>
           <p class="mt-1 text-xs text-[#667085]">
-            Data pribadi, kepegawaian &amp; keamanan akun &bull; {{ jenjang === 'smp' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9' }} &bull; Tahun Ajaran 2026/2027
+            Data pribadi, kepegawaian &amp; keamanan akun &bull; {{ jenjang === 'smp' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9' }} &bull; Tahun Ajaran {{ tahun }}
           </p>
         </div>
 
@@ -273,103 +269,140 @@ onMounted(() => {
           <span class="rounded-full border border-[#E7EBF2] bg-white px-3 py-1.5 text-xs font-bold text-[#667085] shadow-2xs">
             {{ formattedTodayDate }}
           </span>
-          <span class="rounded-full border border-dashed border-[#CBD5E1] bg-white px-3 py-1.5 text-xs font-bold text-[#475467]">
-            Preview Profil v4
-          </span>
         </div>
       </div>
 
-      <!-- Segmented Control Tabs Navigation (#ctabs) -->
-      <div
-        class="sticky top-[70px] z-30 inline-flex max-w-full overflow-x-auto rounded-full border border-[#E7EBF2] bg-white/85 p-1.5 shadow-[0_8px_20px_rgba(15,23,42,0.07)] backdrop-blur-md mb-3"
-        role="tablist"
-      >
-        <button
-          v-for="tab in ([
-            { key: 'overview', label: 'Overview', icon: 'grid' },
-            { key: 'dataprofil', label: 'Data Profil', icon: 'user' },
-            { key: 'aplikasi', label: 'Aplikasi Saya', icon: 'layers' },
-            { key: 'pengaturan', label: 'Pengaturan', icon: 'gear' }
-          ] as const)"
-          :key="tab.key"
-          type="button"
-          class="flex items-center gap-2 rounded-full px-4 py-2 text-xs transition-all whitespace-nowrap"
-          :class="activeTab === tab.key ? 'bg-white text-[#101828] font-bold shadow-[0_1px_4px_rgba(16,24,40,0.14)]' : 'text-[#475467] font-semibold hover:text-[#101828]'"
-          @click="activeTab = tab.key"
-        >
-          <AdminV2Icon :name="tab.icon" :size="15" />
-          <span>{{ tab.label }}</span>
+      <!-- SUBMENU NAVIGATION BAR: Identik 1:1 Styling Standar AdminV2 (Keuangan, Kelas, CBT, Absensi) -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="w-full sm:w-auto overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0">
+          <nav
+            class="inline-flex items-center gap-1 bg-[#EFF2F7] border border-[#E7EBF2] p-1.5 rounded-2xl min-w-max"
+            role="tablist"
+            aria-label="Navigasi Profil User"
+          >
+            <button
+              v-for="tab in ([
+                { key: 'overview', label: 'Overview', icon: 'grid' },
+                { key: 'dataprofil', label: 'Data Profil', icon: 'user' },
+                { key: 'aplikasi', label: 'Aplikasi Saya', icon: 'layers' },
+                { key: 'pengaturan', label: 'Pengaturan', icon: 'gear' }
+              ] as const)"
+              :key="tab.key"
+              type="button"
+              role="tab"
+              :aria-selected="activeTab === tab.key"
+              @click="activeTab = tab.key"
+              class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-bold transition-all cursor-pointer select-none"
+              :class="activeTab === tab.key
+                ? 'bg-[#101828] text-white shadow-[0_2px_8px_rgba(16,24,40,0.15)]'
+                : 'text-[#475467] hover:text-[#101828] hover:bg-white/60 font-semibold'"
+            >
+              <AdminV2Icon :name="tab.icon" :size="15" />
+              <span>{{ tab.label }}</span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Indikator Status Akun di sebelah kanan -->
+        <div class="hidden sm:flex items-center gap-2 text-[12px] font-semibold text-slate-500 shrink-0">
+          <span class="inline-block h-2 w-2 rounded-full" :class="profil?.active !== false ? 'bg-[#16A34A]' : 'bg-[#1B5FD9]'" />
+          <span>{{ profil?.roleSys || 'Superadmin Utama' }} &bull; Akun Terverifikasi</span>
+        </div>
+      </div>
+
+      <!-- Strip Identitas Jenjang Terintegrasi (Clean & Sleek) -->
+      <div class="flex items-center justify-between gap-3 rounded-xl border border-[#E7EBF2] bg-white px-4 py-2.5 text-xs text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,0.03)]">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="flex h-2 w-2 rounded-full shrink-0" :class="jenjang === 'smp' ? 'bg-[#16A34A]' : 'bg-[#1B5FD9]'" />
+          <span class="font-bold text-slate-800 shrink-0">{{ jenjang === 'smk' ? 'SMK IT Attaqwa 9' : 'SMP IT BCA' }}</span>
+          <span class="text-slate-300">|</span>
+          <span class="text-slate-500 truncate">Tahun Ajaran {{ tahun }} &middot; Data disinkronkan otomatis dari Data Induk Kepegawaian</span>
+        </div>
+        <span class="shrink-0 text-[11px] font-semibold text-slate-400 hidden md:inline">
+          Ganti jenjang lewat switch SMP/SMK di bilah atas
+        </span>
+      </div>
+
+      <p v-if="!store.state.value.termuat" class="rounded-2xl border border-[#E7EBF2] bg-white p-5 text-center text-xs font-semibold text-[#667085]">
+        Memuat profil...
+      </p>
+      <div v-else-if="!profil" class="rounded-2xl border border-[#FECDC2] bg-[#FFF4ED] p-5 text-xs font-semibold text-[#B42318]">
+        <p>{{ store.state.value.galat || 'Profil gagal dimuat.' }}</p>
+        <button type="button" class="mt-2 rounded-xl border border-[#FECDC2] bg-white px-3 py-1.5 font-bold" @click="store.muat()">
+          Coba lagi
         </button>
       </div>
 
-      <!-- HERO / SLIM HEADER SESUAI ACTIVE TAB -->
-      <ProfilV2Hero
-        v-if="activeTab === 'overview'"
-        :profile="currentProfile"
-        :theme-idx="themeIdx"
-        :theme-open="themeOpen"
-        :is-editing="isEditing"
-        @update:theme-idx="themeIdx = $event"
-        @toggle-theme-picker="themeOpen = !themeOpen"
-        @start-edit="handleStartEdit"
-        @save-edit="handleSaveEdit"
-        @cancel-edit="handleCancelEdit"
-        @copy-text="handleCopyText"
-        @upload-foto="handleUploadFoto"
-      />
+      <template v-else>
+        <!-- HERO / SLIM HEADER SESUAI ACTIVE TAB -->
+        <ProfilV2Hero
+          v-if="activeTab === 'overview'"
+          :profile="profil"
+          :theme-idx="themeIdx"
+          :theme-open="themeOpen"
+          :is-editing="isEditing"
+          @update:theme-idx="handleTema"
+          @toggle-theme-picker="themeOpen = !themeOpen"
+          @start-edit="handleStartEdit"
+          @save-edit="handleSaveEdit"
+          @cancel-edit="handleCancelEdit"
+          @copy-text="handleCopyText"
+          @upload-foto="handleUploadFoto"
+        />
 
-      <ProfilV2SlimHeader
-        v-else
-        :profile="currentProfile"
-        :theme-idx="themeIdx"
-        :theme-open="themeOpen"
-        :is-editing="isEditing"
-        @update:theme-idx="themeIdx = $event"
-        @toggle-theme-picker="themeOpen = !themeOpen"
-        @start-edit="handleStartEdit"
-        @save-edit="handleSaveEdit"
-        @cancel-edit="handleCancelEdit"
-      />
+        <ProfilV2SlimHeader
+          v-else
+          :profile="profil"
+          :theme-idx="themeIdx"
+          :theme-open="themeOpen"
+          :is-editing="isEditing"
+          @update:theme-idx="handleTema"
+          @toggle-theme-picker="themeOpen = !themeOpen"
+          @start-edit="handleStartEdit"
+          @save-edit="handleSaveEdit"
+          @cancel-edit="handleCancelEdit"
+          @upload-foto="handleUploadFoto"
+        />
 
-      <!-- TAB 1: OVERVIEW -->
-      <ProfilV2OverviewTab
-        v-if="activeTab === 'overview'"
-        :profile="currentProfile"
-        @navigate-tab="activeTab = $event"
-      />
+        <!-- TAB 1: OVERVIEW -->
+        <ProfilV2OverviewTab
+          v-if="activeTab === 'overview'"
+          :profile="profil"
+          :aplikasi="store.aplikasi.value"
+          :aktivitas="aktivitas"
+          :login-terakhir="sesi[0] || null"
+          @navigate-tab="activeTab = $event"
+        />
 
-      <!-- TAB 2: DATA PROFIL -->
-      <ProfilV2DataProfilTab
-        v-else-if="activeTab === 'dataprofil'"
-        :profile="currentProfile"
-        :is-editing="isEditing"
-        :edit-form="editForm"
-      />
+        <!-- TAB 2: DATA PROFIL -->
+        <ProfilV2DataProfilTab
+          v-else-if="activeTab === 'dataprofil'"
+          :profile="profil"
+          :is-editing="isEditing"
+          :edit-form="editForm"
+        />
 
-      <!-- TAB 3: APLIKASI SAYA (RBAC) -->
-      <ProfilV2AplikasiTab
-        v-else-if="activeTab === 'aplikasi'"
-        :profile="currentProfile"
-      />
+        <!-- TAB 3: APLIKASI SAYA (RBAC) -->
+        <ProfilV2AplikasiTab
+          v-else-if="activeTab === 'aplikasi'"
+          :profile="profil"
+          :aplikasi="store.aplikasi.value"
+          :cakupan="store.cakupan.value"
+        />
 
-      <!-- TAB 4: PENGATURAN & KEAMANAN -->
-      <ProfilV2PengaturanTab
-        v-else-if="activeTab === 'pengaturan'"
-        :profile="currentProfile"
-        :is-editing="isEditing"
-        :edit-form="editForm"
-        :prefs="prefs"
-        @update-password="handleUpdatePassword"
-        @toggle-pref="handleTogglePref"
-      />
+        <!-- TAB 4: PENGATURAN & KEAMANAN -->
+        <ProfilV2PengaturanTab
+          v-else-if="activeTab === 'pengaturan'"
+          :profile="profil"
+          :is-editing="isEditing"
+          :edit-form="editForm"
+          :prefs="prefs"
+          :sesi="sesi"
+          :ubah-sandi="store.ubahSandi"
+          @toggle-pref="handleTogglePref"
+        />
+      </template>
     </main>
-
-    <!-- FLOATING DEMO SIMULATION PANEL -->
-    <ProfilV2DemoPanel
-      :profile="currentProfile"
-      :current-who="currentWho"
-      @switch-account="handleSwitchAccount"
-    />
 
     <!-- BOTTOM BAR & POPOVERS MOBILE -->
     <AdminV2BottomNav
@@ -393,9 +426,9 @@ onMounted(() => {
       :is-notif-open="isNotifOpen"
       :is-profile-open="isProfileOpen"
       :role="shellRole"
-      @close="closeAllPopovers"
-      @switch-role="triggerToast('Role diubah via popover')"
-      @toast="triggerToast"
+      :jenjang="jenjang"
+      @close-all="closeAllPopovers"
+      @item-click="closeAllPopovers"
     />
 
     <AdminV2Toast

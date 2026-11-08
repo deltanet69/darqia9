@@ -2,14 +2,17 @@
 import { computed, ref, watch } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import { generateSubjectCode } from '~/composables/useAdminSubjects'
+import { KATEGORI_PER_JENJANG, kategoriSahUntuk, type KategoriMapel } from '~/composables/mapelKategori'
 
-export type SubjectCategory = 'Umum' | 'Kejuruan' | 'Keagamaan' | 'Muatan Lokal'
+// Kategori data lama bisa berupa teks di luar daftar resmi, jadi tipenya string; simpan hanya menerima KategoriMapel.
+export type SubjectCategory = string
 
 export interface SubjectItem {
   id: string
   code: string
   name: string
   category: SubjectCategory
+  extraCategory: string | null
   kkm: number
   hoursPerWeek: number
   grade: 'SMP' | 'SMK'
@@ -20,7 +23,8 @@ export interface SubjectSaveData {
   id: string | null
   code: string
   name: string
-  category: SubjectCategory
+  category: KategoriMapel
+  extraCategory: KategoriMapel | null
   kkm: number
   hoursPerWeek: number
   grade: 'SMP' | 'SMK'
@@ -43,13 +47,20 @@ const emit = defineEmits<{
 
 const form = ref({
   name: '',
-  category: 'Umum' as SubjectCategory,
+  category: '' as string,
+  extraCategory: '' as string,
   kkm: 75,
   hoursPerWeek: 4,
   grade: 'SMK' as 'SMP' | 'SMK'
 })
 
 const isEdit = computed(() => !!props.subject)
+const opsiKategori = computed(() => KATEGORI_PER_JENJANG[form.value.grade])
+// Ganti jenjang: kategori yang tidak berlaku di jenjang baru dikosongkan agar tidak tersimpan salah.
+watch(() => form.value.grade, () => {
+  if (!kategoriSahUntuk(form.value.grade, form.value.category)) form.value.category = ''
+  if (!kategoriSahUntuk(form.value.grade, form.value.extraCategory)) form.value.extraCategory = ''
+})
 
 const formSchoolName = computed(() => form.value.grade === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9')
 
@@ -64,6 +75,7 @@ watch(() => props.open, (isOpen) => {
     form.value = {
       name: props.subject.name,
       category: props.subject.category,
+      extraCategory: props.subject.extraCategory ?? '',
       kkm: props.subject.kkm,
       hoursPerWeek: props.subject.hoursPerWeek,
       grade: props.subject.grade
@@ -71,7 +83,8 @@ watch(() => props.open, (isOpen) => {
   } else {
     form.value = {
       name: '',
-      category: props.grade === 'SMK' ? 'Kejuruan' : 'Umum',
+      category: '',
+      extraCategory: '',
       kkm: 75,
       hoursPerWeek: 4,
       grade: props.grade
@@ -88,11 +101,21 @@ const handleSubmit = () => {
     alert('Nama mata pelajaran belum cukup untuk membuat kode otomatis.')
     return
   }
+  const grade = form.value.grade
+  if (!kategoriSahUntuk(grade, form.value.category)) {
+    alert('Pilih kategori mata pelajaran.')
+    return
+  }
+  if (form.value.extraCategory && (!kategoriSahUntuk(grade, form.value.extraCategory) || form.value.extraCategory === form.value.category)) {
+    alert('Kategori tambahan harus berbeda dari kategori utama.')
+    return
+  }
   emit('save', {
     id: props.subject?.id ?? null,
     code: codePreview.value,
     name: form.value.name.trim(),
-    category: form.value.category,
+    category: form.value.category as KategoriMapel,
+    extraCategory: (form.value.extraCategory || null) as KategoriMapel | null,
     kkm: Math.max(0, Math.min(100, Number(form.value.kkm) || 0)),
     hoursPerWeek: Math.max(0, Number(form.value.hoursPerWeek) || 0),
     grade: form.value.grade
@@ -173,17 +196,31 @@ const handleSubmit = () => {
           </div>
 
           <div>
-            <label class="block font-bold text-[#344054] mb-1">Kategori Kurikulum</label>
+            <label class="block font-bold text-[#344054] mb-1" for="mapel-kategori">Kategori Kurikulum</label>
             <select
+              id="mapel-kategori"
               v-model="form.category"
+              required
               class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-bold text-[#101828] outline-none focus:border-[#1B5FD9] cursor-pointer"
             >
-              <option value="Umum">Umum (Wajib)</option>
-              <option value="Kejuruan">Kejuruan (Khusus SMK)</option>
-              <option value="Keagamaan">Keagamaan / Al-Qur'an</option>
-              <option value="Muatan Lokal">Muatan Lokal</option>
+              <option value="" disabled>Pilih kategori</option>
+              <option v-if="form.category && !opsiKategori.includes(form.category as KategoriMapel)" :value="form.category" disabled>{{ form.category }} (kategori lama)</option>
+              <option v-for="k in opsiKategori" :key="k" :value="k">{{ k }}</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-[#344054] mb-1" for="mapel-kategori-tambahan">Kategori Tambahan <span class="font-medium text-[#667085]">(opsional)</span></label>
+          <select
+            id="mapel-kategori-tambahan"
+            v-model="form.extraCategory"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-white font-bold text-[#101828] outline-none focus:border-[#1B5FD9] cursor-pointer"
+          >
+            <option value="">Tidak ada</option>
+            <option v-for="k in opsiKategori.filter(item => item !== form.category)" :key="k" :value="k">{{ k }}</option>
+          </select>
+          <p class="text-[11px] text-[#667085] mt-1">Isi hanya bila mapel yang sama tercatat di dua kategori, misalnya Unggul Bahasa.</p>
         </div>
 
         <div class="grid grid-cols-2 gap-3">

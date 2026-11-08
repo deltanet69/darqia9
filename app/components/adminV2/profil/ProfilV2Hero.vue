@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
-import {
-  initials,
-  completeness,
-  AVATAR_GRADIENTS,
-  type ProfileAccount
-} from './profilV2Data'
+import { inisial, hitungKelengkapan, type ProfilSaya } from '~/composables/profilCore'
+import { AVATAR_GRADIENTS } from './profilV2Data'
 
 const props = defineProps<{
-  profile: ProfileAccount
+  profile: ProfilSaya
   themeIdx: number
   themeOpen: boolean
   isEditing: boolean
@@ -22,10 +18,38 @@ const emit = defineEmits<{
   (e: 'save-edit'): void
   (e: 'cancel-edit'): void
   (e: 'copy-text', text: string): void
-  (e: 'upload-foto'): void
+  (e: 'upload-foto', file: File): void
 }>()
 
-const comp = computed(() => completeness(props.profile))
+const comp = computed(() => hitungKelengkapan(props.profile))
+
+const inputFoto = ref<HTMLInputElement | null>(null)
+const pilihFoto = (e: Event) => {
+  const el = e.target as HTMLInputElement
+  const file = el.files?.[0]
+  if (file) emit('upload-foto', file)
+  el.value = ''
+}
+
+// Format nama & peran agar tidak tampil raw email atau '-'
+const namaTampil = computed(() => {
+  const raw = props.profile.name || ''
+  if (!raw || raw.includes('@')) {
+    const bagian = raw.split('@')[0] || 'Administrator'
+    return bagian.replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  }
+  return raw
+})
+
+const peranTampil = computed(() => {
+  if (props.profile.roleLabel && props.profile.roleLabel !== '-') return props.profile.roleLabel
+  return props.profile.roleSys || 'Superadmin Utama'
+})
+
+const unitTampil = computed(() => {
+  if (props.profile.unit && props.profile.unit !== '-') return props.profile.unit
+  return 'Yayasan Darqia 9'
+})
 
 // Lingkaran SVG: r = 34, Keliling = 2 * Math.PI * 34 ≈ 213.6
 const ringCircumference = 2 * Math.PI * 34
@@ -33,97 +57,122 @@ const ringOffset = computed(() => {
   return (ringCircumference * (1 - comp.value.pct / 100)).toFixed(1)
 })
 </script>
+
 <template>
   <section
-    class="profil-v2-hero relative overflow-hidden rounded-[22px] p-[22px] text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)] mb-4"
-    style="background: radial-gradient(560px 260px at 88% -10%, rgba(56,189,248,.35), transparent 60%), radial-gradient(480px 300px at -10% 115%, rgba(29,78,216,.5), transparent 60%), linear-gradient(125deg,#0B1F3A 0%,#122E57 55%,#1D4ED8 130%);"
+    class="relative overflow-hidden rounded-[22px] p-5 sm:p-6 text-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(27,95,217,0.3)] bg-gradient-to-br from-[#0B1F3A] via-[#122E57] to-[#1B5FD9] mb-4"
   >
-    <!-- Highlight overlay -->
-    <div
-      class="pointer-events-none absolute inset-0"
-      style="background: radial-gradient(700px 200px at 50% -30%, rgba(255,255,255,.14), transparent 65%);"
-    />
+    <!-- Watermark Shield Icon (No white border, subtle opacity) -->
+    <div class="absolute -right-6 -bottom-6 w-36 h-36 opacity-10 pointer-events-none text-white">
+      <AdminV2Icon name="shield" :size="144" />
+    </div>
 
-    <div class="relative flex flex-col gap-4.5 sm:flex-row sm:items-center sm:justify-between">
-      <!-- Sisi Kiri: Avatar & Info Akun -->
-      <div class="flex flex-col items-start gap-4.5 sm:flex-row sm:items-center min-w-0">
-        <!-- Avatar Wrapper -->
-        <div class="relative shrink-0 w-[84px]">
+    <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <!-- Sisi Kiri: Avatar & Identitas Pegawai (Rapi & Terstruktur) -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5 min-w-0">
+        <!-- Avatar Wrapper (Tanpa list/border putih) -->
+        <div class="relative shrink-0">
           <div
-            class="profil-v2-avatar flex h-[84px] w-[84px] items-center justify-center rounded-full bg-gradient-to-br text-[28px] font-bold tracking-wide text-white shadow-[0_0_0_3px_rgba(255,255,255,0.85),0_10px_22px_rgba(2,6,23,0.35)]"
+            class="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl font-black text-white shadow-lg"
             :class="AVATAR_GRADIENTS[themeIdx] || AVATAR_GRADIENTS[0]"
           >
-            {{ initials(profile.name) }}
+            <img
+              v-if="profile.fotoUrl"
+              :src="profile.fotoUrl"
+              :alt="'Foto ' + namaTampil"
+              class="h-full w-full rounded-2xl object-cover"
+            >
+            <span v-else>{{ inisial(namaTampil) }}</span>
           </div>
-          <!-- Online status dot -->
+
+          <!-- Status Aktif Online Dot -->
           <span
-            class="absolute left-[64px] top-[2px] h-[15px] w-[15px] rounded-full border-[3px] border-[#0E2547] bg-[#34D399]"
+            class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#10B981] ring-2 ring-[#0B1F3A]"
             title="Akun Aktif"
           />
-          <!-- Button Ganti Tema/Foto -->
+
+          <!-- Tombol Ganti Tema/Foto -->
           <button
             type="button"
-            class="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#0B1F3A] bg-white text-[#0B1F3A] shadow-md transition-transform hover:scale-110"
+            class="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-lg bg-[#1B5FD9] hover:bg-[#154cb0] text-white shadow-md transition-all active:scale-95 cursor-pointer"
             aria-label="Ganti tema avatar atau foto"
+            title="Ganti Tema atau Foto Profil"
             @click="emit('toggle-theme-picker')"
           >
             <AdminV2Icon name="pencil" :size="13" />
           </button>
         </div>
 
-        <!-- Info Teks Akun -->
-        <div class="min-w-0 flex-1">
-          <h2 class="text-[21px] font-bold leading-tight tracking-tight text-white">
-            {{ profile.name }}
-          </h2>
-
-          <p class="mt-1 text-[12.5px] font-semibold text-[#BCD2F7]">
-            {{ profile.roleLabel }} &bull; {{ profile.unit }}
-          </p>
-
-          <!-- Chips Row -->
-          <div class="mt-3 flex flex-wrap gap-1.5">
-            <span class="inline-flex items-center gap-1.5 rounded-full border border-white/22 bg-white/13 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-xs">
-              {{ profile.roleSys }}
-            </span>
-            <span class="inline-flex items-center gap-1.5 rounded-full border border-white/22 bg-white/13 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-xs">
-              <AdminV2Icon name="check" :size="12" />
-              <span>Akun {{ profile.akun }}</span>
+        <!-- Info Identitas Akun -->
+        <div class="min-w-0 flex-1 space-y-1.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-2xl font-black tracking-tight text-white leading-tight">
+              {{ namaTampil }}
+            </h2>
+            <span class="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+              <AdminV2Icon name="check" :size="11" />
+              <span>Akun Aktif</span>
             </span>
           </div>
 
-          <!-- Contact Pills -->
-          <div class="mt-3 flex flex-wrap gap-2 text-xs">
+          <p class="text-[13px] font-semibold text-blue-200">
+            {{ peranTampil }} &bull; {{ unitTampil }}
+          </p>
+
+          <!-- Badges & Contact Chips (Tanpa list/border putih) -->
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <span class="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/20 px-3 py-1 text-xs font-bold text-blue-100">
+              <AdminV2Icon name="shield" :size="12" class="text-blue-300" />
+              <span>{{ profile.roleSys }}</span>
+            </span>
+
+            <!-- Tombol Email dengan Salin -->
             <button
+              v-if="profile.email && profile.email !== '-'"
               type="button"
-              class="inline-flex items-center gap-2 rounded-xl border border-white/16 bg-white/8 px-3 py-1.5 font-semibold text-[#E7EEFB] transition hover:bg-white/16 active:scale-95"
+              class="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-1 text-xs font-semibold text-white transition-all active:scale-95 cursor-pointer"
+              title="Klik untuk menyalin email"
               @click="emit('copy-text', profile.email)"
             >
-              <AdminV2Icon name="mail" :size="14" />
-              <span class="truncate max-w-[180px] sm:max-w-none">{{ profile.email }}</span>
-              <em class="not-italic text-[10px] font-bold uppercase tracking-wider text-[#9FB9EA]">Salin</em>
+              <AdminV2Icon name="mail" :size="13" class="text-blue-300" />
+              <span class="truncate max-w-[200px] sm:max-w-none">{{ profile.email }}</span>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-blue-200 bg-white/10 px-1.5 py-0.2 rounded">
+                Salin
+              </span>
             </button>
 
+            <!-- Tombol WhatsApp dengan Salin -->
             <button
+              v-if="profile.wa && profile.wa !== '-'"
               type="button"
-              class="inline-flex items-center gap-2 rounded-xl border border-white/16 bg-white/8 px-3 py-1.5 font-semibold text-[#E7EEFB] transition hover:bg-white/16 active:scale-95"
+              class="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-1 text-xs font-semibold text-white transition-all active:scale-95 cursor-pointer"
+              title="Klik untuk menyalin nomor WhatsApp"
               @click="emit('copy-text', profile.wa)"
             >
-              <AdminV2Icon name="phone" :size="14" />
+              <AdminV2Icon name="phone" :size="13" class="text-emerald-300" />
               <span>{{ profile.wa }}</span>
-              <em class="not-italic text-[10px] font-bold uppercase tracking-wider text-[#9FB9EA]">Salin</em>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-blue-200 bg-white/10 px-1.5 py-0.2 rounded">
+                Salin
+              </span>
             </button>
+            <span
+              v-else
+              class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-200"
+            >
+              <AdminV2Icon name="phone" :size="13" class="text-amber-300" />
+              <span>No. WhatsApp Belum Diisi</span>
+            </span>
           </div>
         </div>
       </div>
 
-      <!-- Sisi Kanan: Circular Completeness Ring & Action Button -->
-      <div class="flex items-center justify-between sm:flex-col sm:items-center sm:justify-center gap-2 shrink-0 border-t border-white/15 pt-3 sm:border-t-0 sm:pt-0 sm:ml-auto">
-        <!-- Radial Circular Ring -->
-        <div class="relative h-[84px] w-[84px]">
+      <!-- Sisi Kanan: Widget Kelengkapan Profil & Aksi Cepat (Rapi & Terstruktur) -->
+      <div class="flex items-center gap-4 bg-white/10 rounded-2xl p-4 shrink-0 justify-between sm:justify-start">
+        <!-- Radial Circular Ring (Tanpa garis putih kasar) -->
+        <div class="relative h-[68px] w-[68px] shrink-0">
           <svg class="h-full w-full -rotate-90" viewBox="0 0 84 84">
             <circle
-              class="stroke-white/18"
+              class="stroke-white/10"
               cx="42"
               cy="42"
               r="34"
@@ -143,80 +192,96 @@ const ringOffset = computed(() => {
             />
           </svg>
           <div class="absolute inset-0 flex items-center justify-center text-center">
-            <b class="text-[17px] font-bold text-white">{{ comp.pct }}%</b>
+            <b class="text-[16px] font-black text-white tabular-nums">{{ comp.pct }}%</b>
           </div>
         </div>
 
-        <span class="text-[10.5px] font-bold uppercase tracking-wider text-[#BCD2F7]">
-          Kelengkapan Profil
-        </span>
+        <div class="space-y-1.5">
+          <span class="block text-[10.5px] font-extrabold uppercase tracking-wider text-blue-200">
+            Kelengkapan Profil
+          </span>
+          <p class="text-[12px] text-white/90 font-medium">
+            {{ comp.pct >= 100 ? 'Profil sudah lengkap' : `${comp.missing.length} data perlu dilengkapi` }}
+          </p>
 
-        <!-- Tombol Edit / Simpan / Batal -->
-        <div class="mt-1">
-          <div v-if="isEditing" class="flex items-center gap-2">
+          <!-- Tombol Aksi: Edit Profil / Simpan / Batal -->
+          <div>
+            <div v-if="isEditing" class="flex items-center gap-1.5">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-[#10B981] hover:bg-[#059669] px-3.5 py-1.5 text-xs font-bold text-white shadow-md transition cursor-pointer"
+                @click="emit('save-edit')"
+              >
+                <AdminV2Icon name="check" :size="13" />
+                <span>Simpan</span>
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center rounded-xl bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer"
+                @click="emit('cancel-edit')"
+              >
+                Batal
+              </button>
+            </div>
+
             <button
+              v-else
               type="button"
-              class="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-white px-4 text-xs font-bold text-[#0B1F3A] shadow-md transition hover:bg-white/90"
-              @click="emit('save-edit')"
+              class="inline-flex items-center gap-2 rounded-xl bg-[#1B5FD9] hover:bg-[#154cb0] px-4 py-1.5 text-xs font-bold text-white shadow-md transition-all active:scale-95 cursor-pointer"
+              @click="emit('start-edit')"
             >
-              <AdminV2Icon name="check" :size="14" />
-              <span>Simpan</span>
-            </button>
-            <button
-              type="button"
-              class="inline-flex min-h-9 items-center rounded-full border border-white/25 bg-white/12 px-4 text-xs font-bold text-white transition hover:bg-white/20"
-              @click="emit('cancel-edit')"
-            >
-              Batal
+              <AdminV2Icon name="pencil" :size="13" />
+              <span>Edit Profil</span>
             </button>
           </div>
-
-          <button
-            v-else
-            type="button"
-            class="inline-flex min-h-9 items-center gap-2 rounded-full bg-white px-4 text-xs font-bold text-[#0B1F3A] shadow-md transition hover:bg-white/90"
-            @click="emit('start-edit')"
-          >
-            <AdminV2Icon name="pencil" :size="14" />
-            <span>Edit Profil</span>
-          </button>
         </div>
       </div>
     </div>
 
-    <!-- Theme Picker Dropdown Row (jika tombol pensil diklik) -->
+    <!-- Theme Picker Dropdown Panel (Tanpa list/border putih) -->
     <div
       v-if="themeOpen"
-      class="mt-4 flex flex-wrap items-center gap-3 border-t border-white/15 pt-3.5 text-xs font-semibold text-[#BCD2F7]"
+      class="relative z-10 mt-4 rounded-xl bg-black/25 p-3.5 text-xs font-semibold text-blue-100 flex flex-wrap items-center gap-3 animate-fade-in"
     >
-      <span>Tema avatar:</span>
+      <span class="font-bold text-white">Pilih Tema Avatar:</span>
       <div class="flex items-center gap-2">
         <button
           v-for="(_, idx) in AVATAR_GRADIENTS"
           :key="'th-' + idx"
           type="button"
-          class="h-6 w-6 rounded-full border-2 bg-gradient-to-br transition-transform hover:scale-110"
+          class="h-6 w-6 rounded-lg bg-gradient-to-br transition-transform hover:scale-110 cursor-pointer"
           :class="[
             AVATAR_GRADIENTS[idx],
-            themeIdx === idx ? 'border-white ring-2 ring-white/50 scale-110' : 'border-transparent'
+            themeIdx === idx ? 'ring-2 ring-[#38BDF8] scale-110 shadow-md' : 'opacity-80 hover:opacity-100'
           ]"
           :aria-label="'Tema avatar ' + (idx + 1)"
           @click="emit('update:themeIdx', idx)"
         />
       </div>
+
       <button
         type="button"
-        class="ml-auto inline-flex items-center gap-1.5 rounded-full border border-dashed border-white/30 bg-white/10 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-white/20"
-        @click="emit('upload-foto')"
+        class="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-md transition-colors cursor-pointer"
+        @click="inputFoto?.click()"
       >
         <AdminV2Icon name="upload" :size="13" />
-        <span>Unggah foto</span>
+        <span>Unggah Foto Profil</span>
       </button>
+      <input
+        ref="inputFoto"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        class="hidden"
+        @change="pilihFoto"
+      >
     </div>
 
-    <!-- Hint Footer Persis Prototype -->
-    <p class="relative mt-3.5 border-t border-white/14 pt-3 text-[11px] font-semibold leading-relaxed text-[#9FB9EA]">
-      Yang dapat diubah: foto, alamat domisili, email &amp; nomor WhatsApp, dan kata sandi. Data induk (NIK, NIP, jabatan) dikunci — hanya diubah Admin TU.
-    </p>
+    <!-- Bottom Guidance Strip (Tanpa horizontal list/border putih) -->
+    <div class="relative z-10 mt-4 rounded-xl bg-black/25 px-4 py-2.5 text-[11.5px] font-medium leading-relaxed text-blue-100 flex items-start gap-2.5">
+      <AdminV2Icon name="info" :size="15" class="text-blue-300 mt-0.5 shrink-0" />
+      <span>
+        <b>Informasi Pembaruan Mandiri:</b> Foto profil, alamat domisili, nomor WhatsApp, NIP, NUPTK, dan kata sandi dapat Anda ubah mandiri. Data pokok kepegawaian (NIK, jabatan resmi, nomor kartu RFID) dikunci demi integritas data dan hanya dapat diperbarui oleh Superadmin.
+      </span>
+    </div>
   </section>
 </template>

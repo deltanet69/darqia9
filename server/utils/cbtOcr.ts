@@ -19,7 +19,9 @@ export const parseOcrExtraction = (content: unknown) => {
 }
 
 export const ocrTextsAgree = (first: string, second: string) => {
+  // Jenis tanda hubung/strip (- – — −) hanya beda cetak, bukan beda isi.
   const normalize = (text: string) => text.normalize('NFC')
+    .replace(/[‐-―−]/g, '-')
     .replace(/\\(?:left|right)|\\[,;!]|\s+/g, '')
     .replace(/([_^])\{([a-zA-Z0-9])\}/g, '$1$2')
     .replace(/\\sqrt\{\(([^()]+)\)\}/g, '\\sqrt{$1}')
@@ -32,6 +34,7 @@ export const ocrTextsAgree = (first: string, second: string) => {
 // identik - kesepakatan persis tetap urusan ocrTextsAgree di atas.
 export const ocrTextsAgreeLoose = (first: string, second: string) => {
   const normalize = (text: string) => text.normalize('NFKC')
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
     .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
     .replace(/\u0640/g, '')
     .replace(/[\u0622\u0623\u0625\u0671]/g, '\u0627')
@@ -50,3 +53,9 @@ export const ocrTextsAgreeLoose = (first: string, second: string) => {
 }
 
 export const ocrFidelityScore = (text: string) => (text.match(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g) || []).length
+
+// Model kadang memecah "x = ..." menjadi "x =" di satu baris lalu blok $$...$$ di baris berikutnya. Itu transkripsi yang sah,
+// tetapi tanda "=" yang menggantung di luar $$ membuat gerbang rumus menganggapnya rumus polos. Sisi kiri semacam itu
+// (nama variabel/fungsi pendek di barisnya sendiri) digabung ke dalam blok rumusnya.
+export const rapikanRumusTerpisah = (text: string) =>
+  text.replace(/^[ \t]*([A-Za-z\\][A-Za-z0-9_{}^\\()', ]{0,23}?)[ \t]*=[ \t]*\r?\n[ \t]*\$\$([\s\S]+?)\$\$/gm, (_, kiri: string, isi: string) => `$$${kiri.trim()} = ${isi.trim()}$$`)

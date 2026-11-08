@@ -4,14 +4,16 @@ import JadwalTimetable from './JadwalTimetable.vue'
 import JadwalFormModal from './JadwalFormModal.vue'
 import JadwalSetelanModal from './JadwalSetelanModal.vue'
 import JadwalGuruView from './JadwalGuruView.vue'
+import JadwalBentrokModal from './JadwalBentrokModal.vue'
 import {
-  HARI_NAMA, bangunSlotJam, cariBentrok, jamBerlangsung,
+  HARI_NAMA, bangunSlotJam, rincianBentrok, jamBerlangsung,
   useJadwalPelajaran,
   type EntriInput, type JadwalEntri, type JadwalSetelan, type SesiHariIni
 } from '~/composables/useJadwalPelajaran'
 
 const props = defineProps<{ jenjang: 'SMP' | 'SMK' }>()
 const store = useJadwalPelajaran()
+const bolehKelola = useRbac().adalahSuperadmin
 
 const mode = ref<'kelas' | 'guru'>('kelas')
 const tahunDipilih = ref('')
@@ -67,15 +69,19 @@ const durasiJPEntri = (j: JadwalEntri): number => {
   return Math.max(1, Math.round(beda / Math.max(20, store.setelanDb.value.durasiJP)))
 }
 
+// Rincian bentrok kelas aktif (satu baris per pasangan jadwal); angka KPI diambil dari sini agar selalu sama dengan popup.
+const daftarBentrok = computed(() => rincianBentrok(store.entriList.value, entriKelas.value))
+const bentrokTerbuka = ref(false)
+const ubahDariBentrok = (entri: JadwalEntri) => {
+  bentrokTerbuka.value = false
+  bukaUbah(entri)
+}
 const kpi = computed(() => {
   const daftar = entriKelas.value
-  const bentrok = daftar.filter(j => {
-    const b = cariBentrok(store.entriList.value, { classId: j.classId, teacherId: j.teacherId, day: j.day, startsAt: j.startsAt, endsAt: j.endsAt, room: j.room }, j.id)
-    return b.guru || b.kelas || b.ruangan
-  }).length
+  const bentrok = daftarBentrok.value.length
   return {
     totalJP: daftar.reduce((a, j) => a + durasiJPEntri(j), 0),
-    guru: new Set(daftar.map(j => j.teacherId)).size,
+    guru: new Set(daftar.map(j => j.teacherId).filter(Boolean)).size,
     mapel: new Set(daftar.map(j => j.subjectId)).size,
     totalMapel: store.mapelList.value.length,
     bentrok
@@ -251,10 +257,18 @@ onUnmounted(() => { if (jamTimer) clearInterval(jamTimer) })
             <div class="text-[12px] text-slate-500">Mapel terjadwal</div>
             <div class="text-[17px] font-semibold text-blue-950 mt-0.5">{{ kpi.mapel }} dari {{ kpi.totalMapel }} mapel</div>
           </div>
-          <div class="bg-white border border-slate-200 rounded-2xl px-4 py-3.5">
+          <component
+            :is="kpi.bentrok ? 'button' : 'div'"
+            :type="kpi.bentrok ? 'button' : undefined"
+            class="bg-white border rounded-2xl px-4 py-3.5 text-left"
+            :class="kpi.bentrok ? 'border-red-200 hover:bg-red-50/40 cursor-pointer' : 'border-slate-200'"
+            :aria-label="kpi.bentrok ? 'Lihat detail bentrok jadwal' : undefined"
+            @click="kpi.bentrok && (bentrokTerbuka = true)"
+          >
             <div class="text-[12px] text-slate-500">Bentrok terdeteksi</div>
             <div class="text-[17px] font-semibold mt-0.5" :class="kpi.bentrok ? 'text-red-500' : 'text-blue-950'">{{ kpi.bentrok ? `${kpi.bentrok} bentrok` : '0 — jadwal bersih' }}</div>
-          </div>
+            <div v-if="kpi.bentrok" class="text-[11.5px] text-red-500/80 mt-0.5">Klik untuk lihat detail</div>
+          </component>
         </div>
 
         <div class="mt-4 bg-white border border-slate-200 rounded-2xl overflow-hidden">
@@ -264,9 +278,9 @@ onUnmounted(() => { if (jamTimer) clearInterval(jamTimer) })
               <div class="text-[12px] text-slate-500">Wali kelas {{ kelasAktif.waliKelas || '—' }} · {{ kelasAktif.jumlahSiswa }} siswa · Tahun Ajaran {{ kelasAktif.academicYear }}</div>
             </div>
             <div class="ml-auto flex items-center gap-2">
-              <span class="text-[11px] text-slate-400 hidden xl:inline">Klik sel kosong untuk menambah · klik jadwal untuk mengubah</span>
-              <button type="button" class="bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-700 text-slate-600 text-[13px] font-medium rounded-lg px-3.5 py-2 transition" @click="setelanTerbuka = true">Atur Jam &amp; Istirahat</button>
-              <button type="button" class="bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium rounded-lg px-3.5 py-2 transition" @click="bukaTambah()">+ Tambah Jadwal</button>
+              <span v-if="bolehKelola" class="text-[11px] text-slate-400 hidden xl:inline">Klik sel kosong untuk menambah · klik jadwal untuk mengubah</span>
+              <button v-if="bolehKelola" type="button" class="bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-700 text-slate-600 text-[13px] font-medium rounded-lg px-3.5 py-2 transition" @click="setelanTerbuka = true">Atur Jam &amp; Istirahat</button>
+              <button v-if="bolehKelola" type="button" class="bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium rounded-lg px-3.5 py-2 transition" @click="bukaTambah()">+ Tambah Jadwal</button>
             </div>
           </div>
 
@@ -287,12 +301,12 @@ onUnmounted(() => { if (jamTimer) clearInterval(jamTimer) })
 
           <JadwalTimetable
             :slots="slots" :daftar="entriKelas" :mapel-map="mapelMap" :guru-map="guruMap" :kelas-map="kelasMap"
-            :sesi-map="sesiTampil" :hari-ini="hariIni" :jam-berjalan-ke="jamBerjalanKe"
+            :sesi-map="sesiTampil" :hari-ini="hariIni" :jam-berjalan-ke="jamBerjalanKe" :readonly="!bolehKelola"
             @tambah="(d, ke) => bukaTambah(d, ke)" @ubah="bukaUbah"
           />
         </div>
 
-        <div v-if="entriDiLuarPola.length" class="mt-4 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+        <div v-if="bolehKelola && entriDiLuarPola.length" class="mt-4 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
           <div class="text-[12.5px] font-semibold text-amber-700">{{ entriDiLuarPola.length }} jadwal tidak mengikuti pola jam saat ini</div>
           <p class="text-[12.5px] text-amber-600 mt-0.5">Jadwal berikut tersimpan dengan pola jam lama sehingga tidak tampil di grid. Klik untuk menyelaraskannya ke pola aktif.</p>
           <div class="mt-2 flex flex-wrap gap-2">
@@ -334,6 +348,11 @@ onUnmounted(() => { if (jamTimer) clearInterval(jamTimer) })
       :kelas-list="kelasTahunIni" :mapel-list="store.mapelList.value" :guru-list="store.guruList.value"
       :slots="slots" :entri-list="store.entriList.value" :tingkat-order="tingkatOrder" :menyimpan="menyimpan"
       @tutup="formTerbuka = false" @simpan="simpanEntri" @hapus="hapusEntri"
+    />
+    <JadwalBentrokModal
+      :open="bentrokTerbuka" :items="daftarBentrok"
+      :kelas-map="kelasMap" :mapel-map="mapelMap" :guru-map="guruMap" :boleh-ubah="bolehKelola"
+      @tutup="bentrokTerbuka = false" @ubah="ubahDariBentrok"
     />
     <JadwalSetelanModal :open="setelanTerbuka" :setelan="store.setelanDb.value" :menyimpan="menyimpan" @tutup="setelanTerbuka = false" @simpan="simpanSetelan" />
 

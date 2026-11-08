@@ -77,7 +77,7 @@ const selList = computed<Sel[]>(() => {
 
 const barisKedua = (j: JadwalEntri): string => {
   if (props.modeGuru) return `${props.kelasMap[j.classId]?.name ?? '—'} · ${j.room || '—'}`
-  return `${props.guruMap[j.teacherId]?.name.split(',')[0] ?? '—'} · ${j.room || '—'}`
+  return `${props.guruMap[j.teacherId]?.name.split(',')[0] ?? 'Belum ada guru'} · ${j.room || '—'}`
 }
 const jamTeks = (j: JadwalEntri): string =>
   `${j.startsAt}–${j.endsAt} · ${j.mulaiKe !== null && j.selesaiKe !== null ? j.selesaiKe - j.mulaiKe + 1 : '?'} JP`

@@ -33,6 +33,10 @@ watch(() => state.value.termuat, selesai => { if (selesai && !aktifId.value) pil
 onMounted(() => { if (state.value.termuat && !aktifId.value) pilihAwal() })
 watch(aktifId, () => { muatDraf(); modeForm.value = null; konfirmasiHapus.value = false })
 
+// Draf yang belum diedit ikut data terbaru dari database (muat awal / admin lain mengubah izin).
+const izinTersimpanJson = () => JSON.stringify((peranAktif.value ? state.value.izin[peranAktif.value.id] : null) || izinKosong())
+watch(izinTersimpanJson, (baru, lama) => { if (JSON.stringify(draf.value) === lama) muatDraf() })
+
 const jumlahDraf = computed(() => hitungIzin(draf.value))
 const kotor = computed(() => peranAktif.value
   ? JSON.stringify(draf.value) !== JSON.stringify(state.value.izin[peranAktif.value.id] || izinKosong())

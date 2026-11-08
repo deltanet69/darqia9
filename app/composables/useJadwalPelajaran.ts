@@ -81,7 +81,7 @@ export const rentangTumpangTindih = (aMulai: string, aSelesai: string, bMulai: s
 // pada hari yang sama dengan rentang waktu tumpang tindih.
 export const cariBentrok = (
   daftar: JadwalEntri[],
-  kandidat: { classId: string; teacherId: string; day: number; startsAt: string; endsAt: string; room: string },
+  kandidat: { classId: string; teacherId: string; subjectId?: string; day: number; startsAt: string; endsAt: string; room: string },
   abaikanId?: string
 ): BentrokHasil => {
   const hasil: BentrokHasil = { guru: null, kelas: null, ruangan: null }
@@ -89,11 +89,33 @@ export const cariBentrok = (
   for (const j of daftar) {
     if (j.id === abaikanId || j.day !== kandidat.day) continue
     if (!rentangTumpangTindih(kandidat.startsAt, kandidat.endsAt, j.startsAt, j.endsAt)) continue
-    if (j.teacherId === kandidat.teacherId && !hasil.guru) hasil.guru = j
+    // Jadwal tanpa guru (belum di-assign) tidak bisa bentrok guru. Kelas gabungan/paralel (guru yang sama, mapel yang sama,
+    // jam persis sama di beberapa kelas, mis. PJOK atau Yanbu'a) bukan bentrok.
+    const gabungan = !!kandidat.subjectId && j.subjectId === kandidat.subjectId
+      && j.startsAt === kandidat.startsAt && j.endsAt === kandidat.endsAt
+    if (kandidat.teacherId && j.teacherId === kandidat.teacherId && !gabungan && !hasil.guru) hasil.guru = j
     if (j.classId === kandidat.classId && !hasil.kelas) hasil.kelas = j
     if (ruang && (j.room || '').trim().toLowerCase() === ruang && j.classId !== kandidat.classId && !hasil.ruangan) hasil.ruangan = j
   }
   return hasil
+}
+
+// Rincian bentrok untuk satu kumpulan entri: tiap pasangan jadwal yang bentrok dicatat SEKALI per jenis
+// (A vs B dan B vs A dianggap sama). Pembanding diambil dari seluruh daftar, jadi bentrok guru/ruangan
+// dengan kelas lain ikut terdeteksi.
+export interface RincianBentrok { kunci: string; jenis: 'kelas' | 'guru' | 'ruangan'; a: JadwalEntri; b: JadwalEntri }
+export const rincianBentrok = (semua: JadwalEntri[], fokus: JadwalEntri[]): RincianBentrok[] => {
+  const hasil = new Map<string, RincianBentrok>()
+  for (const j of fokus) {
+    const b = cariBentrok(semua, { classId: j.classId, teacherId: j.teacherId, subjectId: j.subjectId, day: j.day, startsAt: j.startsAt, endsAt: j.endsAt, room: j.room }, j.id)
+    for (const jenis of ['kelas', 'guru', 'ruangan'] as const) {
+      const lawan = b[jenis]
+      if (!lawan) continue
+      const kunci = `${jenis}|${[j.id, lawan.id].sort().join('|')}`
+      if (!hasil.has(kunci)) hasil.set(kunci, { kunci, jenis, a: j, b: lawan })
+    }
+  }
+  return [...hasil.values()].sort((x, y) => x.a.day - y.a.day || x.a.startsAt.localeCompare(y.a.startsAt))
 }
 
 // Tingkat/angkatan dibaca dari awalan nama kelas resmi ("X TKJ 1", "VII A").
@@ -142,6 +164,11 @@ export interface EntriInput {
 
 export const useJadwalPelajaran = () => {
   const client = useSupabaseClient()
+  const rbac = useRbac()
+  // CRUD jadwal pelajaran khusus Superadmin; peran lain hanya melihat.
+  const wajibSuperadmin = () => {
+    if (!rbac.adalahSuperadmin.value) throw new Error('Hanya Superadmin yang dapat mengubah jadwal pelajaran.')
+  }
   const kelasList = useState<JadwalKelas[]>('jadwal-kelas', () => [])
   const mapelList = useState<JadwalMapel[]>('jadwal-mapel', () => [])
   const guruList = useState<JadwalGuru[]>('jadwal-guru', () => [])
@@ -163,7 +190,7 @@ export const useJadwalPelajaran = () => {
       id: row.id,
       classId: row.class_id,
       subjectId: row.subject_id,
-      teacherId: row.teacher_id,
+      teacherId: row.teacher_id ?? '',
       day: row.day_of_week,
       startsAt: String(row.starts_at).slice(0, 5),
       endsAt: String(row.ends_at).slice(0, 5),
@@ -219,7 +246,7 @@ export const useJadwalPelajaran = () => {
       const [kelasRes, mapelRes, guruRes, setelanRes] = await Promise.all([
         client.from('classes').select('id, name, grade, major, academic_year, teachers(name)').eq('active', true).eq('grade', grade).order('name'),
         client.from('subjects').select('id, name, kkm, hours_per_week').eq('active', true).eq('grade', grade).order('name'),
-        client.from('teachers').select('id, name, grade').eq('active', true).in('grade', [grade, 'Yayasan']).order('name'),
+        client.from('teachers').select('id, name, grade').eq('active', true).order('name'),
         client.from('jadwal_settings').select('config').eq('jenjang', grade).maybeSingle()
       ])
       if (kelasRes.error) throw kelasRes.error
@@ -255,7 +282,12 @@ export const useJadwalPelajaran = () => {
       mapelList.value = (mapelRes.data ?? []).map((row: any) => ({
         id: row.id, name: row.name, kkm: row.kkm, hoursPerWeek: row.hours_per_week, warna: warnaMapel(row.name)
       }))
-      guruList.value = (guruRes.data ?? []).map((row: any) => ({ id: row.id, name: row.name, unit: row.grade }))
+      // Seluruh master guru aktif: guru jenjang lain boleh mengajar di sini (mis. guru SMK mengajar di SMP).
+      // Guru jenjang ini + Yayasan diurutkan lebih dulu.
+      const relevan = (unit: string) => unit === grade || unit === 'Yayasan' ? 0 : 1
+      guruList.value = (guruRes.data ?? [])
+        .map((row: any) => ({ id: row.id, name: row.name, unit: row.grade }))
+        .sort((a: JadwalGuru, b: JadwalGuru) => relevan(a.unit) - relevan(b.unit) || a.name.localeCompare(b.name, 'id'))
 
       await muatJadwal(grade, kelasList.value.map(k => k.id), slots)
       await muatSesiHariIni()
@@ -267,18 +299,19 @@ export const useJadwalPelajaran = () => {
   }
 
   const simpanEntri = async (grade: 'SMP' | 'SMK', input: EntriInput, id?: string) => {
+    wajibSuperadmin()
     const slots = bangunSlotJam(setelanDb.value)
     const waktu = waktuDariJamKe(slots, input.mulaiKe, input.selesaiKe)
     if (!waktu) throw new Error('Rentang jam tidak sesuai pola jam pelajaran.')
     const bentrok = cariBentrok(entriList.value, {
-      classId: input.classId, teacherId: input.teacherId, day: input.day,
+      classId: input.classId, teacherId: input.teacherId, subjectId: input.subjectId, day: input.day,
       startsAt: waktu.startsAt, endsAt: waktu.endsAt, room: input.room
     }, id)
     if (bentrok.guru || bentrok.kelas || bentrok.ruangan) {
       throw new Error('Jadwal bentrok terdeteksi — periksa kembali pilihan guru, kelas, dan ruangan.')
     }
     const payload: Record<string, any> = {
-      class_id: input.classId, subject_id: input.subjectId, teacher_id: input.teacherId,
+      class_id: input.classId, subject_id: input.subjectId, teacher_id: input.teacherId || null,
       day_of_week: input.day, starts_at: waktu.startsAt, ends_at: waktu.endsAt,
       room: input.room || null
     }
@@ -299,12 +332,14 @@ export const useJadwalPelajaran = () => {
   }
 
   const hapusEntri = async (grade: 'SMP' | 'SMK', id: string) => {
+    wajibSuperadmin()
     const { error: err } = await client.from('class_schedules').delete().eq('id', id)
     if (err) throw err
     await muatJadwal(grade, kelasList.value.map(k => k.id), bangunSlotJam(setelanDb.value))
   }
 
   const simpanSetelan = async (grade: 'SMP' | 'SMK', setelan: JadwalSetelan) => {
+    wajibSuperadmin()
     const { error: err } = await client
       .from('jadwal_settings')
       .upsert({ jenjang: grade, config: setelan, updated_at: new Date().toISOString() }, { onConflict: 'jenjang' })

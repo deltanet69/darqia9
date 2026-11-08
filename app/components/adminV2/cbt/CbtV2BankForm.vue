@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtRichQuestionEditor from './CbtRichQuestionEditor.vue'
 import { validateLatexExpressions } from '~/utils/cbtFormula'
@@ -12,6 +12,10 @@ interface Props {
   classOptions: string[]
   subjectOptions: string[]
   subjectFallback?: boolean
+  lockTeacher?: boolean
+  // Pilihan guru penyusun untuk Superadmin (nama dari master guru) dan nama akun sendiri.
+  teacherOptions?: string[]
+  selfName?: string
   saving?: boolean
   initialStep?: 'PG' | 'Isian' | 'Esai' | 'Interaktif'
 }
@@ -102,10 +106,19 @@ const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuesti
   }
 }
 
+// Selama gambar dibaca OCR, pindah/tambah/hapus butir dikunci: hasil OCR ditulis ke butir yang sedang terbuka.
+const ocrBerjalan = ref(false)
+const ringkasSoal = (q: BankQuestionItem) => {
+  const teks = q.text.replace(/\$+/g, '').replace(/[*_#`>]/g, ' ').replace(/\s+/g, ' ').trim()
+  return teks.length > 80 ? teks.slice(0, 80) + '…' : teks
+}
+const kosongDiStep = computed(() => questionsInStep.value.filter(q => !q.text.trim()).length)
+
 const addQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif') => {
   const q = blankQuestion(type)
   draft.value.questions.push(q)
   activeQuestionId.value = q.id
+  void nextTick(() => { if (typeof document !== 'undefined') document.getElementById('butir-soal-aktif')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) })
   emit('toast', `Butir soal ${type} baru ditambahkan.`)
 }
 
@@ -176,7 +189,7 @@ const submitForm = () => {
     emit('toast', 'Pilih kelas dan mata pelajaran yang sesuai dengan jenjang aktif.')
     return
   }
-  if (!draft.value.teacherName?.trim()) {
+  if (!props.lockTeacher && !draft.value.teacherName?.trim()) {
     emit('toast', 'Nama guru penyusun wajib diisi.')
     return
   }
@@ -235,7 +248,7 @@ const submitForm = () => {
           type="button"
           class="min-h-11 px-5 rounded-xl bg-white hover:bg-[#E8F0FE] text-[#0A2A5C] text-sm font-bold transition shadow-sm inline-flex items-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           @click="submitForm"
-          :disabled="saving"
+          :disabled="saving || ocrBerjalan"
         >
           <AdminV2Icon name="check" :size="14" />
           <span>{{ saving ? 'Menyimpan…' : 'Simpan Bank Soal' }}</span>
@@ -303,11 +316,24 @@ const submitForm = () => {
         <div>
           <label class="block text-xs font-bold text-[#344054] mb-1.5">Guru Penyusun</label>
           <input
+            v-if="lockTeacher"
             v-model="draft.teacherName"
             type="text"
-            placeholder="Nama guru penyusun"
+            readonly
+            aria-readonly="true"
+            class="w-full cursor-not-allowed rounded-xl border border-[#E7EBF2] bg-[#F2F4F7] p-2.5 text-xs text-[#101828] outline-none"
+          >
+          <select
+            v-else
+            v-model="draft.teacherName"
             class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
           >
+            <option value="" disabled>Pilih guru penyusun</option>
+            <option v-if="selfName" :value="selfName">Saya sendiri · {{ selfName }}</option>
+            <option v-if="draft.teacherName && draft.teacherName !== selfName && !(teacherOptions || []).includes(draft.teacherName)" :value="draft.teacherName">{{ draft.teacherName }} (nama lama)</option>
+            <option v-for="nama in (teacherOptions || []).filter(item => item !== selfName)" :key="nama" :value="nama">{{ nama }}</option>
+          </select>
+          <p class="mt-1 text-xs text-[#667085]">{{ lockTeacher ? 'Terisi otomatis sesuai akun Anda.' : 'Pilih guru yang meminta bantuan, atau Saya sendiri bila Anda yang menyusun.' }}</p>
         </div>
       </div>
       <nav class="hidden lg:block border-t border-[#E7EBF2] pt-3" aria-label="Jenis soal">
@@ -317,6 +343,7 @@ const submitForm = () => {
           type="button"
           class="min-h-11 w-full rounded-xl px-3 text-left text-xs font-extrabold transition inline-flex items-center justify-between focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
           :class="currentStep === st.id ? 'mb-1 bg-[#E8F0FE] text-[#0A2A5C]' : 'mb-1 text-[#667085] hover:bg-[#F7F9FC]'"
+          :disabled="ocrBerjalan"
           @click="currentStep = st.id"
         >
           <span>{{ st.label }}</span><span class="rounded-md px-1.5 py-0.5 text-[10px]" :class="currentStep === st.id ? 'bg-white text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#667085]'">{{ countByType(st.id) }}</span>
@@ -347,7 +374,8 @@ const submitForm = () => {
             :class="currentStep === st.id
               ? 'bg-white text-[#0A2A5C] shadow-sm border border-[#E7EBF2]'
               : 'text-[#667085] hover:bg-white'"
-            @click="currentStep = st.id"
+            :disabled="ocrBerjalan"
+          @click="currentStep = st.id"
           >
             <span class="sm:hidden">{{ st.shortLabel }}</span>
             <span class="hidden sm:inline">{{ st.label }}</span>
@@ -413,25 +441,33 @@ const submitForm = () => {
 
         <!-- Questions List for Current Step -->
         <div v-else class="space-y-4">
-          <nav
-            v-if="questionsInStep.length > 1"
-            class="flex gap-2 overflow-x-auto pb-1"
-            aria-label="Pilih butir soal"
-          >
-            <button
-              v-for="(item, itemIndex) in questionsInStep"
-              :key="item.id"
-              type="button"
-              class="min-h-11 shrink-0 rounded-xl border px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
-              :class="activeQuestionId === item.id ? 'border-[#1B5FD9] bg-[#E8F0FE] text-[#0A2A5C]' : 'border-[#E7EBF2] bg-white text-[#667085] hover:border-[#B9D1F9]'"
-              @click="activeQuestionId = item.id"
-            >
-              Soal {{ itemIndex + 1 }}
-            </button>
-          </nav>
+          <section v-if="questionsInStep.length" class="rounded-2xl border border-[#E7EBF2] bg-[#F9FAFC] p-2" aria-label="Daftar butir soal">
+            <div class="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
+              <span class="text-[11px] font-extrabold uppercase tracking-wide text-[#667085]">Daftar butir · {{ questionsInStep.length }} soal</span>
+              <span v-if="ocrBerjalan" class="text-[11px] font-bold text-[#1B5FD9]" role="status">Membaca gambar… pindah butir dikunci sampai selesai.</span>
+              <span v-else-if="kosongDiStep" class="text-[11px] font-bold text-[#A15C00]">{{ kosongDiStep }} butir belum terisi</span>
+            </div>
+            <ul class="max-h-52 space-y-1 overflow-y-auto pr-1">
+              <li v-for="(item, itemIndex) in questionsInStep" :key="item.id">
+                <button
+                  type="button"
+                  class="flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-2.5 text-left text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9] disabled:cursor-not-allowed disabled:opacity-60"
+                  :class="activeQuestionId === item.id ? 'border-[#1B5FD9] bg-[#E8F0FE]' : 'border-[#E7EBF2] bg-white hover:border-[#B9D1F9]'"
+                  :disabled="ocrBerjalan"
+                  :aria-current="activeQuestionId === item.id ? 'true' : undefined"
+                  @click="activeQuestionId = item.id"
+                >
+                  <span class="flex h-6 min-w-6 items-center justify-center rounded-md bg-[#EFF2F7] px-1 font-mono text-[11px] font-extrabold text-[#344054]">{{ itemIndex + 1 }}</span>
+                  <span class="min-w-0 flex-1 truncate" :class="item.text.trim() ? 'font-semibold text-[#344054]' : 'italic text-[#98A2B3]'">{{ item.text.trim() ? ringkasSoal(item) : 'Belum diisi' }}</span>
+                  <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold" :class="item.text.trim() ? 'bg-[#E7F8F0] text-[#087C52]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ item.text.trim() ? 'Terisi' : 'Kosong' }}</span>
+                </button>
+              </li>
+            </ul>
+          </section>
 
           <article
             v-for="(q, idx) in activeQuestion ? [activeQuestion] : []"
+            id="butir-soal-aktif"
             :key="q.id"
             class="border border-[#E7EBF2] rounded-2xl overflow-hidden bg-white shadow-xs"
           >
@@ -462,7 +498,8 @@ const submitForm = () => {
                 </button>
                 <button
                   type="button"
-                  class="px-2.5 py-1 rounded-lg border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-bold"
+                  class="px-2.5 py-1 rounded-lg border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="ocrBerjalan"
                   @click="removeQuestion(q.id)"
                 >
                   Hapus
@@ -479,6 +516,7 @@ const submitForm = () => {
                   v-model:image-url="q.imageUrl"
                   v-model:rtl="q.isRtl"
                   @message="emit('toast', $event)"
+                  @busy="ocrBerjalan = $event"
                 />
               </div>
 
@@ -594,7 +632,8 @@ const submitForm = () => {
           <!-- Add question button -->
           <button
             type="button"
-            class="w-full py-3 rounded-2xl border-2 border-dashed border-[#BBD0EC] bg-[#F8FBFF] hover:bg-[#E8F0FE] text-[#1B5FD9] font-extrabold text-xs flex items-center justify-center gap-2 transition"
+            class="w-full min-h-11 py-3 rounded-2xl border-2 border-dashed border-[#BBD0EC] bg-[#F8FBFF] hover:bg-[#E8F0FE] text-[#1B5FD9] font-extrabold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="ocrBerjalan"
             @click="addQuestion(currentStep)"
           >
             <AdminV2Icon name="plus" :size="16" />
@@ -607,7 +646,7 @@ const submitForm = () => {
           <button
             type="button"
             class="min-h-11 px-4 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-[#F3F5F9] disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="currentStep === 'PG'"
+            :disabled="currentStep === 'PG' || ocrBerjalan"
             @click="prevStep"
           >
             Sebelumnya
@@ -620,6 +659,7 @@ const submitForm = () => {
           <button
             type="button"
             class="min-h-11 px-5 rounded-xl bg-[#1B5FD9] hover:bg-[#12459B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
+            :disabled="ocrBerjalan"
             @click="nextStep"
           >
             <span>{{ currentStep === 'Interaktif' || (!draft.hasInteractive && currentStep === 'Esai') ? 'Simpan Seluruh Paket' : 'Lanjut' }}</span>
@@ -643,7 +683,7 @@ const submitForm = () => {
           type="button"
           class="min-h-11 rounded-xl bg-[#1B5FD9] px-4 text-sm font-bold text-white active:bg-[#12459B]"
           @click="submitForm"
-          :disabled="saving"
+          :disabled="saving || ocrBerjalan"
         >
           {{ saving ? 'Menyimpan…' : 'Simpan Bank Soal' }}
         </button>

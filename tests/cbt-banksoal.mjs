@@ -11,6 +11,8 @@ import { routerKey } from 'vue-router'
 const root = fileURLToPath(new URL('../', import.meta.url))
 registerHooks({
   resolve(specifier, context, next) {
+    // Alias Nuxt "#supabase/server" tidak ada di Node biasa: diganti pengganti tes (perilaku lewat globalThis.__authUji).
+    if (specifier === '#supabase/server') return { url: pathToFileURL(path.join(root, 'tests/stub-supabase-server.mjs')).href, shortCircuit: true }
     if (specifier.startsWith('~/')) specifier = pathToFileURL(path.join(root, 'app', specifier.slice(2))).href
     if ((specifier.startsWith('.') || specifier.startsWith('file:')) && !path.extname(specifier)) specifier += '.ts'
     const result = next(specifier, context)
@@ -23,7 +25,7 @@ registerHooks({
       const { descriptor } = parse(fs.readFileSync(filename, 'utf8'), { filename })
       const ssr = url.endsWith('?ssr')
       const compiled = compileScript(descriptor, { id: 'cbt-test', inlineTemplate: ssr, templateOptions: { ssr } })
-      return { format: 'module', shortCircuit: true, source: stripTypeScriptTypes(compiled.content, { mode: 'transform' }) }
+      return { format: 'module', shortCircuit: true, source: stripTypeScriptTypes(compiled.content, { mode: 'strip' }) }
     }
     return next(url, context)
   }
@@ -41,6 +43,15 @@ assert.equal(ocrTextsAgreeLoose('خَلِيفَةً', 'خليفه'), true)
 assert.equal(ocrTextsAgree('بسم الله الرحمن', 'بسم الله الرحيم'), false)
 assert.equal(ocrTextsAgreeLoose('العدد ٥', 'العدد 5'), true)
 assert.equal(ocrTextsAgreeLoose('$$\\dfrac{1}{2}$$', '$$\\frac{1}{2}$$'), true)
+assert.equal(ocrTextsAgreeLoose('Ayat 2–3', 'Ayat 2-3'), true, 'jenis strip tidak membedakan isi')
+assert.equal(ocrTextsAgree('Ayat 2–3', 'Ayat 2-3'), true)
+assert.equal(ocrTextsAgree('Ayat 2-3', 'Ayat 2-4'), false)
+const { rapikanRumusTerpisah } = await import('../server/utils/cbtOcr.ts')
+assert.equal(rapikanRumusTerpisah('x =\n$$\\frac{a}{b}$$'), '$$x = \\frac{a}{b}$$', 'sisi kiri menggantung digabung ke blok rumus')
+assert.equal(rapikanRumusTerpisah('E_k =\n  $$\\frac{1}{2}mv^2$$'), '$$E_k = \\frac{1}{2}mv^2$$')
+assert.equal(rapikanRumusTerpisah('cahaya\n\n$$6\\text{CO}_2$$'), 'cahaya\n\n$$6\\text{CO}_2$$', 'tanpa tanda = tidak diubah')
+assert.equal(rapikanRumusTerpisah('Hasil dari perhitungan berikut adalah sama dengan =\n$$x$$'), 'Hasil dari perhitungan berikut adalah sama dengan =\n$$x$$', 'kalimat panjang bukan sisi kiri rumus')
+assert.equal(rapikanRumusTerpisah('x = 1/2'), 'x = 1/2', 'rumus polos tetap ditangkap gerbang rumus')
 const { readWordBankTemplate } = await import('../app/utils/cbtWordBank.ts')
 globalThis.window = { DecompressionStream, scrollTo() {} }
 for (const grade of ['SMP', 'SMK']) {
@@ -68,9 +79,10 @@ assert.ok(!renderKaTeXHtml('<img src=x onerror=alert(1)>').includes('<img'))
 assert.match(renderKaTeXHtml(formula), /mfrac/)
 assert.match(renderKaTeXHtml(formula), /dir="ltr"/)
 
+globalThis.__authUji = 'staf'
 globalThis.defineEventHandler = handler => handler
 globalThis.getRequestIP = () => 'uji-lokal'
-globalThis.useRuntimeConfig = () => ({ pecutMarketApiKey: 'kunci-uji-tanpa-koneksi' })
+globalThis.useRuntimeConfig = () => ({ ocrUtamaKey: 'kunci-uji-tanpa-koneksi' })
 globalThis.readBody = async event => event.body
 globalThis.createError = value => Object.assign(new Error(value.statusMessage), value)
 const { default: ocr } = await import('../server/api/cbt/ocr.post.ts')
@@ -84,7 +96,8 @@ globalThis.$fetch = async () => {
 providerOutputs = [{ ...payload, text: 'x = 1/2' }, payload, payload]
 assert.equal((await ocr(ocrRequest)).text, formula)
 assert.equal(providerCalls, 3, 'Rumus polos dicoba ulang dan diperiksa dengan pembacaan independen')
-providerOutputs = [{ ...payload, text: formula + '\nx = 1/2' }, { ...payload, text: '$$\\salah{x}$$' }]
+// Urutan jawaban: pembaca utama, pemeriksa (berjalan bersamaan), lalu ulangan pembaca utama.
+providerOutputs = [{ ...payload, text: formula + '\nx = 1/2' }, payload, { ...payload, text: '$$\\salah{x}$$' }]
 await assert.rejects(ocr(ocrRequest), error => error.statusCode === 422)
 providerOutputs = [{ ...payload, text: formula + '\n$$rumus belum ditutup' }, payload, payload]
 assert.equal((await ocr(ocrRequest)).text, formula)
@@ -96,8 +109,74 @@ providerOutputs = [
   { text: 'بِسْمِ ٱللَّهِ', isRtl: true, containsFormula: false, reviewNote: '' }
 ]
 assert.equal((await ocr(ocrRequest)).text, 'بِسْمِ ٱللَّهِ')
-providerOutputs = [{ ...payload, text: '[tidak terbaca]', containsFormula: false }]
+providerOutputs = [{ ...payload, text: '[tidak terbaca]', containsFormula: false }, payload]
 await assert.rejects(ocr(ocrRequest), error => error.statusCode === 422 && error.message.includes('tidak terbaca'))
+
+// Penyedia OCR dapat diganti lewat konfigurasi: URL, kunci, dan model pembaca utama serta pemeriksa dipakai sesuai isinya.
+{
+  const fetchLama = globalThis.$fetch
+  const getIpLama = globalThis.getRequestIP
+  const configLama = globalThis.useRuntimeConfig
+  const panggilan = []
+  globalThis.getRequestIP = () => 'uji-penyedia'
+  globalThis.$fetch = async (url, opsi) => {
+    panggilan.push({ url, model: opsi.body.model, auth: opsi.headers.authorization, json: 'response_format' in opsi.body, detail: opsi.body.messages[0].content[1].image_url.detail })
+    return { choices: [{ message: { content: JSON.stringify(payload) } }] }
+  }
+  globalThis.useRuntimeConfig = () => ({
+    ocrUtamaUrl: 'https://api.z.ai/api/paas/v4/', ocrUtamaKey: 'kunci-glm', ocrUtamaModel: 'glm-4.6v',
+    ocrKeduaUrl: 'https://api.deepseek.com', ocrKeduaKey: 'kunci-deepseek', ocrKeduaModel: 'deepseek-v4-flash-vision-exp', ocrKeduaJson: false
+  })
+  assert.equal((await ocr(ocrRequest)).text, formula)
+  assert.deepEqual(panggilan, [
+    { url: 'https://api.z.ai/api/paas/v4/chat/completions', model: 'glm-4.6v', auth: 'Bearer kunci-glm', json: true, detail: undefined },
+    { url: 'https://api.deepseek.com/chat/completions', model: 'deepseek-v4-flash-vision-exp', auth: 'Bearer kunci-deepseek', json: false, detail: undefined }
+  ])
+  // Pembaca kedua mewarisi URL dan kunci pembaca utama bila tidak diisi sendiri (satu akun, dua model).
+  panggilan.length = 0
+  globalThis.useRuntimeConfig = () => ({ ocrUtamaUrl: 'https://api.z.ai/api/paas/v4', ocrUtamaKey: 'kunci-glm', ocrUtamaModel: 'glm-4.6v', ocrKeduaModel: 'glm-4.6v-flash' })
+  await ocr(ocrRequest)
+  assert.deepEqual(panggilan.map(p => [p.url, p.model, p.auth]), [
+    ['https://api.z.ai/api/paas/v4/chat/completions', 'glm-4.6v', 'Bearer kunci-glm'],
+    ['https://api.z.ai/api/paas/v4/chat/completions', 'glm-4.6v-flash', 'Bearer kunci-glm']
+  ])
+  globalThis.useRuntimeConfig = () => ({})
+  await assert.rejects(ocr(ocrRequest), error => error.statusCode === 503 && error.message.includes('OCR_UTAMA_KEY'))
+  // Stream (SSE): keep-alive dan reasoning_content diabaikan, potongan content yang terbelah di tengah baris dirakit utuh,
+  // dan permintaan ke penyedia memakai stream agar tidak terkena batas 30 detik gateway.
+  {
+    const sse = (...bagian) => new ReadableStream({ start(c) { const e = new TextEncoder(); bagian.forEach(b => c.enqueue(e.encode(b))); c.close() } })
+    const json = JSON.stringify(payload)
+    const tengah = Math.floor(json.length / 2)
+    const baris = teks => 'data: ' + JSON.stringify({ choices: [{ delta: { content: teks } }] }) + '\n\n'
+    const terbelah = baris(json.slice(0, tengah))
+    let opsiStream
+    globalThis.useRuntimeConfig = () => ({ ocrUtamaKey: 'k' })
+    globalThis.$fetch = async (url, opsi) => {
+      opsiStream ||= opsi
+      return sse(': keep-alive\n\n', 'data: {"choices":[{"delta":{"reasoning_content":"berpikir"}}]}\n\n', terbelah.slice(0, 23), terbelah.slice(23), baris(json.slice(tengah)), 'data: [DONE]\n\n')
+    }
+    assert.equal((await ocr(ocrRequest)).text, formula)
+    assert.equal(opsiStream.responseType, 'stream')
+    assert.equal(opsiStream.body.stream, true)
+    globalThis.$fetch = async () => sse('data: {"error":{"message":"gateway"}}\n\n')
+    await assert.rejects(ocr(ocrRequest), error => error.statusCode === 502 && error.message.includes('galat'))
+    globalThis.$fetch = async () => sse(': keep-alive\n\n', 'data: [DONE]\n\n')
+    await assert.rejects(ocr(ocrRequest), error => error.statusCode === 502)
+  }
+  // Wajib login staf: tanpa sesi 401, akun non-staf (mis. siswa) 403, dan penyedia OCR tidak pernah dipanggil.
+  globalThis.useRuntimeConfig = () => ({ ocrUtamaKey: 'kunci-glm' })
+  const sebelumLogin = panggilan.length
+  globalThis.__authUji = 'anonim'
+  await assert.rejects(ocr(ocrRequest), error => error.statusCode === 401)
+  globalThis.__authUji = 'siswa'
+  await assert.rejects(ocr(ocrRequest), error => error.statusCode === 403)
+  globalThis.__authUji = 'staf'
+  assert.equal(panggilan.length, sebelumLogin, 'penyedia OCR tidak dipanggil tanpa login staf')
+  globalThis.$fetch = fetchLama
+  globalThis.getRequestIP = getIpLama
+  globalThis.useRuntimeConfig = configLama
+}
 
 // Data ini hanya berada dalam proses uji, tidak ditulis ke Supabase.
 const ids = ['1', '2', '3'].map(n => `00000000-0000-4000-8000-${n.padStart(12, '0')}`)
@@ -123,6 +202,9 @@ globalThis.useSupabaseClient = () => ({
   async rpc(name, args) { calls.push({ name, args }); return { data: bankId, error: null } }
 })
 
+// Stub auto-import Nuxt untuk hak akses (dipakai useAdminCbtData): pengujian berjalan sebagai Superadmin.
+globalThis.useSupabaseUser = () => ref(null)
+globalThis.useRbac = () => ({ adalahSuperadmin: ref(true), state: ref({ subjekSaya: null, namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji') })
 const { default: Exams } = await import('../app/components/adminV2/cbt/CbtV2Exams.vue')
 const vm = Exams.setup(reactive({ grade: 'SMK', source: 'cbt', exams: [] }), { expose() {}, emit() {} })
 states.get('cbt-master-classes').value = [{ id: classId, name: 'Kelas uji', grade: 'SMK' }]
@@ -229,7 +311,7 @@ let failingTable = ''
 globalThis.useSupabaseClient = () => ({ from(table) {
   const filters = []
   const query = {
-    select: () => query, order: () => query,
+    select: () => query, order: () => query, range: () => query,
     eq: (key, value) => { filters.push(row => row[key] === value); return query },
     in: (key, values) => { filters.push(row => values.includes(row[key])); return query },
     then: resolve => Promise.resolve({ data: (monitoringDb[table] || []).filter(row => filters.every(filter => filter(row))), error: table === failingTable ? { message: 'Koneksi uji gagal' } : null }).then(resolve)
@@ -305,7 +387,7 @@ await renderToString(createSSRApp({ setup() {
 assert.equal(bankVm.storedFormatCount.value, 2)
 monitorData.bankPackages.value = []
 
-const draftStore = new Map([['darqia:cbt-bank-draft:SMK', JSON.stringify({ draft: bank, editing: false })]])
+const draftStore = new Map([['darqia:cbt-bank-draft:SMK:anon', JSON.stringify({ draft: bank, editing: false })]])
 globalThis.window.sessionStorage = { getItem: key => draftStore.get(key) || null, setItem: (key, value) => draftStore.set(key, value), removeItem: key => draftStore.delete(key) }
 let storedDraftVm
 const draftApp = viewModelRenderer.createApp({ setup() {
@@ -314,7 +396,19 @@ const draftApp = viewModelRenderer.createApp({ setup() {
 } })
 draftApp.mount({ children: [] })
 assert.equal(storedDraftVm.hasSavedDraft.value, true)
-assert.equal(storedDraftVm.bankMode.value, 'subjects', 'Draf tersimpan tidak membuka form secara otomatis')
+assert.equal(storedDraftVm.bankMode.value, 'form', 'Muat ulang halaman membuka kembali draf yang belum disimpan')
+assert.equal(storedDraftVm.formDraft.value.id, bank.id)
+// Penyimpanan peramban penuh karena gambar besar: teks tetap tersimpan, hanya gambar yang dilepas.
+const penyimpananAsli = globalThis.window.sessionStorage.setItem
+globalThis.window.sessionStorage.setItem = (key, value) => {
+  if (value.includes('data:image')) throw new Error('QuotaExceededError')
+  return penyimpananAsli(key, value)
+}
+storedDraftVm.updateFormDraft({ ...bank, questions: [{ ...bank.questions[0], text: 'Teks soal yang harus selamat', imageUrl: 'data:image/webp;base64,AAAA' }] })
+const tersimpan = JSON.parse(draftStore.get('darqia:cbt-bank-draft:SMK:anon'))
+assert.equal(tersimpan.draft.questions[0].text, 'Teks soal yang harus selamat')
+assert.equal(tersimpan.draft.questions[0].imageUrl, undefined)
+globalThis.window.sessionStorage.setItem = penyimpananAsli
 let smpDraftVm
 const smpDraftApp = viewModelRenderer.createApp({ setup() {
   smpDraftVm = Bank.setup({ grade: 'SMP', source: 'cbt' }, { expose() {}, emit() {} })
@@ -361,18 +455,47 @@ const { default: EditorSetup } = await import('../app/components/adminV2/cbt/Cbt
 const editorEvents = []
 const editorProps = reactive({ modelValue: '', imageUrl: 'data:image/png;base64,YQ==', rtl: false })
 const editorVm = EditorSetup.setup(editorProps, { expose() {}, emit: (event, value) => editorEvents.push([event, value]) })
+// Gambar OCR dan gambar soal terpisah: OCR hanya mengisi teks (tidak pernah melampirkan gambar), gambar soal tidak memanggil OCR.
+globalThis.FileReader = class {
+  readAsDataURL(file) {
+    file.arrayBuffer().then((buffer) => {
+      this.result = `data:${file.type};base64,${Buffer.from(buffer).toString('base64')}`
+      this.onload?.()
+    })
+  }
+}
+const berkasGambar = () => new File([Uint8Array.of(1, 2, 3)], 'soal.png', { type: 'image/png' })
+const eventBerkas = () => ({ target: { files: [berkasGambar()], value: '' } })
 let finishExtraction
-globalThis.$fetch = () => new Promise(resolve => { finishExtraction = resolve })
-const staleExtraction = editorVm.extractImageText()
-editorProps.imageUrl = 'data:image/png;base64,Yg=='
+let permintaanOcr = []
+globalThis.$fetch = (url, opsi) => { permintaanOcr.push({ url, body: opsi.body }); return new Promise(resolve => { finishExtraction = resolve }) }
+const staleExtraction = editorVm.handleOcrFile(eventBerkas())
+await new Promise(setImmediate)
+assert.equal(editorVm.extracting.value, true)
+assert.equal(permintaanOcr[0].url, '/api/cbt/ocr')
+assert.match(permintaanOcr[0].body.imageDataUrl, /^data:image\/png;base64,/)
+editorProps.modelValue = 'Teks yang diketik guru saat OCR berjalan'
 finishExtraction({ text: 'Hasil gambar sebelumnya', isRtl: false, reviewNote: '' })
 await staleExtraction
 assert.ok(!editorEvents.some(([event]) => event === 'update:modelValue'))
-assert.match(editorVm.extractionNote.value, /sudah berubah/)
+assert.match(editorVm.extractionNote.value, /berubah/)
+assert.equal(editorVm.extracting.value, false)
 globalThis.$fetch = async () => { throw { data: { statusMessage: 'Dua pembacaan belum cocok.' } } }
-await editorVm.extractImageText()
+await editorVm.handleOcrFile(eventBerkas())
 assert.ok(!editorEvents.some(([event]) => event === 'update:modelValue'))
 assert.equal(editorVm.extractionNote.value, 'Dua pembacaan belum cocok.')
+editorProps.modelValue = ''
+globalThis.$fetch = async () => ({ text: 'Isi dari gambar', isRtl: true, containsFormula: false, reviewNote: 'Periksa harakat.' })
+await editorVm.handleOcrFile(eventBerkas())
+assert.deepEqual(editorEvents.filter(([event]) => event === 'update:modelValue').at(-1), ['update:modelValue', 'Isi dari gambar'])
+assert.ok(editorEvents.some(([event, value]) => event === 'update:rtl' && value === true))
+assert.ok(!editorEvents.some(([event]) => event === 'update:imageUrl'), 'OCR tidak melampirkan gambar ke soal')
+assert.equal(editorVm.extractionNote.value, 'Periksa harakat.')
+permintaanOcr = []
+globalThis.$fetch = () => { throw new Error('OCR tidak boleh dipanggil untuk gambar soal') }
+await editorVm.handleImage(eventBerkas())
+assert.match(editorEvents.filter(([event]) => event === 'update:imageUrl').at(-1)[1], /^data:image\/png;base64,/)
+assert.equal(permintaanOcr.length, 0)
 const { default: Student } = await import('../app/components/cbt/CbtExamScreen.vue?ssr')
 const componentStyles = ['CbtRichQuestionEditor.vue', '../../cbt/CbtExamScreen.vue'].map(filename => {
   const file = path.join(root, 'app/components/adminV2/cbt', filename)

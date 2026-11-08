@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useAdminSubjects, type SubjectInput } from '~/composables/useAdminSubjects'
+import { kategoriDariTeks, kategoriSahUntuk } from '~/composables/mapelKategori'
 
 interface Props {
   open: boolean
@@ -44,13 +45,6 @@ watch(() => props.open, (isOpen) => {
   if (isOpen) reset()
 })
 
-const CATEGORIES: Record<string, SubjectInput['category']> = {
-  'umum': 'Umum',
-  'kejuruan': 'Kejuruan',
-  'keagamaan': 'Keagamaan',
-  'muatan lokal': 'Muatan Lokal'
-}
-
 const normalizeHeader = (value: unknown) => String(value ?? '').trim().toLowerCase()
 
 const parseFile = async (file: File) => {
@@ -70,7 +64,8 @@ const parseFile = async (file: File) => {
     const headers = aoa[headerIndex].map(normalizeHeader)
     const colName = headers.findIndex(h => h.includes('nama'))
     const colGrade = headers.findIndex(h => h.includes('jenjang'))
-    const colCategory = headers.findIndex(h => h.includes('kategori'))
+    const colCategory = headers.findIndex(h => h.includes('kategori') && !h.includes('tambahan'))
+    const colExtra = headers.findIndex(h => h.includes('kategori') && h.includes('tambahan'))
     const colKkm = headers.findIndex(h => h.includes('kkm'))
     const colHours = headers.findIndex(h => h.includes('beban') || h.includes('jam'))
     if ([colGrade, colCategory, colKkm, colHours].some(index => index === -1)) {
@@ -94,8 +89,15 @@ const parseFile = async (file: File) => {
       const gradeRaw = (cells[colGrade] ?? '').toUpperCase()
       if (gradeRaw !== 'SMP' && gradeRaw !== 'SMK') { parsed.push(fail(gradeRaw ? `Jenjang "${cells[colGrade]}" tidak dikenal — isi SMP atau SMK` : 'Jenjang kosong')); return }
       const grade = gradeRaw as 'SMP' | 'SMK'
-      const category = CATEGORIES[(cells[colCategory] ?? '').toLowerCase()]
+      const category = kategoriDariTeks(cells[colCategory])
       if (!category) { parsed.push(fail(cells[colCategory] ? `Kategori "${cells[colCategory]}" tidak dikenal` : 'Kategori kosong')); return }
+      if (!kategoriSahUntuk(grade, category)) { parsed.push(fail(`Kategori "${category}" tidak berlaku di ${grade}`)); return }
+      const extraRaw = colExtra === -1 ? '' : (cells[colExtra] ?? '')
+      const extraCategory = extraRaw ? kategoriDariTeks(extraRaw) : null
+      if (extraRaw && !extraCategory) { parsed.push(fail(`Kategori tambahan "${extraRaw}" tidak dikenal`)); return }
+      if (extraCategory && (!kategoriSahUntuk(grade, extraCategory) || extraCategory === category)) {
+        parsed.push(fail(`Kategori tambahan "${extraCategory}" harus berbeda dan berlaku di ${grade}`)); return
+      }
       const kkmRaw = cells[colKkm] ?? ''
       const kkm = Number(kkmRaw.replace(',', '.'))
       if (kkmRaw === '' || Number.isNaN(kkm) || kkm < 0 || kkm > 100) { parsed.push(fail('KKM harus angka 0–100')); return }
@@ -112,7 +114,7 @@ const parseFile = async (file: File) => {
         name,
         status: 'siap',
         reason: '',
-        input: { name, grade, category, kkm: Math.round(kkm), hoursPerWeek: Math.round(hours) }
+        input: { name, grade, category, extraCategory, kkm: Math.round(kkm), hoursPerWeek: Math.round(hours) }
       })
     })
 

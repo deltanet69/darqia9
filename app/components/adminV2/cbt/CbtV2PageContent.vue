@@ -12,6 +12,7 @@ import CbtV2Summary from '~/components/adminV2/cbt/CbtV2Summary.vue'
 import CbtV2Monitoring from '~/components/adminV2/cbt/CbtV2Monitoring.vue'
 import CbtV2Bank from '~/components/adminV2/cbt/CbtV2Bank.vue'
 import CbtV2Exams from '~/components/adminV2/cbt/CbtV2Exams.vue'
+import CbtV2Rooms from '~/components/adminV2/cbt/CbtV2Rooms.vue'
 import CbtV2Results from '~/components/adminV2/cbt/CbtV2Results.vue'
 import CbtV2Management from '~/components/adminV2/cbt/CbtV2Management.vue'
 import CbtV2Drawer from '~/components/adminV2/cbt/CbtV2Drawer.vue'
@@ -76,6 +77,9 @@ const cbtData = useAdminCbtData(assessmentSource.value)
 const grade = ref<GradeType>(initialGrade)
 const activeTab = ref<CbtTabId>(initialActiveTab)
 const bankEntry = ref(0)
+// Nama ruang yang sedang dibuka (null = tampil daftar ruang). Saat ada, sub menu CBT disembunyikan.
+const roomDetail = ref<string | null>(null)
+const inRoomDetail = computed(() => activeTab.value === 'rooms' && !!roomDetail.value)
 const exams = computed(() => cbtData.exams.value)
 const students = ref<StudentScore[]>([...INITIAL_STUDENTS])
 
@@ -94,7 +98,9 @@ const syncRoute = () => router.replace({
   query: {
     ...route.query,
     tab: activeTab.value,
-    jenjang: jenjang.value
+    jenjang: jenjang.value,
+    // Ruang yang terbuka hanya berlaku di tab Ruang Ujian.
+    ruang: activeTab.value === 'rooms' ? route.query.ruang : undefined
   }
 })
 
@@ -336,7 +342,13 @@ const handleDocumentClick = (e: MouseEvent) => {
         :items="[
           { label: 'Portal Admin', to: '/adminV2' },
           { label: 'Aplikasi' },
-          { label: moduleName }
+          ...(inRoomDetail
+            ? [
+              { label: moduleName },
+              { label: 'Ruang Ujian', to: `${route.path}?tab=rooms&jenjang=${jenjang}` },
+              { label: roomDetail || '' }
+            ]
+            : [{ label: moduleName }])
         ]"
         :badge="grade === 'SMP' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'"
         :jenjang="grade === 'SMP' ? 'smp' : 'smk'"
@@ -362,10 +374,12 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- SUBMODULE TABS (1440px) -->
     <CbtV2Tabs
+      v-if="!inRoomDetail"
       :bank-label="moduleDescription"
       :active-tab="activeTab"
       :live-exam-count="liveExamCount"
       :grade="grade"
+      :hide-rooms="isDailyAssessment"
       @update:active-tab="switchTab"
     />
 
@@ -433,6 +447,15 @@ const handleDocumentClick = (e: MouseEvent) => {
         @toast="triggerToast"
       />
 
+      <!-- TAB: RUANG UJIAN (hanya CBT PTS/PAS) -->
+      <CbtV2Rooms
+        v-else-if="activeTab === 'rooms' && !isDailyAssessment"
+        :key="`rooms-${grade}`"
+        :grade="grade"
+        @toast="triggerToast"
+        @detail="roomDetail = $event"
+      />
+
       <!-- TAB 5: STUDENT RESULTS & GRADES TAB -->
       <CbtV2Results
         v-else-if="activeTab === 'results'"
@@ -468,6 +491,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- MOBILE BOTTOM NAVIGATION -->
     <CbtV2MobileNav
+      v-if="!inRoomDetail"
       :active-tab="activeTab"
       :grade="grade"
       :module-name="moduleName"

@@ -1,9 +1,50 @@
-import { parseOcrExtraction, ocrTextsAgree, ocrTextsAgreeLoose } from '../../utils/cbtOcr'
+import { parseOcrExtraction, ocrTextsAgree, ocrTextsAgreeLoose, rapikanRumusTerpisah } from '../../utils/cbtOcr'
 import { validateLatexExpressions } from '../../../app/utils/cbtFormula'
+import { wajibStaf } from '../../utils/wajibStaf'
 
 const requestWindows = new Map<string, { count: number; startedAt: number }>()
 const MAX_IMAGE_BYTES = 700 * 1024
 const MAX_REQUESTS_PER_MINUTE = 12
+
+// Gateway penyedia memotong respons biasa yang lebih dari ~30 detik (HTTP 504), padahal model penalaran yang membaca teks Arab
+// berharakat bisa lebih lama. Karena itu permintaan memakai stream: gateway mengirim keep-alive sehingga koneksi tetap hidup.
+// Isi jawaban dikumpulkan dari potongan delta.content (reasoning_content diabaikan). Berhenti paksa bila lewat batas waktu total.
+const kumpulkanStream = async (stream: any, batasMs = 110_000): Promise<string> => {
+  const reader = stream.getReader()
+  const dekoder = new TextDecoder()
+  let sisa = ''
+  let isi = ''
+  let habisWaktu = false
+  const timer = setTimeout(() => { habisWaktu = true; void reader.cancel().catch(() => {}) }, batasMs)
+  const prosesBaris = (baris: string) => {
+    if (!baris.startsWith('data:')) return
+    const data = baris.slice(5).trim()
+    if (!data || data === '[DONE]') return
+    let potongan: any
+    try { potongan = JSON.parse(data) } catch { return }
+    if (potongan?.error) throw createError({ statusCode: 502, statusMessage: 'Layanan OCR melaporkan galat saat membaca gambar. Coba lagi.' })
+    const delta = potongan?.choices?.[0]?.delta?.content ?? potongan?.choices?.[0]?.message?.content
+    if (typeof delta === 'string') isi += delta
+  }
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      sisa += dekoder.decode(value, { stream: true })
+      let akhir = sisa.indexOf('\n')
+      while (akhir >= 0) {
+        prosesBaris(sisa.slice(0, akhir).replace(/\r$/, ''))
+        sisa = sisa.slice(akhir + 1)
+        akhir = sisa.indexOf('\n')
+      }
+    }
+    prosesBaris(sisa.replace(/\r$/, ''))
+  } finally {
+    clearTimeout(timer)
+  }
+  if (habisWaktu) throw createError({ statusCode: 504, statusMessage: 'Layanan OCR terlalu lama membaca gambar. Coba gambar yang lebih kecil atau potong bagian yang perlu dibaca.' })
+  return isi
+}
 
 const getRequestIp = (event: Parameters<typeof getRequestIP>[0]) => getRequestIP(event, { xForwardedFor: true }) || 'unknown'
 
@@ -31,11 +72,31 @@ const hasValidFormula = (text: string) => {
 
 const hasFormulaHint = (text: string) => /\\(?:frac|sqrt|sum|int)|[=^_√∑∫π]|\d\s*[=\/]\s*\d/.test(text)
 
+// Penyedia OCR dibaca dari konfigurasi server (lihat nuxt.config.ts / .env). Pembaca kedua mewarisi URL dan kunci pembaca utama
+// bila tidak diisi, jadi satu akun dengan dua model berbeda juga cukup.
+const bacaPenyedia = (config: Record<string, any>) => {
+  const utama = {
+    url: String(config.ocrUtamaUrl || 'https://api.pecutmarket.my.id/v1'),
+    key: String(config.ocrUtamaKey || ''),
+    model: String(config.ocrUtamaModel || 'glm-5.3-flash'),
+    json: config.ocrUtamaJson !== false
+  }
+  const kedua = {
+    url: String(config.ocrKeduaUrl || utama.url),
+    key: String(config.ocrKeduaKey || utama.key),
+    model: String(config.ocrKeduaModel || 'deepseek-v4-flash-vision-exp'),
+    json: config.ocrKeduaJson !== false
+  }
+  return { utama, kedua }
+}
+
 export default defineEventHandler(async (event) => {
+  await wajibStaf(event)
   limitRequest(event)
   const config = useRuntimeConfig(event)
-  if (!config.pecutMarketApiKey) {
-    throw createError({ statusCode: 503, statusMessage: 'PECUTMARKET_API_KEY belum tersedia di server.' })
+  const { utama, kedua } = bacaPenyedia(config)
+  if (!utama.key || !kedua.key) {
+    throw createError({ statusCode: 503, statusMessage: 'Kunci OCR (OCR_UTAMA_KEY) belum tersedia di server.' })
   }
 
   const body = await readBody<{ imageDataUrl?: string }>(event)
@@ -63,25 +124,28 @@ export default defineEventHandler(async (event) => {
     'Gunakan nama properti persis tersebut, bukan "transkripsi". Jangan sertakan penjelasan di luar JSON yang diminta.'
   ].join(' ')
 
-  const extract = (instruction: string, model = 'glm-5.3-flash') => $fetch<any>('https://api.pecutmarket.my.id/v1/chat/completions', {
+  const extract = (instruction: string, penyedia = utama) => $fetch<any>(penyedia.url.replace(/\/+$/, '') + '/chat/completions', {
     method: 'POST',
     timeout: 60_000,
+    responseType: 'stream',
     headers: {
-      authorization: 'Bearer ' + config.pecutMarketApiKey,
+      authorization: 'Bearer ' + penyedia.key,
       'content-type': 'application/json'
     },
     body: {
-      model,
+      model: penyedia.model,
       messages: [{
         role: 'user',
         content: [
           { type: 'text', text: instruction },
-          { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + base64, detail: 'high' } }
+          { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + base64 } }
         ]
       }],
-      response_format: { type: 'json_object' },
+      // Sebagian penyedia vision menolak response_format; matikan lewat OCR_*_JSON=false (prompt tetap meminta JSON).
+      ...(penyedia.json ? { response_format: { type: 'json_object' } } : {}),
       temperature: 0,
-      max_tokens: 4_000
+      max_tokens: 4_000,
+      stream: true
     }
   }).catch((error: any) => {
     const statusCode = error?.response?.status || error?.statusCode
@@ -93,17 +157,25 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 502, statusMessage: 'Layanan OCR menolak gambar: ' + providerMessage })
     }
     throw createError({ statusCode: 502, statusMessage: 'Layanan OCR gagal mengekstrak gambar. Coba gunakan gambar yang lebih jelas.' })
-  })
+  }).then(async (hasil: any) => typeof hasil?.getReader === 'function'
+    ? { choices: [{ message: { content: await kumpulkanStream(hasil) } }] }
+    : hasil)
 
   const parseSafely = (response: any) => {
     try {
-      return parseOcrExtraction(response?.choices?.[0]?.message?.content)
+      const hasil = parseOcrExtraction(response?.choices?.[0]?.message?.content)
+      return { ...hasil, text: rapikanRumusTerpisah(hasil.text) }
     } catch {
       throw createError({ statusCode: 502, statusMessage: 'Format hasil OCR tidak valid. Coba ekstrak kembali.' })
     }
   }
 
-  let extracted = parseSafely(await extract(prompt))
+  // Pembaca utama dan pemeriksa dijalankan bersamaan (waktu tunggu = yang terlama, bukan dijumlahkan); keputusan tetap sama.
+  const [pembacaUtama, pembacaKedua] = await Promise.all([
+    extract(prompt).then(parseSafely),
+    extract(prompt, kedua).then(parseSafely)
+  ])
+  let extracted = pembacaUtama
   if ((extracted.containsFormula || hasFormulaHint(extracted.text)) && !hasValidFormula(extracted.text)) {
     extracted = parseSafely(await extract([
       prompt,
@@ -119,7 +191,7 @@ export default defineEventHandler(async (event) => {
   if (/\[tidak terbaca\]/i.test(extracted.text)) {
     throw createError({ statusCode: 422, statusMessage: 'Sebagian isi gambar tidak terbaca dengan pasti. Hasil tidak dimasukkan. Gunakan potongan gambar yang lebih jelas atau tulis melalui editor.' })
   }
-  const independent = parseSafely(await extract(prompt, 'deepseek-v4-flash-vision-exp'))
+  const independent = pembacaKedua
   if (!ocrTextsAgree(extracted.text, independent.text)) {
     // Ajudikasi: pembacaan ketiga memeriksa piksel gambar dengan dua kandidat di tangan
     // dan menulis transkripsi final yang paling setia. Hasilnya hanya diterima bila

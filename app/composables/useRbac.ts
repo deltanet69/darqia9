@@ -113,7 +113,7 @@ export const useRbac = () => {
     if (state.value.termuat) {
       void muatKandidatAkun()
       // Perubahan izin dari admin lain ikut terbaca tanpa muat ulang halaman (maks. 1 menit).
-      if (import.meta.client && Date.now() - state.value.dimuatPada > 60_000) await muatMatriks()
+      if (import.meta.client && Date.now() - state.value.dimuatPada > 60_000) { await muatMatriks(); selarasJenjang() }
       return
     }
     state.value.termuat = true
@@ -145,6 +145,7 @@ export const useRbac = () => {
         } catch { /* kolom user_id belum ada — pakai uid */ }
       }
     } catch { /* belum login */ }
+    selarasJenjang()
   }
 
   // ===== Peran (CRUD) =====
@@ -205,8 +206,10 @@ export const useRbac = () => {
         lihat: !!izinBaru[modul]?.lihat, buat: !!izinBaru[modul]?.buat,
         ubah: !!izinBaru[modul]?.ubah, hapus: !!izinBaru[modul]?.hapus
       }))
-      const { error } = await useSupabaseClient().from('rbac_permissions').upsert(rows, { onConflict: 'peran_id,modul' })
+      const { data, error } = await useSupabaseClient().from('rbac_permissions').upsert(rows, { onConflict: 'peran_id,modul' }).select('modul')
       if (error) return error.message
+      // Penolakan senyap oleh kebijakan database tidak melempar galat; pastikan semua baris benar-benar tersimpan.
+      if ((data?.length ?? 0) !== rows.length) return 'Izin tidak tersimpan penuh (ditolak database). Muat ulang halaman, lalu coba lagi.'
     }
     state.value.izin = { ...state.value.izin, [peranId]: JSON.parse(JSON.stringify(izinBaru)) }
     useLogAktivitas().catat('Hak Akses (RBAC)', 'ubah izin', `Matriks izin diperbarui untuk peran ${peran.nama}`)
@@ -246,10 +249,31 @@ export const useRbac = () => {
   // Penegakan aktif hanya bila pengguna memang sudah ditugaskan sebuah peran.
   const penegakanAktif = computed(() => !!penugasanSaya.value)
 
+  // Superadmin = peran berkunci 'superadmin' atau akun Superadmin Utama (sama dengan gerbang server).
+  const authUser = useSupabaseUser()
+  const adalahSuperadmin = computed(() =>
+    peranSaya.value?.kunci === 'superadmin' || String(authUser.value?.email || '').toLowerCase() === 'betadev94@gmail.com')
+
+  // Nama akun untuk ditampilkan/dicatat: nama guru bila tertaut, selain itu nama di metadata akun; kosong bila hanya ada email.
+  const namaAkun = computed(() => {
+    const nama = state.value.namaSaya || ''
+    if (nama && !nama.includes('@')) return nama
+    const meta: any = authUser.value?.user_metadata
+    return String(meta?.name || meta?.full_name || '').trim()
+  })
+
   const bisaSaya = (modul: string, aksi: AksiRbac): boolean => {
     if (!penegakanAktif.value) return true
     if (!dalamCakupan(penugasanSaya.value, grade.value as JenjangRbac)) return false
     return bisaAkses(peranSaya.value, peranSaya.value ? state.value.izin[peranSaya.value.id] : null, modul, aksi)
+  }
+
+  // Pengguna yang hanya ditugaskan ke satu jenjang tidak boleh berada di jenjang lain:
+  // pengalih jenjang disembunyikan dan jenjang aktif dipaksa ke jenjang yang diizinkan.
+  const bisaGantiJenjang = computed(() => !penegakanAktif.value || (penugasanSaya.value?.jenjang.length ?? 0) > 1)
+  const selarasJenjang = () => {
+    const jenjang = penugasanSaya.value?.jenjang
+    if (jenjang?.length && !jenjang.includes(grade.value as JenjangRbac)) grade.value = jenjang[0]
   }
 
   const bolehJudulMenu = (judul: string): boolean => {
@@ -261,6 +285,6 @@ export const useRbac = () => {
   return {
     state, muat,
     tambahPeran, ubahPeran, hapusPeran, simpanIzin, tugaskan, lepaskan,
-    penugasanSaya, peranSaya, penegakanAktif, bisaSaya, bolehJudulMenu
+    penugasanSaya, peranSaya, penegakanAktif, bisaSaya, bolehJudulMenu, bisaGantiJenjang, adalahSuperadmin, namaAkun
   }
 }

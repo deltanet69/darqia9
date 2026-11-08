@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Sumber data: class_schedules (ditulis modul Jadwal Pelajaran), mapel dari Master Mapel, guru dari data guru.
 const jp = useJadwalPelajaran()
+const bolehKelola = useRbac().adalahSuperadmin
 const grade = computed(() => props.jenjang.toUpperCase() as 'SMP' | 'SMK')
 onMounted(() => { if (props.classId) void jp.load(grade.value) })
 
@@ -40,7 +41,7 @@ const jadwalHari = computed(() => daftar.value
   .filter(e => e.day === hariAktif.value)
   .sort((a, b) => (a.mulaiKe ?? 99) - (b.mulaiKe ?? 99)))
 
-const namaGuru = (id: string) => guruMap.value[id]?.name ?? '—'
+const namaGuru = (id: string) => guruMap.value[id]?.name ?? 'Belum ada guru'
 const jpTeks = (mulai: number | null, selesai: number | null) =>
   mulai === null ? '' : mulai === selesai ? `Jam ${mulai}` : `Jam ${mulai}–${selesai}`
 
@@ -216,7 +217,7 @@ const aksen = computed(() => props.jenjang === 'smp' ? 'bg-[#16A34A] hover:bg-[#
           {{ daftar.length }} sesi per minggu &middot; mapel dari Master Mapel
         </p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div v-if="bolehKelola" class="flex flex-wrap items-center gap-2">
         <button
           type="button"
           class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition cursor-pointer shadow-xs"
@@ -238,7 +239,7 @@ const aksen = computed(() => props.jenjang === 'smp' ? 'bg-[#16A34A] hover:bg-[#
     </div>
 
     <!-- Panel impor -->
-    <div v-if="importTerbuka" class="rounded-2xl border border-[#E7EBF2] bg-[#F8FAFC] p-3.5 space-y-3">
+    <div v-if="bolehKelola && importTerbuka" class="rounded-2xl border border-[#E7EBF2] bg-[#F8FAFC] p-3.5 space-y-3">
       <p class="text-xs text-[#475467] leading-relaxed">
         Kolom: <b>Hari, Jam Ke, Mapel, Guru, Ruang</b> (Ruang boleh kosong). Jam Ke boleh rentang, misalnya <b>1-2</b>.
         Mapel dan guru harus sama dengan Master Mapel dan data guru. Baris yang tidak cocok atau bentrok ditolak.
@@ -268,7 +269,7 @@ const aksen = computed(() => props.jenjang === 'smp' ? 'bg-[#16A34A] hover:bg-[#
     <p v-if="jp.loading.value && !daftar.length" class="text-xs font-semibold text-[#667085]" role="status">Memuat jadwal…</p>
     <p v-else-if="jp.error.value" class="rounded-xl border border-[#F5C6C0] bg-[#FFF8F7] px-3.5 py-2.5 text-xs font-semibold text-[#B42318]" role="alert">{{ jp.error.value }}</p>
     <p v-else-if="!daftar.length" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFC] px-3.5 py-2.5 text-xs font-semibold text-[#667085]" role="status">
-      Belum ada jadwal pelajaran untuk rombel ini. Klik Tambah Jadwal atau impor lewat CSV.
+      Belum ada jadwal pelajaran untuk rombel ini.<template v-if="bolehKelola"> Klik Tambah Jadwal atau impor lewat CSV.</template>
     </p>
 
     <template v-if="daftar.length">
@@ -283,6 +284,7 @@ const aksen = computed(() => props.jenjang === 'smp' ? 'bg-[#16A34A] hover:bg-[#
           :sesi-map="jp.sesiMap.value"
           :hari-ini="hariIni"
           :jam-berjalan-ke="jamBerjalanKe"
+          :readonly="!bolehKelola"
           @tambah="bukaTambah"
           @ubah="bukaUbah"
         />
@@ -321,7 +323,7 @@ const aksen = computed(() => props.jenjang === 'smp' ? 'bg-[#16A34A] hover:bg-[#
               {{ namaGuru(e.teacherId) }}<template v-if="e.room"> &middot; {{ e.room }}</template>
             </p>
             <p v-if="e.notes" class="mt-0.5 text-[11px] text-[#98A2B3] break-words">{{ e.notes }}</p>
-            <div class="mt-2.5 flex items-center gap-2">
+            <div v-if="bolehKelola" class="mt-2.5 flex items-center gap-2">
               <button type="button" class="flex-1 px-2.5 py-2 rounded-xl text-xs font-bold bg-[#EFF4FF] hover:bg-[#D1E0FF] text-[#1B5FD9] transition cursor-pointer" @click="bukaUbah(e)">Ubah</button>
               <button type="button" class="px-3 py-2 rounded-xl text-xs font-bold text-[#D92D20] hover:bg-[#FEF3F2] transition cursor-pointer" @click="hapusEntri(e.id)">Hapus</button>
             </div>

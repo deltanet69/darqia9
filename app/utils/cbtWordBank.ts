@@ -18,12 +18,37 @@ export interface WordBankPreview {
 
 const clean = (value = '') => value.trim()
 const keyOf = (value = '') => value.toUpperCase().replace(/[^A-Z0-9]/g, '')
-const decodeXml = (value: string) => value.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+// &amp; didekode TERAKHIR: "&amp;lt;" di XML adalah teks "&lt;" (bukan "<"). Entitas numerik (&#8217; / &#x2019;) ikut didekode.
+export const decodeXml = (value: string) => value
+  .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+  .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
 
-const fields = (lines: string[]) => Object.fromEntries(lines.map(line => {
-  const separator = line.indexOf(':')
-  return separator < 0 ? ['', ''] : [keyOf(line.slice(0, separator)), clean(line.slice(separator + 1))]
-}).filter(([key]) => key)) as Record<string, string>
+// Nama kolom yang dikenal template. Pada kolom bernarasi (PERTANYAAN, RUBRIK, PILIHAN_x), baris yang tidak diawali
+// nama kolom adalah LANJUTAN isinya (pertanyaan beberapa paragraf, kode program, dst.) dan digabung dengan baris baru,
+// bukan dibuang. Kolom satu baris (TIPE, KUNCI, dst.) tidak pernah menyerap baris lain. Penanda "---" memutus lanjutan,
+// dan banner "BLOK SOAL ..." tidak dibaca.
+const KOLOM_NARASI = new Set(['PERTANYAAN', 'RUBRIK', 'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE'])
+const KOLOM_DIKENAL = new Set([
+  'JENJANG', 'KELAS', 'MATAPELAJARAN', 'PENYUSUN', 'KESULITANPAKET', 'NO', 'TIPE', 'KESULITAN', 'PERTANYAAN',
+  'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE', 'KUNCI', 'MODEPG', 'RUBRIK', 'MEDIA', 'LINKMEDIA', 'JENISJAWABAN'
+])
+export const fields = (lines: string[]) => {
+  const hasil: Record<string, string> = {}
+  let terakhir = ''
+  for (const line of lines) {
+    if (/^---/.test(line)) { terakhir = ''; continue }
+    const separator = line.indexOf(':')
+    const key = separator < 0 ? '' : keyOf(line.slice(0, separator))
+    if (key && KOLOM_DIKENAL.has(key)) {
+      terakhir = key
+      hasil[key] = clean(line.slice(separator + 1))
+    } else if (terakhir && KOLOM_NARASI.has(terakhir) && !/^BLOK SOAL\b/i.test(line)) {
+      hasil[terakhir] = clean(`${hasil[terakhir]}\n${line}`)
+    }
+  }
+  return hasil
+}
 
 const documentXml = async (file: File) => {
   const bytes = new Uint8Array(await file.arrayBuffer())
@@ -60,8 +85,11 @@ const documentXml = async (file: File) => {
   throw new Error('Bagian soal tidak ditemukan dalam dokumen Word.')
 }
 
-const linesFromXml = (xml: string) => Array.from(xml.matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g))
-  .map(block => Array.from(block[1].matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)).map(text => decodeXml(text[1])).join('').trim())
+// Satu paragraf = satu baris. Pindah baris di dalam paragraf (Shift+Enter) dan tab dipertahankan, bukan menyatukan kata.
+export const linesFromXml = (xml: string) => Array.from(xml.matchAll(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g))
+  .map(block => Array.from(block[1].matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:br\s*\/?>|<w:tab\s*\/?>/g))
+    .map(token => token[0].startsWith('<w:br') ? '\n' : token[0].startsWith('<w:tab') ? ' ' : decodeXml(token[1] ?? ''))
+    .join('').trim())
   .filter(Boolean)
 
 const toType = (value: string): ImportType | null => {
@@ -102,7 +130,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
   let block: string[] = []
   for (const line of lines.slice(start)) {
     if (/^NO\s*:/i.test(line) && block.length) { blocks.push(block); block = [] }
-    if (!/^---/.test(line)) block.push(line)
+    block.push(line) // penanda "---" ikut agar fields() memutus lanjutan kolom narasi
   }
   if (block.length) blocks.push(block)
   const options = grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']

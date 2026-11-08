@@ -58,7 +58,9 @@ const muatSesi = async () => {
   sesiBulan.value = data ?? []
 }
 
-const barisRekap = computed(() => store.guruList.value.map(g => {
+const barisRekap = computed(() => store.guruList.value
+  .filter(g => g.unit === grade.value || g.unit === 'Yayasan' || store.entriList.value.some(j => j.teacherId === g.id))
+  .map(g => {
   const entriGuru = store.entriList.value.filter(j => j.teacherId === g.id)
   const { awal, sampaiTampil, sampaiKemarin } = rentangBulan.value
   const terjadwal = entriGuru.reduce((a, j) => a + hitungKejadian(j.day, awal, sampaiTampil), 0)

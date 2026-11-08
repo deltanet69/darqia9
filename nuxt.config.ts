@@ -41,7 +41,16 @@ export default defineNuxtConfig({
     // Kredensial server-only (tidak bocor ke browser)
     instagramAppSecret: process.env.INSTAGRAM_APP_SECRET || '',
     instagramAccessToken: process.env.INSTAGRAM_ACCESS_TOKEN || '',
-    pecutMarketApiKey: process.env.PECUTMARKET_API_KEY || '',
+    // OCR bank soal: dua pembaca independen (utama + pemeriksa), keduanya API kompatibel OpenAI (/chat/completions).
+    // Pemeriksa memakai URL/kunci yang sama dengan utama bila tidak diisi sendiri (mis. dua model GLM dari satu akun).
+    ocrUtamaUrl: process.env.OCR_UTAMA_URL || 'https://api.pecutmarket.my.id/v1',
+    ocrUtamaKey: process.env.OCR_UTAMA_KEY || process.env.PECUTMARKET_API_KEY || '',
+    ocrUtamaModel: process.env.OCR_UTAMA_MODEL || 'glm-5.3-flash',
+    ocrUtamaJson: process.env.OCR_UTAMA_JSON !== 'false',
+    ocrKeduaUrl: process.env.OCR_KEDUA_URL || '',
+    ocrKeduaKey: process.env.OCR_KEDUA_KEY || '',
+    ocrKeduaModel: process.env.OCR_KEDUA_MODEL || 'deepseek-v4-flash-vision-exp',
+    ocrKeduaJson: process.env.OCR_KEDUA_JSON !== 'false',
     public: {
       // Kredensial public (bisa diakses di client jika dibutuhkan)
       instagramAppId: process.env.NUXT_PUBLIC_INSTAGRAM_APP_ID || '',

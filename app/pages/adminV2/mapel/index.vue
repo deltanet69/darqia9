@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -12,8 +12,11 @@ import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import MapelV2Modal, { type SubjectItem, type SubjectSaveData } from '~/components/adminV2/mapel/MapelV2Modal.vue'
 import MapelV2DeleteModal from '~/components/adminV2/mapel/MapelV2DeleteModal.vue'
 import MapelV2ImportModal from '~/components/adminV2/mapel/MapelV2ImportModal.vue'
+import MapelV2PengajarModal from '~/components/adminV2/mapel/MapelV2PengajarModal.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminSubjects, type AdminSubject } from '~/composables/useAdminSubjects'
+import { KATEGORI_PER_JENJANG, warnaKategori } from '~/composables/mapelKategori'
+import { daftarHalaman, jepitHalaman, jumlahHalaman, potongHalaman } from '~/composables/paginasiCore'
 
 definePageMeta({
   layout: false
@@ -60,13 +63,15 @@ const triggerToast = (msg: string) => {
 
 const searchQuery = ref('')
 const selectedCategory = ref('all')
+const opsiKategori = computed(() => KATEGORI_PER_JENJANG[grade.value as 'SMP' | 'SMK'] ?? [])
+watch(grade, () => { selectedCategory.value = 'all' })
 const isModalOpen = ref(false)
 const isImportOpen = ref(false)
 
 const filteredSubjects = computed(() => {
   return subjectsStore.subjects.value.filter(s => {
     if (s.grade !== grade.value) return false
-    if (selectedCategory.value !== 'all' && s.category !== selectedCategory.value) return false
+    if (selectedCategory.value !== 'all' && s.category !== selectedCategory.value && s.extraCategory !== selectedCategory.value) return false
     if (searchQuery.value) {
       const q = searchQuery.value.toLowerCase()
       return s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q) || s.teachers.some(t => t.toLowerCase().includes(q))
@@ -74,6 +79,23 @@ const filteredSubjects = computed(() => {
     return true
   })
 })
+
+// Paginasi: halaman kembali ke 1 saat pencarian, kategori, jenjang, atau ukuran halaman berubah.
+const UKURAN_OPSI = [10, 20, 50]
+const ukuranHalaman = ref(20)
+const halaman = ref(1)
+const totalHalaman = computed(() => jumlahHalaman(filteredSubjects.value.length, ukuranHalaman.value))
+const halamanAktif = computed(() => jepitHalaman(halaman.value, filteredSubjects.value.length, ukuranHalaman.value))
+const pagedSubjects = computed(() => potongHalaman(filteredSubjects.value, halamanAktif.value, ukuranHalaman.value))
+const nomorHalaman = computed(() => daftarHalaman(halamanAktif.value, totalHalaman.value))
+const rentangTampil = computed(() => {
+  const total = filteredSubjects.value.length
+  if (!total) return '0 dari 0'
+  const dari = (halamanAktif.value - 1) * ukuranHalaman.value + 1
+  return `${dari}\u2013${Math.min(total, dari + ukuranHalaman.value - 1)} dari ${total}`
+})
+watch([searchQuery, selectedCategory, grade, ukuranHalaman], () => { halaman.value = 1 })
+const pengajarTarget = ref<AdminSubject | null>(null)
 
 const totalHours = computed(() => {
   return filteredSubjects.value.reduce((acc, curr) => acc + curr.hoursPerWeek, 0)
@@ -101,17 +123,22 @@ const exportExcel = async () => {
     'Nama Mata Pelajaran': s.name,
     'Jenjang': s.grade,
     'Kategori': s.category,
+    'Kategori Tambahan': s.extraCategory ?? '',
     'KKM': s.kkm,
     'Beban Jam/Minggu': s.hoursPerWeek,
     'Pengajar (dari Jadwal)': s.teachers.length ? s.teachers.join('; ') : 'Belum ada jadwal',
     'Kelas Terjadwal': s.scheduledClasses,
     'Status': s.status
   }))
-  const worksheet = XLSX.utils.json_to_sheet(rows)
+  // header diberikan eksplisit: tanpa ini, data kosong menghasilkan sheet tanpa judul kolom (file tampak kosong).
+  const worksheet = XLSX.utils.json_to_sheet(rows, { header: ['Kode', 'Nama Mata Pelajaran', 'Jenjang', 'Kategori', 'Kategori Tambahan', 'KKM', 'Beban Jam/Minggu', 'Pengajar (dari Jadwal)', 'Kelas Terjadwal', 'Status'] })
+  worksheet['!cols'] = [{ wch: 12 }, { wch: 46 }, { wch: 9 }, { wch: 28 }, { wch: 26 }, { wch: 7 }, { wch: 17 }, { wch: 34 }, { wch: 15 }, { wch: 10 }]
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, `Mapel ${grade.value}`)
   XLSX.writeFile(workbook, `master-mapel-${grade.value.toLowerCase()}-${Date.now()}.xlsx`)
-  triggerToast(`Master mapel ${grade.value} berhasil diekspor ke Excel.`)
+  triggerToast(rows.length
+    ? `Master mapel ${grade.value} (${rows.length} mapel) berhasil diekspor ke Excel.`
+    : `Belum ada mapel ${grade.value} yang cocok. File berisi judul kolom saja; untuk mengisi, gunakan Impor Excel dengan template.`)
 }
 
 const handleImported = (count: number) => {
@@ -120,12 +147,13 @@ const handleImported = (count: number) => {
 
 // Export CSV (1:1 Versi Asli)
 const exportCsv = () => {
-  const headers = ['No', 'Kode Mapel', 'Nama Mata Pelajaran', 'Kategori', 'KKM', 'Beban Jam/Minggu', 'Pengajar (dari Jadwal)', 'Kelas Terjadwal', 'Jenjang', 'Status']
+  const headers = ['No', 'Kode Mapel', 'Nama Mata Pelajaran', 'Kategori', 'Kategori Tambahan', 'KKM', 'Beban Jam/Minggu', 'Pengajar (dari Jadwal)', 'Kelas Terjadwal', 'Jenjang', 'Status']
   const rows = filteredSubjects.value.map((s, i) => [
     i + 1,
     `"${s.code}"`,
     `"${s.name}"`,
     `"${s.category}"`,
+    `"${s.extraCategory ?? ''}"`,
     s.kkm,
     s.hoursPerWeek,
     `"${s.teachers.length ? s.teachers.join('; ') : 'Belum ada jadwal'}"`,
@@ -165,6 +193,7 @@ const handleSaveSubject = async (data: SubjectSaveData) => {
         name: data.name,
         grade: data.grade,
         category: data.category,
+        extraCategory: data.extraCategory,
         kkm: data.kkm,
         hoursPerWeek: data.hoursPerWeek
       })
@@ -174,6 +203,7 @@ const handleSaveSubject = async (data: SubjectSaveData) => {
         name: data.name,
         grade: data.grade,
         category: data.category,
+        extraCategory: data.extraCategory,
         kkm: data.kkm,
         hoursPerWeek: data.hoursPerWeek
       })
@@ -218,7 +248,7 @@ const existingCodes = computed(() => subjectsStore.subjects.value.map(s => s.cod
 const editingItem = computed<SubjectItem | null>(() => {
   const s = editingSubject.value
   if (!s) return null
-  return { id: s.id, code: s.code, name: s.name, category: s.category, kkm: s.kkm, hoursPerWeek: s.hoursPerWeek, grade: s.grade, status: s.status }
+  return { id: s.id, code: s.code, name: s.name, category: s.category, extraCategory: s.extraCategory, kkm: s.kkm, hoursPerWeek: s.hoursPerWeek, grade: s.grade, status: s.status }
 })
 
 onMounted(() => subjectsStore.load())
@@ -406,10 +436,7 @@ const handleSelectModule = (title: string) => {
           class="w-full sm:w-56 px-3.5 py-2.5 text-xs bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl outline-none focus:bg-white focus:border-[#1B5FD9] font-bold text-[#344054] cursor-pointer"
         >
           <option value="all">Semua Kategori</option>
-          <option value="Umum">Umum (Wajib)</option>
-          <option value="Kejuruan">Kejuruan (Khusus SMK)</option>
-          <option value="Keagamaan">Keagamaan / Al-Qur'an</option>
-          <option value="Muatan Lokal">Muatan Lokal</option>
+          <option v-for="k in opsiKategori" :key="k" :value="k">{{ k }}</option>
         </select>
       </div>
 
@@ -431,32 +458,37 @@ const handleSelectModule = (title: string) => {
             </thead>
             <tbody class="divide-y divide-[#F1F5F9] font-medium text-[#344054]">
               <tr
-                v-for="s in filteredSubjects"
+                v-for="s in pagedSubjects"
                 :key="s.id"
                 class="hover:bg-[#F8FAFC] transition-colors" :class="{ 'opacity-55': s.status === 'Nonaktif' }"
               >
                 <td class="py-3.5 px-4 font-mono font-bold text-[#1B5FD9]">{{ s.code }}</td>
                 <td class="py-3.5 px-4 font-extrabold text-[#101828] text-[13px]">{{ s.name }}</td>
                 <td class="py-3.5 px-4">
-                  <span
-                    class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border"
-                    :class="{
-                      'bg-[#EFF4FF] text-[#1B5FD9] border-[#B2CCFF]': s.category === 'Umum',
-                      'bg-[#F4F3FF] text-[#5925DC] border-[#D9D6FE]': s.category === 'Kejuruan',
-                      'bg-[#E7F6ED] text-[#166534] border-[#A6E9C5]': s.category === 'Keagamaan',
-                      'bg-[#FEF6EE] text-[#B93815] border-[#F9DBAF]': s.category === 'Muatan Lokal'
-                    }"
-                  >
-                    {{ s.category }}
-                  </span>
+                  <div class="flex flex-wrap gap-1">
+                    <span
+                      v-for="k in [s.category, s.extraCategory].filter(Boolean) as string[]"
+                      :key="k"
+                      class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border"
+                      :class="warnaKategori(k)"
+                    >
+                      {{ k }}
+                    </span>
+                  </div>
                 </td>
                 <td class="py-3.5 px-4 text-center font-mono font-bold text-[#101828]">{{ s.kkm }}</td>
                 <td class="py-3.5 px-4 text-center font-mono text-[#667085]">{{ s.hoursPerWeek }} Jam / mg</td>
                 <td class="py-3.5 px-4">
-                  <template v-if="s.teachers.length">
-                    <span class="block font-bold text-[#344054]">{{ s.teachers.join(' &middot; ') }}</span>
-                    <span class="block text-[11px] text-[#98A2B3] font-semibold mt-0.5">{{ s.teachers.length }} guru &middot; {{ s.scheduledClasses }} kelas terjadwal</span>
-                  </template>
+                  <button
+                    v-if="s.scheduledClasses"
+                    type="button"
+                    class="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-1 text-left text-[12px] font-bold text-[#1B5FD9] hover:underline cursor-pointer"
+                    :aria-label="`Lihat pengajar dan kelas ${s.name}`"
+                    @click="pengajarTarget = s"
+                  >
+                    {{ s.teachers.length }} guru &middot; {{ s.scheduledClasses }} kelas terjadwal
+                    <AdminV2Icon name="arrow-right" :size="12" />
+                  </button>
                   <template v-else>
                     <span class="block font-bold text-[#B54708]">Belum ada jadwal</span>
                     <span class="block text-[11px] text-[#98A2B3] font-semibold mt-0.5">Atur di Jadwal Pelajaran</span>
@@ -487,8 +519,41 @@ const handleSelectModule = (title: string) => {
             </tbody>
           </table>
         </div>
+
+        <!-- Paginasi -->
+        <div v-if="filteredSubjects.length" class="flex flex-col gap-3 border-t border-[#F2F4F7] bg-[#FAFBFC] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#475467]">
+            <span>Menampilkan <b class="text-[#101828]">{{ rentangTampil }}</b> mapel</span>
+            <label class="inline-flex items-center gap-1.5 font-semibold">
+              Per halaman
+              <select v-model.number="ukuranHalaman" class="min-h-9 rounded-lg border border-[#E7EBF2] bg-white px-2 text-xs font-bold text-[#101828] cursor-pointer">
+                <option v-for="n in UKURAN_OPSI" :key="n" :value="n">{{ n }}</option>
+              </select>
+            </label>
+          </div>
+          <nav v-if="totalHalaman > 1" class="flex items-center justify-center gap-1.5" aria-label="Halaman daftar mapel">
+            <button type="button" class="h-9 min-w-9 rounded-xl border border-[#E7EBF2] bg-white px-2.5 text-xs font-extrabold text-[#101828] transition hover:bg-[#EFF2F7] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer" :disabled="halamanAktif <= 1" aria-label="Halaman sebelumnya" @click="halaman = halamanAktif - 1">&lsaquo;</button>
+            <span class="px-2 text-xs font-semibold text-[#475467] sm:hidden">Halaman <b class="text-[#101828]">{{ halamanAktif }}</b> / {{ totalHalaman }}</span>
+            <template v-for="(n, i) in nomorHalaman" :key="`${n}-${i}`">
+              <span v-if="n === '…'" class="hidden px-1 text-xs text-[#98A2B3] sm:inline">…</span>
+              <button
+                v-else
+                type="button"
+                class="hidden h-9 min-w-9 rounded-xl border px-2.5 text-xs font-extrabold transition sm:inline-block cursor-pointer"
+                :class="n === halamanAktif ? 'border-[#1B5FD9] bg-[#1B5FD9] text-white' : 'border-[#E7EBF2] bg-white text-[#101828] hover:bg-[#EFF2F7]'"
+                :aria-current="n === halamanAktif ? 'page' : undefined"
+                :aria-label="`Halaman ${n}`"
+                @click="halaman = n"
+              >{{ n }}</button>
+            </template>
+            <button type="button" class="h-9 min-w-9 rounded-xl border border-[#E7EBF2] bg-white px-2.5 text-xs font-extrabold text-[#101828] transition hover:bg-[#EFF2F7] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer" :disabled="halamanAktif >= totalHalaman" aria-label="Halaman berikutnya" @click="halaman = halamanAktif + 1">&rsaquo;</button>
+          </nav>
+        </div>
       </div>
     </main>
+
+    <!-- DETAIL PENGAJAR & KELAS -->
+    <MapelV2PengajarModal :subject="pengajarTarget" @close="pengajarTarget = null" />
 
     <!-- MODAL TAMBAH / UBAH MAPEL -->
     <MapelV2Modal

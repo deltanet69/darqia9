@@ -53,8 +53,7 @@ export const gerbangAdminUsers = async (event: any, aksi: string) => {
         .select('peran_id')
         .in('peran_id', peranIds)
         .eq('modul', MODUL_MANAJEMEN_USER)
-        .eq('aksi', aksi)
-        .eq('diizinkan', true)
+        .eq(aksi, true)
       if (izin?.length) return konteks
     }
   } catch { /* tabel RBAC belum tersedia — gerbang lama tetap berlaku */ }

@@ -1,6 +1,7 @@
 ﻿<script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import AdminV2Icon from './AdminV2Icon.vue'
+import { useRbac } from '~/composables/useRbac'
 
 interface GroupItem {
   id: string
@@ -34,9 +35,13 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const rbac = useRbac()
+onMounted(() => rbac.muat())
 
+// Grup tanpa satu pun modul yang diizinkan peran pengguna disembunyikan.
 const visibleGroups = computed(() => {
-  return props.groups.filter(g => !(props.role === 'guru' && g.id === 'keuangan'))
+  return props.groups.filter(g => !(props.role === 'guru' && g.id === 'keuangan')
+    && (g.id === 'dashboard' || g.items.some(([title]) => rbac.bolehJudulMenu(title))))
 })
 
 const detectedActiveGroupId = computed(() => {
@@ -187,7 +192,7 @@ const isItemActive = (groupId: string) => {
         </button>
 
         <!-- Jenjang Switcher -->
-        <div class="flex bg-[#EFF2F7] border border-[#E7EBF2] rounded-full p-0.5 sm:p-1 gap-0.5" role="group" aria-label="Pilih jenjang">
+        <div v-if="rbac.bisaGantiJenjang.value" class="flex bg-[#EFF2F7] border border-[#E7EBF2] rounded-full p-0.5 sm:p-1 gap-0.5" role="group" aria-label="Pilih jenjang">
           <button
             type="button"
             class="text-[11px] sm:text-[11.5px] font-bold py-1 sm:py-1.5 px-2.5 sm:px-3 rounded-full transition whitespace-nowrap cursor-pointer"

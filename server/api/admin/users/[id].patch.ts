@@ -1,5 +1,6 @@
 import { gerbangAdminUsers, PRIMARY_SUPERADMIN_EMAIL } from '../../../utils/adminUsersGate'
 import { catatLogServer } from '../../../utils/catatLogServer'
+import { pastikanDataGuru } from '../../../utils/pastikanDataGuru'
 
 const jenjangValid = (nilai: unknown): string[] =>
   Array.isArray(nilai) ? nilai.filter((j): j is string => j === 'SMK' || j === 'SMP') : []
@@ -53,7 +54,17 @@ export default defineEventHandler(async (event) => {
   // Penugasan RBAC: peranId undefined = tidak diubah, null = dilepas, string = diganti.
   if (body?.peranId !== undefined) {
     const { data: guru } = await supabase.from('teachers').select('id').eq('user_id', id).maybeSingle()
-    const subjekUtama = guru?.id ? String(guru.id) : id
+    // Diubah ke peran guru: pastikan data guru ada (akun lama yang belum punya baris teachers).
+    const guruBaru = !guru?.id && body.peranId
+      ? await pastikanDataGuru(supabase, {
+          uid: id,
+          nama: String(body?.nama || target.user_metadata?.name || target.email || 'Pengguna'),
+          email: (target.email || '').toLowerCase(),
+          peranId: String(body.peranId),
+          jenjang: jenjangValid(body?.jenjang)
+        })
+      : null
+    const subjekUtama = guru?.id ? String(guru.id) : guruBaru || id
     const subjekSemua = [...new Set([id, subjekUtama])]
     await supabase.from('rbac_assignments').delete().in('subjek_id', subjekSemua)
     if (body.peranId) {

@@ -84,7 +84,8 @@ export function useJadwalMengajar() {
     const mapelSemua = (barisMapel || []) as Array<{ id: string; code: string; name: string; grade: string; category: string | null; kkm: number | null; hours_per_week: number | null }>
     const mapelById = new Map(mapelSemua.map(m => [m.id, m]))
     stateV2.idMapel = {}
-    stateV2.mapel = { smp: [], smk: [] }
+    stateV2.mapel.smp.length = 0
+    stateV2.mapel.smk.length = 0 // isi ulang di tempat: KELAS/MAPEL di jadwalV2Data merujuk objek yang sama
     mapelSemua.forEach(m => {
       const j = jenjangDariGrade(m.grade)
       stateV2.idMapel[`${j}|${m.name}`] = m.id
@@ -116,7 +117,8 @@ export function useJadwalMengajar() {
     })
 
     // Meta kelas (setelah roster diketahui)
-    stateV2.kelas = { smp: [], smk: [] }
+    stateV2.kelas.smp.length = 0
+    stateV2.kelas.smk.length = 0
     kelasTahun.forEach(k => {
       const j = jenjangDariGrade(k.grade)
       const wali = k.homeroom_teacher_id ? guruById.get(k.homeroom_teacher_id) : undefined

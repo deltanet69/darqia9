@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import { compressImageToWebP, isArabicText, LATEX_TOOLBAR_SYMBOLS, renderKaTeXHtml, validateLatexExpressions } from '~/utils/cbtFormula'
 
 const props = defineProps<{ modelValue: string; imageUrl?: string; rtl?: boolean; compact?: boolean }>()
@@ -8,10 +8,13 @@ const emit = defineEmits<{
   (event: 'update:imageUrl', value: string | undefined): void
   (event: 'update:rtl', value: boolean): void
   (event: 'message', value: string): void
+  (event: 'busy', value: boolean): void
 }>()
 
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
+const ocrInput = ref<HTMLInputElement | null>(null)
+const ocrPratinjau = ref('')
 const extracting = ref(false)
 const extractionNote = ref('')
 const localRtl = ref<boolean | null>(null)
@@ -22,6 +25,15 @@ const toggleRtl = () => {
 }
 const formulaError = computed(() => validateLatexExpressions(props.modelValue))
 const tick = String.fromCharCode(96)
+const formulaOpen = ref(false)
+const insertSymbol = async (syntax: string) => {
+  formulaOpen.value = false
+  await replaceSelection('$', '$', syntax)
+}
+const insertBlockFormula = async () => {
+  formulaOpen.value = false
+  await replaceSelection('$$\n', '\n$$', '\\frac{a}{b}')
+}
 
 const replaceSelection = async (before: string, after = '', placeholder = '') => {
   const el = textarea.value
@@ -35,25 +47,44 @@ const replaceSelection = async (before: string, after = '', placeholder = '') =>
   el.setSelectionRange(start + before.length, start + before.length + selected.length)
 }
 
+// Satu pintu membaca gambar jadi data URL siap kirim: berkas kecil (<= 700 KB, PNG/JPEG/WebP) dipakai apa adanya,
+// selain itu dikompres/diperkecil agar muat di batas ekstraksi server.
+const bacaGambar = async (file: File): Promise<{ dataUrl: string; info: string }> => {
+  if (file.size <= 700 * 1024 && ['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+    return { dataUrl, info: 'Gambar asli dipakai tanpa kompresi ulang.' }
+  }
+  const result = await compressImageToWebP(file, 2400)
+  return { dataUrl: result.dataUrl, info: 'Gambar berhasil diproses menjadi ' + result.compressedSizeKB + ' KB.' }
+}
+
+// Gambar OCR yang kecil (sisi terpanjang < 1000 px) diperbesar dulu: pembacaan huruf Arab berharakat jauh lebih konsisten.
+const terlaluKecilUntukOcr = async (file: File) => {
+  if (typeof createImageBitmap !== 'function') return false
+  try {
+    const bitmap = await createImageBitmap(file)
+    const kecil = Math.max(bitmap.width, bitmap.height) < 1000
+    bitmap.close?.()
+    return kecil
+  } catch {
+    return false
+  }
+}
+
+// Gambar SOAL: dilampirkan pada butir soal dan tampil ke siswa.
 const handleImage = async (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   if (!file.type.startsWith('image/')) return emit('message', 'Berkas harus berupa gambar.')
   try {
-    if (file.size <= 700 * 1024 && ['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      const original = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result))
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
-      emit('update:imageUrl', original)
-      emit('message', 'Gambar asli siap dibaca tanpa kompresi ulang.')
-      return
-    }
-    const result = await compressImageToWebP(file, 2400)
-    emit('update:imageUrl', result.dataUrl)
-    emit('message', 'Gambar berhasil diproses menjadi ' + result.compressedSizeKB + ' KB.')
+    const { dataUrl, info } = await bacaGambar(file)
+    emit('update:imageUrl', dataUrl)
+    emit('message', info)
   } catch {
     emit('message', 'Gambar gagal diproses.')
   } finally {
@@ -61,52 +92,108 @@ const handleImage = async (event: Event) => {
   }
 }
 
-const extractImageText = async () => {
-  if (!props.imageUrl || extracting.value) return
+// Gambar OCR: hanya untuk mengambil teks/rumus/huruf Arab. Gambarnya TIDAK dilampirkan ke soal dan tidak disimpan.
+const handleOcrFile = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (ocrInput.value) ocrInput.value.value = ''
+  if (!file || extracting.value) return
+  if (!file.type.startsWith('image/')) return emit('message', 'Berkas harus berupa gambar.')
   extracting.value = true
+  emit('busy', true)
   extractionNote.value = ''
-  const sourceImage = props.imageUrl
-  const sourceText = props.modelValue
+  ocrPratinjau.value = ''
   try {
+    const { dataUrl } = (await terlaluKecilUntukOcr(file))
+      ? { dataUrl: (await compressImageToWebP(file, 2400, 1500)).dataUrl }
+      : await bacaGambar(file)
+    ocrPratinjau.value = dataUrl
+    const sourceText = props.modelValue
     const extracted = await $fetch<{ text: string; isRtl: boolean; containsFormula: boolean; reviewNote: string }>('/api/cbt/ocr', {
       method: 'POST',
-      body: { imageDataUrl: sourceImage }
+      body: { imageDataUrl: dataUrl }
     })
-    if (props.imageUrl !== sourceImage || props.modelValue !== sourceText) {
-      extractionNote.value = 'Gambar atau teks sudah berubah. Ekstrak kembali agar hasil sesuai dengan gambar aktif.'
+    if (props.modelValue !== sourceText) {
+      extractionNote.value = 'Teks soal berubah saat gambar dibaca, jadi hasil tidak dimasukkan. Baca ulang gambarnya.'
       return
     }
     emit('update:modelValue', props.modelValue + (props.modelValue.trim() ? '\n' : '') + extracted.text)
     if (extracted.isRtl) emit('update:rtl', true)
-    extractionNote.value = extracted.reviewNote || 'Periksa kembali hasil ekstraksi sebelum menyimpan.'
-    emit('message', 'Teks berhasil diekstrak. Periksa hasil sebelum menyimpan.')
+    extractionNote.value = extracted.reviewNote || 'Periksa kembali hasil sebelum menyimpan.'
+    emit('message', 'Teks berhasil diambil dari gambar. Periksa hasilnya sebelum menyimpan.')
   } catch (error) {
-    const message = (error as any)?.data?.statusMessage || (error as any)?.statusMessage || 'Teks pada gambar gagal diekstrak.'
+    const message = (error as any)?.data?.statusMessage || (error as any)?.statusMessage || 'Teks pada gambar gagal diambil.'
     extractionNote.value = message
     emit('message', message)
   } finally {
     extracting.value = false
+    emit('busy', false)
   }
 }
+onBeforeUnmount(() => { if (extracting.value) emit('busy', false) })
 </script>
 
 <template>
   <div class="overflow-hidden rounded-xl border border-[#E7EBF2] bg-white focus-within:border-[#1B5FD9]" :class="compact ? 'rich-compact' : ''">
-    <div class="flex flex-wrap items-center gap-1 border-b border-[#E7EBF2] bg-[#F9FAFC] p-2" role="toolbar" aria-label="Pemformatan pertanyaan">
-      <button type="button" class="editor-button font-extrabold" title="Tebal" @click="replaceSelection('**', '**', 'teks tebal')">B</button>
-      <button type="button" class="editor-button italic" title="Miring" @click="replaceSelection('_', '_', 'teks miring')">I</button>
-      <button v-if="!compact" type="button" class="editor-button" title="Subjudul" @click="replaceSelection('### ', '', 'Subjudul')">H</button>
-      <button v-if="!compact" type="button" class="editor-button" title="Daftar" @click="replaceSelection('- ', '', 'butir daftar')">Daftar</button>
-      <button v-if="!compact" type="button" class="editor-button font-mono" title="Kode sebaris" @click="replaceSelection(tick, tick, 'kode')">&lt;/&gt;</button>
-      <button v-if="!compact" type="button" class="editor-button font-mono" title="Blok kode" @click="replaceSelection(tick + tick + tick + '\n', '\n' + tick + tick + tick, 'kode program')">Blok kode</button>
-      <span class="mx-1 h-6 w-px bg-[#DCE2EA]" aria-hidden="true" />
-      <button v-for="symbol in LATEX_TOOLBAR_SYMBOLS" :key="symbol.syntax" type="button" class="editor-button" :title="symbol.description" @click="replaceSelection('$', '$', symbol.syntax)">
-        {{ symbol.label }}
-      </button>
-      <span class="mx-1 h-6 w-px bg-[#DCE2EA]" aria-hidden="true" />
-      <button type="button" class="editor-button" :aria-pressed="detectedRtl" @click="toggleRtl">العربية RTL</button>
-      <button v-if="!compact" type="button" class="editor-button" @click="imageInput?.click()">Unggah gambar</button>
-      <input ref="imageInput" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" @change="handleImage">
+    <div class="border-b border-[#E7EBF2] bg-[#F9FAFC] p-2" role="toolbar" aria-label="Pemformatan teks">
+      <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+        <div class="tb-group" role="group" aria-label="Gaya teks">
+          <button type="button" class="tb font-extrabold" title="Tebal" aria-label="Tebal" @click="replaceSelection('**', '**', 'teks tebal')">B</button>
+          <button type="button" class="tb italic" title="Miring" aria-label="Miring" @click="replaceSelection('_', '_', 'teks miring')">I</button>
+          <template v-if="!compact">
+            <button type="button" class="tb" title="Subjudul" aria-label="Subjudul" @click="replaceSelection('### ', '', 'Subjudul')">H</button>
+            <button type="button" class="tb" title="Daftar berpoin" aria-label="Daftar berpoin" @click="replaceSelection('- ', '', 'butir daftar')">Daftar</button>
+          </template>
+        </div>
+        <div v-if="!compact" class="tb-group" role="group" aria-label="Kode program">
+          <button type="button" class="tb font-mono" title="Kode sebaris" aria-label="Kode sebaris" @click="replaceSelection(tick, tick, 'kode')">&lt;/&gt;</button>
+          <button type="button" class="tb font-mono" title="Blok kode" aria-label="Blok kode" @click="replaceSelection(tick + tick + tick + '\n', '\n' + tick + tick + tick, 'kode program')">Blok kode</button>
+        </div>
+        <div class="tb-group" role="group" aria-label="Rumus">
+          <button type="button" class="tb" :aria-expanded="formulaOpen" aria-controls="panel-rumus" title="Sisipkan rumus" @click="formulaOpen = !formulaOpen">
+            <span aria-hidden="true">∑</span> Rumus <span aria-hidden="true" class="text-[10px]">{{ formulaOpen ? '▴' : '▾' }}</span>
+          </button>
+        </div>
+        <div class="tb-group" role="group" aria-label="Arah tulisan">
+          <button type="button" class="tb" :aria-pressed="detectedRtl" title="Teks Arab (kanan ke kiri)" @click="toggleRtl">العربية RTL</button>
+        </div>
+        <div v-if="!compact" class="tb-group" role="group" aria-label="Gambar">
+          <button type="button" class="tb" title="Lampirkan gambar pada soal (tampil ke siswa)" @click="imageInput?.click()">Gambar soal</button>
+          <button type="button" class="tb" :disabled="extracting" title="Ambil teks, rumus, atau huruf Arab dari gambar (gambar tidak dilampirkan)" @click="ocrInput?.click()">
+            {{ extracting ? 'Membaca gambar…' : 'Baca gambar (OCR)' }}
+          </button>
+        </div>
+        <input ref="imageInput" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" tabindex="-1" aria-label="Pilih gambar soal" @change="handleImage">
+        <input ref="ocrInput" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" tabindex="-1" aria-label="Pilih gambar untuk dibaca OCR" @change="handleOcrFile">
+      </div>
+      <p v-if="!compact" class="mt-1.5 text-[11px] leading-relaxed text-[#667085]">
+        <b>Gambar soal</b> tampil ke siswa. <b>Baca gambar (OCR)</b> hanya mengambil teks, rumus, atau huruf Arab dari gambar; gambarnya tidak disimpan.
+      </p>
+
+      <div v-if="formulaOpen" id="panel-rumus" class="mt-2 rounded-lg border border-[#DCE2EA] bg-white p-2.5">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <span class="text-[11px] font-extrabold uppercase tracking-wide text-[#667085]">Sisipkan rumus sebaris</span>
+          <button v-if="!compact" type="button" class="tb !min-h-8 text-[11px]" title="Rumus di baris tersendiri ($$ ... $$)" @click="insertBlockFormula">Rumus terpisah ($$)</button>
+        </div>
+        <div class="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+          <button v-for="symbol in LATEX_TOOLBAR_SYMBOLS" :key="symbol.syntax" type="button" class="tb justify-center" :title="symbol.description" :aria-label="symbol.description" @click="insertSymbol(symbol.syntax)">
+            {{ symbol.label }}
+          </button>
+        </div>
+        <p class="mt-2 text-[11px] text-[#667085]">Rumus ditulis di antara tanda $ ... $. Pilih teks lebih dulu bila ingin membungkusnya.</p>
+      </div>
+    </div>
+
+    <div v-if="!compact && (extracting || extractionNote)" class="flex items-start gap-3 border-b border-[#E7EBF2] bg-[#FFFBF2] p-3" role="status" aria-live="polite">
+      <img v-if="ocrPratinjau" :src="ocrPratinjau" alt="Gambar yang sedang dibaca" class="h-14 w-20 shrink-0 rounded-lg border border-[#E7EBF2] bg-white object-contain">
+      <div class="min-w-0 flex-1 text-[12px] leading-relaxed">
+        <b v-if="extracting" class="block text-[#344054]">Membaca gambar… rumus biasanya 10–30 detik, teks Arab berharakat bisa sampai 1–2 menit. Jangan tutup halaman ini.</b>
+        <template v-else>
+          <b class="block text-[#344054]">Hasil baca gambar (draf)</b>
+          <span class="font-semibold text-[#A15C00]">{{ extractionNote }}</span>
+          <span class="mt-0.5 block text-[#667085]">Periksa teks, rumus, dan harakat sebelum menyimpan.</span>
+        </template>
+      </div>
+      <button v-if="!extracting" type="button" class="tb !min-h-8 shrink-0" aria-label="Tutup keterangan" @click="extractionNote = ''; ocrPratinjau = ''">Tutup</button>
     </div>
 
     <textarea
@@ -122,13 +209,11 @@ const extractImageText = async () => {
     />
 
     <div v-if="imageUrl && !compact" class="border-t border-[#E7EBF2] p-3">
+      <span class="mb-2 block text-[10px] font-extrabold uppercase text-[#667085]">Gambar soal (tampil ke siswa)</span>
       <img :src="imageUrl" alt="Gambar pendukung soal" class="max-h-56 rounded-xl border border-[#E7EBF2] object-contain">
       <div class="mt-2 flex flex-wrap gap-2">
-        <button type="button" class="editor-action" :disabled="extracting" @click="extractImageText">{{ extracting ? 'Mengekstrak…' : 'Ekstrak teks dari gambar' }}</button>
-        <button type="button" class="editor-action text-[#C43232]" :disabled="extracting" @click="emit('update:imageUrl', undefined)">Hapus gambar</button>
+        <button type="button" class="editor-action text-[#C43232]" @click="emit('update:imageUrl', undefined)">Hapus gambar</button>
       </div>
-      <p class="mt-2 text-[11px] leading-relaxed text-[#667085]">Hasil ekstraksi masuk sebagai draf dan wajib diperiksa sebelum disimpan.</p>
-      <p v-if="extractionNote" class="mt-1 text-[11px] font-semibold text-[#A15C00]">{{ extractionNote }}</p>
     </div>
 
     <div v-if="modelValue.trim()" class="border-t border-[#E7EBF2] bg-[#FAFBFC] p-3">
@@ -140,22 +225,36 @@ const extractImageText = async () => {
 </template>
 
 <style scoped>
-.editor-button {
-  min-height: 44px;
+.tb-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.5rem;
+  border-right: 1px solid #dce2ea;
+}
+.tb-group:last-of-type { border-right: 0; padding-right: 0; }
+.tb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 36px;
   border: 1px solid #e7ebf2;
   border-radius: 8px;
   background: #fff;
-  padding: 0.35rem 0.6rem;
+  padding: 0.25rem 0.6rem;
   color: #344054;
   font-size: 0.75rem;
   font-weight: 700;
+  line-height: 1;
 }
-.editor-button:hover, .editor-button:focus-visible {
+.tb:disabled { cursor: wait; opacity: 0.6; }
+.tb:hover, .tb:focus-visible {
   border-color: #1b5fd9;
   outline: 2px solid #d9e7ff;
   outline-offset: 1px;
 }
-.editor-button[aria-pressed='true'] {
+.tb[aria-pressed='true'], .tb[aria-expanded='true'] {
   border-color: #1b5fd9;
   background: #e8f0fe;
   color: #0a2a5c;
@@ -169,7 +268,7 @@ const extractImageText = async () => {
   font-weight: 700;
 }
 .editor-action:disabled { cursor: wait; opacity: 0.55; }
-.rich-compact .editor-button { min-height: 34px; padding: 0.2rem 0.45rem; }
+.rich-compact .tb { min-height: 32px; padding: 0.2rem 0.5rem; }
 textarea[dir='rtl'], .question-preview[dir='rtl'] {
   font-family: 'Traditional Arabic', 'Times New Roman', serif;
   font-size: 1.25rem;

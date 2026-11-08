@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import { CBT_TABS, type CbtTabId, type GradeType } from './cbtV2Data'
 
@@ -7,9 +8,12 @@ interface Props {
   grade: GradeType
   liveExamCount: number
   bankLabel?: string
+  hideRooms?: boolean
 }
 
 const props = defineProps<Props>()
+// Ruang Ujian hanya untuk CBT PTS/PAS, bukan LMS ujian harian.
+const tabs = computed(() => CBT_TABS.filter(tab => !(props.hideRooms && tab.id === 'rooms')))
 
 const emit = defineEmits<{
   (e: 'update:activeTab', val: CbtTabId): void
@@ -25,7 +29,7 @@ const emit = defineEmits<{
         aria-label="Navigasi Manajemen CBT"
       >
         <button
-          v-for="tab in CBT_TABS"
+          v-for="tab in tabs"
           :key="tab.id"
           type="button"
           role="tab"

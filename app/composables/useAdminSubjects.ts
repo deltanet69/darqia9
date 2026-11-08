@@ -1,7 +1,14 @@
+import type { KategoriMapel } from './mapelKategori'
+
 export interface SubjectUsage {
   schedules: number
   banks: number
   exams: number
+}
+
+export interface SubjectAssignment {
+  teacher: string
+  classes: string[]
 }
 
 export interface AdminSubject {
@@ -9,12 +16,17 @@ export interface AdminSubject {
   code: string
   name: string
   grade: 'SMP' | 'SMK'
-  category: 'Umum' | 'Kejuruan' | 'Keagamaan' | 'Muatan Lokal'
+  // Teks bebas agar data lama (Umum/Kejuruan/...) tetap tampil sampai dirapikan; input baru wajib KategoriMapel.
+  category: string
+  // Kategori tambahan untuk mapel yang masuk dua kategori (mis. Unggul Bahasa).
+  extraCategory: string | null
   kkm: number
   hoursPerWeek: number
   status: 'Aktif' | 'Nonaktif'
   // Ringkasan turunan dari Jadwal Pelajaran (class_schedules) — bukan input master.
   teachers: string[]
+  // Rincian per guru: kelas apa saja yang diajar untuk mapel ini.
+  assignments: SubjectAssignment[]
   scheduledClasses: number
   usage: SubjectUsage
 }
@@ -22,7 +34,8 @@ export interface AdminSubject {
 export interface SubjectInput {
   name: string
   grade: 'SMP' | 'SMK'
-  category: AdminSubject['category']
+  category: KategoriMapel
+  extraCategory?: KategoriMapel | null
   kkm: number
   hoursPerWeek: number
 }
@@ -58,8 +71,8 @@ export const useAdminSubjects = () => {
     loading.value = true
     error.value = null
     const [subjectsResult, schedulesResult, banksResult, dailyBanksResult, examsResult, dailyExamsResult] = await Promise.all([
-      client.from('subjects').select('id, code, name, grade, category, kkm, hours_per_week, active').order('name'),
-      client.from('class_schedules').select('subject_id, class_id, teachers(name)').eq('active', true),
+      client.from('subjects').select('id, code, name, grade, category, category_tambahan, kkm, hours_per_week, active').order('name'),
+      client.from('class_schedules').select('subject_id, class_id, classes(name), teachers(name)').eq('active', true),
       client.from('question_banks').select('subject_id'),
       client.from('ujian_harian_banks').select('subject_id'),
       client.from('exams').select('subject_id'),
@@ -74,6 +87,7 @@ export const useAdminSubjects = () => {
     }
 
     const teachersBySubject = new Map<string, Set<string>>()
+    const classesByTeacher = new Map<string, Map<string, Set<string>>>()
     const classesBySubject = new Map<string, Set<string>>()
     const countBySubject = (rows: any[] | null) => {
       const counts = new Map<string, number>()
@@ -86,6 +100,13 @@ export const useAdminSubjects = () => {
         if (!teachersBySubject.has(row.subject_id)) teachersBySubject.set(row.subject_id, new Set())
         teachersBySubject.get(row.subject_id)!.add(teacherName)
       }
+      // Kunci '' = jadwal yang belum punya guru; tetap dicatat agar kelasnya terlihat di rincian.
+      if (!classesByTeacher.has(row.subject_id)) classesByTeacher.set(row.subject_id, new Map())
+      const perGuru = classesByTeacher.get(row.subject_id)!
+      const kunciGuru = teacherName ?? ''
+      if (!perGuru.has(kunciGuru)) perGuru.set(kunciGuru, new Set())
+      const className = (row as any).classes?.name
+      if (className) perGuru.get(kunciGuru)!.add(className)
       if (!classesBySubject.has(row.subject_id)) classesBySubject.set(row.subject_id, new Set())
       classesBySubject.get(row.subject_id)!.add(row.class_id)
     }
@@ -100,11 +121,15 @@ export const useAdminSubjects = () => {
       code: row.code,
       name: row.name,
       grade: row.grade,
-      category: row.category as AdminSubject['category'],
+      category: row.category as string,
+      extraCategory: (row.category_tambahan as string | null) ?? null,
       kkm: row.kkm,
       hoursPerWeek: row.hours_per_week,
       status: row.active ? 'Aktif' : 'Nonaktif',
       teachers: [...(teachersBySubject.get(row.id) ?? [])].sort(),
+      assignments: [...(classesByTeacher.get(row.id) ?? new Map<string, Set<string>>()).entries()]
+        .map(([teacher, classes]) => ({ teacher, classes: [...classes].sort((a, b) => a.localeCompare(b, 'id', { numeric: true })) }))
+        .sort((a, b) => (a.teacher === '' ? 1 : b.teacher === '' ? -1 : a.teacher.localeCompare(b.teacher, 'id'))),
       scheduledClasses: classesBySubject.get(row.id)?.size ?? 0,
       usage: {
         schedules: scheduleCounts.get(row.id) ?? 0,
@@ -123,6 +148,7 @@ export const useAdminSubjects = () => {
       name: input.name,
       grade: input.grade,
       category: input.category,
+      category_tambahan: input.extraCategory ?? null,
       kkm: input.kkm,
       hours_per_week: input.hoursPerWeek
     })
@@ -142,6 +168,7 @@ export const useAdminSubjects = () => {
         name: item.name,
         grade: item.grade,
         category: item.category,
+        category_tambahan: item.extraCategory ?? null,
         kkm: item.kkm,
         hours_per_week: item.hoursPerWeek
       }
@@ -158,6 +185,7 @@ export const useAdminSubjects = () => {
       name: input.name,
       grade: input.grade,
       category: input.category,
+      category_tambahan: input.extraCategory ?? null,
       kkm: input.kkm,
       hours_per_week: input.hoursPerWeek
     }).eq('id', id)

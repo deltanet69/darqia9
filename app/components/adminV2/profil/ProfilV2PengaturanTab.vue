@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
-import type { ProfileAccount, NotificationPrefs } from './profilV2Data'
+import { formatWaktuWib, type ProfilSaya, type PrefNotifikasi } from '~/composables/profilCore'
 
 const props = defineProps<{
-  profile: ProfileAccount
+  profile: ProfilSaya
   isEditing: boolean
   editForm: {
-    email: string
     wa: string
   }
-  prefs: NotificationPrefs
+  prefs: PrefNotifikasi
+  sesi: Array<{ waktu: string; perangkat: string }>
+  ubahSandi: (lama: string, baru: string) => Promise<string>
 }>()
 
 const emit = defineEmits<{
-  (e: 'update-password', payload: { cur: string; nw: string; conf: string }): void
-  (e: 'toggle-pref', key: keyof NotificationPrefs): void
+  (e: 'toggle-pref', key: keyof PrefNotifikasi): void
 }>()
 
 // State Form Ganti Kata Sandi
@@ -28,6 +28,7 @@ const showPwConf = ref(false)
 
 const pwError = ref('')
 const pwSuccess = ref(false)
+const pwBusy = ref(false)
 
 // Realtime Password Strength Calculator
 const pwStrength = computed(() => {
@@ -51,7 +52,8 @@ const pwStrength = computed(() => {
   }
 })
 
-const handlePasswordSubmit = () => {
+const handlePasswordSubmit = async () => {
+  if (pwBusy.value) return
   pwError.value = ''
   pwSuccess.value = false
 
@@ -72,12 +74,13 @@ const handlePasswordSubmit = () => {
     return
   }
 
-  emit('update-password', {
-    cur: pwCur.value,
-    nw: pwNew.value,
-    conf: pwConf.value
-  })
-
+  pwBusy.value = true
+  const galat = await props.ubahSandi(pwCur.value, pwNew.value)
+  pwBusy.value = false
+  if (galat) {
+    pwError.value = galat
+    return
+  }
   pwSuccess.value = true
   pwCur.value = ''
   pwNew.value = ''
@@ -103,17 +106,12 @@ const handlePasswordSubmit = () => {
         </span>
       </div>
 
-      <!-- Edit Mode Form -->
-      <div v-if="isEditing" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label class="block text-xs font-bold text-[#344054]">Alamat Email (Username Login)</label>
-          <input
-            v-model="editForm.email"
-            type="email"
-            class="mt-1.5 min-h-10 w-full rounded-xl border border-[#D0D5DD] bg-white px-3 text-xs font-semibold text-[#101828] focus:border-[#1B5FD9] focus:outline-none focus:ring-2 focus:ring-[#1B5FD9]/20"
-          >
+      <div class="mt-4 grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
+        <div class="border-b border-dashed border-[#EFF2F7] pb-2.5">
+          <span class="text-[10.5px] font-bold uppercase tracking-wider text-[#667085]">Alamat Email (Username Login)</span>
+          <p class="mt-1 text-sm font-bold text-[#101828]">{{ profile.email }}</p>
         </div>
-        <div>
+        <div v-if="isEditing">
           <label class="block text-xs font-bold text-[#344054]">Nomor WhatsApp</label>
           <input
             v-model="editForm.wa"
@@ -121,15 +119,7 @@ const handlePasswordSubmit = () => {
             class="mt-1.5 min-h-10 w-full rounded-xl border border-[#D0D5DD] bg-white px-3 text-xs font-semibold text-[#101828] focus:border-[#1B5FD9] focus:outline-none focus:ring-2 focus:ring-[#1B5FD9]/20"
           >
         </div>
-      </div>
-
-      <!-- View Mode -->
-      <div v-else class="mt-4 grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
-        <div class="border-b border-dashed border-[#EFF2F7] pb-2.5">
-          <span class="text-[10.5px] font-bold uppercase tracking-wider text-[#667085]">Alamat Email</span>
-          <p class="mt-1 text-sm font-bold text-[#101828]">{{ profile.email }}</p>
-        </div>
-        <div class="border-b border-dashed border-[#EFF2F7] pb-2.5">
+        <div v-else class="border-b border-dashed border-[#EFF2F7] pb-2.5">
           <span class="text-[10.5px] font-bold uppercase tracking-wider text-[#667085]">Nomor WhatsApp</span>
           <p class="mt-1 text-sm font-bold text-[#101828]">{{ profile.wa }}</p>
         </div>
@@ -137,7 +127,7 @@ const handlePasswordSubmit = () => {
 
       <p class="mt-4 flex items-center gap-1.5 text-[11px] font-semibold text-[#667085]">
         <AdminV2Icon name="info" :size="14" class="shrink-0 text-[#1B5FD9]" />
-        <span>Jika Anda memperbarui alamat email, gunakan alamat email baru tersebut untuk login berikutnya.</span>
+        <span>Email adalah username login dan hanya dapat diubah Superadmin melalui Manajemen User.</span>
       </p>
     </section>
 
@@ -252,10 +242,11 @@ const handlePasswordSubmit = () => {
         <div class="flex justify-end pt-2">
           <button
             type="submit"
-            class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#1B5FD9] px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-[#12459B]"
+            :disabled="pwBusy"
+            class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#1B5FD9] px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-[#12459B] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <AdminV2Icon name="shield" :size="15" />
-            <span>Perbarui Kata Sandi</span>
+            <span>{{ pwBusy ? 'Memproses...' : 'Perbarui Kata Sandi' }}</span>
           </button>
         </div>
       </form>
@@ -345,18 +336,22 @@ const handlePasswordSubmit = () => {
           Sesi Login &amp; Perangkat
         </h3>
         <p class="text-xs font-semibold text-[#667085]">
-          Aktivitas sesi autentikasi akun Anda.
+          Tiga login terakhir pada akun Anda.
         </p>
       </div>
 
-      <div class="mt-4 grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
-        <div class="border-b border-dashed border-[#EFF2F7] pb-2.5">
-          <span class="text-[10.5px] font-bold uppercase tracking-wider text-[#667085]">Login Terakhir</span>
-          <p class="mt-1 text-sm font-bold text-[#101828]">{{ profile.lastLogin }}</p>
-        </div>
-        <div class="border-b border-dashed border-[#EFF2F7] pb-2.5">
-          <span class="text-[10.5px] font-bold uppercase tracking-wider text-[#667085]">Perangkat Aktif</span>
-          <p class="mt-1 text-sm font-bold text-emerald-600">Sesi ini aktif &bull; Token berlaku 30 hari</p>
+      <p v-if="!sesi.length" class="mt-4 text-xs font-semibold text-[#667085]">
+        Belum ada riwayat login tercatat.
+      </p>
+      <div v-else class="mt-4 grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-3">
+        <div
+          v-for="(s, i) in sesi"
+          :key="'sesi-' + i"
+          class="border-b border-dashed border-[#EFF2F7] pb-2.5"
+        >
+          <span class="text-[10.5px] font-bold uppercase tracking-wider text-[#667085]">{{ i === 0 ? 'Login Terbaru' : 'Login Sebelumnya' }}</span>
+          <p class="mt-1 text-sm font-bold text-[#101828]">{{ formatWaktuWib(s.waktu) }}</p>
+          <p class="text-xs font-semibold text-[#667085]">{{ s.perangkat }}</p>
         </div>
       </div>
 

@@ -85,14 +85,22 @@ const selectedClass = ref<Record<Jenjang, string>>({ smk: '', smp: '' })
 
 // Modal & Sheet States
 const isCreateModalOpen = ref(false)
+const slotBaru = ref<{ di: DayIndex, si: number } | null>(null)
 const sessionSheetKey = ref<string | null>(null)
 
 /* ================= GURU AKTIF & PERSONA ASLI =================
    Sampai RBAC akun guru aktif, guru yang ditampilkan di "Jadwal Saya"
    dipilih secara terbuka lewat pemilih "Guru aktif" — tidak ada
    persona karangan. Sesi yang dicatat selalu atas nama guru ini. */
+const rbac = useRbac()
+const bolehKelola = rbac.adalahSuperadmin
+// Data guru milik akun login (subjekSaya = id guru bila akun tertaut ke tabel teachers)
+const guruSaya = computed(() => [...stateV2.guru.smp, ...stateV2.guru.smk].find(g => g.id === rbac.state.value.subjekSaya) || null)
 const guruAktifId = ref('')
-const guruAktif = computed(() => stateV2.guru[jenjang.value].find(g => g.id === guruAktifId.value) || stateV2.guru[jenjang.value][0] || null)
+// Selain Superadmin, "Guru aktif" terkunci ke diri sendiri — tidak bisa melihat/mencatat atas nama guru lain.
+const guruAktif = computed(() => bolehKelola.value
+  ? stateV2.guru[jenjang.value].find(g => g.id === guruAktifId.value) || stateV2.guru[jenjang.value][0] || null
+  : guruSaya.value)
 
 const currentPersona = computed<PersonaInfo>(() => {
   const g = guruAktif.value
@@ -217,18 +225,20 @@ const handleScheduleSaved = async (payload: {
   }
   // Sel yang sudah terisi pada jam yang sama diganti (sesuai konfirmasi di modal)
   const lama = jp.entriList.value.find(j => j.classId === classId && j.day === payload.di + 1 && j.mulaiKe === payload.si + 1)
-  const hasil = await jp.simpanEntri(gradeDb, {
-    classId,
-    subjectId,
-    teacherId,
-    day: payload.di + 1,
-    mulaiKe: payload.si + 1,
-    selesaiKe: payload.si + 1,
-    room: '',
-    notes: payload.ket || ''
-  }, lama?.id)
-  if (!hasil.ok) {
-    triggerToast(hasil.pesan)
+  // simpanEntri melempar galat bila gagal (bentrok/DB) dan tidak mengembalikan nilai bila sukses
+  try {
+    await jp.simpanEntri(gradeDb, {
+      classId,
+      subjectId,
+      teacherId,
+      day: payload.di + 1,
+      mulaiKe: payload.si + 1,
+      selesaiKe: payload.si + 1,
+      room: '',
+      notes: payload.ket || ''
+    }, lama?.id)
+  } catch (e: any) {
+    triggerToast(e?.message || 'Jadwal gagal disimpan.')
     return
   }
   await mengajar.muatJadwalUlang()
@@ -398,7 +408,7 @@ onUnmounted(() => {
       </section>
 
       <!-- GURU AKTIF: penentu Jadwal Saya & pencatatan sesi -->
-      <div v-if="stateV2.siap" class="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#E7EBF2] bg-white px-4 py-3 shadow-xs">
+      <div v-if="stateV2.siap && bolehKelola" class="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#E7EBF2] bg-white px-4 py-3 shadow-xs">
         <label for="guru-aktif" class="text-xs font-bold text-[#344054]">Guru aktif</label>
         <select
           id="guru-aktif"
@@ -419,12 +429,13 @@ onUnmounted(() => {
           v-if="activeSubmenu === 'grade'"
           :jenjang="jenjang"
           :selected-class="selectedClass[jenjang]"
-          :editable="true"
+          :editable="bolehKelola"
+          :mine-teacher-name="guruSaya?.nama"
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
               @update:jenjang="jenjang = $event"
           @update:selected-class="selectedClass[jenjang] = $event"
-          @open-create="isCreateModalOpen = true"
+          @open-create="slotBaru = $event || null; isCreateModalOpen = true"
         />
 
         <JadwalV2PersonalView
@@ -456,7 +467,7 @@ onUnmounted(() => {
           :selected-class="kelasWali"
           :editable="false"
           :fixed-kelas="kelasWali"
-          :mine-teacher-name="currentPersona.name"
+          :mine-teacher-name="guruSaya?.nama"
           :sim-day-idx="simDayIdx"
           :sim-min="simMin"
               @update:jenjang="jenjang = $event"
@@ -485,6 +496,7 @@ onUnmounted(() => {
       :jenjang="jenjang"
       :current-class="selectedClass[jenjang]"
       :sim-day-idx="simDayIdxModal"
+      :slot-awal="slotBaru"
       @close="isCreateModalOpen = false"
       @saved="handleScheduleSaved"
     />

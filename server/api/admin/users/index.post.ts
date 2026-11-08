@@ -1,5 +1,6 @@
 import { gerbangAdminUsers } from '../../../utils/adminUsersGate'
 import { catatLogServer } from '../../../utils/catatLogServer'
+import { pastikanDataGuru } from '../../../utils/pastikanDataGuru'
 
 const EMAIL_VALID = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const jenjangValid = (nilai: unknown): string[] =>
@@ -14,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const email = String(body?.email || '').trim().toLowerCase()
   const password = String(body?.password || '')
   const peranId = body?.peranId ? String(body.peranId) : null
-  const guruId = body?.guruId ? String(body.guruId) : null
+  let guruId = body?.guruId ? String(body.guruId) : null
   const jenjang = jenjangValid(body?.jenjang)
 
   if (!nama || !EMAIL_VALID.test(email) || password.length < 8) {
@@ -39,6 +40,17 @@ export default defineEventHandler(async (event) => {
   }
 
   const uidBaru = data.user.id
+
+  // Peran guru dari form manual: buatkan data guru + tautkan, agar terdeteksi di jadwal/RBAC/wali kelas.
+  if (!guruId) {
+    try {
+      guruId = await pastikanDataGuru(supabase, { uid: uidBaru, nama, email, peranId, jenjang })
+      if (guruId) await supabase.from('profiles').upsert({ id: uidBaru, email, name: nama, role: 'guru', scope: jenjang.length === 1 ? jenjang[0]!.toLowerCase() : 'yayasan' }, { onConflict: 'id' })
+    } catch (e) {
+      await supabase.auth.admin.deleteUser(uidBaru) // jangan sisakan akun setengah jadi
+      throw e
+    }
+  }
 
   // Akun hasil impor guru: penugasan memakai id guru (bentuk kanonis penugasan
   // guru di RBAC) dan record guru ditautkan ke uid auth barunya.

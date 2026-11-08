@@ -28,7 +28,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:jenjang', val: Jenjang): void
   (e: 'update:selectedClass', val: string): void
-  (e: 'open-create'): void
+  (e: 'open-create', slot?: { di: DayIndex, si: number }): void
 }>()
 
 const mobileDay = ref<DayIndex>(props.simDayIdx >= 0 && props.simDayIdx <= 4 ? props.simDayIdx as DayIndex : 0)
@@ -45,6 +45,9 @@ const classOptions = computed(() => {
 const gridData = computed(() => {
   return genGrid(props.jenjang, props.fixedKelas || props.selectedClass)
 })
+
+// Sesi milik guru yang sedang login/dipilih — disorot agar langsung terlihat
+const milikku = (di: DayIndex, si: number) => !!props.mineTeacherName && gridData.value[di]?.[si]?.guru === props.mineTeacherName
 
 const getStatus = (di: DayIndex, si: number): GuruStatus => {
   return guruStatus(props.jenjang, props.fixedKelas || props.selectedClass, di, si, props.simDayIdx, props.simMin)
@@ -221,17 +224,17 @@ const simLabel = computed(() => {
             <div
               v-for="(day, di) in DAYS"
               :key="'cell-' + di + '-' + si"
-              class="flex min-h-[82px] flex-col justify-between rounded-xl border p-2.5 transition-all"
+              class="relative flex min-h-[82px] flex-col justify-between rounded-xl border p-2.5 transition-all"
               :class="[
-                di === simDayIdx && simMin >= slotMin(si)[0] && simMin < slotMin(si)[1]
-                  ? 'border-[#93B4F5] bg-[#F5F8FF] shadow-xs'
-                  : 'border-[#E7EBF2] bg-white hover:border-[#CBD5E1]',
-                mineTeacherName && gridData[di as DayIndex][si]?.guru === mineTeacherName
-                  ? 'border-[#B9CCF5] bg-[#F5F8FF]'
-                  : ''
+                milikku(di as DayIndex, si)
+                  ? 'border-[#1B5FD9] bg-[#EAF0FE] ring-2 ring-[#1B5FD9]/25 shadow-xs'
+                  : di === simDayIdx && simMin >= slotMin(si)[0] && simMin < slotMin(si)[1]
+                    ? 'border-[#93B4F5] bg-[#F5F8FF] shadow-xs'
+                    : 'border-[#E7EBF2] bg-white hover:border-[#CBD5E1]'
               ]"
             >
               <div>
+                <span v-if="milikku(di as DayIndex, si)" class="mb-1 inline-block rounded-md bg-[#1B5FD9] px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-white">Jadwal Anda</span>
                 <p class="text-xs font-bold leading-snug text-[#101828]">
                   {{ gridData[di as DayIndex][si]?.mapel }}
                 </p>
@@ -239,6 +242,17 @@ const simLabel = computed(() => {
                   {{ gridData[di as DayIndex][si]?.guru }}
                 </p>
               </div>
+
+              <!-- Sel kosong: klik untuk membuat jadwal pada hari & jam ini -->
+              <button
+                v-if="editable && !gridData[di as DayIndex][si]?.mapel"
+                type="button"
+                class="absolute inset-0 flex items-center justify-center rounded-xl text-[#98A2B3] transition-colors hover:bg-[#F5F8FF] hover:text-[#1B5FD9] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B5FD9]/40"
+                :aria-label="`Buat jadwal ${DAYS[di as DayIndex]} jam ke-${si + 1}`"
+                @click="emit('open-create', { di: di as DayIndex, si })"
+              >
+                <AdminV2Icon name="plus" :size="18" />
+              </button>
 
               <!-- Live bar progress jika aktif -->
               <div
@@ -252,7 +266,7 @@ const simLabel = computed(() => {
               </div>
 
               <!-- Status pill -->
-              <div class="mt-2 pt-1">
+              <div v-if="gridData[di as DayIndex][si]?.mapel" class="mt-2 pt-1">
                 <span
                   class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider"
                   :class="statusBadgeClasses(getStatus(di as DayIndex, si))"
@@ -304,11 +318,13 @@ const simLabel = computed(() => {
           <div
             v-for="(slotTime, si) in SLOT_TIMES"
             :key="'mob-slot-' + si"
-            class="flex items-stretch gap-3 rounded-2xl border p-3.5 transition-colors"
+            class="relative flex items-stretch gap-3 rounded-2xl border p-3.5 transition-colors"
             :class="[
-              mobileDay === simDayIdx && simMin >= slotMin(si)[0] && simMin < slotMin(si)[1]
-                ? 'border-[#93B4F5] bg-[#F5F8FF] shadow-xs'
-                : 'border-[#E7EBF2] bg-white'
+              milikku(mobileDay, si)
+                ? 'border-[#1B5FD9] bg-[#EAF0FE] ring-2 ring-[#1B5FD9]/25 shadow-xs'
+                : mobileDay === simDayIdx && simMin >= slotMin(si)[0] && simMin < slotMin(si)[1]
+                  ? 'border-[#93B4F5] bg-[#F5F8FF] shadow-xs'
+                  : 'border-[#E7EBF2] bg-white'
             ]"
           >
             <!-- Time badge -->
@@ -321,6 +337,7 @@ const simLabel = computed(() => {
             <!-- Content info -->
             <div class="flex flex-1 flex-col justify-between min-w-0">
               <div>
+                <span v-if="milikku(mobileDay, si)" class="mb-1 inline-block rounded-md bg-[#1B5FD9] px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-white">Jadwal Anda</span>
                 <div class="flex items-start justify-between gap-2">
                   <h4 class="text-xs font-bold text-[#101828] leading-tight">
                     {{ gridData[mobileDay][si]?.mapel }}
@@ -337,7 +354,16 @@ const simLabel = computed(() => {
                 </p>
               </div>
 
-              <div class="mt-2.5">
+<button
+                v-if="editable && !gridData[mobileDay][si]?.mapel"
+                type="button"
+                class="absolute inset-0 flex items-center justify-end pr-5 rounded-xl text-[#98A2B3] transition-colors hover:bg-[#F5F8FF] hover:text-[#1B5FD9] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B5FD9]/40"
+                :aria-label="`Buat jadwal ${DAYS[mobileDay]} jam ke-${si + 1}`"
+                @click="emit('open-create', { di: mobileDay, si })"
+              >
+                <AdminV2Icon name="plus" :size="18" />
+              </button>
+              <div v-if="gridData[mobileDay][si]?.mapel" class="mt-2.5">
                 <span
                   class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
                   :class="statusBadgeClasses(getStatus(mobileDay, si))"

@@ -1,5 +1,5 @@
 import { useAdminGrade } from '~/composables/useAdminGrade'
-import { jenisNomorDari, normalisasiPendidikan, type JenisNomor } from '~/composables/guruCore'
+import { jenisNomorDari, normalisasiPendidikan, pesanGalatDb, type JenisNomor } from '~/composables/guruCore'
 
 export interface StaffItem {
   id: string
@@ -245,49 +245,61 @@ export const useAdminTeachers = () => {
     }
   }
 
-  // Impor massal guru ke Supabase — row-by-row agar baris valid tetap masuk
+  // Impor massal guru ke Supabase — tiap baris berdiri sendiri: baris bermasalah dicatat,
+  // baris lain tetap masuk. Baris dicocokkan dengan data yang sudah ada (NIK dulu, lalu NIP)
+  // supaya impor ulang memperbarui guru yang sama, bukan bentrok kunci unik.
   const batchImportTeachersToDb = async (items: StaffItem[]) => {
     isLoading.value = true
     let successCount = 0
-    let lastError = ''
+    const gagal: string[] = []
     const importedItems: StaffItem[] = []
 
     try {
-      for (const item of items) {
-        const payload = mapStaffToDbPayload(item)
-        const conflictColumn = payload.nip ? 'nip' : 'nik'
-        const { error } = await upsertGuru(payload, conflictColumn)
+      const idPerNik = new Map<string, string>()
+      const idPerNip = new Map<string, string>()
+      const { data: ada } = await supabase.from('teachers').select('id, nip, nik')
+      for (const r of ada || []) {
+        if (r.nik) idPerNik.set(String(r.nik), r.id)
+        if (r.nip) idPerNip.set(String(r.nip), r.id)
+      }
 
-        if (!error) {
+      for (const item of items) {
+        try {
+          const payload = mapStaffToDbPayload(item)
+          const idAda = (payload.nik && idPerNik.get(String(payload.nik))) || (payload.nip && idPerNip.get(String(payload.nip))) || ''
+          if (idAda) payload.id = idAda
+          else delete payload.id
+          const { error } = await upsertGuru(payload, idAda ? 'id' : payload.nip ? 'nip' : 'nik')
+          if (error) throw new Error(error.message)
           successCount++
           importedItems.push(item)
-        } else {
-          console.warn(`Gagal upsert guru "${item.name}" (${item.nip}):`, error.message)
-          lastError = error.message
+        } catch (e: any) {
+          gagal.push(`${item.name}: ${pesanGalatDb(e?.message || 'gagal disimpan')}`)
         }
       }
 
       // Refresh staffList dari DB setelah import selesai
       await fetchTeachersFromDb()
 
+      if (gagal.length) console.error('Impor guru — baris gagal:', gagal)
       if (successCount === 0) {
-        return { success: false, error: lastError || 'Semua baris gagal diimpor' }
+        return { success: false, error: gagal.slice(0, 2).join('; ') || 'Semua baris gagal diimpor', gagal }
       }
-
-      return { success: true, count: successCount, failed: items.length - successCount, items: importedItems }
+      return { success: true, count: successCount, failed: gagal.length, items: importedItems, gagal }
     } catch (err: any) {
       console.error('Error impor massal guru:', err)
-      return { success: false, error: err?.message }
+      return { success: false, error: err?.message, gagal }
     } finally {
       isLoading.value = false
     }
   }
 
-  const syncTeacherAccounts = async (items: StaffItem[]) => {
+  const syncTeacherAccounts = async (items: StaffItem[], password: string) => {
     try {
-      const result = await $fetch<{ accounts: SyncedTeacherAccount[]; skipped: number }>('/api/admin/teachers/sync-accounts', {
+      const result = await $fetch<{ accounts: SyncedTeacherAccount[]; skipped: number; gagal: string[] }>('/api/admin/teachers/sync-accounts', {
         method: 'POST',
         body: {
+          password,
           teachers: items.map(item => ({
             nip: item.nip,
             nik: item.nik,
@@ -304,6 +316,7 @@ export const useAdminTeachers = () => {
         success: false,
         accounts: [] as SyncedTeacherAccount[],
         skipped: 0,
+        gagal: [] as string[],
         error: err?.data?.statusMessage || err?.message || 'Gagal menyinkronkan akun guru.'
       }
     }

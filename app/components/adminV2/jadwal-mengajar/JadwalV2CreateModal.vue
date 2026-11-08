@@ -19,6 +19,7 @@ const props = defineProps<{
   jenjang: Jenjang
   currentClass: string
   simDayIdx: DayIndex
+  slotAwal?: { di: DayIndex, si: number } | null // dari klik sel kosong timetable
 }>()
 
 const emit = defineEmits<{
@@ -49,6 +50,10 @@ watch(() => props.isOpen, (terbuka) => {
   form.value.mapel = MAPEL[props.jenjang][0]?.name || ''
   form.value.guru = teachersOf(props.jenjang)[0] || ''
   form.value.hari = (props.simDayIdx >= 0 && props.simDayIdx <= 4 ? props.simDayIdx : 0) as DayIndex
+  if (props.slotAwal) {
+    form.value.hari = props.slotAwal.di
+    form.value.jam = SLOT_TIMES[props.slotAwal.si]?.split('–')[0] || form.value.jam
+  }
   errorMessage.value = ''
   isWarningReplace.value = false
 })
@@ -96,7 +101,7 @@ const handleSubmit = (force: boolean = false) => {
 
   // Periksa apakah kelas sudah terisi pada jam itu
   const currentCell = genGrid(props.jenjang, form.value.kelas)[di]?.[si]
-  if (currentCell && !force) {
+  if (currentCell?.mapel && !force) { // sel kosong dari genGrid bukan jadwal terisi
     isWarningReplace.value = true
     errorMessage.value = `Kelas ${form.value.kelas} sudah terisi ${currentCell.mapel} oleh ${currentCell.guru} pada jam ini. Klik "Ganti & Simpan Jadwal" untuk mengganti penugasan tersebut.`
     return

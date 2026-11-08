@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { perangkatDari } from '~/composables/profilCore'
 
 definePageMeta({
   layout: false
@@ -250,9 +251,17 @@ const handleLogin = async () => {
     })
 
     if (authError || !authData.user) {
+      const kode = (authError as any)?.code as string | undefined
       if (authError?.message?.includes('Email not confirmed')) {
         alertType.value = 'warn'
         alertMsg.value = 'Email belum dikonfirmasi. Silakan hubungi Administrator IT Darqia 9.'
+      } else if (kode === 'over_request_rate_limit' || (authError as any)?.status === 429) {
+        // Dulu semua galat selain "belum konfirmasi" tampil sebagai "sandi tidak cocok".
+        alertType.value = 'warn'
+        alertMsg.value = 'Terlalu banyak percobaan masuk. Tunggu beberapa menit, lalu coba lagi.'
+      } else if (kode === 'user_banned') {
+        alertType.value = 'warn'
+        alertMsg.value = 'Akun ini dinonaktifkan. Silakan hubungi Administrator IT Darqia 9.'
       } else {
         alertType.value = 'error'
         alertMsg.value = 'Email atau kata sandi tidak cocok. Silakan periksa kembali.'
@@ -270,7 +279,7 @@ const handleLogin = async () => {
     const metadata = authData.user.user_metadata
     successGreetingName.value = metadata?.name || metadata?.full_name || authData.user.email || email
     isSuccess.value = true
-    useLogAktivitas().catat('Sistem', 'login', 'Masuk ke portal admin', 'info', { id: authData.user.id, nama: successGreetingName.value })
+    useLogAktivitas().catat('Sistem', 'login', `Masuk ke portal admin · ${perangkatDari(navigator.userAgent)}`, 'info', { id: authData.user.id, nama: successGreetingName.value })
 
     const redirectQuery = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     const destination = redirectQuery.startsWith('/adminV2') && !redirectQuery.startsWith('/adminV2/login')

@@ -159,7 +159,11 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
   }
 }
 
-export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fileName: string }> => {
+// Sel Excel maksimal 32.767 karakter, sedangkan gambar yang diunggah di editor tersimpan sebagai data URL (jauh lebih besar).
+// Gambar tertanam tidak ikut diekspor; hanya tautan gambar (http/https) yang diekspor. Jumlah yang dilewati dikembalikan ke pemanggil.
+const URL_GAMBAR_EKSPOR = /^https?:\/\//i
+
+export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fileName: string; gambarDilewati: number }> => {
   const XLSX = await import('xlsx')
   const workbook = XLSX.utils.book_new()
   const metadataSheet = XLSX.utils.aoa_to_sheet([
@@ -173,7 +177,9 @@ export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fi
   XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Metadata')
   const letters = pkg.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
   const rows: unknown[][] = [DATA_HEADERS(pkg.grade)]
+  let gambarDilewati = 0
   for (const question of pkg.questions) {
+    if (question.imageUrl && !URL_GAMBAR_EKSPOR.test(question.imageUrl)) gambarDilewati += 1
     const optionOf = (key: string) => question.options?.find(option => option.key === key)?.text || ''
     rows.push([
       question.number,
@@ -183,7 +189,7 @@ export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fi
       ...letters.map(optionOf),
       Array.isArray(question.key) ? question.key.join(', ') : question.key || '',
       question.rubric || '',
-      question.imageUrl || '',
+      question.imageUrl && URL_GAMBAR_EKSPOR.test(question.imageUrl) ? question.imageUrl : '',
       question.mediaType ? (question.mediaType === 'audio' ? 'Audio' : 'Video') : '',
       question.mediaUrl || '',
       question.isRtl ? 'Ya' : 'Tidak',
@@ -201,7 +207,8 @@ export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fi
   const output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
   const result = {
     blob: new Blob([output], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    fileName: `Bank_Soal_${pkg.subject}_${pkg.classroom}.xlsx`
+    fileName: `Bank_Soal_${pkg.subject}_${pkg.classroom}.xlsx`.replace(/[\\/:*?"<>|]+/g, '-'),
+    gambarDilewati
   }
   return result
 }

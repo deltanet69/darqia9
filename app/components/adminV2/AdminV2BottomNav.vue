@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AdminV2Icon from './AdminV2Icon.vue'
+import { useRbac } from '~/composables/useRbac'
 
 interface Props {
   role: 'superadmin' | 'admin_tu' | 'guru'
@@ -17,6 +18,8 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const rbac = useRbac()
+onMounted(() => rbac.muat())
 
 const destinations: Record<string, string> = {
   beranda: '/adminV2',
@@ -69,6 +72,7 @@ const handleNav = (tab: string) => {
       :class="activeTab === 'akademik'
         ? jenjang === 'smp' ? 'text-[#14532D] bg-[#E7F6ED]' : 'text-[#0A2A5C] bg-[#E8F0FE]'
         : 'text-[#98A2B3] hover:text-[#344054]'"
+      v-if="rbac.bolehJudulMenu('Data siswa')"
       @click="handleNav('akademik')"
     >
       <AdminV2Icon name="cal" :size="20" />
@@ -85,7 +89,7 @@ const handleNav = (tab: string) => {
     </button>
 
     <button
-      v-if="role !== 'guru'"
+      v-if="role !== 'guru' && rbac.bolehJudulMenu('Keuangan sekolah')"
       type="button"
       class="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 min-h-[54px] text-[10px] font-semibold rounded-2xl transition whitespace-nowrap"
       :class="activeTab === 'keuangan'

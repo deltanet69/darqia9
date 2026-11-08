@@ -30,7 +30,13 @@ useHead({
 const activeGrade = useAdminGrade()
 const teachersStore = useAdminTeachers()
 const rawTeachers = teachersStore.attendanceList
-const tampilanAbsensi = ref<'presensi' | 'rekap'>('presensi')
+type TampilanAbsensi = 'presensi' | 'kehadiran' | 'rekap'
+const tampilanAbsensi = ref<TampilanAbsensi>('presensi')
+const ABSENSI_GURU_TABS: { id: TampilanAbsensi, label: string, icon: string }[] = [
+  { id: 'presensi', label: 'Presensi Harian', icon: 'grid' },
+  { id: 'kehadiran', label: 'Rekap Kehadiran', icon: 'users' },
+  { id: 'rekap', label: 'Rekap Mengajar', icon: 'cal' }
+]
 
 const jenjang = ref<'smp' | 'smk'>(activeGrade.value.toLowerCase() as 'smp' | 'smk')
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
@@ -490,13 +496,7 @@ onMounted(() => {
 
     <!-- MAIN PAGE CONTAINER -->
     <main class="max-w-[1440px] mx-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 space-y-6">
-      <!-- TAB: PRESENSI HARIAN | REKAP MENGAJAR -->
-      <div class="inline-flex bg-white border border-[#E7EBF2] rounded-xl p-1 shadow-xs" role="tablist" aria-label="Tampilan Absensi Guru">
-        <button type="button" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" :class="tampilanAbsensi === 'presensi' ? 'bg-[#1B5FD9] text-white' : 'text-[#344054] hover:bg-[#F8FAFC]'" @click="tampilanAbsensi = 'presensi'">Presensi Harian</button>
-        <button type="button" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" :class="tampilanAbsensi === 'rekap' ? 'bg-[#1B5FD9] text-white' : 'text-[#344054] hover:bg-[#F8FAFC]'" @click="tampilanAbsensi = 'rekap'">Rekap Mengajar</button>
-      </div>
-
-      <div v-show="tampilanAbsensi === 'presensi'" class="space-y-6">
+      <div class="space-y-6">
       <!-- PAGE HEAD & AKSI -->
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
@@ -519,6 +519,7 @@ onMounted(() => {
 
         <div class="flex items-center gap-2.5">
           <button
+            v-if="tampilanAbsensi !== 'rekap'"
             type="button"
             class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#1B5FD9] hover:bg-[#154db0] text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
             @click="exportRecapCsv"
@@ -529,11 +530,36 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Sub menu (gaya sama dengan Absensi Siswa & Manajemen CBT) -->
+      <div class="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <nav
+          class="inline-flex items-center gap-1 bg-[#EFF2F7] border border-[#E7EBF2] p-1.5 rounded-2xl min-w-max"
+          role="tablist"
+          aria-label="Navigasi Absensi Guru"
+        >
+          <button
+            v-for="tab in ABSENSI_GURU_TABS"
+            :key="tab.id"
+            type="button"
+            role="tab"
+            class="inline-flex items-center gap-2 text-[12.5px] px-3.5 sm:px-4 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer"
+            :class="tampilanAbsensi === tab.id
+              ? 'bg-white text-[#101828] font-bold shadow-[0_1px_4px_rgba(16,24,40,0.12)]'
+              : 'text-[#667085] font-semibold hover:text-[#101828]'"
+            :aria-selected="tampilanAbsensi === tab.id"
+            @click="tampilanAbsensi = tab.id"
+          >
+            <AdminV2Icon :name="tab.icon" :size="15" :class="tampilanAbsensi === tab.id ? 'text-[#1B5FD9]' : 'text-[#667085]'" />
+            <span>{{ tab.label }}</span>
+          </button>
+        </nav>
+      </div>
+
 
       <!-- ============================================================= -->
       <!-- ANALITIK PRESENSI                                            -->
       <!-- ============================================================= -->
-      <div class="space-y-6">
+      <div v-show="tampilanAbsensi === 'presensi'" class="space-y-6">
         <!-- Period & Unit Filter Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-[#E7EBF2] rounded-2xl p-3 sm:px-4 shadow-xs">
           <div class="flex items-center gap-2 flex-wrap">
@@ -646,6 +672,10 @@ onMounted(() => {
           </div>
         </div>
 
+      </div>
+
+      <!-- SUB MENU REKAP KEHADIRAN: rekap per jabatan + rincian -->
+      <div v-show="tampilanAbsensi === 'kehadiran'" class="space-y-6">
         <!-- Rekap Kehadiran per Jabatan / Peran Pendidik -->
         <div class="space-y-3">
           <div class="flex items-center justify-between">
@@ -694,7 +724,7 @@ onMounted(() => {
       <!-- ============================================================= -->
       <!-- RINCIAN KEHADIRAN                                            -->
       <!-- ============================================================= -->
-      <div id="detail-kehadiran" class="space-y-4">
+      <div v-show="tampilanAbsensi === 'kehadiran'" id="detail-kehadiran" class="space-y-4">
         <!-- Role / Unit Tab Navigator -->
         <div class="bg-white border border-[#E7EBF2] rounded-2xl p-2.5 shadow-xs space-y-2">
           <div class="flex items-center justify-between px-2 pt-0.5">

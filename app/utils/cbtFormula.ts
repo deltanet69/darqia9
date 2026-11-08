@@ -158,9 +158,12 @@ export const renderKaTeXHtml = (rawText: string): string => {
  * Kompresi gambar canvas di sisi browser ke format WebP target < 200KB.
  * Sekaligus mendeteksi karakteristik kanvas (papan tulis hitam / chalkboard).
  */
+// minDimension > 0: gambar yang sisi terpanjangnya lebih kecil diperbesar (dihaluskan) sampai ukuran itu. Dipakai OCR: huruf Arab
+// berharakat pada gambar kecil sering terbaca berbeda antarmodel, sedangkan versi diperbesar terbaca konsisten.
 export const compressImageToWebP = (
   file: File,
-  maxDimension = 1600
+  maxDimension = 1600,
+  minDimension = 0
 ): Promise<{
   dataUrl: string
   originalSizeKB: number
@@ -186,9 +189,16 @@ export const compressImageToWebP = (
           }
         }
 
+        if (minDimension > 0 && Math.max(width, height) < minDimension) {
+          const faktor = minDimension / Math.max(width, height)
+          width = Math.round(width * faktor)
+          height = Math.round(height * faktor)
+        }
+
         canvas.width = width
         canvas.height = height
         const ctx = canvas.getContext('2d')
+        if (ctx) ctx.imageSmoothingQuality = 'high'
         if (!ctx) {
           reject(new Error('Gagal memproses kanvas gambar.'))
           return
@@ -218,6 +228,21 @@ export const compressImageToWebP = (
         while (dataUrl.length > 800 * 1024 && quality > 0.45) {
           quality -= 0.1
           dataUrl = canvas.toDataURL('image/webp', quality)
+        }
+        // Kualitas sudah di batas bawah tetapi masih terlalu besar (gambar sangat detail): kecilkan dimensi
+        // bertahap supaya hasil selalu muat di batas ekstraksi server (700 KB), bukan ditolak 413.
+        while (dataUrl.length > 800 * 1024 && canvas.width > 640) {
+          const skala = 0.85
+          const lebar = Math.round(canvas.width * skala)
+          const tinggi = Math.round(canvas.height * skala)
+          const kecil = document.createElement('canvas')
+          kecil.width = lebar
+          kecil.height = tinggi
+          kecil.getContext('2d')?.drawImage(canvas, 0, 0, lebar, tinggi)
+          canvas.width = lebar
+          canvas.height = tinggi
+          canvas.getContext('2d')?.drawImage(kecil, 0, 0)
+          dataUrl = canvas.toDataURL('image/webp', 0.8)
         }
 
         const originalSizeKB = Math.round(file.size / 1024)

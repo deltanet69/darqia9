@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
-import {
-  initials,
-  AVATAR_GRADIENTS,
-  type ProfileAccount
-} from './profilV2Data'
+import { ref } from 'vue'
+import { inisial, type ProfilSaya } from '~/composables/profilCore'
+import { AVATAR_GRADIENTS } from './profilV2Data'
 
 defineProps<{
-  profile: ProfileAccount
+  profile: ProfilSaya
   themeIdx: number
   themeOpen: boolean
   isEditing: boolean
@@ -19,8 +17,16 @@ const emit = defineEmits<{
   (e: 'start-edit'): void
   (e: 'save-edit'): void
   (e: 'cancel-edit'): void
-  (e: 'upload-foto'): void
+  (e: 'upload-foto', file: File): void
 }>()
+
+const inputFoto = ref<HTMLInputElement | null>(null)
+const pilihFoto = (e: Event) => {
+  const el = e.target as HTMLInputElement
+  const file = el.files?.[0]
+  if (file) emit('upload-foto', file)
+  el.value = ''
+}
 </script>
 
 <template>
@@ -32,7 +38,8 @@ const emit = defineEmits<{
           class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white shadow-xs"
           :class="AVATAR_GRADIENTS[themeIdx] || AVATAR_GRADIENTS[0]"
         >
-          {{ initials(profile.name) }}
+          <img v-if="profile.fotoUrl" :src="profile.fotoUrl" :alt="'Foto ' + profile.name" class="h-full w-full rounded-full object-cover">
+          <span v-else>{{ inisial(profile.name) }}</span>
         </div>
 
         <div class="min-w-0">
@@ -108,11 +115,12 @@ const emit = defineEmits<{
       <button
         type="button"
         class="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[#D0D5DD] bg-[#F8FAFD] px-3 py-1 text-xs font-bold text-[#344054] transition-colors hover:bg-[#EFF2F7]"
-        @click="emit('upload-foto')"
+        @click="inputFoto?.click()"
       >
         <AdminV2Icon name="upload" :size="13" />
         <span>Unggah Foto Profil</span>
       </button>
+      <input ref="inputFoto" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="pilihFoto">
     </div>
   </div>
 </template>

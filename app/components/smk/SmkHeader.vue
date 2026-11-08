@@ -72,7 +72,7 @@
               to="/smk" 
               :class="[
                 'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
-                $route.path === '/smk' 
+                halaman === '/smk' 
                   ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
                   : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
@@ -84,7 +84,7 @@
               to="/smk/tentang" 
               :class="[
                 'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
-                $route.path === '/smk/tentang' 
+                halaman === '/smk/tentang' 
                   ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
                   : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
@@ -96,7 +96,7 @@
               to="/smk/akademik" 
               :class="[
                 'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
-                $route.path === '/smk/akademik' 
+                halaman === '/smk/akademik' 
                   ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
                   : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
@@ -108,7 +108,7 @@
               to="/smk/berita" 
               :class="[
                 'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
-                $route.path === '/smk/berita' 
+                halaman === '/smk/berita' 
                   ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
                   : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
@@ -120,7 +120,7 @@
               to="/smk/spmb" 
               :class="[
                 'py-[8px] px-[12px] rounded-[10px] font-semibold text-[15px] whitespace-nowrap transition-all duration-200',
-                $route.path === '/smk/spmb' 
+                halaman === '/smk/spmb' 
                   ? (isScrolled ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : 'bg-white/20 text-white font-bold')
                   : (isScrolled ? 'text-[#2A3A58] hover:bg-[#E8F0FE] hover:text-[#1B5FD9]' : 'text-[#E8EFFC] hover:bg-white/15 hover:text-white')
               ]"
@@ -187,7 +187,7 @@
           to="/smk" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
-          :class="$route.path === '/smk' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
+          :class="halaman === '/smk' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
           Beranda
         </NuxtLink>
@@ -195,7 +195,7 @@
           to="/smk/tentang" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
-          :class="$route.path === '/smk/tentang' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
+          :class="halaman === '/smk/tentang' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
           Tentang Kami
         </NuxtLink>
@@ -203,7 +203,7 @@
           to="/smk/akademik" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
-          :class="$route.path === '/smk/akademik' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
+          :class="halaman === '/smk/akademik' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
           Akademik &amp; Ekstrakurikuler
         </NuxtLink>
@@ -211,7 +211,7 @@
           to="/smk/berita" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
-          :class="$route.path === '/smk/berita' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
+          :class="halaman === '/smk/berita' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
           Berita &amp; Artikel
         </NuxtLink>
@@ -219,7 +219,7 @@
           to="/smk/spmb" 
           @click="isMobileMenuOpen = false" 
           class="block py-[10px] px-[12px] text-[15px] font-semibold text-[#0F1E38] rounded-[10px] hover:bg-[#F5F8FF]"
-          :class="$route.path === '/smk/spmb' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
+          :class="halaman === '/smk/spmb' ? 'bg-[#E8F0FE] text-[#1B5FD9] font-bold' : ''"
         >
           SPMB 2027/2028
         </NuxtLink>
@@ -239,8 +239,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 
+// Di domain live path tampil tanpa /smk; menu aktif tetap dicocokkan dengan path /smk/...
+const route = useRoute()
+const halaman = computed(() => route.path.startsWith('/smk') ? route.path : `/smk${route.path === '/' ? '' : route.path}`)
 const isScrolled = ref(false)
 const isMobileMenuOpen = ref(false)
 

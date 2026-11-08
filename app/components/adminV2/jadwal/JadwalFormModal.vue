@@ -43,7 +43,7 @@ watch(() => props.open, (terbuka) => {
     form.mulaiKe = props.awal.ke
     form.selesaiKe = props.awal.ke
     form.subjectId = props.mapelList[0]?.id ?? ''
-    form.teacherId = props.guruList[0]?.id ?? ''
+    form.teacherId = ''
     form.room = ''
     form.notes = ''
   }
@@ -54,14 +54,18 @@ const kelasGrup = computed(() => props.tingkatOrder
   .filter(g => g.kelas.length))
 const slotJam = computed(() => props.slots.filter(s => s.jenis === 'jam'))
 const namaKelas = (id: string) => props.kelasList.find(k => k.id === id)?.name ?? 'kelas lain'
-const namaGuru = (id: string) => props.guruList.find(g => g.id === id)?.name ?? '—'
+// Guru jenjang kelas ini + Yayasan di grup pertama; guru jenjang lain di grup kedua.
+const gradeKelas = computed(() => props.kelasList.find(k => k.id === form.classId)?.grade ?? '')
+const guruSesuai = computed(() => props.guruList.filter(g => g.unit === gradeKelas.value || g.unit === 'Yayasan'))
+const guruLain = computed(() => props.guruList.filter(g => g.unit !== gradeKelas.value && g.unit !== 'Yayasan'))
+const namaGuru = (id: string) => props.guruList.find(g => g.id === id)?.name ?? 'Guru belum ditentukan'
 const namaMapel = (id: string) => props.mapelList.find(m => m.id === id)?.name ?? '—'
 
 const bentrok = computed(() => {
   const waktu = waktuDariJamKe(props.slots, Number(form.mulaiKe), Number(form.selesaiKe))
-  if (!waktu || !form.classId || !form.teacherId) return null
+  if (!waktu || !form.classId) return null
   return cariBentrok(props.entriList, {
-    classId: form.classId, teacherId: form.teacherId, day: Number(form.day),
+    classId: form.classId, teacherId: form.teacherId, subjectId: form.subjectId, day: Number(form.day),
     startsAt: waktu.startsAt, endsAt: waktu.endsAt, room: form.room
   }, props.entriEdit?.id)
 })
@@ -78,7 +82,7 @@ const pesanBentrok = computed<string | null>(() => {
 })
 
 const kirim = () => {
-  if (pesanBentrok.value || !form.classId || !form.subjectId || !form.teacherId) return
+  if (pesanBentrok.value || !form.classId || !form.subjectId) return
   emit('simpan', {
     classId: form.classId, subjectId: form.subjectId, teacherId: form.teacherId,
     day: Number(form.day), mulaiKe: Number(form.mulaiKe), selesaiKe: Number(form.selesaiKe),
@@ -133,9 +137,15 @@ const kirim = () => {
           </select>
         </div>
         <div class="col-span-2">
-          <label class="text-[12px] font-medium text-slate-600" for="jf-guru">Guru Pengajar *</label>
+          <label class="text-[12px] font-medium text-slate-600" for="jf-guru">Guru Pengajar</label>
           <select id="jf-guru" v-model="form.teacherId" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-[13.5px] bg-white">
-            <option v-for="g in guruList" :key="g.id" :value="g.id">{{ g.name }}</option>
+            <option value="">Belum ditentukan</option>
+            <optgroup v-if="guruSesuai.length" :label="`Guru ${gradeKelas} & Yayasan`">
+              <option v-for="g in guruSesuai" :key="g.id" :value="g.id">{{ g.name }}</option>
+            </optgroup>
+            <optgroup v-if="guruLain.length" label="Guru jenjang lain">
+              <option v-for="g in guruLain" :key="g.id" :value="g.id">{{ g.name }} ({{ g.unit }})</option>
+            </optgroup>
           </select>
         </div>
         <div>

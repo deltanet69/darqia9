@@ -7,6 +7,7 @@ import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCb
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import { readWordBankTemplate, type WordBankPreview } from '~/utils/cbtWordBank'
 import { readExcelBankTemplate, buildBankExcel } from '~/utils/cbtExcelBank'
+import { buildBankCsv } from '~/utils/cbtCsvBank'
 
 interface Props {
   grade: GradeType
@@ -40,23 +41,37 @@ type QuestionStep = 'PG' | 'Isian' | 'Esai' | 'Interaktif'
 const formStep = ref<QuestionStep>('PG')
 const draftStorageFailed = ref(false)
 
-const draftStorageKey = () => `darqia:${props.source || 'cbt'}-bank-draft:${props.grade}`
+// Kunci draf memuat id akun: akun lain di peramban yang sama tidak melihat/mewarisi draf ini.
+const penggunaLogin = useSupabaseUser()
+const draftStorageKey = () => `darqia:${props.source || 'cbt'}-bank-draft:${props.grade}:${(penggunaLogin.value as any)?.id || (penggunaLogin.value as any)?.sub || 'anon'}`
 
 const persistFormDraft = () => {
   if (typeof window === 'undefined' || !formDraft.value) return
+  const bungkus = (draft: BankPackage) => JSON.stringify({
+    draft,
+    editing: isEditingForm.value,
+    selectedClass: selectedClass.value,
+    selectedPkgId: selectedPkgId.value,
+    step: formStep.value
+  })
   try {
-    window.sessionStorage.setItem(draftStorageKey(), JSON.stringify({
-      draft: formDraft.value,
-      editing: isEditingForm.value,
-      selectedClass: selectedClass.value,
-      selectedPkgId: selectedPkgId.value,
-      step: formStep.value
-    }))
+    window.sessionStorage.setItem(draftStorageKey(), bungkus(formDraft.value))
     draftStorageFailed.value = false
   } catch {
-    if (!draftStorageFailed.value) {
-      draftStorageFailed.value = true
-      emit('toast', 'Draf terlalu besar untuk disimpan otomatis. Simpan paket sebelum menutup halaman.')
+    // Penyimpanan peramban terbatas (~5 MB) dan gambar soal berukuran besar. Teks lebih penting daripada gambar:
+    // coba lagi tanpa gambar agar soal yang sudah diketik tetap selamat saat halaman dimuat ulang.
+    try {
+      const tanpaGambar: BankPackage = { ...formDraft.value, questions: formDraft.value.questions.map(q => ({ ...q, imageUrl: undefined })) }
+      window.sessionStorage.setItem(draftStorageKey(), bungkus(tanpaGambar))
+      if (!draftStorageFailed.value) {
+        draftStorageFailed.value = true
+        emit('toast', 'Gambar soal terlalu besar untuk draf otomatis. Teks soal tetap aman; unggah ulang gambar bila halaman dimuat ulang.')
+      }
+    } catch {
+      if (!draftStorageFailed.value) {
+        draftStorageFailed.value = true
+        emit('toast', 'Draf tidak dapat disimpan otomatis. Simpan paket sebelum menutup halaman.')
+      }
     }
   }
 }
@@ -118,16 +133,24 @@ const plainQuestionText = (value = '') => value.replace(/<[^>]+>/g, ' ').replace
 const questionMeta = (q: BankQuestionItem) => q.type === 'Esai' ? 'Rubrik terisi' : `Kunci ${Array.isArray(q.key) ? q.key.join(', ') : q.key || '-'}`
 
 const currentGradePackages = computed(() => {
-  return packages.value.filter(p => p.grade === props.grade)
+  return packages.value.filter(p => p.grade === props.grade && cbtData.bolehKelolaBank(p.classId, p.subjectId))
 })
 const storedFormatCount = computed(() => new Set(currentGradePackages.value.flatMap(pkg => pkg.questions.map(q => q.type))).size)
 
+// Pilihan guru penyusun untuk Superadmin: seluruh master guru aktif; guru jenjang ini dan Yayasan di urutan atas.
+const guruPenyusunOpsi = computed(() => [...cbtData.teachers.value]
+  .sort((a, b) => Number(b.grade === props.grade || b.grade === 'Yayasan') - Number(a.grade === props.grade || a.grade === 'Yayasan') || a.name.localeCompare(b.name, 'id'))
+  .map(item => item.name))
+
 const allClasses = computed(() => {
-  return cbtData.classes.value.filter(item => item.grade === props.grade).map(item => item.name)
+  return cbtData.classes.value.filter(item => item.grade === props.grade && cbtData.bolehKelolaBank(item.id)).map(item => item.name)
 })
 
 const allSubjects = computed(() => {
-  return cbtData.subjects.value.filter(item => item.grade === props.grade).map(item => item.name)
+  const kelasBoleh = cbtData.classes.value.filter(item => item.grade === props.grade && cbtData.bolehKelolaBank(item.id))
+  return cbtData.subjects.value
+    .filter(item => item.grade === props.grade && kelasBoleh.some(kelas => cbtData.bolehKelolaBank(kelas.id, item.id)))
+    .map(item => item.name)
 })
 const scheduledSubjectIds = (classId: string) => {
   const ids = new Set(cbtData.classSubjects.value.filter(item => item.class_id === classId).map(item => item.subject_id))
@@ -138,14 +161,15 @@ const scheduledSubjectIds = (classId: string) => {
 }
 const isSubjectFallback = (classroom: string) => {
   const target = cbtData.classes.value.find(item => item.grade === props.grade && item.name === classroom)
-  return !!target && scheduledSubjectIds(target.id).size === 0
+  // Semua mapel hanya jadi cadangan untuk Superadmin; guru tidak boleh melihat mapel yang tidak ia ampu.
+  return cbtData.adalahSuperadmin.value && !!target && scheduledSubjectIds(target.id).size === 0
 }
 const subjectsForClass = (classroom: string) => {
   const target = cbtData.classes.value.find(item => item.grade === props.grade && item.name === classroom)
   if (!target) return []
   const ids = scheduledSubjectIds(target.id)
-  if (!ids.size) return allSubjects.value
-  return cbtData.subjects.value.filter(item => item.grade === props.grade && ids.has(item.id)).map(item => item.name)
+  if (!ids.size) return cbtData.adalahSuperadmin.value ? allSubjects.value : []
+  return cbtData.subjects.value.filter(item => item.grade === props.grade && ids.has(item.id) && cbtData.bolehKelolaBank(target.id, item.id)).map(item => item.name)
 }
 
 
@@ -181,6 +205,8 @@ const openPackageDetail = (pkgId: string) => {
 }
 
 const startCreatePackage = (preselectedClass?: string) => {
+  // Draf yang belum disimpan tidak boleh tertimpa diam-diam oleh bank soal baru.
+  if (hasSavedDraft.value && !confirm('Ada draf bank soal yang belum disimpan. Membuat bank soal baru akan menghapus draf itu. Lanjutkan?')) return
   const targetClass = preselectedClass || selectedClass.value || ''
   const targetSubject = ''
   formDraft.value = {
@@ -190,7 +216,7 @@ const startCreatePackage = (preselectedClass?: string) => {
     subject: targetSubject,
     grade: props.grade,
     difficulty: 'Sedang',
-    teacherName: '',
+    teacherName: cbtData.namaPenyusunSaya.value,
     updatedAt: 'Baru saja',
     hasInteractive: false,
     questions: [
@@ -245,34 +271,21 @@ const handleCancelForm = () => {
 }
 
 const exportCsv = (pkg: BankPackage) => {
-  const rows = pkg.questions.map(q => {
-    const k = Array.isArray(q.key) ? q.key.join(', ') : (q.key || '-')
-    return [
-      q.number,
-      `"${q.type}"`,
-      `"${q.difficulty}"`,
-      `"${q.text.replace(/"/g, '""')}"`,
-      `"${String(k).replace(/"/g, '""')}"`,
-      `"${q.mediaUrl || '-'}"`
-    ].join(',')
-  })
-  const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [
-    'No,Tipe Format,Tingkat Kesulitan,Pertanyaan,Kunci / Rubrik Jawaban,Media Lampiran',
-    ...rows
-  ].join('\n')
-  const encodedUri = encodeURI(csvContent)
+  // Blob (bukan data URI): tanda # dan karakter khusus di soal tidak memotong isi berkas.
+  const { csv, fileName, gambarDilewati } = buildBankCsv(pkg)
   const link = document.createElement('a')
-  link.setAttribute('href', encodedUri)
-  link.setAttribute('download', `Bank_Soal_${pkg.subject}_${pkg.classroom}.csv`)
+  link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  link.download = fileName
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-  emit('toast', `File CSV paket ${pkg.subject} berhasil diunduh.`)
+  URL.revokeObjectURL(link.href)
+  emit('toast', `File CSV paket ${pkg.subject} berhasil diunduh.${gambarDilewati ? ` ${gambarDilewati} gambar tertanam tidak ikut diekspor.` : ''}`)
 }
 
 const exportExcel = async (pkg: BankPackage) => {
   try {
-    const { blob, fileName } = await buildBankExcel(pkg)
+    const { blob, fileName, gambarDilewati } = await buildBankExcel(pkg)
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
     link.download = fileName
@@ -280,7 +293,7 @@ const exportExcel = async (pkg: BankPackage) => {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(link.href)
-    emit('toast', `File Excel paket ${pkg.subject} berhasil diunduh.`)
+    emit('toast', `File Excel paket ${pkg.subject} berhasil diunduh.${gambarDilewati ? ` ${gambarDilewati} gambar tertanam tidak ikut diekspor (hanya tautan gambar yang bisa masuk Excel).` : ''}`)
   } catch {
     emit('toast', 'File Excel gagal dibuat.')
   }
@@ -312,6 +325,8 @@ const deletePackage = async (pkgId: string) => {
 onMounted(() => {
   try { hasSavedDraft.value = !!window.sessionStorage.getItem(draftStorageKey()) }
   catch { hasSavedDraft.value = false }
+  // Muat ulang halaman tidak boleh menghilangkan soal yang sedang disusun: draf langsung dibuka kembali.
+  if (hasSavedDraft.value) restoreFormDraft()
 })
 
 const downloadWordTemplate = (grade: GradeType) => {
@@ -358,7 +373,7 @@ const confirmImport = async () => {
   try {
     if (!subjectsForClass(importPreview.value.classroom).includes(importPreview.value.subject)) throw new Error('Mata pelajaran impor tidak sesuai dengan jadwal kelas.')
     if (importTarget.value === 'tambah') {
-      const target = packages.value.find(pkg => pkg.id === importTargetPkgId.value && pkg.grade === props.grade)
+      const target = currentGradePackages.value.find(pkg => pkg.id === importTargetPkgId.value)
       if (!target) throw new Error('Pilih paket tujuan terlebih dahulu.')
       if (target.classroom !== importPreview.value.classroom || target.subject !== importPreview.value.subject) {
         throw new Error(`File ini untuk ${importPreview.value.subject} - ${importPreview.value.classroom}, sedangkan paket tujuan adalah ${target.subject} - ${target.classroom}.`)
@@ -375,6 +390,7 @@ const confirmImport = async () => {
       closeImport()
       return
     }
+    // Penyusun dari berkas hanya dipakai Superadmin; guru selalu atas nama akunnya (dipaksa juga di saveBankPackage).
     const savedId = await cbtData.saveBankPackage(importPreview.value.package, props.grade)
     selectedPkgId.value = savedId
     selectedClass.value = importPreview.value.classroom
@@ -402,6 +418,9 @@ const confirmImport = async () => {
         :class-options="allClasses"
         :subject-options="subjectsForClass(formDraft.classroom)"
         :subject-fallback="isSubjectFallback(formDraft.classroom)"
+        :lock-teacher="!cbtData.adalahSuperadmin.value"
+        :teacher-options="guruPenyusunOpsi"
+        :self-name="cbtData.namaPenyusunSaya.value"
         :initial-step="formStep"
         @save="handleSavePackage"
         @cancel="handleCancelForm"

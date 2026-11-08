@@ -92,7 +92,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const stateKey = source === 'ujian_harian' ? 'ujian-harian' : 'cbt'
   const classes = useState<CbtClass[]>(`${stateKey}-master-classes`, () => [])
   const subjects = useState<CbtSubject[]>(`${stateKey}-master-subjects`, () => [])
-  const classSubjects = useState<{ class_id: string; subject_id: string }[]>(`${stateKey}-class-subjects`, () => [])
+  const classSubjects = useState<{ class_id: string; subject_id: string; teacher_id?: string | null }[]>(`${stateKey}-class-subjects`, () => [])
+  const rbac = useRbac()
   const teachers = useState<CbtTeacher[]>('admin-master-teachers', () => [])
   const bankPackages = useState<BankPackage[]>(`${stateKey}-bank-packages`, () => [])
   const exams = useState<ExamItem[]>(`${stateKey}-exams`, () => [])
@@ -128,7 +129,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
         client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
         client.from(tables.violations).select('assignment_id'),
-        client.from('class_schedules').select('class_id, subject_id').eq('active', true)
+        client.from('class_schedules').select('class_id, subject_id, teacher_id').eq('active', true)
       ])
 
       const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult]
@@ -354,10 +355,30 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     return request
   }
 
+  // Bank soal: Superadmin bebas; guru hanya pada kelas+mapel yang ia ajar menurut jadwal,
+  // atau mapel terjadwal di kelas yang ia walikan. Tanpa subjectId = cek tingkat kelas.
+  const adalahSuperadmin = rbac.adalahSuperadmin
+  const bolehKelolaBank = (classId?: string | null, subjectId?: string | null) => {
+    if (adalahSuperadmin.value) return true
+    const saya = rbac.state.value.subjekSaya
+    if (!saya || !classId) return false
+    const wali = classes.value.some(item => item.id === classId && item.homeroomTeacherId && String(item.homeroomTeacherId) === saya)
+    return classSubjects.value.some(item => item.class_id === classId
+      && (!subjectId || item.subject_id === subjectId)
+      && (wali || (item.teacher_id && String(item.teacher_id) === saya)))
+  }
+  // Guru penyusun bawaan = akun yang login. Superadmin tanpa data guru dicatat sebagai "Superadmin"
+  // (agar bisa menyusun bank soal atas namanya sendiri); akun lain tanpa data guru dikosongkan.
+  const namaPenyusunSaya = computed(() => rbac.namaAkun.value || (adalahSuperadmin.value ? 'Superadmin' : ''))
+
   const saveBankPackage = async (pkg: BankPackage, expectedGrade: GradeType = pkg.grade) => {
     const classItem = classes.value.find(item => item.id === pkg.classId || (item.grade === pkg.grade && item.name === pkg.classroom))
     const subjectItem = subjects.value.find(item => item.id === pkg.subjectId || (item.grade === pkg.grade && item.name === pkg.subject))
     if (!classItem || !subjectItem) throw new Error('Kelas atau mata pelajaran tidak lagi tersedia.')
+    const bankLama = bankPackages.value.find(item => item.id === pkg.id)
+    if (!bolehKelolaBank(classItem.id, subjectItem.id) || (bankLama && !bolehKelolaBank(bankLama.classId, bankLama.subjectId))) {
+      throw new Error('Anda hanya dapat mengelola bank soal pada kelas dan mata pelajaran yang Anda ampu.')
+    }
     if (pkg.grade !== expectedGrade || classItem.grade !== expectedGrade || subjectItem.grade !== expectedGrade) {
       throw new Error('Jenjang bank soal, kelas, dan mata pelajaran harus sesuai dengan jenjang yang dipilih.')
     }
@@ -386,7 +407,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       subject: subjectItem.name,
       grade: classItem.grade,
       difficulty: pkg.difficulty,
-      teacher_name: pkg.teacherName,
+      // Selain Superadmin, penyusun tidak bisa diganti: bank lama tetap, bank baru = akun yang login.
+      teacher_name: adalahSuperadmin.value ? pkg.teacherName : (bankLama?.teacherName || namaPenyusunSaya.value),
       has_interactive: pkg.questions.some(question => question.type === 'Interaktif'),
       class_id: classItem.id,
       subject_id: subjectItem.id,
@@ -426,6 +448,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const deleteBankPackage = async (id: string, grade?: GradeType) => {
     const bank = bankPackages.value.find(item => item.id === id)
     if (!bank || (grade && bank.grade !== grade)) throw new Error('Bank soal tidak tersedia pada jenjang yang dipilih.')
+    if (!bolehKelolaBank(bank.classId, bank.subjectId)) throw new Error('Anda hanya dapat menghapus bank soal pada kelas dan mata pelajaran yang Anda ampu.')
     const { error: deleteError } = await client.from(tables.banks).delete().eq('id', id).eq('grade', grade ?? bank.grade).select('id').single()
     if (deleteError) throw new Error(deleteError.message)
     await load(true)
@@ -578,6 +601,9 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const gradeExams = (grade: GradeType) => computed(() => exams.value.filter(item => item.grade === grade))
 
   return {
+    adalahSuperadmin,
+    bolehKelolaBank,
+    namaPenyusunSaya,
     classes,
     subjects,
     classSubjects,
