@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2ExamTokens from './CbtV2ExamTokens.vue'
@@ -25,8 +25,15 @@ const emit = defineEmits<{
   (e: 'copy-token', token: string): void
 }>()
 
-const tokenExam = ref<ExamItem | null>(null)
-const rombelAktif = ref('')
+// Rombel, modal token, dan filter disimpan di URL: refresh tetap di halaman yang sama dan tombol kembali browser mundur satu langkah.
+const route = useRoute()
+const router = useRouter()
+const kueri = (kunci: string) => typeof route.query[kunci] === 'string' ? route.query[kunci] as string : ''
+const ubahKueri = (ubah: Record<string, string | undefined>, ganti = false) => {
+  const query = { ...route.query, ...ubah }
+  return ganti ? router.replace({ query }) : router.push({ query })
+}
+const rombelAktif = computed(() => kueri('rombel'))
 const isCreateModalOpen = ref(false)
 const scheduleDialog = ref<HTMLElement | null>(null)
 watch(isCreateModalOpen, async open => {
@@ -37,8 +44,9 @@ const wizardStep = ref(1)
 const soalMode = ref<'acak' | 'manual'>('acak')
 const acakCount = ref(40)
 const acakRolled = ref(false)
-const statusFilter = ref<'semua' | 'siap' | 'berlangsung' | 'selesai'>('semua')
-const searchQuery = ref('')
+const statusFilter = ref<'semua' | 'siap' | 'berlangsung' | 'selesai'>(['siap', 'berlangsung', 'selesai'].includes(kueri('ujianStatus')) ? kueri('ujianStatus') as 'siap' : 'semua')
+const searchQuery = ref(kueri('ujianCari'))
+watch([statusFilter, searchQuery], ([status, cari]) => { void ubahKueri({ ujianStatus: status === 'semua' ? undefined : status, ujianCari: cari || undefined }, true) })
 const selectedQuestionIds = ref<string[]>([])
 const selectionError = ref('')
 const loadingSelection = ref(false)
@@ -107,10 +115,10 @@ const jadwalPerHari = computed(() => {
   return hasil
 })
 
-const tokenUntukRombel = (classId: string) => {
-  const e = currentExams.value.filter(x => x.classId === classId).sort(urutWaktu)[0]
-  if (e) tokenExam.value = e
-}
+// Modal token terbuka selama ?token=1 ada di URL; satu token berlaku untuk seluruh mapel rombel, jadi ujian mana pun cukup sebagai acuan.
+const tokenExam = computed(() => kueri('token') && rombelDetail.value
+  ? currentExams.value.filter(x => x.classId === rombelAktif.value).sort(urutWaktu)[0] ?? null
+  : null)
 
 const availablePackages = computed(() =>
   gradePackages.value.filter(pkg => !newExam.value.classId || pkg.classId === newExam.value.classId)
@@ -138,7 +146,7 @@ const loadSelection = async (ids?: string[] | null) => {
   selectionError.value = ''
   selectedQuestionIds.value = []
   try {
-    await cbtData.loadQuestions(true)
+    await cbtData.loadQuestions()
     if (request !== selectionRequest) return
     selectedQuestionIds.value = ids == null ? bankQuestions.value.map(q => q.id) : [...ids]
   } catch (error) {
@@ -238,6 +246,33 @@ const openEditSchedule = (exam: ExamItem) => {
   void loadSelection(exam.questionIds)
 }
 
+const draftKey = `cbt-ujian-draf:${props.source ?? 'cbt'}:${props.grade}`
+watch([isCreateModalOpen, newExam, wizardStep, soalMode, acakCount, selectedQuestionIds, acakRolled], () => {
+  try {
+    if (!isCreateModalOpen.value) sessionStorage.removeItem(draftKey())
+    else sessionStorage.setItem(draftKey(), JSON.stringify({ exam: newExam.value, step: wizardStep.value, mode: soalMode.value, acak: acakCount.value, rolled: acakRolled.value, ids: selectedQuestionIds.value }))
+  } catch { /* penyimpanan peramban tidak tersedia: formulir tetap jalan tanpa draf */ }
+}, { deep: true })
+
+// Draf dipulihkan sekali, setelah data kelas dan bank soal tersedia agar pilihan dropdown terisi.
+onMounted(() => {
+  let pulih = false
+  watch(() => cbtData.bankPackages.value.length, jumlah => {
+    if (pulih || !jumlah) return
+    pulih = true
+    let draf: any = null
+    try { draf = JSON.parse(sessionStorage.getItem(draftKey()) || 'null') } catch { /* draf rusak diabaikan */ }
+    if (!draf?.exam) return
+    newExam.value = draf.exam
+    wizardStep.value = draf.step === 2 ? 2 : 1
+    soalMode.value = draf.mode === 'manual' ? 'manual' : 'acak'
+    acakCount.value = Number(draf.acak) || 40
+    acakRolled.value = !!draf.rolled
+    isCreateModalOpen.value = true
+    void loadSelection(Array.isArray(draf.ids) && draf.ids.length ? draf.ids : null).then(() => { acakRolled.value = !!draf.rolled })
+  }, { immediate: true })
+})
+
 const saveSchedule = async () => {
   if (isSaving.value || loadingSelection.value || selectionError.value) return
   if (!newExam.value.name.trim()) {
@@ -292,11 +327,11 @@ const removeSchedule = async (exam: ExamItem) => {
           </p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-          <button v-if="rombelDetail" type="button" class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#344054] text-xs font-extrabold inline-flex items-center gap-1.5" @click="rombelAktif = ''">
+          <button v-if="rombelDetail" type="button" class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#344054] text-xs font-extrabold inline-flex items-center gap-1.5" @click="ubahKueri({ rombel: undefined, token: undefined })">
             <AdminV2Icon name="arrow-left" :size="12" />
             <span>Semua Rombel</span>
           </button>
-          <button v-if="rombelDetail && bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#1B5FD9] text-xs font-extrabold" @click="tokenUntukRombel(rombelDetail.id)">Token Peserta</button>
+          <button v-if="rombelDetail && bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#1B5FD9] text-xs font-extrabold" @click="ubahKueri({ token: '1' })">Token Peserta</button>
           <button v-if="bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5" @click="openCreateSchedule(rombelDetail?.classroom)">
             <AdminV2Icon name="plus" :size="14" />
             <span>{{ rombelDetail ? 'Tambah Ujian' : 'Buat Ujian' }}</span>
@@ -325,7 +360,7 @@ const removeSchedule = async (exam: ExamItem) => {
       <!-- Ringkasan: satu kartu per rombel, tersusun dalam kolom -->
       <div v-if="!rombelDetail">
         <div v-if="rombelGroups.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          <button v-for="g in rombelGroups" :key="g.id" type="button" class="text-left bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-2xl p-4 shadow-xs transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9] flex flex-col gap-3" @click="rombelAktif = g.id">
+          <button v-for="g in rombelGroups" :key="g.id" type="button" class="text-left bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-2xl p-4 shadow-xs transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9] flex flex-col gap-3" @click="ubahKueri({ rombel: g.id })">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
                 <h3 class="text-base font-extrabold text-[#101828] break-words">{{ g.classroom }}</h3>
@@ -548,7 +583,7 @@ const removeSchedule = async (exam: ExamItem) => {
       v-if="tokenExam"
       :exam="tokenExam"
       :source="source"
-      @close="tokenExam = null"
+      @close="ubahKueri({ token: undefined })"
       @toast="emit('toast', $event)"
     />
   </div>

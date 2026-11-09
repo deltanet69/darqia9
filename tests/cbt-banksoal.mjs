@@ -189,6 +189,8 @@ const bank = { id: bankId, classId, subjectId, classroom: 'Kelas uji', subject: 
 const states = new Map()
 const calls = []
 const tablesRead = []
+globalThis.useRoute = () => ({ query: {}, path: '/adminV2/cbt' })
+globalThis.useRouter = () => ({ push() {}, replace() {} })
 globalThis.useState = (key, initial) => {
   if (!states.has(key)) states.set(key, ref(initial()))
   return states.get(key)

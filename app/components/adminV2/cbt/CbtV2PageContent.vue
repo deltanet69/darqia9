@@ -94,13 +94,19 @@ const isToastVisible = ref(false)
 let toastTimeout: ReturnType<typeof setTimeout> | null = null
 let monitoringRefresh: ReturnType<typeof setInterval> | null = null
 
-const syncRoute = () => router.replace({
+// Perpindahan tab/jenjang ditambah sebagai langkah riwayat baru, jadi tombol kembali browser mundur ke tab sebelumnya.
+const syncRoute = (gantiJenjang = false) => router.push({
   query: {
     ...route.query,
     tab: activeTab.value,
     jenjang: jenjang.value,
     // Ruang yang terbuka hanya berlaku di tab Ruang Ujian.
-    ruang: activeTab.value === 'rooms' ? route.query.ruang : undefined
+    ruang: activeTab.value === 'rooms' ? route.query.ruang : undefined,
+    // Rombel/token/filter hanya berlaku di Daftar Ujian; id rombel milik satu jenjang.
+    rombel: activeTab.value === 'exams' && !gantiJenjang ? route.query.rombel : undefined,
+    token: activeTab.value === 'exams' && !gantiJenjang ? route.query.token : undefined,
+    ujianStatus: activeTab.value === 'exams' ? route.query.ujianStatus : undefined,
+    ujianCari: activeTab.value === 'exams' ? route.query.ujianCari : undefined
   }
 })
 
@@ -139,7 +145,7 @@ const triggerToast = (msg: string) => {
 const setJenjang = (val: 'smp' | 'smk') => {
   jenjang.value = val
   grade.value = val === 'smp' ? 'SMP' : 'SMK'
-  syncRoute()
+  syncRoute(true)
   triggerToast(`Beralih ke ${val === 'smp' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'}`)
 }
 
@@ -289,7 +295,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 onMounted(() => {
-  cbtData.load(true)
+  void cbtData.load()
   monitoringRefresh = setInterval(() => {
     if (activeTab.value === 'monitoring') void cbtData.load(true)
   }, 15_000)
