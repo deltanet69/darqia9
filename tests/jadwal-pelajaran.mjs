@@ -130,6 +130,35 @@ cek('rincianBentrok: pasangan dicatat sekali per jenis, lintas kelas ikut terdet
   assert.deepEqual(rincianBentrok([semua[0]], [semua[0]]), [])
 })
 
+cek('aturan jadwal: guru sama, mapel sama, jam sama di beberapa kelas (termasuk ruangan sama) = aman', () => {
+  const e = (id, classId, teacherId, subjectId, startsAt = '07:30', endsAt = '08:15', room = 'Aula') => ({ id, classId, subjectId, teacherId, day: 1, startsAt, endsAt, room, notes: '', mulaiKe: 1, selesaiKe: 1 })
+  const semua = [e('a', 'vii', 'muiz', 'yanbua'), e('b', 'viii', 'muiz', 'yanbua')]
+  const kelasIx = { classId: 'ix', teacherId: 'muiz', subjectId: 'yanbua', day: 1, startsAt: '07:30', endsAt: '08:15', room: 'Aula' }
+  const hasil = cariBentrok(semua, kelasIx)
+  assert.deepEqual([hasil.guru, hasil.kelas, hasil.ruangan], [null, null, null])
+  assert.deepEqual(rincianBentrok(semua, semua), [])
+})
+
+cek('aturan jadwal: guru sama di jam sama tapi mapel berbeda = ditolak', () => {
+  const dasar = { id: 'a', classId: 'vii', subjectId: 'yanbua', teacherId: 'muiz', day: 1, startsAt: '07:30', endsAt: '08:15', room: '', notes: '', mulaiKe: 1, selesaiKe: 1 }
+  const hasil = cariBentrok([dasar], { classId: 'viii', teacherId: 'muiz', subjectId: 'fikih', day: 1, startsAt: '07:30', endsAt: '08:15', room: '' })
+  assert.equal(hasil.guru?.id, 'a')
+})
+
+cek('aturan jadwal: satu kelas, satu jam = tidak boleh dua guru, walau mapel sama', () => {
+  const dasar = { id: 'a', classId: 'vii', subjectId: 'yanbua', teacherId: 'muiz', day: 1, startsAt: '07:30', endsAt: '08:15', room: '', notes: '', mulaiKe: 1, selesaiKe: 1 }
+  const guruLain = cariBentrok([dasar], { classId: 'vii', teacherId: 'ali', subjectId: 'yanbua', day: 1, startsAt: '07:30', endsAt: '08:15', room: '' })
+  assert.equal(guruLain.kelas?.id, 'a')
+  const guruSama = cariBentrok([dasar], { classId: 'vii', teacherId: 'muiz', subjectId: 'yanbua', day: 1, startsAt: '07:30', endsAt: '08:15', room: '' })
+  assert.equal(guruSama.kelas?.id, 'a')
+})
+
+cek('aturan jadwal: ruangan sama dipakai guru/mapel berbeda tetap bentrok', () => {
+  const dasar = { id: 'a', classId: 'vii', subjectId: 'yanbua', teacherId: 'muiz', day: 1, startsAt: '07:30', endsAt: '08:15', room: 'Aula', notes: '', mulaiKe: 1, selesaiKe: 1 }
+  const hasil = cariBentrok([dasar], { classId: 'viii', teacherId: 'ali', subjectId: 'fikih', day: 1, startsAt: '07:30', endsAt: '08:15', room: 'aula' })
+  assert.equal(hasil.ruangan?.id, 'a')
+})
+
 cek('warnaMapel: stabil untuk nama yang sama', () => {
   assert.equal(warnaMapel('Matematika'), warnaMapel('Matematika'))
   assert.notEqual(warnaMapel('Matematika'), '')

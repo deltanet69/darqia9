@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import {
   stateV2, terapkanJenjang, slotMin, fmtMin, diHariIni, tanggalDariDi,
-  statusGuruMurni, guruStatus, genGrid, lessonsOf, rosterOf, kunciSesi
+  statusGuruMurni, guruStatus, genGrid, lessonsOf, rosterOf, kunciSesi, guruBentrokLintasKelas
 } from '../app/components/adminV2/jadwal-mengajar/jadwalV2Data.ts'
 
 let lolos = 0
@@ -71,6 +71,19 @@ cek('guruStatus: sesi terlambat terbaca di kedua sel multi-JP; tanpa jadwal = Te
   assert.equal(guruStatus('smk', 'X TKJ 1', 2, 2, 4, 900), 'Terlambat')
   assert.equal(guruStatus('smk', 'X TKJ 1', 2, 3, 4, 900), 'Terlambat')
   assert.equal(guruStatus('smk', 'X TKJ 1', 0, 0, 4, 900), 'Terjadwal')
+})
+
+cek('guruBentrokLintasKelas: mapel sama jam sama = boleh; mapel beda = bentrok; kelas sama diabaikan', () => {
+  const l = (id, kelas, mapel, si, siAkhir = si) => ({ id, level: 'smp', kelas, room: '', di: 0, si, siAkhir, mapel, guru: 'A Muiz', classId: kelas, subjectId: mapel, teacherId: 'g1' })
+  const daftar = [l('1', 'VII', "Yanbu'a", 0), l('2', 'VIII', "Yanbu'a", 0)]
+  assert.equal(guruBentrokLintasKelas(daftar, { guru: 'A Muiz', kelas: 'IX', mapel: "Yanbu'a", di: 0, si: 0 }), undefined)
+  assert.equal(guruBentrokLintasKelas(daftar, { guru: 'A Muiz', kelas: 'IX', mapel: 'Fikih', di: 0, si: 0 })?.id, '1')
+  assert.equal(guruBentrokLintasKelas(daftar, { guru: 'A Muiz', kelas: 'VII', mapel: 'Fikih', di: 0, si: 0 })?.id, '2', 'kelas lain tetap diperiksa')
+  assert.equal(guruBentrokLintasKelas(daftar, { guru: 'Guru Lain', kelas: 'IX', mapel: 'Fikih', di: 0, si: 0 }), undefined)
+  assert.equal(guruBentrokLintasKelas(daftar, { guru: 'A Muiz', kelas: 'IX', mapel: "Yanbu'a", di: 1, si: 0 }), undefined, 'hari lain aman')
+  const panjang = [l('3', 'VII', "Yanbu'a", 0, 1)] // dua jam pelajaran
+  assert.equal(guruBentrokLintasKelas(panjang, { guru: 'A Muiz', kelas: 'IX', mapel: "Yanbu'a", di: 0, si: 0 })?.id, '3', 'rentang jam tidak persis sama = bentrok')
+  assert.equal(guruBentrokLintasKelas(panjang, { guru: 'A Muiz', kelas: 'IX', mapel: "Yanbu'a", di: 0, si: 1 })?.id, '3')
 })
 
 cek('lessonsOf & rosterOf membaca registry', () => {

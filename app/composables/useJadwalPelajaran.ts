@@ -90,12 +90,15 @@ export const cariBentrok = (
     if (j.id === abaikanId || j.day !== kandidat.day) continue
     if (!rentangTumpangTindih(kandidat.startsAt, kandidat.endsAt, j.startsAt, j.endsAt)) continue
     // Jadwal tanpa guru (belum di-assign) tidak bisa bentrok guru. Kelas gabungan/paralel (guru yang sama, mapel yang sama,
-    // jam persis sama di beberapa kelas, mis. PJOK atau Yanbu'a) bukan bentrok.
-    const gabungan = !!kandidat.subjectId && j.subjectId === kandidat.subjectId
+    // jam persis sama di beberapa kelas, mis. PJOK atau Yanbu'a) bukan bentrok guru maupun ruangan (satu pelajaran, satu ruang).
+    // Guru yang sama dengan mapel berbeda, atau jam yang hanya sebagian sama, tetap bentrok.
+    const guruSama = !!kandidat.teacherId && j.teacherId === kandidat.teacherId
+    const gabungan = guruSama && !!kandidat.subjectId && j.subjectId === kandidat.subjectId
       && j.startsAt === kandidat.startsAt && j.endsAt === kandidat.endsAt
-    if (kandidat.teacherId && j.teacherId === kandidat.teacherId && !gabungan && !hasil.guru) hasil.guru = j
+    if (guruSama && !gabungan && !hasil.guru) hasil.guru = j
+    // Satu kelas, satu jam: tidak boleh ada dua jadwal (dua guru) yang beririsan.
     if (j.classId === kandidat.classId && !hasil.kelas) hasil.kelas = j
-    if (ruang && (j.room || '').trim().toLowerCase() === ruang && j.classId !== kandidat.classId && !hasil.ruangan) hasil.ruangan = j
+    if (ruang && !gabungan && (j.room || '').trim().toLowerCase() === ruang && j.classId !== kandidat.classId && !hasil.ruangan) hasil.ruangan = j
   }
   return hasil
 }

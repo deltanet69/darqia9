@@ -9,6 +9,7 @@ import {
   slotMin,
   teachersOf,
   allLessons,
+  guruBentrokLintasKelas,
   genGrid,
   type Jenjang,
   type DayIndex
@@ -89,13 +90,10 @@ const handleSubmit = (force: boolean = false) => {
 
   const di = form.value.hari
   // Periksa bentrok guru di kelas lain
-  const allCurrent = allLessons(props.jenjang)
-  const guruClash = allCurrent.find(
-    l => l.guru === form.value.guru && l.di === di && l.si === si && l.kelas !== form.value.kelas
-  )
+  const guruClash = guruBentrokLintasKelas(allLessons(props.jenjang), { guru: form.value.guru, kelas: form.value.kelas, mapel: form.value.mapel, di, si })
 
   if (guruClash) {
-    errorMessage.value = `Bentrok guru: ${form.value.guru} sudah terjadwal mengajar ${guruClash.mapel} di kelas ${guruClash.kelas} pada ${DAYS[di]} jam ke-${si + 1} (${SLOT_TIMES[si]}). Pilih guru atau jam lain.`
+    errorMessage.value = `Bentrok guru: ${form.value.guru} sudah terjadwal mengajar ${guruClash.mapel} di kelas ${guruClash.kelas} pada ${DAYS[di]} jam ke-${si + 1} (${SLOT_TIMES[si]}). Guru hanya boleh mengajar beberapa kelas di jam yang sama untuk mata pelajaran yang sama. Pilih guru atau jam lain.`
     return
   }
 
@@ -260,7 +258,7 @@ const handleSubmit = (force: boolean = false) => {
         </div>
 
         <p class="text-[11px] font-semibold text-[#667085] leading-relaxed">
-          Pilihan jam awal sesi mengikuti pola jam jenjang ini: {{ SLOT_TIMES.map(t => t.split('–')[0]).join(', ') }}. Sistem secara otomatis mencegah jadwal bentrok guru &amp; rombel.
+          Pilihan jam awal sesi mengikuti pola jam jenjang ini: {{ SLOT_TIMES.map(t => t.split('–')[0]).join(', ') }}. Sistem mencegah jadwal bentrok guru &amp; rombel. Satu guru boleh mengajar beberapa kelas di jam yang sama selama mata pelajarannya sama.
         </p>
 
         <!-- Actions -->

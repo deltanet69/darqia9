@@ -205,6 +205,18 @@ export const allLessons = (level: Jenjang): LessonItem[] => {
   return stateV2.pelajaran.filter(l => l.level === level)
 }
 
+// Bentrok guru lintas kelas pada jam tertentu (jam = satu slot). Guru yang sama boleh mengajar beberapa kelas
+// di jam yang sama HANYA bila mapel dan rentang jamnya sama (kelas gabungan); mapel berbeda = bentrok.
+// Kelas yang sama tidak dihitung di sini: pengisian ulang kelas ditangani alur "Ganti & Simpan".
+export const guruBentrokLintasKelas = (
+  lessons: LessonItem[],
+  cand: { guru: string; kelas: string; mapel: string; di: DayIndex; si: number }
+): LessonItem | undefined => lessons.find(l =>
+  l.guru === cand.guru && l.di === cand.di && l.kelas !== cand.kelas
+  && l.si <= cand.si && cand.si <= (l.siAkhir ?? l.si)
+  && !(l.mapel === cand.mapel && l.si === cand.si && (l.siAkhir ?? l.si) === cand.si)
+)
+
 export const lessonsOf = (
   level: Jenjang,
   guruName: string
