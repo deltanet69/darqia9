@@ -46,6 +46,7 @@ export interface ExamParticipant {
   eligible: boolean
   assignmentId?: string
   assignmentStatus?: string
+  room?: string
   token?: string
   tokenIssuedAt?: string
 }
@@ -529,9 +530,33 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     if (studentResult.error) throw new Error(studentResult.error.message)
     if (assignmentResult.error) throw new Error(assignmentResult.error.message)
     const byStudent = new Map((assignmentResult.data ?? []).map((row: any) => [row.student_id, row]))
+    // Ruang ujian siswa (Ruang Ujian hanya ada untuk CBT PTS/PAS). Bila siswa punya ruang di beberapa periode,
+    // ruang yang ditautkan ke ujian ini didahulukan, lalu yang terbaru. Gagal dimuat = kolom ruang kosong, token tetap tampil.
+    const roomByStudent = new Map<string, string>()
+    const studentIds = (studentResult.data ?? []).map((row: any) => row.id)
+    if (source === 'cbt' && studentIds.length) {
+      const [memberResult, linkResult] = await Promise.all([
+        client.from('exam_room_members').select('student_id, room_id, created_at, exam_rooms!inner(name)').in('student_id', studentIds).is('deleted_at', null).is('exam_rooms.deleted_at', null),
+        client.from('exam_room_exams').select('room_id').eq('exam_id', examId)
+      ])
+      if (!memberResult.error) {
+        const linked = new Set((linkResult.data ?? []).map((row: any) => row.room_id))
+        const best = new Map<string, any>()
+        for (const row of memberResult.data ?? []) {
+          const now: any = row
+          const old = best.get(now.student_id)
+          const better = !old
+            || (linked.has(now.room_id) && !linked.has(old.room_id))
+            || (linked.has(now.room_id) === linked.has(old.room_id) && now.created_at > old.created_at)
+          if (better) best.set(now.student_id, now)
+        }
+        for (const [studentId, row] of best) roomByStudent.set(studentId, row.exam_rooms?.name ?? '')
+      }
+    }
     return (studentResult.data ?? []).map((row: any) => {
       const assignment: any = byStudent.get(row.id)
       return {
+        room: roomByStudent.get(row.id) || undefined,
         studentId: row.id,
         name: row.name,
         nis: row.nis || '',

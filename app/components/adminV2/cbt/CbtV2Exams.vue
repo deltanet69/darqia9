@@ -25,9 +25,8 @@ const emit = defineEmits<{
   (e: 'copy-token', token: string): void
 }>()
 
-const examView = ref<'list' | 'classes' | 'detail'>('list')
 const tokenExam = ref<ExamItem | null>(null)
-const selectedClass = ref('')
+const rombelFilter = ref('')
 const isCreateModalOpen = ref(false)
 const scheduleDialog = ref<HTMLElement | null>(null)
 watch(isCreateModalOpen, async open => {
@@ -78,25 +77,15 @@ const gradeClasses = computed(() => cbtData.classes.value.filter(item => item.gr
 const totalSiswaAktif = computed(() => gradeClasses.value.reduce((sum, c) => sum + (c.studentCount ?? 0), 0))
 const gradePackages = computed(() => cbtData.bankPackages.value.filter(item => item.grade === props.grade))
 
-const groups = computed(() => gradeClasses.value.map(classItem => {
-  const scheduled = currentExams.value.filter(exam => exam.classId === classItem.id)
-  return {
-  id: classItem.id,
-  classroom: classItem.name,
-  students: classItem.studentCount,
-  subjects: new Set(scheduled.map(exam => exam.subjectId)).size,
-  exams: scheduled.length,
-  violations: scheduled.reduce((sum, exam) => sum + exam.violations, 0),
-  status: scheduled.some(exam => exam.status === 'Berlangsung') ? 'Berlangsung'
-    : scheduled.some(exam => exam.status === 'Terjadwal') ? 'Terjadwal'
-    : scheduled.length ? 'Selesai' : '-'
-  }
-}))
-
-const classExams = computed(() => {
-  if (!selectedClass.value) return currentExams.value
-  return currentExams.value.filter(exam => exam.classroom === selectedClass.value)
-})
+// Per rombel, jadwal berurutan menurut waktu mulai; rombel tanpa jadwal yang cocok tidak ditampilkan.
+const rombelGroups = computed(() => gradeClasses.value
+  .filter(c => !rombelFilter.value || c.id === rombelFilter.value)
+  .map(c => {
+    const list = filteredExams.value.filter(e => e.classId === c.id)
+      .sort((a, b) => (a.startsAt ?? '').localeCompare(b.startsAt ?? ''))
+    return { id: c.id, classroom: c.name, students: c.studentCount ?? 0, subjects: new Set(list.map(e => e.subjectId)).size, exams: list }
+  })
+  .filter(g => g.exams.length))
 
 const availablePackages = computed(() =>
   gradePackages.value.filter(pkg => !newExam.value.classId || pkg.classId === newExam.value.classId)
@@ -183,11 +172,6 @@ const ringkasanJadwal = computed(() => newExam.value.startsAt
 const ringkasanKelas = computed(() => gradeClasses.value.find(c => c.id === newExam.value.classId)?.name ?? '-')
 const ringkasanMapel = computed(() => cbtData.subjects.value.find(s => s.id === newExam.value.subjectId)?.name ?? '-')
 
-const openDetail = (classroom: string) => {
-  selectedClass.value = classroom
-  examView.value = 'detail'
-}
-
 const syncPackage = () => {
   const matching = availablePackages.value.find(pkg => pkg.subjectId === newExam.value.subjectId)
   newExam.value.questionBankId = matching?.id ?? ''
@@ -195,7 +179,6 @@ const syncPackage = () => {
 
 const openCreateSchedule = (classroom?: string) => {
   const classItem = gradeClasses.value.find(item => item.name === classroom)
-    ?? gradeClasses.value.find(item => item.name === selectedClass.value)
     ?? gradeClasses.value[0]
   newExam.value = emptyExam()
   newExam.value.classId = classItem?.id ?? ''
@@ -253,7 +236,7 @@ const saveSchedule = async () => {
       token: newExam.value.token || undefined
     })
     isCreateModalOpen.value = false
-    emit('toast', 'Ujian berhasil ditayangkan. Token peserta diterbitkan untuk siswa yang eligible.')
+    emit('toast', 'Ujian berhasil ditayangkan. Token peserta (satu token untuk seluruh mapel) diterbitkan untuk siswa yang eligible.')
   } catch (saveError) {
     emit('toast', saveError instanceof Error ? saveError.message : 'Jadwal ujian gagal disimpan.')
   } finally { isSaving.value = false }
@@ -273,23 +256,17 @@ const removeSchedule = async (exam: ExamItem) => {
 
 <template>
   <div class="space-y-4">
-    <!-- VIEW 0: LIST PER UJIAN -->
-    <div v-if="examView === 'list'" class="space-y-4">
+    <!-- DAFTAR UJIAN PER ROMBEL -->
+    <div class="space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
         <div>
           <h2 class="text-lg font-extrabold text-[#101828]">Daftar Ujian</h2>
-          <p class="text-xs text-[#667085] mt-0.5">Satu baris = satu ujian &middot; {{ totalSiswaAktif }} siswa aktif di jenjang ini.</p>
+          <p class="text-xs text-[#667085] mt-0.5">Jadwal disusun per rombel, berurutan menurut tanggal dan jam &middot; {{ totalSiswaAktif }} siswa aktif di jenjang ini.</p>
         </div>
-        <div class="flex items-center gap-2">
-          <div class="flex rounded-full bg-[#EEF1F6] p-1 gap-1">
-            <button type="button" class="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-white text-[#101828] shadow-xs">Per Ujian</button>
-            <button type="button" class="px-3.5 py-1.5 rounded-full text-xs font-extrabold text-[#667085]" @click="examView = 'classes'">Per Rombel</button>
-          </div>
-          <button v-if="bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5" @click="openCreateSchedule()">
-            <AdminV2Icon name="plus" :size="14" />
-            <span>Buat Ujian</span>
-          </button>
-        </div>
+        <button v-if="bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5" @click="openCreateSchedule()">
+          <AdminV2Icon name="plus" :size="14" />
+          <span>Buat Ujian</span>
+        </button>
       </div>
 
       <div v-if="bolehKelola" class="flex items-center gap-2 text-xs font-bold text-[#667085] flex-wrap">
@@ -307,220 +284,49 @@ const removeSchedule = async (exam: ExamItem) => {
           <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'berlangsung' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'berlangsung'">Sedang Berlangsung</button>
           <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'selesai' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'selesai'">Sudah Selesai</button>
         </div>
-        <input v-model="searchQuery" type="text" placeholder="Cari nama ujian, mapel, atau rombel..." class="flex-1 border border-[#E7EBF2] rounded-full px-4 py-2 text-xs bg-white outline-none focus:border-[#1B5FD9]">
+        <select v-model="rombelFilter" aria-label="Filter rombel" class="border border-[#E7EBF2] rounded-full px-4 py-2 text-xs bg-white outline-none focus:border-[#1B5FD9]">
+          <option value="">Semua rombel</option>
+          <option v-for="c in gradeClasses" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
+        <input v-model="searchQuery" type="text" placeholder="Cari nama ujian atau mapel..." class="flex-1 border border-[#E7EBF2] rounded-full px-4 py-2 text-xs bg-white outline-none focus:border-[#1B5FD9]">
       </div>
 
-      <div class="space-y-3">
-        <article v-for="e in filteredExams" :key="e.id" class="bg-white border border-[#E7EBF2] rounded-[18px] p-5 shadow-xs">
-          <div class="flex items-start justify-between gap-3">
+      <div class="space-y-4">
+        <section v-for="g in rombelGroups" :key="g.id" class="bg-white border border-[#E7EBF2] rounded-[18px] shadow-xs overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 border-b border-[#E7EBF2]">
             <div>
-              <h3 class="text-base font-extrabold text-[#101828]">{{ e.name }}</h3>
-              <p class="text-xs text-[#667085] mt-0.5">{{ e.subject }} &middot; {{ e.classroom }} &middot; Token per siswa</p>
+              <h3 class="text-base font-extrabold text-[#101828]">{{ g.classroom }}</h3>
+              <p class="text-xs text-[#667085] mt-0.5">{{ g.students }} siswa aktif &middot; {{ g.subjects }} mapel diujikan &middot; {{ g.exams.length }} jadwal</p>
             </div>
-            <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shrink-0" :class="statusKey(e) === 'berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : statusKey(e) === 'siap' ? 'bg-[#E8F0FE] text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#344054]'">{{ statusLabel(e) }}</span>
+            <div class="flex items-center gap-3">
+              <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = g.exams[0]!">Token Peserta</button>
+              <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openCreateSchedule(g.classroom)">Tambah Ujian</button>
+            </div>
           </div>
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mt-3.5">
-            <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Jadwal</span><b class="text-xs font-bold text-[#101828]">{{ e.date }}</b><span class="block text-[10.5px] text-[#667085]">{{ e.time }}</span></div>
-            <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Pengawas</span><b class="text-xs font-bold text-[#101828]">{{ e.supervisor || '-' }}</b></div>
-            <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Peserta</span><b class="text-xs font-bold text-[#101828]">{{ e.participants }} siswa</b></div>
-            <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Soal</span><b class="text-xs font-bold text-[#101828]">{{ soalLabel(e) }}</b></div>
-          </div>
-          <div class="flex items-center justify-end gap-3 pt-3 mt-3.5 border-t border-[#E7EBF2]">
-            <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = e">Token Peserta</button>
-            <button type="button" class="text-xs font-bold text-[#667085] hover:underline" @click="openDetail(e.classroom)">Detail Rombel</button>
-            <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">Ubah</button>
-            <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">Hapus</button>
-          </div>
-        </article>
-        <div v-if="!filteredExams.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center">
+          <ul class="divide-y divide-[#EFF2F7]">
+            <li v-for="e in g.exams" :key="e.id" class="grid gap-2 p-4 sm:px-5 sm:grid-cols-[150px_minmax(0,1fr)_minmax(0,160px)_auto] sm:items-center sm:gap-4">
+              <div>
+                <b class="block text-xs font-bold text-[#101828]">{{ e.date }}</b>
+                <span class="block text-[10.5px] text-[#667085]">{{ e.time }}</span>
+              </div>
+              <div class="min-w-0">
+                <b class="block text-sm font-extrabold text-[#101828] break-words">{{ e.subject }}</b>
+                <span class="block text-[10.5px] text-[#667085] break-words">{{ e.name }} &middot; {{ e.participants }} peserta &middot; {{ soalLabel(e) }}</span>
+              </div>
+              <div class="text-[10.5px] text-[#667085]">Pengawas<b class="block text-xs font-semibold text-[#344054]">{{ e.supervisor || '-' }}</b></div>
+              <div class="flex flex-wrap items-center gap-3 sm:justify-end">
+                <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full" :class="statusKey(e) === 'berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : statusKey(e) === 'siap' ? 'bg-[#E8F0FE] text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#344054]'">{{ statusLabel(e) }}</span>
+                <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">Ubah</button>
+                <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">Hapus</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+        <div v-if="!rombelGroups.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center">
           <p class="text-xs text-[#667085] mb-3">Belum ada ujian yang cocok.</p>
           <button v-if="bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-[#101828] text-white text-xs font-extrabold" @click="openCreateSchedule()">+ Buat Ujian</button>
         </div>
       </div>
-    </div>
-
-    <!-- VIEW 1: CLASSES GRID (vbt-v4) -->
-    <div v-if="examView === 'classes'" class="space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
-        <div>
-          <h2 class="text-lg font-extrabold text-[#101828]">Daftar Ujian</h2>
-          <p class="text-xs text-[#667085] mt-0.5">Jadwal disusun per rombel agar mudah diperiksa.</p>
-        </div>
-        <button
-          type="button"
-          class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#344054] text-xs font-extrabold transition inline-flex items-center gap-1.5"
-          @click="examView = 'list'"
-        >
-          <span>Lihat per Ujian</span>
-        </button>
-        <button v-if="bolehKelola"
-          type="button"
-          class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
-          @click="openCreateSchedule()"
-        >
-          <AdminV2Icon name="plus" :size="14" />
-          <span>Buat Ujian</span>
-        </button>
-      </div>
-
-      <!-- Classes Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-        <article
-          v-for="g in groups"
-          :key="g.classroom"
-          role="button"
-          tabindex="0"
-          class="bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-[18px] p-5 shadow-xs cursor-pointer transition hover:-translate-y-1 hover:shadow-md flex flex-col justify-between"
-          @click="openDetail(g.classroom)"
-          @keydown.enter.prevent="openDetail(g.classroom)"
-          @keydown.space.prevent="openDetail(g.classroom)"
-        >
-          <div>
-            <div class="flex items-center justify-between mb-3.5">
-              <span class="w-10 h-10 rounded-xl bg-[#E8F0FE] text-[#1B5FD9] flex items-center justify-center">
-                <AdminV2Icon name="cal" :size="20" />
-              </span>
-              <span
-                class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full"
-                :class="g.status === 'Berlangsung'
-                  ? 'bg-[#E7F8F0] text-[#087C52]'
-                  : g.status === 'Terjadwal'
-                    ? 'bg-[#FEF4E5] text-[#AD6504]'
-                    : 'bg-[#EFF2F7] text-[#344054]'"
-              >
-                {{ g.status }}
-              </span>
-            </div>
-
-            <h3 class="text-base font-extrabold text-[#101828]">{{ g.classroom }}</h3>
-            <p class="text-xs text-[#667085] mt-0.5 mb-3">
-              {{ g.students }} siswa aktif · {{ g.exams ? g.subjects : '-' }} mapel ujian
-            </p>
-
-            <div class="flex items-center gap-4 text-xs mt-3">
-              <div>
-                <b class="text-sm font-extrabold text-[#101828] block">
-                  {{ g.exams || '-' }}
-                </b>
-                <span class="text-[10px] text-[#667085]">Jadwal tampil</span>
-              </div>
-              <div>
-                <b class="text-sm font-extrabold text-[#101828] block">
-                  {{ g.exams ? g.violations : '-' }}
-                </b>
-                <span class="text-[10px] text-[#667085]">Peringatan</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between pt-3 mt-4 border-t border-[#E7EBF2] text-xs font-bold text-[#1B5FD9]">
-            <span>Lihat daftar ujian</span>
-            <AdminV2Icon name="arrow-right" :size="12" />
-          </div>
-        </article>
-      </div>
-      <div v-if="!groups.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">
-        Belum ada rombel aktif untuk jenjang ini. Layout daftar ujian tetap siap digunakan.
-      </div>
-    </div>
-
-    <!-- VIEW 2: DETAIL PER KELAS (vbt-v4) -->
-    <div v-else-if="examView === 'detail'" class="space-y-4">
-      <button
-        type="button"
-        class="text-xs font-bold text-[#667085] hover:text-[#101828] inline-flex items-center gap-1.5 transition"
-        @click="examView = 'classes'; selectedClass = ''"
-      >
-        <AdminV2Icon name="arrow-left" :size="12" />
-        <span>Kembali ke daftar rombel</span>
-      </button>
-
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
-        <div>
-          <h2 class="text-lg font-extrabold text-[#101828]">
-            Daftar Ujian · {{ selectedClass }}
-          </h2>
-          <p class="text-xs text-[#667085] mt-0.5">
-            Jadwal, peserta, pengawas, dan status pada rombel ini.
-          </p>
-        </div>
-        <button v-if="bolehKelola"
-          type="button"
-          class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
-          @click="openCreateSchedule(selectedClass)"
-        >
-          <AdminV2Icon name="plus" :size="14" />
-          <span>Tambah Ujian</span>
-        </button>
-      </div>
-
-      <!-- Table Card -->
-      <section class="bg-white border border-[#E7EBF2] rounded-2xl overflow-hidden shadow-xs">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs min-w-[700px]">
-            <thead class="bg-[#FAFBFC] border-b border-[#E7EBF2] text-[10px] uppercase font-extrabold text-[#667085] tracking-wider">
-              <tr>
-                <th class="py-3 px-4">Ujian</th>
-                <th class="py-3 px-4">Jadwal</th>
-                <th class="py-3 px-4">Pengawas</th>
-                <th class="py-3 px-4 text-center">Peserta</th>
-                <th class="py-3 px-4">Status</th>
-                <th class="py-3 px-4 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[#EFF2F7]">
-              <tr v-for="e in classExams" :key="e.id" class="hover:bg-[#FAFCFF] transition">
-                <td class="py-3 px-4">
-                  <div class="cell-title font-extrabold text-[#101828]">{{ e.name }}</div>
-                  <div class="text-[10.5px] text-[#667085] mt-0.5">
-                    {{ e.subject }} · Token per siswa
-                  </div>
-                </td>
-                <td class="py-3 px-4">
-                  <div>{{ e.date }}</div>
-                  <div class="text-[10.5px] text-[#667085]">{{ e.time }}</div>
-                </td>
-                <td class="py-3 px-4 font-semibold text-[#344054]">
-                  {{ e.supervisor || (e as any).teacher }}
-                </td>
-                <td class="py-3 px-4 text-center font-mono font-bold">
-                  {{ e.participants }}
-                </td>
-                <td class="py-3 px-4">
-                  <span
-                    class="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
-                    :class="e.status === 'Berlangsung'
-                      ? 'bg-[#E7F8F0] text-[#087C52]'
-                      : e.status === 'Terjadwal'
-                        ? 'bg-[#FEF4E5] text-[#AD6504]'
-                        : 'bg-[#EFF2F7] text-[#344054]'"
-                  >
-                    {{ e.status }}
-                  </span>
-                </td>
-                <td class="py-3 px-4 text-right">
-                  <div class="inline-flex items-center gap-3">
-                    <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = e">
-                      Token Peserta
-                    </button>
-                    <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">
-                      Ubah
-                    </button>
-                    <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">
-                      Hapus
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="!classExams.length">
-                <td colspan="6" class="py-8 text-center text-xs text-[#667085]">
-                  Belum ada ujian di rombel ini.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
 
     <!-- CREATE SCHEDULE MODAL -->
@@ -553,7 +359,7 @@ const removeSchedule = async (exam: ExamItem) => {
           <div class="p-5 space-y-3.5 text-xs">
             <div class="p-3 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] flex items-center gap-2 font-semibold">
               <AdminV2Icon name="cal" :size="16" class="shrink-0" />
-              <span>{{ source === 'ujian_harian' ? 'Bank Soal LMS untuk ujian harian.' : 'Bank Soal CBT untuk PTS/PAS.' }} Token peserta dibuat otomatis per siswa yang eligible saat ujian ditayangkan.</span>
+              <span>{{ source === 'ujian_harian' ? 'Bank Soal LMS untuk ujian harian.' : 'Bank Soal CBT untuk PTS/PAS.' }} Satu token per siswa berlaku untuk seluruh mata pelajaran ujian, dibuat otomatis saat ujian ditayangkan.</span>
             </div>
 
             <div v-if="wizardStep === 1" class="space-y-3.5">
@@ -602,7 +408,7 @@ const removeSchedule = async (exam: ExamItem) => {
                 </div>
                 <div>
                   <label class="block font-bold text-[#344054] mb-1">Token Peserta</label>
-                  <input value="Dibuat otomatis per siswa saat ditayangkan" readonly class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#667085] bg-[#F6F8FC] outline-none">
+                  <input value="Satu token untuk seluruh mapel, dibuat otomatis" readonly class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#667085] bg-[#F6F8FC] outline-none">
                 </div>
               </div>
               <div>

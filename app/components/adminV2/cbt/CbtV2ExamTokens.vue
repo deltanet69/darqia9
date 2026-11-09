@@ -114,12 +114,12 @@ const copyToken = async (p: ExamParticipant) => {
 const exportExcel = async () => {
   const XLSX = await import('xlsx')
   const rows = [
-    ['Nama', 'NIS', 'Kelas', 'Status Administrasi', 'Token'],
-    ...participants.value.map(p => [p.name, p.nis, p.classroom, p.eligible ? 'Eligible' : 'Belum beres', p.token || ''])
+    ['Nama', 'NIS', 'Kelas', 'Ruang Ujian', 'Status Administrasi', 'Token'],
+    ...participants.value.map(p => [p.name, p.nis, p.classroom, p.room || '', p.eligible ? 'Eligible' : 'Belum beres', p.token || ''])
   ]
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), 'Token Peserta')
-  const safeName = props.exam.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const safeName = props.exam.classroom.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   XLSX.writeFile(workbook, `daftar-token-${safeName || 'ujian'}.xlsx`)
   emit('toast', 'Daftar token diekspor ke Excel.')
 }
@@ -138,10 +138,10 @@ const printCards = () => {
     <section class="kartu">
       <p class="sekolah">${schoolName.value} · Kartu Peserta Ujian</p>
       <h2>${p.name}</h2>
-      <p class="meta">NIS ${p.nis} · ${p.classroom}<br>${props.exam.name} · ${props.exam.subject}<br>${props.exam.date} · ${props.exam.time}</p>
+      <p class="meta">NIS ${p.nis} · ${p.classroom}${p.room ? `<br>Ruang ${p.room}` : ''}</p>
       <div class="token"><span>TOKEN</span><b>${p.token}</b></div>
     </section>`).join('')
-  win.document.write(`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Kartu Ujian — ${props.exam.name}</title>
+  win.document.write(`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Kartu Ujian — ${props.exam.classroom}</title>
     <style>
       body { font-family: Arial, sans-serif; margin: 16px; color: #101828; }
       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -165,9 +165,8 @@ const printCards = () => {
         <div class="p-5 border-b border-[#E7EBF2] flex items-start justify-between gap-3">
           <div>
             <span class="text-[10px] font-extrabold uppercase text-[#1B5FD9] tracking-wider">Token Peserta</span>
-            <h3 class="text-base font-extrabold text-[#101828] mt-0.5">{{ exam.name }}</h3>
-            <p class="text-xs text-[#667085] mt-0.5">{{ exam.subject }} · {{ exam.classroom }} · {{ exam.date }} · {{ exam.time }}</p>
-            <p class="text-xs text-[#667085] mt-1.5 leading-relaxed">Satu token berlaku untuk satu siswa pada ujian ini, terikat dengan NIS siswa. Token hanya terbit bila persyaratan administrasi siswa terpenuhi.</p>
+            <h3 class="text-base font-extrabold text-[#101828] mt-0.5">{{ exam.classroom }}</h3>
+            <p class="text-xs text-[#667085] mt-1.5 leading-relaxed">Satu token berlaku untuk satu siswa selama ujian, untuk seluruh mata pelajaran, dan terikat dengan NIS siswa. Token hanya terbit bila persyaratan administrasi siswa terpenuhi.</p>
           </div>
           <button type="button" class="w-8 h-8 shrink-0 rounded-lg hover:bg-[#EFF2F7] flex items-center justify-center text-[#667085]" aria-label="Tutup panel token peserta" @click="emit('close')">
             <AdminV2Icon name="x" :size="16" />
@@ -199,11 +198,12 @@ const printCards = () => {
           <p v-if="loading" class="text-xs text-[#667085]" role="status">Memuat peserta…</p>
           <div v-else-if="loadError" class="rounded-xl bg-[#FDECEA] border border-[#F5C6C0] px-4 py-3 text-xs text-[#8C1D13]" role="alert">{{ loadError }}</div>
           <div v-else class="overflow-x-auto border border-[#E7EBF2] rounded-xl">
-            <table class="w-full text-left text-xs min-w-[640px]">
+            <table class="w-full text-left text-xs min-w-[720px]">
               <thead class="bg-[#FAFBFC] border-b border-[#E7EBF2] text-[10px] uppercase font-extrabold text-[#667085] tracking-wider">
                 <tr>
                   <th class="py-2.5 px-3.5">Siswa</th>
                   <th class="py-2.5 px-3.5">NIS</th>
+                  <th class="py-2.5 px-3.5">Ruang Ujian</th>
                   <th class="py-2.5 px-3.5">Administrasi</th>
                   <th class="py-2.5 px-3.5">Token</th>
                   <th class="py-2.5 px-3.5 text-right">Aksi</th>
@@ -213,6 +213,7 @@ const printCards = () => {
                 <tr v-for="p in participants" :key="p.studentId" class="hover:bg-[#FAFCFF]">
                   <td class="py-2.5 px-3.5 font-bold text-[#101828]">{{ p.name }}</td>
                   <td class="py-2.5 px-3.5 font-mono">{{ p.nis || '-' }}</td>
+                  <td class="py-2.5 px-3.5">{{ p.room || 'Belum ditempatkan' }}</td>
                   <td class="py-2.5 px-3.5">
                     <span class="inline-flex items-center gap-1.5 font-semibold" :class="p.eligible ? 'text-[#087C52]' : 'text-[#B42318]'">
                       <span class="w-2 h-2 rounded-full" :class="p.eligible ? 'bg-[#12805C]' : 'bg-[#D92D20]'" />{{ p.eligible ? 'Eligible' : 'Belum beres' }}
@@ -233,12 +234,12 @@ const printCards = () => {
                   </td>
                 </tr>
                 <tr v-if="!participants.length">
-                  <td colspan="5" class="py-8 text-center text-xs text-[#667085]">Belum ada siswa aktif pada rombel ujian ini.</td>
+                  <td colspan="6" class="py-8 text-center text-xs text-[#667085]">Belum ada siswa aktif pada rombel ujian ini.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <p class="text-[11px] text-[#667085] leading-relaxed mt-3">Regenerasi membuat token baru dan token lama langsung tidak berlaku — gunakan bila kartu siswa hilang. Mencabut status eligible menutup akses masuk siswa pada semua ujian selama statusnya belum beres, walaupun tokennya sudah terbit.</p>
+          <p class="text-[11px] text-[#667085] leading-relaxed mt-3">Regenerasi membuat token baru untuk siswa itu di semua mata pelajaran ujiannya, dan token lama langsung tidak berlaku — gunakan bila kartu siswa hilang. Mencabut status eligible menutup akses masuk siswa pada semua ujian selama statusnya belum beres, walaupun tokennya sudah terbit.</p>
         </div>
       </div>
     </div>

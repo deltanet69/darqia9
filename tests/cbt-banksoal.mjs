@@ -378,9 +378,8 @@ const emptyExamsHtml = await renderToString(createSSRApp({ render: () => h(Exams
 assert.doesNotMatch(emptyExamsHtml, />\s*Selesai\s*</)
 assert.ok(emptyExamsHtml.includes('siswa aktif'))
 const scheduledVm = Exams.setup({ grade: 'SMK', source: 'cbt', exams: monitorData.exams.value }, { expose() {}, emit() {} })
-assert.equal(scheduledVm.groups.value[0].status, 'Terjadwal')
-assert.equal(scheduledVm.groups.value[0].subjects, 1)
-assert.equal(scheduledVm.groups.value[0].violations, 2)
+assert.equal(scheduledVm.rombelGroups.value[0].subjects, 1)
+assert.ok(scheduledVm.rombelGroups.value[0].exams.length >= 1)
 const { default: Bank } = await import('../app/components/adminV2/cbt/CbtV2Bank.vue')
 let bankVm
 await renderToString(createSSRApp({ setup() {
