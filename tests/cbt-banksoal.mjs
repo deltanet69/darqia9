@@ -31,7 +31,7 @@ registerHooks({
   }
 })
 
-const { renderKaTeXHtml, validateLatexExpressions } = await import('../app/utils/cbtFormula.ts')
+const { renderKaTeXHtml, validateLatexExpressions, LATEX_MORE_GROUPS } = await import('../app/utils/cbtFormula.ts')
 const { parseOcrExtraction, ocrTextsAgree, ocrTextsAgreeLoose } = await import('../server/utils/cbtOcr.ts')
 assert.equal(ocrTextsAgree('بِسْمِ', 'بِسمِ'), false)
 assert.equal(ocrTextsAgree('قَالُوا', 'قَالُوا ۖ'), false)
@@ -73,6 +73,7 @@ for (const content of [json, '```json\n' + json + '\n```', JSON.stringify(json),
 }
 assert.throws(() => parseOcrExtraction('{"text":""}'))
 assert.equal(validateLatexExpressions(formula), null)
+for (const group of LATEX_MORE_GROUPS) for (const symbol of group.symbols) assert.equal(validateLatexExpressions('$' + symbol.syntax + '$'), null, 'Rumus lengkap harus valid di KaTeX: ' + symbol.syntax)
 assert.ok(validateLatexExpressions('$$\\frac{1}{2}'))
 assert.ok(validateLatexExpressions('$$\\perintahSalah{x}$$'))
 assert.ok(!renderKaTeXHtml('<img src=x onerror=alert(1)>').includes('<img'))
@@ -247,12 +248,14 @@ assert.equal(vm.subjectHasBank.value, true, 'Peringatan hilang begitu bank soal 
 const { default: BankForm } = await import('../app/components/adminV2/cbt/CbtV2BankForm.vue')
 const form = BankForm.setup({ pkg: { ...bank, teacherName: 'Guru uji' }, grade: 'SMK', editing: true, initialStep: 'Isian' }, { expose() {}, emit() {} })
 assert.equal(form.currentStep.value, 'Isian')
-assert.ok(form.questionSteps.some(step => step.id === 'Isian'))
+assert.ok(form.questionSteps.value.some(step => step.id === 'Isian'), 'Langkah Isian tampil bila paket lama masih memuat soal Isian')
 assert.equal(form.blankQuestion('Isian').key, '')
 assert.equal(form.blankQuestion('Isian').options, undefined)
 assert.equal(form.draft.value.questions[1].type, 'Isian')
 form.nextStep()
 assert.equal(form.currentStep.value, 'Esai')
+const smpBaru = BankForm.setup({ pkg: { ...bank, questions: [bank.questions[0]], teacherName: 'Guru uji' }, grade: 'SMK', editing: true }, { expose() {}, emit() {} })
+assert.deepEqual(smpBaru.questionSteps.value.map(step => step.id), ['PG', 'Esai', 'Interaktif'], 'Jenis soal baru hanya PG, Esai, Interaktif')
 assert.equal(form.blankQuestion('Interaktif').interactiveAnswerType, 'PG')
 assert.equal(form.blankQuestion('PG').options.length, 5)
 const smpForm = BankForm.setup({ pkg: { ...bank, grade: 'SMP', teacherName: 'Guru uji' }, grade: 'SMP', editing: false, classOptions: ['Kelas uji'], subjectOptions: ['Mapel uji'] }, { expose() {}, emit() {} })

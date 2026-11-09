@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
-import { compressImageToWebP, isArabicText, LATEX_TOOLBAR_SYMBOLS, renderKaTeXHtml, validateLatexExpressions } from '~/utils/cbtFormula'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { compressImageToWebP, isArabicText, LATEX_MORE_GROUPS, LATEX_TOOLBAR_SYMBOLS, renderKaTeXHtml, validateLatexExpressions } from '~/utils/cbtFormula'
 
 const props = defineProps<{ modelValue: string; imageUrl?: string; rtl?: boolean; compact?: boolean }>()
 const emit = defineEmits<{
@@ -26,6 +26,10 @@ const toggleRtl = () => {
 const formulaError = computed(() => validateLatexExpressions(props.modelValue))
 const tick = String.fromCharCode(96)
 const formulaOpen = ref(false)
+const moreFormulaOpen = ref(false)
+// Editor ringkas (jawaban/opsi): rumus disembunyikan sampai dipilih "Gunakan rumus" agar halaman tetap pendek.
+const rumusAktif = ref(!props.compact || props.modelValue.includes('$'))
+watch(() => props.modelValue, value => { if (value.includes('$')) rumusAktif.value = true })
 const insertSymbol = async (syntax: string) => {
   formulaOpen.value = false
   await replaceSelection('$', '$', syntax)
@@ -135,7 +139,11 @@ onBeforeUnmount(() => { if (extracting.value) emit('busy', false) })
 <template>
   <div class="overflow-hidden rounded-xl border border-[#E7EBF2] bg-white focus-within:border-[#1B5FD9]" :class="compact ? 'rich-compact' : ''">
     <div class="border-b border-[#E7EBF2] bg-[#F9FAFC] p-2" role="toolbar" aria-label="Pemformatan teks">
-      <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+      <label v-if="compact" class="flex min-h-8 cursor-pointer items-center gap-2 text-xs font-bold text-[#344054]">
+        <input v-model="rumusAktif" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]" @change="formulaOpen = formulaOpen && rumusAktif">
+        Gunakan rumus (buka rumus)
+      </label>
+      <div v-if="rumusAktif" class="flex flex-wrap items-center gap-x-1.5 gap-y-1.5" :class="compact ? 'mt-1.5' : ''">
         <div class="tb-group" role="group" aria-label="Gaya teks">
           <button type="button" class="tb font-extrabold" title="Tebal" aria-label="Tebal" @click="replaceSelection('**', '**', 'teks tebal')">B</button>
           <button type="button" class="tb italic" title="Miring" aria-label="Miring" @click="replaceSelection('_', '_', 'teks miring')">I</button>
@@ -169,7 +177,7 @@ onBeforeUnmount(() => { if (extracting.value) emit('busy', false) })
         <b>Gambar soal</b> tampil ke siswa. <b>Baca gambar (OCR)</b> hanya mengambil teks, rumus, atau huruf Arab dari gambar; gambarnya tidak disimpan.
       </p>
 
-      <div v-if="formulaOpen" id="panel-rumus" class="mt-2 rounded-lg border border-[#DCE2EA] bg-white p-2.5">
+      <div v-if="formulaOpen && rumusAktif" id="panel-rumus" class="mt-2 rounded-lg border border-[#DCE2EA] bg-white p-2.5">
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
           <span class="text-[11px] font-extrabold uppercase tracking-wide text-[#667085]">Sisipkan rumus sebaris</span>
           <button v-if="!compact" type="button" class="tb !min-h-8 text-[11px]" title="Rumus di baris tersendiri ($$ ... $$)" @click="insertBlockFormula">Rumus terpisah ($$)</button>
@@ -178,6 +186,19 @@ onBeforeUnmount(() => { if (extracting.value) emit('busy', false) })
           <button v-for="symbol in LATEX_TOOLBAR_SYMBOLS" :key="symbol.syntax" type="button" class="tb justify-center" :title="symbol.description" :aria-label="symbol.description" @click="insertSymbol(symbol.syntax)">
             {{ symbol.label }}
           </button>
+        </div>
+        <button type="button" class="mt-2 text-xs font-bold text-[#1B5FD9] hover:underline" :aria-expanded="moreFormulaOpen" @click="moreFormulaOpen = !moreFormulaOpen">
+          {{ moreFormulaOpen ? 'Sembunyikan rumus lengkap' : 'Tampilkan rumus lengkap' }}
+        </button>
+        <div v-if="moreFormulaOpen" class="mt-2 max-h-72 space-y-3 overflow-y-auto pr-1">
+          <section v-for="group in LATEX_MORE_GROUPS" :key="group.title">
+            <h4 class="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-[#667085]">{{ group.title }}</h4>
+            <div class="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+              <button v-for="symbol in group.symbols" :key="group.title + symbol.syntax" type="button" class="tb justify-center" :title="symbol.description" :aria-label="symbol.description" @click="insertSymbol(symbol.syntax)">
+                {{ symbol.label }}
+              </button>
+            </div>
+          </section>
         </div>
         <p class="mt-2 text-[11px] text-[#667085]">Rumus ditulis di antara tanda $ ... $. Pilih teks lebih dulu bila ingin membungkusnya.</p>
       </div>
@@ -216,7 +237,7 @@ onBeforeUnmount(() => { if (extracting.value) emit('busy', false) })
       </div>
     </div>
 
-    <div v-if="modelValue.trim()" class="border-t border-[#E7EBF2] bg-[#FAFBFC] p-3">
+    <div v-if="modelValue.trim() && rumusAktif" class="border-t border-[#E7EBF2] bg-[#FAFBFC] p-3">
       <span class="mb-2 block text-[10px] font-extrabold uppercase text-[#667085]">{{ compact ? 'Pratinjau jawaban' : 'Pratinjau siswa' }}</span>
       <div class="question-preview overflow-x-auto text-sm leading-relaxed text-[#101828]" :class="detectedRtl ? 'font-serif text-xl leading-loose text-right' : ''" :dir="detectedRtl ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(modelValue)" />
       <p v-if="formulaError" class="mt-2 text-xs font-semibold text-[#C43232]" role="alert">Rumus belum valid: {{ formulaError }}</p>

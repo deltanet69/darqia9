@@ -30,6 +30,98 @@ export const LATEX_TOOLBAR_SYMBOLS: FormulaSymbol[] = [
   { label: '→', syntax: '\\rightarrow', description: 'Panah Reaksi / Implikasi' }
 ]
 
+// Rumus lanjutan (panel "Tampilkan rumus lengkap"), dikelompokkan per bidang. Semua sintaks didukung KaTeX.
+export const LATEX_MORE_GROUPS: { title: string, symbols: FormulaSymbol[] }[] = [
+  { title: 'Aljabar dan bilangan', symbols: [
+    { label: 'ⁿ√x', syntax: '\\sqrt[n]{x}', description: 'Akar pangkat n' },
+    { label: 'a/b', syntax: '\\dfrac{a}{b}', description: 'Pecahan besar' },
+    { label: '|x|', syntax: '\\left| x \\right|', description: 'Nilai mutlak' },
+    { label: 'n!', syntax: 'n!', description: 'Faktorial' },
+    { label: 'C(n,r)', syntax: '\\binom{n}{r}', description: 'Kombinasi' },
+    { label: 'log', syntax: '\\log_{a} b', description: 'Logaritma basis a' },
+    { label: 'ln', syntax: '\\ln x', description: 'Logaritma natural' },
+    { label: '÷', syntax: '\\div', description: 'Pembagian' },
+    { label: '·', syntax: '\\cdot', description: 'Perkalian titik' },
+    { label: '∞', syntax: '\\infty', description: 'Tak hingga' },
+    { label: '≈', syntax: '\\approx', description: 'Hampir sama dengan' },
+    { label: '≡', syntax: '\\equiv', description: 'Kongruen' },
+    { label: '<', syntax: '<', description: 'Kurang dari' },
+    { label: '>', syntax: '>', description: 'Lebih dari' },
+    { label: '%', syntax: '\\%', description: 'Persen' },
+    { label: 'x̄', syntax: '\\bar{x}', description: 'Rata-rata' }
+  ] },
+  { title: 'Trigonometri dan kalkulus', symbols: [
+    { label: 'sin', syntax: '\\sin \\theta', description: 'Sinus' },
+    { label: 'cos', syntax: '\\cos \\theta', description: 'Kosinus' },
+    { label: 'tan', syntax: '\\tan \\theta', description: 'Tangen' },
+    { label: '°', syntax: '^{\\circ}', description: 'Derajat' },
+    { label: 'lim', syntax: '\\lim_{x \\to a} f(x)', description: 'Limit' },
+    { label: 'dy/dx', syntax: '\\frac{dy}{dx}', description: 'Turunan' },
+    { label: '∂', syntax: '\\frac{\\partial f}{\\partial x}', description: 'Turunan parsial' },
+    { label: '∮', syntax: '\\oint', description: 'Integral lintasan tertutup' },
+    { label: '∏', syntax: '\\prod_{i=1}^{n} x_i', description: 'Notasi perkalian' },
+    { label: 'f′', syntax: "f'(x)", description: 'Turunan fungsi' },
+    { label: 'Δ', syntax: '\\Delta', description: 'Delta (perubahan)' },
+    { label: '∇', syntax: '\\nabla', description: 'Nabla' }
+  ] },
+  { title: 'Matriks, vektor, dan geometri', symbols: [
+    { label: 'Matriks 2×2', syntax: '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}', description: 'Matriks 2 × 2' },
+    { label: 'Det', syntax: '\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}', description: 'Determinan 2 × 2' },
+    { label: 'SPL', syntax: '\\begin{cases} x + y = a \\\\ x - y = b \\end{cases}', description: 'Sistem persamaan' },
+    { label: 'v⃗', syntax: '\\vec{v}', description: 'Vektor' },
+    { label: 'AB̅', syntax: '\\overline{AB}', description: 'Garis atas (ruas garis)' },
+    { label: '∠', syntax: '\\angle ABC', description: 'Sudut' },
+    { label: '⊥', syntax: '\\perp', description: 'Tegak lurus' },
+    { label: '∥', syntax: '\\parallel', description: 'Sejajar' },
+    { label: '△', syntax: '\\triangle ABC', description: 'Segitiga' },
+    { label: '≅', syntax: '\\cong', description: 'Kongruen (bangun)' },
+    { label: '∼', syntax: '\\sim', description: 'Sebangun' }
+  ] },
+  { title: 'Himpunan dan logika', symbols: [
+    { label: '∈', syntax: '\\in', description: 'Anggota' },
+    { label: '∉', syntax: '\\notin', description: 'Bukan anggota' },
+    { label: '⊂', syntax: '\\subset', description: 'Himpunan bagian' },
+    { label: '∪', syntax: '\\cup', description: 'Gabungan' },
+    { label: '∩', syntax: '\\cap', description: 'Irisan' },
+    { label: '∅', syntax: '\\emptyset', description: 'Himpunan kosong' },
+    { label: 'ℝ', syntax: '\\mathbb{R}', description: 'Bilangan real' },
+    { label: 'ℤ', syntax: '\\mathbb{Z}', description: 'Bilangan bulat' },
+    { label: 'ℕ', syntax: '\\mathbb{N}', description: 'Bilangan asli' },
+    { label: '∀', syntax: '\\forall', description: 'Untuk semua' },
+    { label: '∃', syntax: '\\exists', description: 'Terdapat' },
+    { label: '¬', syntax: '\\neg', description: 'Negasi' },
+    { label: '∧', syntax: '\\land', description: 'Dan (konjungsi)' },
+    { label: '∨', syntax: '\\lor', description: 'Atau (disjungsi)' },
+    { label: '⇒', syntax: '\\Rightarrow', description: 'Implikasi' },
+    { label: '⇔', syntax: '\\Leftrightarrow', description: 'Biimplikasi' }
+  ] },
+  { title: 'Huruf Yunani', symbols: [
+    { label: 'γ', syntax: '\\gamma', description: 'Gamma' },
+    { label: 'δ', syntax: '\\delta', description: 'Delta kecil' },
+    { label: 'ε', syntax: '\\varepsilon', description: 'Epsilon' },
+    { label: 'λ', syntax: '\\lambda', description: 'Lambda' },
+    { label: 'μ', syntax: '\\mu', description: 'Mu' },
+    { label: 'ρ', syntax: '\\rho', description: 'Rho' },
+    { label: 'σ', syntax: '\\sigma', description: 'Sigma kecil' },
+    { label: 'τ', syntax: '\\tau', description: 'Tau' },
+    { label: 'φ', syntax: '\\varphi', description: 'Phi' },
+    { label: 'ω', syntax: '\\omega', description: 'Omega kecil' },
+    { label: 'Σ', syntax: '\\Sigma', description: 'Sigma besar' },
+    { label: 'Ω', syntax: '\\Omega', description: 'Omega besar' }
+  ] },
+  { title: 'Fisika dan kimia', symbols: [
+    { label: 'Satuan', syntax: '\\text{ m/s}', description: 'Teks satuan' },
+    { label: 'H₂O', syntax: '\\text{H}_2\\text{O}', description: 'Rumus kimia' },
+    { label: 'Ion', syntax: '\\text{SO}_4^{2-}', description: 'Ion bermuatan' },
+    { label: '⇌', syntax: '\\rightleftharpoons', description: 'Reaksi kesetimbangan' },
+    { label: '→ kondisi', syntax: '\\xrightarrow{\\Delta}', description: 'Panah reaksi bersyarat' },
+    { label: '↑', syntax: '\\uparrow', description: 'Gas naik' },
+    { label: '↓', syntax: '\\downarrow', description: 'Endapan' },
+    { label: '×10ⁿ', syntax: '\\times 10^{n}', description: 'Notasi ilmiah' },
+    { label: 'F⃗', syntax: '\\vec{F}', description: 'Gaya (vektor)' }
+  ] }
+]
+
 /**
  * Deteksi teks Arab menggunakan cakupan Unicode Bahasa Arab
  */

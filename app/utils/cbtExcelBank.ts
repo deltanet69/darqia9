@@ -67,10 +67,9 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
     try {
       const typeKey = keyOf(typeValue)
       const type = typeKey === 'PG' || typeKey === 'PILIHANGANDA' ? 'PG'
-        : typeKey === 'ISIAN' || typeKey === 'ISIANSINGKAT' ? 'Isian'
         : typeKey === 'ESAI' || typeKey === 'ESSAY' ? 'Esai'
         : typeKey === 'INTERAKTIF' ? 'Interaktif' : null
-      if (!type) throw new Error(`Soal ${number}: Tipe harus PG, Isian, Esai, atau Interaktif.`)
+      if (!type) throw new Error(`Soal ${number}: Tipe harus PG, Esai, atau Interaktif (soal Isian sudah tidak dipakai).`)
       const text = cellOf(row, 'Pertanyaan')
       if (!text) throw new Error(`Soal ${number}: Pertanyaan wajib diisi.`)
       const question: BankQuestionItem = {
@@ -100,11 +99,6 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
         if (!answers.every(answer => letters.includes(answer))) throw new Error(`Soal ${number}: KUNCI tidak sesuai pilihan jawaban.`)
         question.isMultiSelect = answers.length > 1
         question.key = question.isMultiSelect ? answers : answers[0]
-      }
-      if (type === 'Isian') {
-        const key = cellOf(row, 'Kunci')
-        if (!key) throw new Error(`Soal ${number}: KUNCI wajib diisi untuk soal Isian.`)
-        question.key = key
       }
       if (type === 'Esai') {
         const rubric = cellOf(row, 'Rubrik')

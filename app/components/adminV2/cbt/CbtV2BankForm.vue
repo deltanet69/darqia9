@@ -52,12 +52,13 @@ watch(() => props.subjectOptions, options => {
 const currentStep = ref<'PG' | 'Isian' | 'Esai' | 'Interaktif'>(props.initialStep || 'PG')
 const isSettingsOpen = ref(!props.editing)
 const activeQuestionId = ref('')
-const questionSteps = [
+// Jenis soal baru hanya PG, Esai, dan Interaktif. Langkah Isian hanya muncul bila paket lama masih memuat soal Isian.
+const questionSteps = computed(() => [
   { id: 'PG', label: 'Pilihan Ganda', shortLabel: 'PG' },
-  { id: 'Isian', label: 'Isian', shortLabel: 'Isian' },
+  ...(draft.value.questions.some(q => q.type === 'Isian') ? [{ id: 'Isian', label: 'Isian (soal lama)', shortLabel: 'Isian' }] : []),
   { id: 'Esai', label: 'Esai', shortLabel: 'Esai' },
   { id: 'Interaktif', label: 'Interaktif', shortLabel: 'Media' }
-] as const
+] as const)
 
 watch(draft, value => {
   emit('update-draft', JSON.parse(JSON.stringify(value)))
@@ -166,21 +167,18 @@ const isOptionSelected = (q: BankQuestionItem, keyLetter: string) => {
 }
 
 // Navigation Step Controls
+const stepFlow = computed(() => questionSteps.value.map(step => step.id).filter(id => id !== 'Interaktif' || draft.value.hasInteractive))
+const isLastStep = computed(() => stepFlow.value.indexOf(currentStep.value) === stepFlow.value.length - 1 || !stepFlow.value.includes(currentStep.value))
+
 const nextStep = () => {
-  if (currentStep.value === 'PG') currentStep.value = 'Isian'
-  else if (currentStep.value === 'Isian') currentStep.value = 'Esai'
-  else if (currentStep.value === 'Esai') {
-    if (draft.value.hasInteractive) currentStep.value = 'Interaktif'
-    else submitForm()
-  } else if (currentStep.value === 'Interaktif') {
-    submitForm()
-  }
+  if (isLastStep.value) submitForm()
+  else currentStep.value = stepFlow.value[stepFlow.value.indexOf(currentStep.value) + 1]
 }
 
 const prevStep = () => {
-  if (currentStep.value === 'Interaktif') currentStep.value = 'Esai'
-  else if (currentStep.value === 'Esai') currentStep.value = 'Isian'
-  else if (currentStep.value === 'Isian') currentStep.value = 'PG'
+  const ids = questionSteps.value.map(step => step.id)
+  const index = ids.indexOf(currentStep.value)
+  if (index > 0) currentStep.value = ids[index - 1]
 }
 
 const submitForm = () => {
@@ -207,6 +205,11 @@ const submitForm = () => {
     currentStep.value = 'Isian'
     activeQuestionId.value = missingIsianKey.id
     emit('toast', 'Kunci jawaban soal Isian wajib diisi.')
+    return
+  }
+  if (draft.value.hasInteractive && !validQuestions.some(q => q.type === 'Interaktif')) {
+    currentStep.value = 'Interaktif'
+    emit('toast', 'Isi minimal 1 soal Interaktif, atau nonaktifkan format interaktif.')
     return
   }
   if (!validQuestions.some(q => q.type === 'PG')) {
@@ -365,7 +368,7 @@ const submitForm = () => {
     <section class="mt-4 lg:mt-0 bg-white border border-[#E7EBF2] rounded-[18px] overflow-hidden shadow-sm">
       <!-- Step Navigation Bar -->
       <div class="p-3 sm:p-4 bg-[#F9FAFC] border-b border-[#E7EBF2] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 lg:hidden">
-        <nav class="grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-1.5" aria-label="Langkah format soal">
+        <nav class="grid gap-1 sm:flex sm:items-center sm:gap-1.5" :style="{ gridTemplateColumns: `repeat(${questionSteps.length}, minmax(0, 1fr))` }" aria-label="Langkah format soal">
           <button
             v-for="st in questionSteps"
             :key="st.id"
@@ -414,7 +417,7 @@ const submitForm = () => {
             <p class="text-xs text-[#667085] mt-0.5">
               {{ currentStep === 'PG' ? 'Pilih satu kunci atau aktifkan multi-select untuk PG kompleks.'
                 : currentStep === 'Isian' ? 'Tulis kunci jawaban yang benar untuk setiap soal. Rumus dan teks Arab didukung.'
-                : currentStep === 'Esai' ? 'Siapkan rubrik serta skor maksimal untuk koreksi guru.'
+                : currentStep === 'Esai' ? 'Siapkan rubrik serta skor maksimal untuk koreksi guru. Siswa wajib menjawab minimal 50 kata, tanpa batas maksimum.'
                 : 'Pilih media dan jenis jawaban untuk setiap soal.' }}
             </p>
           </div>
@@ -662,7 +665,7 @@ const submitForm = () => {
             :disabled="ocrBerjalan"
             @click="nextStep"
           >
-            <span>{{ currentStep === 'Interaktif' || (!draft.hasInteractive && currentStep === 'Esai') ? 'Simpan Seluruh Paket' : 'Lanjut' }}</span>
+            <span>{{ isLastStep ? 'Simpan Seluruh Paket' : 'Lanjut' }}</span>
             <AdminV2Icon name="arrow-right" :size="14" />
           </button>
         </div>

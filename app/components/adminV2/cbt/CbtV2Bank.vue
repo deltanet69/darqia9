@@ -123,8 +123,22 @@ const importPreview = ref<WordBankPreview | null>(null)
 const importError = ref('')
 const isImporting = ref(false)
 const importFileName = ref('')
-const importTarget = ref<'baru' | 'tambah'>('baru')
-const importTargetPkgId = ref('')
+// Paket tujuan otomatis: bank soal dengan kelas + mata pelajaran yang sama (soal ditambahkan, bukan ditolak).
+const importTargetPkg = computed(() => importPreview.value
+  ? currentGradePackages.value.find(pkg => pkg.classroom === importPreview.value!.classroom && pkg.subject === importPreview.value!.subject) ?? null
+  : null)
+const normalizeQuestionText = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim()
+// Soal impor yang teksnya sama dengan soal yang sudah ada di paket tujuan. Pilihan: lewati (bawaan) atau perbarui soal lama.
+const importDuplicates = computed(() => {
+  const target = importTargetPkg.value
+  if (!target || !importPreview.value) return []
+  const existing = new Map(target.questions.map(q => [normalizeQuestionText(q.text), q]))
+  return importPreview.value.package.questions.flatMap(imported => {
+    const old = existing.get(normalizeQuestionText(imported.text))
+    return old ? [{ imported, old }] : []
+  })
+})
+const duplicateUpdate = ref<Record<string, boolean>>({})
 const expandedQuestions = ref<Record<string, boolean>>({})
 const formatColorHex = (type: string) => (({ PG: '#1B5FD9', Isian: '#0E9384', Esai: '#6941C6', Interaktif: '#B54708' } as Record<string, string>)[type] || '#667085')
 const toggleQuestion = (id: string) => { expandedQuestions.value = { ...expandedQuestions.value, [id]: !expandedQuestions.value[id] } }
@@ -363,8 +377,7 @@ const closeImport = () => {
   importPreview.value = null
   importError.value = ''
   importFileName.value = ''
-  importTarget.value = 'baru'
-  importTargetPkgId.value = ''
+  duplicateUpdate.value = {}
 }
 
 const confirmImport = async () => {
@@ -372,21 +385,26 @@ const confirmImport = async () => {
   isImporting.value = true
   try {
     if (!subjectsForClass(importPreview.value.classroom).includes(importPreview.value.subject)) throw new Error('Mata pelajaran impor tidak sesuai dengan jadwal kelas.')
-    if (importTarget.value === 'tambah') {
-      const target = currentGradePackages.value.find(pkg => pkg.id === importTargetPkgId.value)
-      if (!target) throw new Error('Pilih paket tujuan terlebih dahulu.')
-      if (target.classroom !== importPreview.value.classroom || target.subject !== importPreview.value.subject) {
-        throw new Error(`File ini untuk ${importPreview.value.subject} - ${importPreview.value.classroom}, sedangkan paket tujuan adalah ${target.subject} - ${target.classroom}.`)
+    const target = importTargetPkg.value
+    if (target) {
+      const duplicateByImported = new Map(importDuplicates.value.map(item => [item.imported.id, item]))
+      const replaced = new Map<string, BankQuestionItem>()
+      const added: BankQuestionItem[] = []
+      for (const question of importPreview.value.package.questions) {
+        const duplicate = duplicateByImported.get(question.id)
+        if (!duplicate) added.push(question)
+        else if (duplicateUpdate.value[question.id]) replaced.set(duplicate.old.id, { ...question, id: duplicate.old.id })
       }
-      const merged = [...target.questions, ...importPreview.value.package.questions]
-      if (merged.length > 100) throw new Error(`Paket sudah berisi ${target.questions.length} soal; tambahan ${importPreview.value.questionCount} soal melebihi batas 100 soal per paket.`)
+      const merged = [...target.questions.map(q => replaced.get(q.id) ?? q), ...added]
+      if (merged.length > 100) throw new Error(`Paket sudah berisi ${target.questions.length} soal; tambahan ${added.length} soal melebihi batas 100 soal per paket.`)
       const updated: BankPackage = { ...target, hasInteractive: merged.some(q => q.type === 'Interaktif'), questions: merged.map((q, i) => ({ ...q, number: i + 1 })) }
       const savedId = await cbtData.saveBankPackage(updated, props.grade)
       selectedPkgId.value = savedId
       selectedClass.value = target.classroom
       activeFormat.value = 'all'
       bankMode.value = 'detail'
-      emit('toast', `${importPreview.value.questionCount} butir soal ditambahkan ke paket ${target.subject}. Total sekarang ${merged.length} soal.`)
+      const skipped = importDuplicates.value.length - replaced.size
+      emit('toast', `${added.length} soal ditambahkan, ${replaced.size} soal diperbarui${skipped ? `, ${skipped} soal duplikat dilewati` : ''}. Total sekarang ${merged.length} soal.`)
       closeImport()
       return
     }
@@ -651,7 +669,7 @@ const confirmImport = async () => {
       <div class="bg-white border border-[#E7EBF2] rounded-xl p-2.5 shadow-xs overflow-x-auto">
         <div class="flex items-center gap-1 text-xs font-bold min-w-max">
           <button
-            v-for="fmt in ['all', 'PG', 'Isian', 'Esai', 'Interaktif'] as const"
+            v-for="fmt in (['all', 'PG', 'Isian', 'Esai', 'Interaktif'] as const).filter(f => f !== 'Isian' || selectedPackage.questions.some(q => q.type === 'Isian'))"
             :key="fmt"
             type="button"
             class="px-3 py-1.5 rounded-lg transition"
@@ -777,26 +795,13 @@ const confirmImport = async () => {
 
             <div class="rounded-xl border border-[#E7EBF2] bg-[#FAFBFC] p-3">
               <p class="font-semibold text-[#344054]">Template sesuai jenjang aktif: {{ props.grade }}</p>
-              <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">PG SMP berisi 4 pilihan A-D. PG SMK berisi 5 pilihan A-E. Template juga memuat Esai, Isian, Video YouTube, dan Audio dengan jawaban PG.</p>
+              <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">PG SMP berisi 4 pilihan A-D. PG SMK berisi 5 pilihan A-E. Template juga memuat Esai serta soal Interaktif (Video YouTube dan Audio). Rumus ditulis di antara tanda $ ... $ atau $$ ... $$. Bila bank soal untuk kelas dan mata pelajaran yang sama sudah ada, soal ditambahkan ke bank soal tersebut.</p>
               <button type="button" class="mt-2 min-h-10 rounded-lg bg-white px-3 font-semibold text-[#1B5FD9] ring-1 ring-[#B9D1F9] hover:bg-[#E8F0FE]" @click="downloadWordTemplate(props.grade)">
                 Unduh Template Word {{ props.grade }}
               </button>
               <button type="button" class="mt-2 ml-2 min-h-10 rounded-lg bg-white px-3 font-semibold text-[#1B5FD9] ring-1 ring-[#B9D1F9] hover:bg-[#E8F0FE]" @click="downloadExcelTemplate(props.grade)">
                 Unduh Template Excel {{ props.grade }}
               </button>
-            </div>
-
-            <div>
-              <label class="block font-semibold text-[#344054] mb-1.5">Simpan sebagai</label>
-              <div class="flex rounded-xl bg-[#EEF1F6] p-1 gap-1">
-                <button type="button" class="flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition" :class="importTarget === 'baru' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#667085]'" @click="importTarget = 'baru'">Paket Baru</button>
-                <button type="button" class="flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition" :class="importTarget === 'tambah' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#667085]'" @click="importTarget = 'tambah'">Tambah ke Paket Ini</button>
-              </div>
-              <select v-if="importTarget === 'tambah'" v-model="importTargetPkgId" class="mt-2 w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]">
-                <option value="" disabled>Pilih paket tujuan ({{ props.grade }})</option>
-                <option v-for="pkg in currentGradePackages" :key="pkg.id" :value="pkg.id">{{ pkg.subject }} - {{ pkg.classroom }} ({{ pkg.questions.length }} soal)</option>
-              </select>
-              <p v-if="importTarget === 'tambah'" class="mt-1.5 text-[11px] text-[#667085]">Kelas dan mata pelajaran pada file harus sama dengan paket tujuan. Maksimum total 100 soal per paket.</p>
             </div>
 
             <div>
@@ -818,6 +823,21 @@ const confirmImport = async () => {
                 <div><dt class="text-[#667085]">Mata pelajaran</dt><dd class="font-semibold">{{ importPreview.subject }}</dd></div>
                 <div><dt class="text-[#667085]">Butir soal</dt><dd class="font-semibold">{{ importPreview.questionCount }} butir</dd></div>
               </dl>
+              <p class="mt-3 border-t border-[#D6E4FA] pt-2.5 text-[11px] font-semibold">
+                {{ importTargetPkg ? `Bank soal ${importPreview.subject} - ${importPreview.classroom} sudah ada (${importTargetPkg.questions.length} soal). Soal dari file ditambahkan ke bank soal tersebut. Maksimum 100 soal per paket.` : 'Bank soal belum ada. Paket baru akan dibuat.' }}
+              </p>
+              <div v-if="importDuplicates.length" class="mt-3 rounded-lg border border-[#F5D08A] bg-[#FFF8E6] p-2.5" role="alert">
+                <p class="font-semibold text-[#7A4A03]">{{ importDuplicates.length }} soal terindikasi duplikat dengan soal yang sudah ada. Soal duplikat dilewati kecuali Anda memilih memperbaruinya.</p>
+                <ul class="mt-1.5 space-y-1.5">
+                  <li v-for="item in importDuplicates" :key="item.imported.id" class="rounded-md bg-white p-2 text-[11px] text-[#344054]">
+                    <span class="block truncate font-semibold">{{ item.imported.text }}</span>
+                    <label class="mt-1 flex min-h-8 cursor-pointer items-center gap-2 font-bold text-[#7A4A03]">
+                      <input v-model="duplicateUpdate[item.imported.id]" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]">
+                      Perbarui soal lama dengan versi baru dari file
+                    </label>
+                  </li>
+                </ul>
+              </div>
               <div v-if="importPreview.issues.length" class="mt-3 border-t border-[#D6E4FA] pt-2.5">
                 <p class="font-semibold text-[#7A4A03]">{{ importPreview.questionCount }} soal siap disimpan - {{ importPreview.issues.length }} soal gagal dan tidak ikut disimpan:</p>
                 <ul class="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-[#7A4A03]">
@@ -837,7 +857,7 @@ const confirmImport = async () => {
             <button
               type="button"
               class="min-h-10 px-4 rounded-xl bg-[#1B5FD9] hover:bg-[#12459B] disabled:bg-[#98A2B3] text-white text-xs font-bold shadow-sm"
-              :disabled="!importPreview || importPreview.questionCount === 0 || isImporting || (importTarget === 'tambah' && !importTargetPkgId)"
+              :disabled="!importPreview || importPreview.questionCount === 0 || isImporting"
               @click="confirmImport"
             >
               {{ isImporting ? 'Menyimpan...' : 'Konfirmasi dan Simpan' }}

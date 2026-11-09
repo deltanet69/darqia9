@@ -145,7 +145,7 @@ export const useCbtExam = () => {
           text: q.text,
           options: options.length > 0 ? options : undefined,
           placeholder: q.type === 'Esai' ? 'Tulis jawaban essay-mu di sini…' : 'Ketik jawaban singkatmu…',
-          minWords: q.type === 'Esai' ? 30 : undefined,
+          minWords: q.type === 'Esai' ? 50 : undefined,
           isRtl: q.is_rtl,
           imageUrl: q.image_url,
           audioTitle: q.media_file_name || 'Audio Ujian',

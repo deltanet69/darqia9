@@ -96,7 +96,6 @@ const toType = (value: string): ImportType | null => {
   const type = keyOf(value)
   if (['PG', 'PILIHANGANDA'].includes(type)) return 'PG'
   if (['ESAI', 'ESSAY'].includes(type)) return 'Esai'
-  if (['ISIAN', 'ISIANSINGKAT'].includes(type)) return 'Isian'
   return type === 'INTERAKTIF' ? 'Interaktif' : null
 }
 
@@ -141,7 +140,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
     const number = Number(row.NO || index + 1)
     try {
       const type = toType(row.TIPE)
-      if (!type) throw new Error(`Soal ${number}: TIPE harus PG, Isian, Esai, atau Interaktif.`)
+      if (!type) throw new Error(`Soal ${number}: TIPE harus PG, Esai, atau Interaktif (soal Isian sudah tidak dipakai).`)
       const text = required(row.PERTANYAAN, 'PERTANYAAN', number)
       const question: BankQuestionItem = {
         id: `Q-IMP-${Date.now()}-${index + 1}`,
@@ -165,7 +164,6 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
         if (!question.isMultiSelect && answers.length !== 1) throw new Error(`Soal ${number}: PG tunggal hanya boleh memiliki satu KUNCI.`)
         question.key = question.isMultiSelect ? answers : answers[0]
       }
-      if (type === 'Isian') question.key = required(row.KUNCI, 'KUNCI', number)
       if (type === 'Esai') question.rubric = required(row.RUBRIK, 'RUBRIK', number)
       if (type === 'Interaktif') {
         const mediaUrl = required(row.LINKMEDIA, 'LINK_MEDIA', number)
