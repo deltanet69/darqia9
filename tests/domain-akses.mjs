@@ -8,10 +8,13 @@ for (const h of ['localhost', 'darqia9.vercel.app', '127.0.0.1']) {
 }
 
 // Beranda tiap domain tampil sebagai "/" (bersih)
-for (const h of ['darqiaattaqwa.sch.id', 'www.darqiaattaqwa.sch.id', 'smpitbca.sch.id', 'smkitattaqwa9.sch.id', 'portal.darqiaattaqwa.sch.id', 'spmb.smpitbca.sch.id', 'cbt.smkitattaqwa9.sch.id', 'perpus.smpitbca.sch.id', 'absen.smkitattaqwa9.sch.id']) assert.equal(a(h, '/'), null, h)
+for (const h of ['darqiaattaqwa.sch.id', 'www.darqiaattaqwa.sch.id', 'smpitbca.sch.id', 'smkitattaqwa9.sch.id', 'spmb.smpitbca.sch.id', 'cbt.smkitattaqwa9.sch.id', 'perpus.smpitbca.sch.id', 'absen.smkitattaqwa9.sch.id']) assert.equal(a(h, '/'), null, h)
 assert.equal(a('smpitbca.sch.id', '/smp'), '/')
 assert.equal(a('smkitattaqwa9.sch.id', '/smk/'), '/')
-assert.equal(a('portal.darqiaattaqwa.sch.id', '/adminv2'), '/')
+// Portal: "/" TIDAK boleh jadi alias (penjaga login membaca path /admin*), harus dialihkan ke /adminV2
+assert.equal(a('portal.darqiaattaqwa.sch.id', '/'), '/adminV2')
+assert.equal(a('portal.darqiaattaqwa.sch.id', '/adminv2'), null)
+assert.equal(a('portal.darqiaattaqwa.sch.id', '/adminV2'), null)
 assert.equal(a('spmb.smpitbca.sch.id', '/spmb/smp'), '/')
 assert.equal(a('spmb.smkitattaqwa9.sch.id', '/spmb'), '/')
 assert.equal(a('cbt.smpitbca.sch.id', '/cbt'), '/')
@@ -35,7 +38,7 @@ assert.equal(a('spmb.smpitbca.sch.id', '/spmb/smk'), 'https://spmb.smkitattaqwa9
 assert.equal(a('smpitbca.sch.id', '/cbt'), 'https://cbt.smpitbca.sch.id/')
 assert.equal(a('smkitattaqwa9.sch.id', '/perpus'), 'https://perpus.smkitattaqwa9.sch.id/')
 assert.equal(a('cbt.smkitattaqwa9.sch.id', '/spmb'), 'https://spmb.smkitattaqwa9.sch.id/')
-assert.equal(a('cbt.smpitbca.sch.id', '/adminV2'), 'https://portal.darqiaattaqwa.sch.id/')
+assert.equal(a('cbt.smpitbca.sch.id', '/adminV2'), 'https://portal.darqiaattaqwa.sch.id/adminV2')
 assert.equal(a('darqiaattaqwa.sch.id', '/smp'), 'https://smpitbca.sch.id/')
 assert.equal(a('darqiaattaqwa.sch.id', '/smp/berita'), 'https://smpitbca.sch.id/berita')
 assert.equal(a('darqiaattaqwa.sch.id', '/spmb/smk'), 'https://spmb.smkitattaqwa9.sch.id/')

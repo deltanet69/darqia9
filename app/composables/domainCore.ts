@@ -63,7 +63,8 @@ const pemilik = (path: string): { modul: Modul, jenjang?: Jenjang } | 'bebas' | 
 const normalHost = (hostname: string) => hostname.toLowerCase().replace(/^www\./, '')
 export const berandaHost = (hostname: string): string | null => {
   const peran = HOST[normalHost(hostname)]
-  return peran ? beranda(peran.modul, peran.jenjang) : null
+  // Portal sengaja tanpa alias "/" (lihat arahkanDomain): penjagaan login membaca path /admin*.
+  return peran && peran.modul !== 'portal' ? beranda(peran.modul, peran.jenjang) : null
 }
 // Awalan web sekolah ('/smp' atau '/smk') bila host-nya web utama sekolah; di domain itu awalan dibuang dari URL.
 export const awalanSekolahHost = (hostname: string): string | null => {
@@ -83,6 +84,9 @@ export const arahkanDomain = (hostname: string, path: string, fullPath = path): 
 
   const awal = beranda(peran.modul, peran.jenjang)
   if (!awal) return `https://${YAYASAN}/`
+  // Portal TIDAK memakai alias "/": middleware auth/RBAC menjaga berdasarkan path /admin*, jadi "/" harus
+  // dialihkan ke /adminV2 agar penjagaan login tidak terlewat.
+  if (peran.modul === 'portal' && path === '/') return '/adminV2'
   if (path === '/' || pemilikPath === null) return null
   // di web sekolah /spmb adalah halaman info SPMB sekolah itu (SPMB asli ada di subdomain spmb.)
   if (peran.modul === 'sekolah' && /^\/spmb\/?$/i.test(path)) return null
@@ -91,7 +95,7 @@ export const arahkanDomain = (hostname: string, path: string, fullPath = path): 
     if (peran.modul === 'sekolah') return tanpaAwalan(fullPath)
     const p = path.toLowerCase().replace(/\/$/, '')
     // beranda modul, dan pemilih unit SPMB (tidak dipakai di domain SPMB per jenjang), tampil sebagai "/"
-    if (p === awal.toLowerCase() || (peran.modul === 'spmb' && p === '/spmb')) return '/'
+    if (peran.modul !== 'portal' && (p === awal.toLowerCase() || (peran.modul === 'spmb' && p === '/spmb'))) return '/'
     // absen.<sekolah>/<kelas> menggantikan /absensi/<kelas>
     const kelas = peran.modul === 'absen' && path.match(/^\/absensi\/([^/]+)\/?$/i)
     return kelas ? `/${kelas[1]}` : null
@@ -103,6 +107,6 @@ export const arahkanDomain = (hostname: string, path: string, fullPath = path): 
   if (pemilikPath.modul === 'sekolah') return `https://${tujuan}${tanpaAwalan(fullPath)}`
   // beranda modul (mis. /spmb/smp, /cbt) langsung ke "/" di domain tujuan, tanpa pengalihan kedua
   const p = path.toLowerCase().replace(/\/$/, '')
-  const keBeranda = p === beranda(pemilikPath.modul, jenjang)?.toLowerCase() || (pemilikPath.modul === 'spmb' && p === '/spmb')
+  const keBeranda = pemilikPath.modul !== 'portal' && p ===beranda(pemilikPath.modul, jenjang)?.toLowerCase() || (pemilikPath.modul === 'spmb' && p === '/spmb')
   return `https://${tujuan}${keBeranda ? '/' + fullPath.slice(path.length) : fullPath}`
 }
