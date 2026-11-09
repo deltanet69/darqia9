@@ -12,7 +12,6 @@ import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import JadwalV2GradeTimetable from '~/components/adminV2/jadwal-mengajar/JadwalV2GradeTimetable.vue'
 import JadwalV2PersonalView from '~/components/adminV2/jadwal-mengajar/JadwalV2PersonalView.vue'
 import JadwalV2CreateModal from '~/components/adminV2/jadwal-mengajar/JadwalV2CreateModal.vue'
-import JadwalV2SessionSheet from '~/components/adminV2/jadwal-mengajar/JadwalV2SessionSheet.vue'
 import JadwalV2LiveBar from '~/components/adminV2/jadwal-mengajar/JadwalV2LiveBar.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import {
@@ -86,7 +85,6 @@ const selectedClass = ref<Record<Jenjang, string>>({ smk: '', smp: '' })
 // Modal & Sheet States
 const isCreateModalOpen = ref(false)
 const slotBaru = ref<{ di: DayIndex, si: number } | null>(null)
-const sessionSheetKey = ref<string | null>(null)
 
 /* ================= GURU AKTIF & PERSONA ASLI =================
    Sampai RBAC akun guru aktif, guru yang ditampilkan di "Jadwal Saya"
@@ -141,12 +139,7 @@ const sesiRecord = computed<Record<string, LessonSession>>(() => {
   for (const l of stateV2.pelajaran) {
     const s = stateV2.sesi[kunciSesi(l.id, tgl)]
     if (s && s.startedAt) {
-      const total = stateV2.roster[`${l.level}|${l.kelas}`]?.length ?? 0
-      rec[kunciPelajaran(l)] = {
-        hadir: s.hadir ?? Math.max(0, total - s.alpa.length),
-        alpa: s.alpa,
-        done: s.status === 'selesai'
-      }
+      rec[kunciPelajaran(l)] = { done: s.status === 'selesai' }
     }
   }
   return rec
@@ -157,13 +150,10 @@ const activeLiveSession = computed(() => {
   for (const l of stateV2.pelajaran) {
     const s = stateV2.sesi[kunciSesi(l.id, tgl)]
     if (s && s.startedAt && s.status === 'berlangsung') {
-      const total = stateV2.roster[`${l.level}|${l.kelas}`]?.length ?? 0
       return {
         key: kunciPelajaran(l),
         mapel: l.mapel,
         kelas: l.kelas,
-        hadir: s.hadir ?? Math.max(0, total - s.alpa.length),
-        alpaCount: s.alpa.length,
         startTime: new Date(s.startedAt).getTime()
       }
     }
@@ -249,22 +239,25 @@ const handleScheduleSaved = async (payload: {
   triggerToast(`Jadwal tersimpan: ${payload.mapel} · ${payload.kelas}`)
 }
 
-// Handler Sesi Mengajar — menulis ke teaching_sessions
-const openMulaiSession = (key: string) => {
-  sessionSheetKey.value = key
-}
+// Buka Agenda Mengajar untuk pelajaran ini; ?mulai=1 membuka jurnal pertemuan baru, tanpa itu agenda hanya dibuka.
+const bukaAgenda = (les: { classId: string; subjectId: string; teacherId: string; level: Jenjang }, mulai: boolean) =>
+  router.push({ path: '/adminV2/agenda-mengajar', query: { jenjang: les.level, kelas: les.classId, mapel: les.subjectId, guru: les.teacherId, ...(mulai ? { mulai: '1' } : {}) } })
 
-const handleSessionStarted = async (payload: { key: string; hadir: number; alpa: string[] }) => {
-  const les = stateV2.pelajaran.find(l => kunciPelajaran(l) === payload.key)
+// Handler Sesi Mengajar — menulis ke teaching_sessions, lalu langsung membuka agenda (kehadiran siswa diisi di sana)
+const openMulaiSession = async (key: string) => {
+  const les = stateV2.pelajaran.find(l => kunciPelajaran(l) === key)
   if (!les) return
-  const hasil = await mengajar.mulaiSesi(les, payload.hadir, payload.alpa)
+  const hasil = await mengajar.mulaiSesi(les)
   if (!hasil.ok) {
     triggerToast(`Gagal mencatat sesi: ${hasil.pesan || 'periksa koneksi basis data'}`)
     return
   }
-  triggerToast(hasil.kehadiranTersimpan
-    ? `Sesi mengajar dimulai: Hadir ${payload.hadir} · Alpa ${payload.alpa.length}`
-    : 'Sesi dimulai, tetapi catatan kehadiran siswa belum tersimpan — jalankan migrasi 0021 di Supabase SQL Editor.')
+  bukaAgenda(les, true)
+}
+
+const bukaAgendaSesi = (key: string) => {
+  const les = stateV2.pelajaran.find(l => kunciPelajaran(l) === key)
+  if (les) bukaAgenda(les, false)
 }
 
 const endLiveSession = async (key: string) => {
@@ -338,6 +331,7 @@ onUnmounted(() => {
       <JadwalV2LiveBar
         :active-session="activeLiveSession"
         @akhiri="endLiveSession"
+        @agenda="bukaAgendaSesi"
       />
 
       <!-- Page Header & Greeting -->
@@ -447,6 +441,7 @@ onUnmounted(() => {
           :sessions="sesiRecord"
               @mulai="openMulaiSession"
           @akhiri="endLiveSession"
+          @agenda="bukaAgendaSesi"
         />
       </template>
 
@@ -485,6 +480,7 @@ onUnmounted(() => {
           :sessions="sesiRecord"
               @mulai="openMulaiSession"
           @akhiri="endLiveSession"
+          @agenda="bukaAgendaSesi"
         />
       </template>
       </template>
@@ -499,14 +495,6 @@ onUnmounted(() => {
       :slot-awal="slotBaru"
       @close="isCreateModalOpen = false"
       @saved="handleScheduleSaved"
-    />
-
-    <!-- SHEET MULAI MENGAJAR & CEK KEHADIRAN SISWA -->
-    <JadwalV2SessionSheet
-      :is-open="!!sessionSheetKey"
-      :session-key="sessionSheetKey"
-      @close="sessionSheetKey = null"
-      @started="handleSessionStarted"
     />
 
     <!-- BOTTOM BAR & POPOVERS MOBILE -->

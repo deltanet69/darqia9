@@ -25,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'mulai', lessonKey: string): void
   (e: 'akhiri', lessonKey: string): void
+  (e: 'agenda', lessonKey: string): void
 }>()
 
 // Filter hari: 'all' atau index hari 0..4 (Senin - Jumat)
@@ -182,23 +183,28 @@ const schoolName = computed(() => {
                 <span>Mulai Mengajar</span>
               </button>
 
-              <button
-                v-else-if="getMulaiState(activeHeroLesson) === 'live'"
-                type="button"
-                class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-4 text-xs font-bold text-[#0B1F3A] shadow-md transition-colors hover:bg-[#F3F5F9]"
-                @click="emit('akhiri', lessonKey(activeHeroLesson))"
-              >
-                <span>Akhiri Sesi</span>
-              </button>
+              <template v-else-if="getMulaiState(activeHeroLesson) === 'live'">
+                <button
+                  type="button"
+                  class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-4 text-xs font-bold text-[#0B1F3A] shadow-md transition-colors hover:bg-[#F3F5F9]"
+                  @click="emit('agenda', lessonKey(activeHeroLesson))"
+                >
+                  <span>Isi Agenda</span>
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/30 px-4 text-xs font-bold text-white transition-colors hover:bg-white/10"
+                  @click="emit('akhiri', lessonKey(activeHeroLesson))"
+                >
+                  <span>Akhiri Sesi</span>
+                </button>
+              </template>
 
               <span v-if="getMulaiState(activeHeroLesson) === 'window'" class="text-[10.5px] font-semibold text-[#B9CCF5]">
                 Jendela mulai aktif s.d. {{ fmtMin(slotMin(activeHeroLesson.si)[0] + 10) }}
               </span>
               <span v-else-if="getMulaiState(activeHeroLesson) === 'early'" class="text-[10.5px] font-semibold text-[#B9CCF5]">
                 Aktif pukul {{ fmtMin(slotMin(activeHeroLesson.si)[0] - 10) }} (10 menit sebelum jam mulai)
-              </span>
-              <span v-else-if="getMulaiState(activeHeroLesson) === 'live'" class="text-[10.5px] font-semibold text-[#B9CCF5]">
-                Hadir {{ sessions[lessonKey(activeHeroLesson)]?.hadir }} &bull; Alpa {{ sessions[lessonKey(activeHeroLesson)]?.alpa.length }}
               </span>
             </div>
           </div>
@@ -352,14 +358,22 @@ const schoolName = computed(() => {
                   <span>Mulai Mengajar</span>
                 </button>
 
-                <button
-                  v-else-if="getMulaiState(l) === 'live'"
-                  type="button"
-                  class="inline-flex min-h-9 items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-3.5 text-xs font-bold text-[#344054] shadow-xs hover:bg-[#F8FAFD]"
-                  @click="emit('akhiri', lessonKey(l))"
-                >
-                  <span>Akhiri Sesi</span>
-                </button>
+                <div v-else-if="getMulaiState(l) === 'live'" class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex min-h-9 items-center gap-2 rounded-xl bg-[#1B5FD9] px-3.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-[#12459B]"
+                    @click="emit('agenda', lessonKey(l))"
+                  >
+                    <span>Isi Agenda</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex min-h-9 items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-3.5 text-xs font-bold text-[#344054] shadow-xs hover:bg-[#F8FAFD]"
+                    @click="emit('akhiri', lessonKey(l))"
+                  >
+                    <span>Akhiri Sesi</span>
+                  </button>
+                </div>
 
                 <span
                   v-else-if="getMulaiState(l) === 'done'"
@@ -382,9 +396,6 @@ const schoolName = computed(() => {
                 </span>
                 <span v-else-if="getMulaiState(l) === 'early'" class="text-[10px] font-semibold text-[#667085]">
                   Aktif pukul {{ fmtMin(slotMin(l.si)[0] - 10) }}
-                </span>
-                <span v-else-if="getMulaiState(l) === 'live'" class="text-[10px] font-semibold text-[#047857]">
-                  Hadir {{ sessions[lessonKey(l)]?.hadir }} &bull; Alpa {{ sessions[lessonKey(l)]?.alpa.length }}
                 </span>
               </div>
             </article>

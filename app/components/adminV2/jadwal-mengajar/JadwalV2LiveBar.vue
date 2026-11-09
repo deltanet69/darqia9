@@ -6,14 +6,13 @@ const props = defineProps<{
     key: string
     mapel: string
     kelas: string
-    hadir: number
-    alpaCount: number
     startTime: number
   } | null
 }>()
 
 const emit = defineEmits<{
   (e: 'akhiri', key: string): void
+  (e: 'agenda', key: string): void
 }>()
 
 const timerStr = ref('00:00')
@@ -56,7 +55,7 @@ onUnmounted(() => {
           Sedang Mengajar
         </b>
         <p class="truncate text-xs font-semibold text-white">
-          {{ activeSession.mapel }} &bull; Kelas {{ activeSession.kelas }} &bull; Hadir {{ activeSession.hadir }} &bull; Alpa {{ activeSession.alpaCount }}
+          {{ activeSession.mapel }} &bull; Kelas {{ activeSession.kelas }}
         </p>
       </div>
     </div>
@@ -65,6 +64,14 @@ onUnmounted(() => {
       <span class="font-mono text-base font-extrabold tabular-nums tracking-wider text-white">
         {{ timerStr }}
       </span>
+
+      <button
+        type="button"
+        class="rounded-xl border border-white/30 px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/10"
+        @click="emit('agenda', activeSession.key)"
+      >
+        Isi Agenda
+      </button>
 
       <button
         type="button"

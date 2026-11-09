@@ -21,15 +21,15 @@ import {
   type AgendaTab,
   type AgendaTabData,
   type AttendanceStatus,
-  type ScoreType
+  type ScoreType,
+  useAgendaMengajar
 } from '~/composables/useAgendaMengajar'
-// Untuk data real, ganti hanya import ini menjadi: import { useAgendaMengajar } from '~/composables/useAgendaMengajar'
-import { useAgendaMengajarDummy as useAgendaMengajar } from '~/composables/useAgendaMengajarDummy'
 
 definePageMeta({ layout: false, middleware: 'agenda-access' })
 useHead({ title: 'Agenda Mengajar (F.32) — Admin Portal Darqia 9' })
 
 const router = useRouter()
+const route = useRoute()
 const client = useSupabaseClient()
 const agenda = useAgendaMengajar()
 const now = new Date()
@@ -37,12 +37,15 @@ const academicStartYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullY
 const academicYear = `${academicStartYear}/${academicStartYear + 1}`
 const emptyTabData = (): AgendaTabData => ({ students: [], meetings: [], attendance: [], scores: [] })
 
-const jenjang = ref<'smp' | 'smk'>('smk')
+const jenjang = ref<'smp' | 'smk'>(route.query.jenjang === 'smp' ? 'smp' : 'smk')
 const semester = ref<1 | 2>(1)
 const activeTab = ref<AgendaTab>('pertemuan')
 const scoreMode = ref<AgendaMode>('sementara')
 const selectedTask = ref(1)
 const selectedMeeting = ref(1)
+// Pertemuan awal 20 dan tugas awal 5 (sesuai kertas F.32); guru dapat menambah sesuai kebijakan.
+const jumlahPertemuan = ref(20)
+const jumlahTugas = ref(5)
 const selectedClassId = ref('')
 const selectedBookId = ref('')
 const profileRole = ref('guru')
@@ -69,6 +72,10 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null
 const scoreTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const pendingScoreSaves = new Map<string, () => Promise<void>>()
 let tabRequestId = 0
+// Tautan dari Jadwal Mengajar: ?kelas&mapel&guru memilih buku agenda, ?mulai=1 membuka jurnal pertemuan baru (sekali pakai).
+const kueri = (kunci: string) => typeof route.query[kunci] === 'string' ? route.query[kunci] as string : ''
+let kueriTerpakai = false
+let mulaiTertunda = kueri('mulai') === '1'
 
 const tabs: Array<{ id: AgendaTab; label: string; icon: string }> = [
   { id: 'pertemuan', label: 'Pertemuan', icon: 'cal' },
@@ -76,7 +83,13 @@ const tabs: Array<{ id: AgendaTab; label: string; icon: string }> = [
   { id: 'ujian', label: 'PTS & PAS', icon: 'chart' },
   { id: 'rekap', label: 'Rekap', icon: 'book' }
 ]
-const taskLabels = ['I', 'II', 'III', 'IV', 'V'] as const
+function romawi(n: number) {
+  let hasil = ''
+  for (const [nilai, huruf] of [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']] as const) {
+    while (n >= nilai) { hasil += huruf; n -= nilai }
+  }
+  return hasil
+}
 
 const shellRole = computed<'superadmin' | 'guru'>(() => profileRole.value === 'guru' ? 'guru' : 'superadmin')
 const isSemesterLocked = computed(() => semester.value === 2)
@@ -94,10 +107,14 @@ const meetingMap = computed(() => new Map(meetings.value.map(meeting => [meeting
 const attendanceMap = computed(() => new Map((tabData.value.attendance || []).map(item => [`${item.siswa_id}:${item.pertemuan_ke}`, item.status])))
 const scoreMap = computed(() => new Map(scores.value.map(item => [`${item.siswa_id}:${item.jenis}:${item.nomor ?? ''}`, item.nilai])))
 const filledMeetingCount = computed(() => meetings.value.length)
+const totalPertemuan = computed(() => Math.max(jumlahPertemuan.value, ...meetings.value.map(item => item.pertemuan_ke)))
+const nomorPertemuan = computed(() => Array.from({ length: totalPertemuan.value }, (_, index) => index + 1))
+const totalTugas = computed(() => Math.max(jumlahTugas.value, ...scores.value.filter(item => item.jenis === 'tugas').map(item => item.nomor ?? 0)))
+const nomorTugas = computed(() => Array.from({ length: totalTugas.value }, (_, index) => index + 1))
 const filledTaskCount = computed(() => new Set(scores.value.filter(item => item.jenis === 'tugas').map(item => item.nomor)).size)
 const selectedMeetingData = computed(() => meetingMap.value.get(selectedMeeting.value))
 const selectedMeetingLabel = computed(() => `Pertemuan ${selectedMeeting.value} · ${selectedMeetingData.value ? formatDate(selectedMeetingData.value.tanggal) : 'tanggal belum diisi'}`)
-const selectedTaskLabel = computed(() => taskLabels[selectedTask.value - 1] ?? taskLabels[0])
+const selectedTaskLabel = computed(() => romawi(selectedTask.value))
 const completeResultCount = computed(() => studentResults.value.filter(item => item.result.finalScore !== null).length)
 const formattedToday = computed(() => new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()))
 
@@ -147,6 +164,9 @@ const loadContext = async () => {
   try {
     const result = await agenda.loadBooks(academicYear, semester.value, jenjang.value.toUpperCase() as 'SMP' | 'SMK')
     books.value = result
+    const tujuan = kueriTerpakai ? null : result.find(book => book.kelas_id === kueri('kelas') && book.mapel_id === kueri('mapel') && (!kueri('guru') || book.guru_id === kueri('guru')))
+    kueriTerpakai = true
+    if (tujuan) { selectedClassId.value = tujuan.kelas_id; selectedBookId.value = tujuan.buku_id }
     if (!result.some(book => book.kelas_id === selectedClassId.value)) selectedClassId.value = result[0]?.kelas_id || ''
     const available = result.filter(book => book.kelas_id === selectedClassId.value)
     if (!available.some(book => book.buku_id === selectedBookId.value)) selectedBookId.value = available[0]?.buku_id || ''
@@ -167,7 +187,10 @@ const loadCurrentTab = async () => {
   tabError.value = ''
   try {
     const result = await agenda.loadTab(bookId, tab)
-    if (requestId === tabRequestId) tabData.value = result
+    if (requestId === tabRequestId) {
+      tabData.value = result
+      if (mulaiTertunda && tab === 'pertemuan') mulaiDariJadwal()
+    }
   } catch (error: any) {
     if (requestId === tabRequestId) {
       tabData.value = emptyTabData()
@@ -177,6 +200,26 @@ const loadCurrentTab = async () => {
     if (requestId === tabRequestId) loadingTab.value = false
   }
 }
+
+// Pertemuan hari ini dibuka lagi bila sudah ada; selain itu pertemuan berikutnya. Kehadiran semua siswa bawaannya Hadir.
+const mulaiDariJadwal = () => {
+  mulaiTertunda = false
+  const { mulai: _mulai, ...sisa } = route.query
+  void router.replace({ query: sisa })
+  const book = currentBook.value
+  if (!book || book.kelas_id !== kueri('kelas') || book.mapel_id !== kueri('mapel')) {
+    triggerToast('Buku agenda untuk jadwal ini belum tersedia.')
+    return
+  }
+  const hariIni = meetings.value.find(item => item.tanggal === todayValue())
+  const nomor = hariIni?.pertemuan_ke ?? Math.max(0, ...meetings.value.map(item => item.pertemuan_ke)) + 1
+  jumlahPertemuan.value = Math.max(jumlahPertemuan.value, nomor)
+  selectedMeeting.value = nomor
+  openJournal(nomor)
+}
+
+const tambahPertemuan = () => { jumlahPertemuan.value = totalPertemuan.value + 5 }
+const tambahTugas = () => { jumlahTugas.value = totalTugas.value + 1; selectedTask.value = jumlahTugas.value }
 
 const selectClass = (classId: string) => {
   selectedClassId.value = classId
@@ -306,7 +349,7 @@ const flushScoreSaves = async () => {
   await Promise.all(pending.map(([, action]) => action()))
   triggerToast('Nilai tersimpan. Rekap F.32 sudah diperbarui.')
 }
-const taskValues = (studentId: string) => [1, 2, 3, 4, 5].map(number => scoreValue(studentId, 'tugas', number)).filter(Boolean).map(Number)
+const taskValues = (studentId: string) => scores.value.filter(item => item.siswa_id === studentId && item.jenis === 'tugas' && item.nilai !== '').map(item => Number(item.nilai))
 const taskAverage = (studentId: string) => { const values = taskValues(studentId); return values.length ? Math.round(values.reduce((total, value) => total + value, 0) / values.length * 10) / 10 : null }
 const classAverage = (type: 'tugas' | 'pts' | 'pas', number: number | null = null) => {
   const values = students.value.map(student => scoreValue(student.id, type, number)).filter(Boolean).map(Number)
@@ -325,6 +368,7 @@ const studentResults = computed(() => students.value.map(student => ({
 
 watch([jenjang, semester], loadContext)
 watch([selectedBookId, activeTab], loadCurrentTab)
+watch(selectedBookId, () => { jumlahPertemuan.value = 20; jumlahTugas.value = 5; selectedMeeting.value = 1; selectedTask.value = 1 })
 onMounted(async () => { await loadProfileRole(); await loadContext() })
 onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.forEach(timer => clearTimeout(timer)) })
 </script>
@@ -364,27 +408,27 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.fo
       <section v-else-if="!currentBook" class="state-card"><AdminV2Icon name="book" :size="24" /><div><h2>Tidak ada buku agenda</h2><p>Tidak ada penugasan kelas dan mata pelajaran dalam lingkup akun ini.</p></div></section>
       <template v-else>
         <template v-if="activeTab === 'pertemuan'">
-          <div class="grid-toolbar"><p class="guide"><AdminV2Icon name="info" :size="14" /><span>Persis lembar F.32: ketuk sel untuk mengganti status hadir (H → S → I → A), tersimpan otomatis. Ketuk nomor pertemuan di kepala kolom untuk mengisi jurnalnya.</span></p><button type="button" class="primary-button" @click="loadCurrentTab"><AdminV2Icon name="check" :size="15" /> Update Data Nilai</button></div>
+          <div class="grid-toolbar"><p class="guide"><AdminV2Icon name="info" :size="14" /><span>Persis lembar F.32: ketuk sel untuk mengganti status hadir (H → S → I → A), tersimpan otomatis. Ketuk nomor pertemuan di kepala kolom untuk mengisi jurnalnya.</span></p><button type="button" class="secondary-button" @click="tambahPertemuan"><AdminV2Icon name="plus" :size="15" /> Tambah Pertemuan</button><button type="button" class="primary-button" @click="loadCurrentTab"><AdminV2Icon name="check" :size="15" /> Update Data Nilai</button></div>
           <div class="legend"><span><i class="status-h" />Hadir</span><span><i class="status-s" />Sakit</span><span><i class="status-i" />Izin</span><span><i class="status-a" />Alpa</span><span class="legend-note">Sel redup = jurnal pertemuan belum diisi</span></div>
           <section class="agenda-card attendance-desktop">
-            <div class="table-scroll"><table class="attendance-table"><thead><tr><th class="sticky-name">Nama Siswa</th><th>No. Induk</th><th>L/P</th><th v-for="number in 20" :key="number" class="meeting-heading"><button type="button" @click="openJournal(number)">{{ number }}<small>{{ meetingDateLabel(number, '—', true) }}</small></button></th><th>Jml<br>Hadir</th></tr></thead><tbody><tr v-for="student in students" :key="student.id"><td class="sticky-name student-name-cell"><span class="student-avatar">{{ initials(student.name) }}</span><span><b>{{ student.name }}</b><small>NISN {{ student.nisn }}</small></span></td><td>{{ student.nis || '—' }}</td><td>{{ student.gender }}</td><td v-for="number in 20" :key="number"><button type="button" class="attendance-cell" :class="[`value-${attendanceStatus(student.id, number).toLowerCase()}`, { fresh: !meetingMap.has(number), saving: savingKeys.has(`${student.id}:${number}`) }]" :disabled="savingKeys.has(`${student.id}:${number}`)" :aria-label="`Kehadiran ${student.name}, pertemuan ${number}: ${attendanceStatus(student.id, number)}`" @click="cycleAttendance(student, number)">{{ attendanceStatus(student.id, number) }}</button></td><td class="present-total"><b>{{ presentCount(student.id) }}</b>/{{ filledMeetingCount }}</td></tr></tbody></table></div>
+            <div class="table-scroll"><table class="attendance-table"><thead><tr><th class="sticky-name">Nama Siswa</th><th>No. Induk</th><th>L/P</th><th v-for="number in nomorPertemuan" :key="number" class="meeting-heading"><button type="button" @click="openJournal(number)">{{ number }}<small>{{ meetingDateLabel(number, '—', true) }}</small></button></th><th>Jml<br>Hadir</th></tr></thead><tbody><tr v-for="student in students" :key="student.id"><td class="sticky-name student-name-cell"><span class="student-avatar">{{ initials(student.name) }}</span><span><b>{{ student.name }}</b><small>NISN {{ student.nisn }}</small></span></td><td>{{ student.nis || '—' }}</td><td>{{ student.gender }}</td><td v-for="number in nomorPertemuan" :key="number"><button type="button" class="attendance-cell" :class="[`value-${attendanceStatus(student.id, number).toLowerCase()}`, { fresh: !meetingMap.has(number), saving: savingKeys.has(`${student.id}:${number}`) }]" :disabled="savingKeys.has(`${student.id}:${number}`)" :aria-label="`Kehadiran ${student.name}, pertemuan ${number}: ${attendanceStatus(student.id, number)}`" @click="cycleAttendance(student, number)">{{ attendanceStatus(student.id, number) }}</button></td><td class="present-total"><b>{{ presentCount(student.id) }}</b>/{{ filledMeetingCount }}</td></tr></tbody></table></div>
           </section>
           <section class="agenda-card attendance-mobile">
-            <div class="mobile-meeting-bar"><div class="custom-dropdown"><button type="button" class="dropdown-trigger light" @click.stop="openFilter = openFilter === 'meeting' ? null : 'meeting'"><span>{{ selectedMeetingLabel }}</span><AdminV2Icon name="chev" :size="14" /></button><div v-if="openFilter === 'meeting'" class="dropdown-menu" @click.stop><button v-for="number in 20" :key="number" type="button" :class="{ active: selectedMeeting === number }" @click="selectedMeeting = number; openFilter = null"><span>Pertemuan {{ number }} · {{ meetingDateLabel(number, 'tanggal belum diisi') }}</span><AdminV2Icon v-if="selectedMeeting === number" name="check" :size="14" /></button></div></div><button type="button" class="secondary-button" @click="openJournal(selectedMeeting)"><AdminV2Icon name="pencil" :size="14" /> Jurnal</button></div>
+            <div class="mobile-meeting-bar"><div class="custom-dropdown"><button type="button" class="dropdown-trigger light" @click.stop="openFilter = openFilter === 'meeting' ? null : 'meeting'"><span>{{ selectedMeetingLabel }}</span><AdminV2Icon name="chev" :size="14" /></button><div v-if="openFilter === 'meeting'" class="dropdown-menu" @click.stop><button v-for="number in nomorPertemuan" :key="number" type="button" :class="{ active: selectedMeeting === number }" @click="selectedMeeting = number; openFilter = null"><span>Pertemuan {{ number }} · {{ meetingDateLabel(number, 'tanggal belum diisi') }}</span><AdminV2Icon v-if="selectedMeeting === number" name="check" :size="14" /></button></div></div><button type="button" class="secondary-button" @click="openJournal(selectedMeeting)"><AdminV2Icon name="pencil" :size="14" /> Jurnal</button></div>
             <p class="mobile-meeting-meta">{{ selectedMeetingData?.topik || 'Topik belum diisi' }} · {{ attendanceSummary(selectedMeeting).H }} hadir dari {{ students.length }} siswa</p>
             <div v-for="student in students" :key="student.id" class="student-row mobile-attendance-row"><span class="student-avatar">{{ initials(student.name) }}</span><span class="student-copy"><b>{{ student.name }}</b><small>NISN {{ student.nisn }}</small></span><span class="attendance-segments"><button v-for="status in (['H', 'S', 'I', 'A'] as AttendanceStatus[])" :key="status" type="button" :class="{ active: attendanceStatus(student.id, selectedMeeting) === status, [`value-${status.toLowerCase()}`]: true }" :disabled="savingKeys.has(`${student.id}:${selectedMeeting}`)" @click="setAttendance(student, selectedMeeting, status)">{{ status }}</button></span></div>
           </section>
-          <p class="footnote">20 kolom pertemuan sama dengan kolom tatap muka di kertas F.32. Kehadiran mengalir otomatis ke Rekap (bobot Pertemuan 30%).</p>
+          <p class="footnote">Dua puluh kolom pertemuan awal sama dengan kolom tatap muka di kertas F.32; tambahkan pertemuan bila diperlukan. Kehadiran mengalir otomatis ke Rekap (bobot Pertemuan 30%).</p>
         </template>
 
         <template v-else-if="activeTab === 'tugas'">
-          <div class="task-chips" role="group" aria-label="Pilih tugas"><button v-for="(label, index) in taskLabels" :key="label" type="button" :class="{ active: selectedTask === index + 1 }" @click="selectedTask = index + 1">Tugas {{ label }}<span v-if="!scores.some(item => item.jenis === 'tugas' && item.nomor === index + 1)"> · kosong</span></button></div>
+          <div class="task-chips" role="group" aria-label="Pilih tugas"><button v-for="number in nomorTugas" :key="number" type="button" :class="{ active: selectedTask === number }" @click="selectedTask = number">Tugas {{ romawi(number) }}<span v-if="!scores.some(item => item.jenis === 'tugas' && item.nomor === number)"> · kosong</span></button><button type="button" @click="tambahTugas">Tambah Tugas</button></div>
           <section class="agenda-card score-card">
             <div class="score-heading"><div><h2>Nilai Tugas {{ selectedTaskLabel }}</h2><p>{{ currentBook.mapel_nama }} · {{ currentBook.kelas_nama }} · rata-rata kelas <b>{{ classAverage('tugas', selectedTask) ?? '—' }}</b></p></div></div>
-            <div v-for="student in students" :key="student.id" class="student-row score-row" :class="scoreTone(scoreValue(student.id, 'tugas', selectedTask))"><span class="student-avatar">{{ initials(student.name) }}</span><span class="student-copy"><b>{{ student.name }}</b><small>NISN {{ student.nisn }}</small></span><span class="score-meta"><span class="task-dots"><i v-for="number in 5" :key="number" :class="{ filled: scoreValue(student.id, 'tugas', number) !== '' }" /></span><small>{{ taskAverage(student.id) === null ? 'Belum ada nilai tugas' : `Rata-rata tugas: ${taskAverage(student.id)}` }}</small></span><input type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="—" :value="scoreValue(student.id, 'tugas', selectedTask)" :class="scoreTone(scoreValue(student.id, 'tugas', selectedTask))" :aria-label="`Nilai tugas ${student.name}`" @input="queueScore(student.id, 'tugas', ($event.target as HTMLInputElement).value, selectedTask)"></div>
+            <div v-for="student in students" :key="student.id" class="student-row score-row" :class="scoreTone(scoreValue(student.id, 'tugas', selectedTask))"><span class="student-avatar">{{ initials(student.name) }}</span><span class="student-copy"><b>{{ student.name }}</b><small>NISN {{ student.nisn }}</small></span><span class="score-meta"><span class="task-dots"><i v-for="number in nomorTugas" :key="number" :class="{ filled: scoreValue(student.id, 'tugas', number) !== '' }" /></span><small>{{ taskAverage(student.id) === null ? 'Belum ada nilai tugas' : `Rata-rata tugas: ${taskAverage(student.id)}` }}</small></span><input type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="—" :value="scoreValue(student.id, 'tugas', selectedTask)" :class="scoreTone(scoreValue(student.id, 'tugas', selectedTask))" :aria-label="`Nilai tugas ${student.name}`" @input="queueScore(student.id, 'tugas', ($event.target as HTMLInputElement).value, selectedTask)"></div>
             <div class="save-bar"><span>Nilai tersimpan otomatis saat diketik.</span><button type="button" class="primary-button" @click="flushScoreSaves"><AdminV2Icon name="check" :size="15" /> Simpan Nilai</button></div>
           </section>
-          <p class="footnote">Di kertas F.32 ada 5 kolom tugas (I–V). Nilai tugas mengalir ke Rekap sebagai rata-rata tugas yang terisi (bobot 20%).</p>
+          <p class="footnote">Kertas F.32 menyediakan 5 kolom tugas (I–V); jumlah tugas dapat ditambah sesuai kebijakan guru. Nilai tugas mengalir ke Rekap sebagai rata-rata tugas yang terisi (bobot 20%).</p>
         </template>
 
         <template v-else-if="activeTab === 'ujian'">
@@ -436,6 +480,6 @@ button,input,textarea{font-family:inherit}button:focus-visible,input:focus-visib
 .footnote{margin-top:14px;color:var(--ink-3);font-size:11.5px;font-weight:600;line-height:1.6}.task-chips{display:flex;flex-wrap:wrap;gap:7px}.task-chips button{border:1px solid var(--line);border-radius:999px;background:#fff;padding:7px 12px;color:var(--ink-2);font-size:11.5px;font-weight:700}.task-chips button.active{border-color:#0F2042;background:#0F2042;color:#fff}.score-card{padding:18px}.score-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}.score-heading h2{color:var(--ink);font-size:15px;font-weight:750}.score-heading h2 span{display:inline-flex;border-radius:999px;background:#EAF0FE;padding:4px 9px;color:#1D4ED8;font-size:10.5px;white-space:nowrap}.score-heading p{margin-top:2px;color:var(--ink-3);font-size:12px;font-weight:600}.score-row{position:relative;margin:7px 0;border:1px solid transparent;border-radius:13px;background:#F8FAFC;padding:10px 12px 10px 17px}.score-row::before{position:absolute;top:11px;bottom:11px;left:0;width:3.5px;border-radius:99px;background:#D8DEE9;content:""}.score-row.low::before{background:#E5484D}.score-row.middle::before{background:#E8A93D}.score-row.high::before{background:#12B76A}.score-row:focus-within{border-color:#2563EB;background:#fff;box-shadow:0 8px 18px rgba(37,99,235,.12)}.score-meta{margin-left:auto;display:flex;flex-shrink:0;flex-direction:column;align-items:flex-end;gap:4px}.score-meta small{color:var(--ink-3);font-size:11px;font-weight:700;white-space:nowrap}.score-meta small.complete{color:#027A48}.task-dots{display:inline-flex;gap:4px}.task-dots i{height:7px;width:7px;border-radius:50%;background:#D8DEE9}.task-dots i.filled{background:#2563EB}.score-row input{margin-left:11px;height:44px;width:84px;flex-shrink:0;border:1px solid var(--line);border-radius:12px;background:#fff;padding:8px 9px;color:var(--ink);font-size:16px;font-weight:650;text-align:center}.score-row input.low{border-color:#F0B4B4;background:#FEF4F4;color:#B42318}.score-row input.middle{border-color:#F2D492;background:#FFFBEB;color:#92600A}.score-row input.high{border-color:#A9DFC6;background:#F0FDF6;color:#027A48}.score-row input:disabled{cursor:not-allowed;background:#F2F5F9;color:var(--ink-3)}.save-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:13px}.save-bar span{color:var(--ink-3);font-size:12px;font-weight:600}.save-bar.standalone{padding:13px 16px}.exam-grid{display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:12px}.score-card.locked .score-row{opacity:.55}.lock-box{display:flex;align-items:flex-start;gap:13px;margin-bottom:10px;border:1px solid #F2D492;border-radius:14px;background:#FFFBEB;padding:14px 15px;color:#92600A}.lock-box svg{margin-top:1px;flex-shrink:0}.lock-box b{display:block;font-size:13.5px}.lock-box span{font-size:12px;font-weight:600;line-height:1.6}
 .mode-selector{display:flex;gap:4px;border-radius:15px;background:#E8EDF5;padding:4px}.mode-selector button{flex:1;border-radius:11px;padding:9px 10px;color:var(--ink-3);font-size:13px;font-weight:700;line-height:1.35}.mode-selector button small{display:block;font-size:10.5px;font-weight:600}.mode-selector button.active{background:#fff;color:var(--ink);box-shadow:0 4px 12px rgba(15,23,42,.1)}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}.summary-grid>div{display:flex;flex-direction:column;gap:5px;border:1px solid var(--line);border-radius:16px;background:#fff;padding:15px 16px}.summary-grid span{color:var(--ink-3);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.summary-grid b{color:var(--ink);font-size:19px}.summary-grid b.weight-copy{padding-top:4px;font-size:14px}.summary-grid small{color:var(--ink-3);font-size:11px;font-weight:600}.recap-desktop{overflow:hidden;padding:6px 0}.recap-table{width:100%;min-width:960px;border-collapse:collapse;font-size:12.5px}.recap-table th{border-bottom:1px solid var(--line);background:#F2F6FC;padding:10px 9px;color:var(--ink-3);font-size:10.5px;font-weight:700;letter-spacing:.04em;line-height:1.5;text-align:center;text-transform:uppercase}.recap-table th small{font-weight:600;letter-spacing:0;text-transform:none}.recap-table td{border-bottom:1px solid var(--line);padding:9px;color:var(--ink-2);font-weight:600;text-align:center}.recap-name{min-width:170px;text-align:left!important}.recap-name b{display:block;color:var(--ink);font-size:12.5px}.recap-name span{color:var(--ink-3);font-size:10.5px}.final-score{background:#F8FAFF}.recap-table input{width:72px;border:1px solid var(--line);border-radius:9px;padding:6px;color:var(--ink);font-size:12px;text-align:center}.status-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 9px;font-size:10.5px;font-weight:750;white-space:nowrap}.status-chip.waiting{background:#FEF3E2;color:#B54708}.status-chip.success{background:#E7F6EF;color:#027A48}.status-chip.danger{background:#FDECEC;color:#B42318}.recap-mobile{display:none;flex-direction:column;gap:11px}.recap-card{padding:15px 16px}.recap-card-heading{display:flex;align-items:center;gap:11px;margin-bottom:12px}.recap-card-heading .status-chip{margin-left:auto}.recap-values{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}.recap-values.four{grid-template-columns:repeat(4,1fr)}.recap-values span{display:block;margin-bottom:3px;color:var(--ink-3);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.recap-values b{color:var(--ink);font-size:15px}.recap-text-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.recap-text-fields label{color:var(--ink-3);font-size:10.5px;font-weight:700}.recap-text-fields input{margin-top:4px;width:100%;border:1px solid var(--line);border-radius:9px;padding:8px;color:var(--ink);font-size:12px}.recap-final{display:flex;align-items:center;justify-content:space-between;margin-top:12px;border-top:1px solid var(--line);padding-top:11px}.recap-final span{color:var(--ink-3);font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.recap-final b{color:#1D4ED8;font-size:19px}
 @media(max-width:1023px){.exam-grid{grid-template-columns:1fr}}
-@media(max-width:700px){.grid-toolbar{flex-direction:column}.grid-toolbar .primary-button{align-self:stretch}.attendance-desktop,.recap-desktop{display:none}.attendance-mobile{display:block;padding:14px 16px}.summary-grid{grid-template-columns:1fr}.recap-mobile{display:flex}.score-row input{width:66px}}
+@media(max-width:700px){.grid-toolbar{flex-direction:column}.grid-toolbar .primary-button,.grid-toolbar .secondary-button{align-self:stretch}.attendance-desktop,.recap-desktop{display:none}.attendance-mobile{display:block;padding:14px 16px}.summary-grid{grid-template-columns:1fr}.recap-mobile{display:flex}.score-row input{width:66px}}
 @media(max-width:520px){.task-dots{display:none}.score-meta small{font-size:10px}.score-heading h2 span{display:flex;width:max-content;margin-top:5px}.save-bar{align-items:stretch;flex-direction:column}.student-row{gap:8px}.student-avatar{height:34px;width:34px}.attendance-segments button{width:28px}.recap-card-heading{align-items:flex-start;flex-wrap:wrap}.recap-card-heading .status-chip{margin-left:45px}.recap-values.four{grid-template-columns:repeat(2,1fr)}.recap-text-fields{grid-template-columns:1fr}}
 </style>

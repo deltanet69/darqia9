@@ -258,38 +258,16 @@ export function useJadwalMengajar() {
     await muatJadwalDanSesi()
   }
 
-  // Mulai Mengajar: upsert sesi hari ini untuk jadwal ini.
-  // Kehadiran (hadir/alpa) ikut ditulis bila migrasi 0021 sudah jalan;
-  // bila belum, sesi tetap tercatat dan fungsi melaporkan flag-nya.
-  const mulaiSesi = async (les: LessonItem, hadir: number, alpa: string[]): Promise<{ ok: boolean; kehadiranTersimpan: boolean; pesan?: string }> => {
+  // Mulai Mengajar: upsert sesi hari ini. Kehadiran siswa dicatat di Agenda Mengajar, bukan di sini.
+  const mulaiSesi = async (les: LessonItem): Promise<{ ok: boolean; pesan?: string }> => {
     const tanggal = isoTanggalLokal(new Date())
-    const dasar = {
-      schedule_id: les.id,
-      teacher_id: les.teacherId,
-      session_date: tanggal,
-      started_at: new Date().toISOString(),
-      status: 'berlangsung' as const
-    }
-    let kehadiranTersimpan = true
-    const denganKehadiran = await client
+    const mulai = new Date().toISOString()
+    const { error } = await client
       .from('teaching_sessions')
-      .upsert({ ...dasar, hadir, alpa }, { onConflict: 'schedule_id,session_date' })
-    if (denganKehadiran.error) {
-      kehadiranTersimpan = false
-      const cadangan = await client
-        .from('teaching_sessions')
-        .upsert(dasar, { onConflict: 'schedule_id,session_date' })
-      if (cadangan.error) return { ok: false, kehadiranTersimpan: false, pesan: cadangan.error.message }
-    }
-    stateV2.sesi[kunciSesi(les.id, tanggal)] = {
-      tanggal,
-      status: 'berlangsung',
-      startedAt: dasar.started_at,
-      endedAt: null,
-      hadir: kehadiranTersimpan ? hadir : null,
-      alpa: kehadiranTersimpan ? alpa : []
-    }
-    return { ok: true, kehadiranTersimpan }
+      .upsert({ schedule_id: les.id, teacher_id: les.teacherId, session_date: tanggal, started_at: mulai, status: 'berlangsung' }, { onConflict: 'schedule_id,session_date' })
+    if (error) return { ok: false, pesan: error.message }
+    stateV2.sesi[kunciSesi(les.id, tanggal)] = { tanggal, status: 'berlangsung', startedAt: mulai, endedAt: null, hadir: null, alpa: [] }
+    return { ok: true }
   }
 
   const selesaikanSesi = async (les: LessonItem): Promise<boolean> => {

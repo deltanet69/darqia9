@@ -58,8 +58,6 @@ export interface LessonItem {
 }
 
 export interface LessonSession {
-  hadir: number
-  alpa: string[] // daftar NIS siswa alpa
   done: boolean
 }
 
