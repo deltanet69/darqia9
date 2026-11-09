@@ -218,7 +218,7 @@ const mulaiDariJadwal = () => {
   openJournal(nomor)
 }
 
-const tambahPertemuan = () => { jumlahPertemuan.value = totalPertemuan.value + 5 }
+const tambahPertemuan = () => { jumlahPertemuan.value = totalPertemuan.value + 1 }
 const tambahTugas = () => { jumlahTugas.value = totalTugas.value + 1; selectedTask.value = jumlahTugas.value }
 
 const selectClass = (classId: string) => {
