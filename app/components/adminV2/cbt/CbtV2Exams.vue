@@ -14,6 +14,9 @@ interface Props {
 
 const props = defineProps<Props>()
 const cbtData = useAdminCbtData(props.source ?? 'cbt')
+// CBT PTS/PAS: buat/ubah/hapus ujian dan token peserta hanya Superadmin; guru dan wali kelas hanya melihat.
+// Ujian harian (LMS) memakai komponen ini juga dan tidak ikut dibatasi.
+const bolehKelola = computed(() => props.source === 'ujian_harian' || cbtData.adalahSuperadmin.value)
 
 const emit = defineEmits<{
   (e: 'switch-tab', tab: CbtTabId): void
@@ -282,14 +285,14 @@ const removeSchedule = async (exam: ExamItem) => {
             <button type="button" class="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-white text-[#101828] shadow-xs">Per Ujian</button>
             <button type="button" class="px-3.5 py-1.5 rounded-full text-xs font-extrabold text-[#667085]" @click="examView = 'classes'">Per Rombel</button>
           </div>
-          <button type="button" class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5" @click="openCreateSchedule()">
+          <button v-if="bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5" @click="openCreateSchedule()">
             <AdminV2Icon name="plus" :size="14" />
             <span>Buat Ujian</span>
           </button>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 text-xs font-bold text-[#667085] flex-wrap">
+      <div v-if="bolehKelola" class="flex items-center gap-2 text-xs font-bold text-[#667085] flex-wrap">
         <button type="button" class="inline-flex items-center gap-1.5 hover:text-[#1B5FD9]" @click="emit('switch-tab', 'bank')"><span class="w-5 h-5 rounded-full bg-[#1B5FD9] text-white inline-flex items-center justify-center text-[10px] font-extrabold">1</span> Siapkan Soal</button>
         <span aria-hidden="true">&rarr;</span>
         <span class="inline-flex items-center gap-1.5 text-[#101828]"><span class="w-5 h-5 rounded-full bg-[#1B5FD9] text-white inline-flex items-center justify-center text-[10px] font-extrabold">2</span> Buat Ujian</span>
@@ -323,15 +326,15 @@ const removeSchedule = async (exam: ExamItem) => {
             <div class="rounded-xl bg-[#F8F9FC] px-3 py-2.5"><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Soal</span><b class="text-xs font-bold text-[#101828]">{{ soalLabel(e) }}</b></div>
           </div>
           <div class="flex items-center justify-end gap-3 pt-3 mt-3.5 border-t border-[#E7EBF2]">
-            <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = e">Token Peserta</button>
+            <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = e">Token Peserta</button>
             <button type="button" class="text-xs font-bold text-[#667085] hover:underline" @click="openDetail(e.classroom)">Detail Rombel</button>
-            <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">Ubah</button>
-            <button type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">Hapus</button>
+            <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">Ubah</button>
+            <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">Hapus</button>
           </div>
         </article>
         <div v-if="!filteredExams.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center">
           <p class="text-xs text-[#667085] mb-3">Belum ada ujian yang cocok.</p>
-          <button type="button" class="px-4 py-2.5 rounded-full bg-[#101828] text-white text-xs font-extrabold" @click="openCreateSchedule()">+ Buat Ujian</button>
+          <button v-if="bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-[#101828] text-white text-xs font-extrabold" @click="openCreateSchedule()">+ Buat Ujian</button>
         </div>
       </div>
     </div>
@@ -350,7 +353,7 @@ const removeSchedule = async (exam: ExamItem) => {
         >
           <span>Lihat per Ujian</span>
         </button>
-        <button
+        <button v-if="bolehKelola"
           type="button"
           class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
           @click="openCreateSchedule()"
@@ -441,7 +444,7 @@ const removeSchedule = async (exam: ExamItem) => {
             Jadwal, peserta, pengawas, dan status pada rombel ini.
           </p>
         </div>
-        <button
+        <button v-if="bolehKelola"
           type="button"
           class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5"
           @click="openCreateSchedule(selectedClass)"
@@ -497,13 +500,13 @@ const removeSchedule = async (exam: ExamItem) => {
                 </td>
                 <td class="py-3 px-4 text-right">
                   <div class="inline-flex items-center gap-3">
-                    <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = e">
+                    <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="tokenExam = e">
                       Token Peserta
                     </button>
-                    <button type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">
+                    <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">
                       Ubah
                     </button>
-                    <button type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">
+                    <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">
                       Hapus
                     </button>
                   </div>

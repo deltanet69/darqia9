@@ -68,7 +68,9 @@ export const useCbtExam = () => {
   const router = useRouter()
   const grade = useAdminGrade()
   const route = useRoute()
-  const activeExam = ref<{ id: string; name: string; code: string; duration: number; studentName: string; classroom: string; subject: string } | null>(null)
+  const activeExam = ref<{ id: string; name: string; code: string; duration: number; studentName: string; classroom: string; subject: string; startsAt?: string; serverNow?: string } | null>(null)
+  // Selisih jam server dan perangkat siswa, agar penahanan tombol Mulai tidak bergantung jam perangkat.
+  let selisihJam = 0
   const examQuestions = ref<QuestionItem[]>([])
   const loadingExam = ref(false)
 
@@ -396,6 +398,7 @@ export const useCbtExam = () => {
       })
       if (!result.questions?.length) throw new Error('Ujian belum memiliki soal. Hubungi pengawas.')
       activeExam.value = result
+      selisihJam = result.serverNow ? new Date(result.serverNow).getTime() - Date.now() : 0
       examQuestions.value = mapExamQuestions(result.questions)
       remainingTime.value = DURATION.value
       Object.keys(answers).forEach(key => delete answers[Number(key)])
@@ -419,6 +422,13 @@ export const useCbtExam = () => {
   const startExam = (): void => {
     if (!agreeStart.value) {
       triggerToast('Centang persetujuan tata tertib terlebih dahulu.')
+      return
+    }
+    // Login dibuka 5 menit lebih awal, tetapi pengerjaan baru boleh dimulai tepat pada jadwal.
+    const mulai = activeExam.value?.startsAt ? new Date(activeExam.value.startsAt).getTime() : 0
+    if (mulai && Date.now() + selisihJam < mulai) {
+      const jam = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).format(mulai)
+      triggerToast(`Ujian dimulai pukul ${jam} WIB. Tombol Mulai aktif saat waktu ujian tiba.`, 3500)
       return
     }
     openModal({

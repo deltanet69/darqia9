@@ -46,6 +46,9 @@ export interface AlertRuang {
 export const useRuangUjian = () => {
   const client = useSupabaseClient()
   const galat = (error: { message: string } | null) => { if (error) throw new Error(error.message) }
+  // Ruang ujian hanya dikelola Superadmin; guru dan wali kelas hanya memantau (muat/progres/peringatan).
+  const rbac = useRbac()
+  const wajibSuperadmin = () => { if (!rbac.adalahSuperadmin.value) throw new Error('Hanya Superadmin yang dapat mengelola ruang ujian.') }
 
   const muatPeriodeRiwayat = async (grade: string): Promise<string[]> => {
     const { data, error } = await client.from('exam_rooms').select('periode').eq('grade', grade).is('deleted_at', null)
@@ -65,6 +68,7 @@ export const useRuangUjian = () => {
   }
 
   const simpanRuang = async (input: { id?: string, grade: string, periode: string, name: string, capacity: number, supervisorId: string | null }) => {
+    wajibSuperadmin()
     const payload = { grade: input.grade, periode: input.periode, name: input.name.trim(), capacity: input.capacity, supervisor_id: input.supervisorId }
     const { data, error } = input.id
       ? await client.from('exam_rooms').update(payload).eq('id', input.id).select('id').single()
@@ -75,12 +79,14 @@ export const useRuangUjian = () => {
   }
 
   const hapusRuang = async (id: string) => {
+    wajibSuperadmin()
     // Soft delete: ruang dan anggotanya ditandai dihapus, datanya tetap ada di database.
     const { error } = await client.rpc('soft_delete_exam_room', { p_room: id })
     galat(error)
   }
 
   const generateRuang = async (input: { grade: string, periode: string, jumlahRuang: number, kapasitas: number, classIds: string[] | null, supervisorId: string | null }) => {
+    wajibSuperadmin()
     const { data, error } = await client.rpc('generate_exam_rooms', {
       p_grade: input.grade, p_periode: input.periode, p_room_count: input.jumlahRuang, p_capacity: input.kapasitas,
       p_class_ids: input.classIds?.length ? input.classIds : null, p_supervisor: input.supervisorId
@@ -90,18 +96,21 @@ export const useRuangUjian = () => {
   }
 
   const isiAcak = async (roomId: string, jumlah: number | null, classIds: string[] | null) => {
+    wajibSuperadmin()
     const { data, error } = await client.rpc('fill_exam_room_random', { p_room: roomId, p_count: jumlah, p_class_ids: classIds?.length ? classIds : null })
     galat(error)
     return Number(data)
   }
 
   const tambahAnggota = async (roomId: string, studentIds: string[]) => {
+    wajibSuperadmin()
     const { data, error } = await client.rpc('add_exam_room_members', { p_room: roomId, p_student_ids: studentIds })
     galat(error)
     return Number(data)
   }
 
   const keluarkanAnggota = async (roomId: string, studentId: string) => {
+    wajibSuperadmin()
     const { error } = await client.rpc('remove_exam_room_member', { p_room: roomId, p_student: studentId })
     galat(error)
   }
@@ -166,12 +175,14 @@ export const useRuangUjian = () => {
   }
 
   const tautkanUjian = async (examIds: string[], roomIds: string[]) => {
+    wajibSuperadmin()
     const rows = examIds.flatMap(examId => roomIds.map(roomId => ({ exam_id: examId, room_id: roomId })))
     const { error } = await client.from('exam_room_exams').upsert(rows, { onConflict: 'exam_id,room_id', ignoreDuplicates: true })
     galat(error)
   }
 
   const lepasUjian = async (examIds: string[], roomId: string) => {
+    wajibSuperadmin()
     const { error } = await client.from('exam_room_exams').delete().eq('room_id', roomId).in('exam_id', examIds)
     galat(error)
   }

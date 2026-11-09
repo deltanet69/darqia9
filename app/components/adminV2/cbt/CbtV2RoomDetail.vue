@@ -91,6 +91,8 @@ const guruGrade = computed(() => cbtData.teachers.value.filter(item => item.grad
 // Punishment (kode pembuka & buka kunci) hanya untuk pengawas ruang ini atau Superadmin; DB juga menegakkannya.
 const bolehPunishment = computed(() => rbac.adalahSuperadmin.value
   || (!!rbac.state.value.subjekSaya && rbac.state.value.subjekSaya === props.room.supervisorId))
+// Kelola ruang (tambah/keluarkan siswa, pengawas, tugaskan ujian) hanya Superadmin; guru dan wali kelas hanya memantau.
+const bolehKelola = computed(() => rbac.adalahSuperadmin.value)
 const ubahPengawas = async (supervisorId: string) => {
   try {
     await api.simpanRuang({
@@ -286,8 +288,8 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
         <div class="min-w-0">
           <span class="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#DCE9FF]">{{ room.periode }}</span>
           <h2 class="mt-2 text-xl font-extrabold text-white sm:text-2xl">{{ room.name }}</h2>
-          <p class="mt-1 text-xs text-[#C7D7F2]">{{ anggota.length }} / {{ room.capacity }} siswa<template v-if="arsip"> · Pengawas: {{ namaPengawas }}</template></p>
-          <div v-if="!arsip" class="mt-2 max-w-xs">
+          <p class="mt-1 text-xs text-[#C7D7F2]">{{ anggota.length }} / {{ room.capacity }} siswa<template v-if="arsip || !bolehKelola"> · Pengawas: {{ namaPengawas }}</template></p>
+          <div v-if="!arsip && bolehKelola" class="mt-2 max-w-xs">
             <label class="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[#C7D7F2]" for="pengawas-ruang">Pengawas ruang</label>
             <select id="pengawas-ruang" :value="room.supervisorId ?? ''" class="min-h-11 w-full rounded-xl border border-white/20 bg-white px-3 text-sm text-[#101828]" @change="ubahPengawas(($event.target as HTMLSelectElement).value)">
               <option value="">Belum ditentukan</option>
@@ -295,7 +297,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
             </select>
           </div>
         </div>
-        <div v-if="!arsip" class="flex gap-2">
+        <div v-if="!arsip && bolehKelola" class="flex gap-2">
           <button type="button" class="min-h-11 flex-1 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-bold text-white hover:bg-white/20 sm:flex-none" @click="bukaTambah">Tambah Siswa</button>
           <button type="button" class="min-h-11 flex-1 rounded-xl bg-white px-4 text-xs font-bold text-[#0A2A5C] hover:bg-[#E8F0FE] sm:flex-none" @click="bukaUjian">Buat Ujian</button>
         </div>
@@ -344,7 +346,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
         <div class="grid gap-4 lg:grid-cols-2">
           <section class="rounded-2xl border border-[#E7EBF2] bg-white p-4 sm:p-5">
             <h3 class="text-sm font-extrabold text-[#101828]">Ujian di ruang ini</h3>
-            <p v-if="!ujianRuang.length" class="mt-2 text-xs text-[#667085]">Belum ada ujian. {{ arsip ? '' : 'Klik Buat Ujian untuk menugaskan jadwal ke ruang ini.' }}</p>
+            <p v-if="!ujianRuang.length" class="mt-2 text-xs text-[#667085]">Belum ada ujian. {{ arsip || !bolehKelola ? '' : 'Klik Buat Ujian untuk menugaskan jadwal ke ruang ini.' }}</p>
             <ul v-else class="mt-3 divide-y divide-[#EFF2F7]">
               <li v-for="u in ujianRuang" :key="u.key" class="flex items-start justify-between gap-3 py-2.5">
                 <div class="min-w-0">
@@ -353,7 +355,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
                   <span class="rounded-full px-2 py-0.5 text-[10px] font-extrabold" :class="u.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : u.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ u.status }}</span>
-                  <button v-if="!arsip" type="button" class="min-h-9 text-[11px] font-bold text-[#B42318]" @click="lepasUjian(u)">Lepas</button>
+                  <button v-if="!arsip && bolehKelola" type="button" class="min-h-9 text-[11px] font-bold text-[#B42318]" @click="lepasUjian(u)">Lepas</button>
                 </div>
               </li>
             </ul>
@@ -393,7 +395,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
             </div>
             <div class="mt-3 flex items-center justify-between border-t border-[#EFF2F7] pt-3 text-xs">
               <span :class="r.violations ? 'font-bold text-[#B42318]' : 'text-[#667085]'">Pelanggaran: {{ r.violations }}</span>
-              <button v-if="!arsip" type="button" class="min-h-9 font-bold text-[#B42318]" @click="keluarkan(r)">Keluarkan</button>
+              <button v-if="!arsip && bolehKelola" type="button" class="min-h-9 font-bold text-[#B42318]" @click="keluarkan(r)">Keluarkan</button>
             </div>
           </article>
         </div>
@@ -417,7 +419,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
                   <span v-else class="text-[#98A2B3]">-</span>
                 </td>
                 <td class="px-4 py-3 font-mono font-bold" :class="r.violations ? 'text-[#B42318]' : 'text-[#667085]'">{{ r.violations }}</td>
-                <td class="px-4 py-3 text-right"><button v-if="!arsip" type="button" class="text-[11px] font-bold text-[#B42318] hover:underline" @click="keluarkan(r)">Keluarkan</button></td>
+                <td class="px-4 py-3 text-right"><button v-if="!arsip && bolehKelola" type="button" class="text-[11px] font-bold text-[#B42318] hover:underline" @click="keluarkan(r)">Keluarkan</button></td>
               </tr>
             </tbody>
           </table>

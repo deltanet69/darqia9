@@ -560,6 +560,14 @@ const tokensSource = fs.readFileSync(path.join(root, 'app/components/adminV2/cbt
 for (const needle of ['loadExamParticipants', 'issueExamTokens', 'regenerateStudentToken', 'setStudentExamEligible', 'Export Excel', 'Cetak Kartu Ujian'])
   assert.ok(tokensSource.includes(needle), `Panel token memuat ${needle}`)
 
+// Guru/wali kelas (bukan Superadmin): CBT PTS/PAS menolak kelola ujian dan token; ujian harian (LMS) tidak dibatasi.
+globalThis.useRbac = () => ({ adalahSuperadmin: ref(false), state: ref({ subjekSaya: null, namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji') })
+const guru = useAdminCbtData('cbt')
+assert.equal(guru.bolehKelolaUjian(), false)
+for (const aksi of [() => guru.saveExam({}), () => guru.deleteExam('x'), () => guru.issueExamTokens('x'), () => guru.issueStudentToken('x', 'y'), () => guru.regenerateStudentToken('x')])
+  await assert.rejects(aksi, /Hanya Superadmin/)
+assert.equal(useAdminCbtData('ujian_harian').bolehKelolaUjian(), true)
+
 await nextTick()
 const summary = { parser: 'LULUS', retryDanPenolakanRumusInvalid: 'LULUS (penyedia tiruan)', ocrIndependenDanHasilKedaluwarsa: 'LULUS (penyedia tiruan)', daftarBankDanPemisahanJenjang: 'LULUS (Supabase tiruan + SSR)', opsiPilihanGanda: 'LULUS SMP 4 / SMK 5', templateDanImpor: 'LULUS SMP/SMK', pemilihanUrutanDanRpc: 'LULUS (Supabase tiruan)', pemuatanSiswa: 'LULUS (respons server tiruan)', pemisahanSumber: 'LULUS (Supabase tiruan)', monitoringDanDataKosong: 'LULUS (Supabase tiruan + SSR)', kompatibilitasLama: 'LULUS', formulir: 'LULUS', tokenPerSiswa: 'LULUS (migrasi 0017 + Supabase tiruan)', mapelUjianDariMaster: 'LULUS (Supabase tiruan)', evidence }
 fs.writeFileSync(path.join(folder, 'hasil-uji.json'), JSON.stringify(summary, null, 2))

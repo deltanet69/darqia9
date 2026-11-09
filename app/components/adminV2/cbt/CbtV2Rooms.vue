@@ -30,6 +30,8 @@ const saving = ref(false)
 const periodeList = computed(() => periodeOpsi(tahun.value, riwayat.value))
 // Empat opsi pertama = tahun ajaran aktif; sisanya arsip (hanya dilihat, tidak diubah).
 const arsip = computed(() => !periodeList.value.slice(0, 4).includes(periode.value))
+// Buat/ubah/hapus ruang hanya Superadmin; guru dan wali kelas hanya melihat dan memantau.
+const bolehKelola = computed(() => cbtData.adalahSuperadmin.value)
 const selected = computed(() => ruang.value.find(item => item.id === selectedId.value) ?? null)
 // Beri tahu halaman induk (untuk menyembunyikan sub menu CBT dan mengisi breadcrumb).
 watch(selected, item => emit('detail', item?.name ?? null), { immediate: true })
@@ -161,7 +163,7 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
           <select id="periode-ruang" v-model="periode" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm sm:w-64">
             <option v-for="p in periodeList" :key="p" :value="p">{{ p }}{{ periodeList.slice(0, 4).includes(p) ? '' : ' (arsip)' }}</option>
           </select>
-          <template v-if="!arsip">
+          <template v-if="!arsip && bolehKelola">
             <button type="button" class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#101828] px-4 text-xs font-bold text-white hover:bg-[#1E293B]" @click="bukaForm()">
               <AdminV2Icon name="plus" :size="14" /><span>Buat Ruang</span>
             </button>
@@ -198,17 +200,17 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
             <div class="mt-3 h-2 overflow-hidden rounded-full bg-[#EFF2F7]"><div class="h-full rounded-full bg-[#1B5FD9]" :style="{ width: `${persenIsi(item)}%` }" /></div>
             <p class="mt-1.5 text-[11px] font-semibold text-[#344054]">{{ item.jumlahSiswa }} / {{ item.capacity }} siswa</p>
           </button>
-          <div class="mt-4 grid grid-cols-3 gap-2 border-t border-[#EFF2F7] pt-3">
+          <div class="mt-4 grid gap-2 border-t border-[#EFF2F7] pt-3" :class="bolehKelola && !arsip ? 'grid-cols-3' : 'grid-cols-1'">
             <button type="button" class="min-h-11 rounded-xl bg-[#E8F0FE] text-xs font-bold text-[#0A2A5C]" @click="bukaRuang(item.id)">Buka</button>
-            <button v-if="!arsip" type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054]" @click="bukaForm(item)">Ubah</button>
-            <button v-if="!arsip" type="button" class="min-h-11 rounded-xl border border-[#F8D3CE] text-xs font-bold text-[#B42318]" @click="hapus(item)">Hapus</button>
+            <button v-if="!arsip && bolehKelola" type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054]" @click="bukaForm(item)">Ubah</button>
+            <button v-if="!arsip && bolehKelola" type="button" class="min-h-11 rounded-xl border border-[#F8D3CE] text-xs font-bold text-[#B42318]" @click="hapus(item)">Hapus</button>
           </div>
         </article>
       </div>
 
       <div v-else class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center">
         <p class="text-sm font-bold text-[#101828]">Belum ada ruang untuk {{ periode }}</p>
-        <p class="mx-auto mt-1 max-w-md text-xs text-[#667085]">Klik Buat Ruang. Anda dapat membuat satu ruang, atau banyak ruang sekaligus dengan siswa dibagi otomatis.</p>
+        <p class="mx-auto mt-1 max-w-md text-xs text-[#667085]">{{ bolehKelola ? "Klik Buat Ruang. Anda dapat membuat satu ruang, atau banyak ruang sekaligus dengan siswa dibagi otomatis." : "Ruang ujian dibuat oleh Superadmin." }}</p>
       </div>
     </template>
 

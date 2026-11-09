@@ -358,6 +358,9 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   // Bank soal: Superadmin bebas; guru hanya pada kelas+mapel yang ia ajar menurut jadwal,
   // atau mapel terjadwal di kelas yang ia walikan. Tanpa subjectId = cek tingkat kelas.
   const adalahSuperadmin = rbac.adalahSuperadmin
+  // CBT PTS/PAS: ujian dan token peserta hanya dikelola Superadmin (guru/wali kelas hanya bank soal + pemantauan). Ujian harian (LMS) tidak dibatasi.
+  const bolehKelolaUjian = () => source === 'ujian_harian' || adalahSuperadmin.value
+  const wajibKelolaUjian = () => { if (!bolehKelolaUjian()) throw new Error('Hanya Superadmin yang dapat mengelola ujian dan token peserta.') }
   const bolehKelolaBank = (classId?: string | null, subjectId?: string | null) => {
     if (adalahSuperadmin.value) return true
     const saya = rbac.state.value.subjekSaya
@@ -455,6 +458,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   }
 
   const saveExam = async (input: CbtExamInput) => {
+    wajibKelolaUjian()
     const classItem = classes.value.find(item => item.id === input.classId)
     const subjectItem = subjects.value.find(item => item.id === input.subjectId)
     const bank = bankPackages.value.find(item => item.id === input.questionBankId)
@@ -502,6 +506,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   }
 
   const deleteExam = async (id: string) => {
+    wajibKelolaUjian()
     const { error: deleteError } = await client.from(tables.exams).delete().eq('id', id)
     if (deleteError) throw deleteError
     await load(true)
@@ -534,18 +539,21 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   }
 
   const issueExamTokens = async (examId: string) => {
+    wajibKelolaUjian()
     const { data, error: rpcError } = await client.rpc('issue_exam_tokens', { target_exam_id: examId, source })
     if (rpcError) throw new Error(rpcError.message)
     return typeof data === 'number' ? data : 0
   }
 
   const issueStudentToken = async (examId: string, studentId: string) => {
+    wajibKelolaUjian()
     const { data, error: rpcError } = await client.rpc('issue_student_token', { target_exam_id: examId, target_student_id: studentId, source })
     if (rpcError) throw new Error(rpcError.message)
     return typeof data === 'string' ? data : ''
   }
 
   const regenerateStudentToken = async (assignmentId: string) => {
+    wajibKelolaUjian()
     const { data, error: rpcError } = await client.rpc('regenerate_exam_token', { target_assignment_id: assignmentId, source })
     if (rpcError) throw new Error(rpcError.message)
     return typeof data === 'string' ? data : ''
@@ -603,6 +611,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   return {
     adalahSuperadmin,
     bolehKelolaBank,
+    bolehKelolaUjian,
     namaPenyusunSaya,
     classes,
     subjects,
