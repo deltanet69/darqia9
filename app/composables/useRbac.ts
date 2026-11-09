@@ -83,10 +83,12 @@ export const useRbac = () => {
     state.value.dimuatPada = Date.now()
     const client = useSupabaseClient()
     try {
-      const { data: peranRows, error } = await client.from('rbac_roles').select('*').order('urutan')
+      const [{ data: peranRows, error }, { data: izinRows }, { data: tugasRows }] = await Promise.all([
+        client.from('rbac_roles').select('id, kunci, nama, deskripsi, terkunci, urutan').order('urutan'),
+        client.from('rbac_permissions').select('peran_id, modul, lihat, buat, ubah, hapus'),
+        client.from('rbac_assignments').select('subjek_id, nama, peran_id, jenjang')
+      ])
       if (error || !peranRows) return false
-      const { data: izinRows } = await client.from('rbac_permissions').select('*')
-      const { data: tugasRows } = await client.from('rbac_assignments').select('*')
       state.value.tabelSiap = true
       state.value.peran = peranRows.map((r: any) => ({
         id: r.id, kunci: r.kunci, nama: r.nama, deskripsi: r.deskripsi || '',
@@ -118,33 +120,44 @@ export const useRbac = () => {
     }
     state.value.termuat = true
     const client = useSupabaseClient()
-    if (!(await muatMatriks())) return
-    try {
-      const { data: guruRows } = await client.from('teachers').select('id, name, grade, user_id').eq('active', true).order('name')
-      if (guruRows) {
-        state.value.kandidat = guruRows.map((g: any) => ({
-          subjekId: String(g.id), nama: g.name || String(g.id),
-          keterangan: g.grade ? `Guru/Staff · ${g.grade}` : 'Guru/Staff',
-          punyaAkun: !!g.user_id
-        }))
-      }
-    } catch { /* tabel guru tidak tersedia — penugasan manual tetap bisa */ }
-    await muatKandidatAkun()
-    try {
-      const { data } = await client.auth.getUser()
-      const uid = data?.user?.id
-      if (uid) {
-        state.value.subjekSaya = uid
-        state.value.namaSaya = data?.user?.email || 'Akun saya'
+    // Daftar guru dan identitas akun tidak bergantung pada matriks: jalan paralel.
+    const guruPromise = (async () => {
+      try {
+        const { data } = await client.from('teachers').select('id, name, grade, user_id').eq('active', true).order('name')
+        return data
+      } catch { return null /* tabel guru tidak tersedia — penugasan manual tetap bisa */ }
+    })()
+    const sayaPromise = (async () => {
+      try {
+        const { data } = await client.auth.getUser()
+        const uid = data?.user?.id
+        if (!uid) return null
+        const saya = { subjekId: uid, nama: data?.user?.email || 'Akun saya' }
         try {
           const { data: guru } = await client.from('teachers').select('id, name').eq('user_id', uid).maybeSingle()
           if (guru?.id) {
-            state.value.subjekSaya = String(guru.id)
-            if (guru.name) state.value.namaSaya = guru.name
+            saya.subjekId = String(guru.id)
+            if (guru.name) saya.nama = guru.name
           }
         } catch { /* kolom user_id belum ada — pakai uid */ }
-      }
-    } catch { /* belum login */ }
+        return saya
+      } catch { return null /* belum login */ }
+    })()
+    if (!(await muatMatriks())) return
+    const guruRows = await guruPromise
+    if (guruRows) {
+      state.value.kandidat = guruRows.map((g: any) => ({
+        subjekId: String(g.id), nama: g.name || String(g.id),
+        keterangan: g.grade ? `Guru/Staff · ${g.grade}` : 'Guru/Staff',
+        punyaAkun: !!g.user_id
+      }))
+    }
+    await muatKandidatAkun()
+    const saya = await sayaPromise
+    if (saya) {
+      state.value.subjekSaya = saya.subjekId
+      state.value.namaSaya = saya.nama
+    }
     selarasJenjang()
   }
 

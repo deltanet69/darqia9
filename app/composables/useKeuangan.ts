@@ -44,6 +44,9 @@ const buatAwal = (): KeadaanKeuangan => ({
   bayarLokal: [], urutKwitansiLokal: 100
 })
 
+const KOL_PEMBAYARAN = 'id, no_kwitansi, grade, nis, tingkat, nominal, keterangan, metode, petugas, tanggal, cutoff_id'
+const KOL_CUTOFF = 'id, kode, grade, dari, sampai, trx, total, oleh, bukti, jumlah_setor'
+
 export const useKeuangan = () => {
   const client = useSupabaseClient() as unknown as SupabaseClient
   const { catat } = useLogAktivitas()
@@ -92,15 +95,22 @@ export const useKeuangan = () => {
     if (lokal.value) { state.value.termuatGrade = grade; return }
     state.value.memuat = true
     try {
-      const [siswaRes, kelasRes, paketRes, tetapRes, rekapRes, cutoffRes, ketRes] = await Promise.all([
+      // Rilis tagihan ikut paralel, tetapi toleran: tabelnya baru ada setelah
+      // migrasi 0030 — kegagalannya tidak boleh menjatuhkan seluruh halaman.
+      const [siswaRes, kelasRes, paketRes, tetapRes, rekapRes, cutoffAwal, ketRes, rilisRes] = await Promise.all([
         client.from('students').select('nis, nisn, name, class_id, entry_year, student_status, father_phone, mother_phone, phone').eq('grade', grade).eq('active', true).order('name'),
         client.from('classes').select('id, name').eq('grade', grade).eq('active', true),
-        client.from('keuangan_paket').select('*').eq('grade', grade).order('kode'),
-        client.from('keuangan_siswa').select('*').eq('grade', grade),
-        client.from('keuangan_rekap').select('*').eq('grade', grade),
-        client.from('keuangan_cutoff').select('*').eq('grade', grade).order('created_at', { ascending: false }).limit(24),
-        client.from('keuangan_keterangan').select('nama').order('urutan')
+        client.from('keuangan_paket').select('kode, nama, grade, nominal_1, nominal_2, nominal_3, nominal_akhir, aktif').eq('grade', grade).order('kode'),
+        client.from('keuangan_siswa').select('grade, nis, kode, tambahan_1, tambahan_2, tambahan_3, tambahan_akhir').eq('grade', grade),
+        client.from('keuangan_rekap').select('nis, tingkat, dibayar').eq('grade', grade),
+        client.from('keuangan_cutoff').select(KOL_CUTOFF).eq('grade', grade).order('created_at', { ascending: false }).limit(24),
+        client.from('keuangan_keterangan').select('nama').order('urutan'),
+        client.from('keuangan_rilis_tagihan').select('nis, tingkat, dirilis_pada, oleh').eq('grade', grade)
       ])
+      // Pra-migrasi 0030 kolom jumlah_setor belum ada: ulangi tanpa kolom itu.
+      const cutoffRes = cutoffAwal.error && /jumlah_setor/i.test(String(cutoffAwal.error.message || ''))
+        ? await client.from('keuangan_cutoff').select(KOL_CUTOFF.replace(', jumlah_setor', '')).eq('grade', grade).order('created_at', { ascending: false }).limit(24)
+        : cutoffAwal
       for (const r of [paketRes, tetapRes, rekapRes, cutoffRes, ketRes]) if (r.error) throw r.error
       if (siswaRes.error) throw siswaRes.error
       const namaKelas = new Map<string, string>((kelasRes.data || []).map((k: any) => [k.id, k.name]))
@@ -122,9 +132,6 @@ export const useKeuangan = () => {
       state.value.cutoffs = (cutoffRes.data || []).map(barisCutoff)
       const ket = (ketRes.data || []).map((k: any) => k.nama)
       if (ket.length) state.value.keterangan = ket
-      // Rilis tagihan dimuat terpisah & toleran: tabelnya baru ada setelah
-      // migrasi 0030 — kegagalannya tidak boleh menjatuhkan seluruh halaman.
-      const rilisRes = await client.from('keuangan_rilis_tagihan').select('*').eq('grade', grade)
       state.value.rilis = rilisRes.error ? [] : (rilisRes.data || []).map((r: any) => ({
         nis: r.nis, tingkat: r.tingkat, pada: r.dirilis_pada, oleh: r.oleh || ''
       }))
@@ -150,7 +157,7 @@ export const useKeuangan = () => {
   const muatItems = async (rows: Pembayaran[]) => {
     const ids = rows.map(r => r.id).filter(Boolean) as string[]
     if (!ids.length || lokal.value) return
-    const { data, error } = await client.from('keuangan_pembayaran_item').select('*').in('pembayaran_id', ids).order('urutan')
+    const { data, error } = await client.from('keuangan_pembayaran_item').select('pembayaran_id, keterangan, nominal').in('pembayaran_id', ids).order('urutan')
     if (error || !data) return
     const peta = new Map<string, ItemBayar[]>()
     for (const it of data) {
@@ -196,7 +203,7 @@ export const useKeuangan = () => {
       }
       return { rows, total: rows.length }
     }
-    let q = client.from('keuangan_pembayaran').select('*, keuangan_cutoff(kode)', { count: 'exact' })
+    let q = client.from('keuangan_pembayaran').select(KOL_PEMBAYARAN + ', keuangan_cutoff(kode)', { count: 'exact' })
       .eq('grade', grade).order('tanggal', { ascending: false }).order('created_at', { ascending: false })
       .range(f.dari || 0, (f.dari || 0) + (f.jumlah || 100) - 1)
     if (f.metode) q = q.eq('metode', f.metode)
@@ -213,7 +220,7 @@ export const useKeuangan = () => {
   // Rincian pembayaran satu siswa (query terindeks per NIS).
   const muatBayarSiswa = async (grade: Grade, nis: string): Promise<Pembayaran[]> => {
     if (lokal.value) return state.value.bayarLokal.filter(b => b.nis === nis && b.grade === grade).slice().reverse()
-    const { data, error } = await client.from('keuangan_pembayaran').select('*, keuangan_cutoff(kode)')
+    const { data, error } = await client.from('keuangan_pembayaran').select(KOL_PEMBAYARAN + ', keuangan_cutoff(kode)')
       .eq('grade', grade).eq('nis', nis).order('tanggal', { ascending: false }).order('created_at', { ascending: false })
     if (error) { tanganiGalat(error); return [] }
     const rows = (data || []).map((b: any) => ({ ...barisBayar(b), cutoff: b.cutoff_id ? (b.keuangan_cutoff?.kode || 'Cut-off') : null }))
@@ -249,7 +256,7 @@ export const useKeuangan = () => {
     const sisip = (tingkat: number | null) => client.from('keuangan_pembayaran').insert({
       grade: input.grade, nis: input.nis, tingkat, nominal: input.nominal,
       keterangan, metode: input.metode, petugas: input.petugas, tanggal: input.tanggalISO
-    }).select('*').single()
+    }).select(KOL_PEMBAYARAN).single()
     let { data, error } = await sisip(null)
     if (error && /tingkat/i.test(String(error.message || ''))) {
       // Pra-migrasi 0030 kolom tingkat belum boleh null: pakai tingkat pertama

@@ -97,6 +97,13 @@ const mutationErrorMessage = (prefix: string, cause: any) => {
   return prefix + message
 }
 
+interface StudentSummary { total: number, boys: number, girls: number, activeCount: number, rfidCount: number }
+const EMPTY_SUMMARY: StudentSummary = { total: 0, boys: 0, girls: 0, activeCount: 0, rfidCount: 0 }
+
+// Kolom daftar: hanya yang tampil di tabel/kartu. Detail dan formulir mengambil baris lengkap per siswa.
+const LIST_COLUMNS = 'id, nis, nisn, name, gender, grade, class_id, phone, father_name, father_phone, mother_name, mother_phone, student_status, active, attendance_pct, rfid_cards(uid, active)'
+const FULL_COLUMNS = 'id, nis, nisn, nik, family_card_number, name, gender, grade, class_id, birth_place, birth_date, religion, address, rt, rw, village, district, city, living_type, transportation, phone, father_name, father_birth_year, father_education, father_job, father_income, father_nik, father_phone, father_email, mother_name, mother_birth_year, mother_education, mother_job, mother_income, mother_nik, mother_phone, mother_email, previous_school, previous_diploma_number, birth_order, siblings_count, weight_kg, height_cm, head_circumference_cm, distance_km, hobby, ambition, entry_date, student_status, active, attendance_pct, entry_year, notes, rfid_cards(uid, active)'
+
 export const STUDENT_CSV_HEADERS = ['NIS', 'NISN', 'NIK', 'NoKK', 'Nama', 'Gender', 'Jenjang', 'Kelas', 'Jurusan', 'TempatLahir', 'TanggalLahir', 'Agama', 'Alamat', 'RT', 'RW', 'Kelurahan', 'Kecamatan', 'Kota', 'JenisTinggal', 'Transportasi', 'NoHPSiswa', 'NamaAyah', 'NIKAyah', 'TahunLahirAyah', 'PendidikanAyah', 'PekerjaanAyah', 'PenghasilanAyah', 'NoHPAyah', 'NamaIbu', 'NIKIbu', 'TahunLahirIbu', 'PendidikanIbu', 'PekerjaanIbu', 'PenghasilanIbu', 'NoHPIbu', 'SekolahAsal', 'NoIjazah', 'AnakKe', 'JmlSaudara', 'TinggiBadan', 'BeratBadan', 'LingkarKepala', 'JarakKM', 'Hobi', 'CitaCita', 'Status', 'RFID_UID', 'Presensi', 'TahunAngkatan', 'TanggalMasuk', 'Catatan']
 
 export const useAdminStudents = () => {
@@ -118,7 +125,8 @@ export const useAdminStudents = () => {
   const page = ref(1)
   const pageSize = ref<20 | 50 | 100>(20)
   const totalStudents = ref(0)
-  const summary = ref({ total: 0, boys: 0, girls: 0, activeCount: 0, rfidCount: 0 })
+  const summaries = useState<Record<string, StudentSummary | undefined>>('admin-students-summaries', () => ({}))
+  const summary = computed(() => summaries.value[grade.value] ?? EMPTY_SUMMARY)
   const detailModalStudent = ref<StudentItem | null>(null)
   const isFormModalOpen = ref(false)
   const formModalMode = ref<'add' | 'edit'>('add')
@@ -187,93 +195,108 @@ export const useAdminStudents = () => {
     notes: textOrNull(data.notes), active: (data.status ?? 'Aktif') === 'Aktif'
   })
 
+  // Ambil id siswa yang punya kartu RFID aktif (dipakai filter RFID dan statistik).
+  const fetchActiveRfidIds = async () => {
+    const rfidResult = await supabase.from('rfid_cards').select('student_id').eq('active', true).not('student_id', 'is', null)
+    if (rfidResult.error) throw rfidResult.error
+    return (rfidResult.data ?? []).map((item: any) => item.student_id).filter(Boolean) as string[]
+  }
+
+  // Statistik per jenjang: dihitung sekali lalu di-cache; tidak ikut berjalan saat cari/filter/pindah halaman.
+  const fetchSummary = async (level: 'SMP' | 'SMK', rfidIdsPromise: Promise<string[]>): Promise<StudentSummary> => {
+    const count = () => supabase.from('students').select('id', { count: 'exact', head: true }).eq('grade', level)
+    const rfidCountPromise = rfidIdsPromise.then(ids => ids.length
+      ? count().eq('student_status', 'Aktif').in('id', ids)
+      : { count: 0, error: null })
+    const [totalResult, boysResult, girlsResult, activeResult, rfidCountResult] = await Promise.all([
+      count(), count().eq('gender', 'L'), count().eq('gender', 'P'), count().eq('student_status', 'Aktif'), rfidCountPromise
+    ])
+    const failed = totalResult.error || boysResult.error || girlsResult.error || activeResult.error || rfidCountResult.error
+    if (failed) throw failed
+    return {
+      total: totalResult.count ?? 0, boys: boysResult.count ?? 0, girls: girlsResult.count ?? 0,
+      activeCount: activeResult.count ?? 0, rfidCount: rfidCountResult.count ?? 0
+    }
+  }
+
+  const fetchClasses = async () => {
+    const classResult = await supabase.from('classes').select('id, name, grade, major, academic_year').eq('active', true)
+      .order('academic_year', { ascending: false }).order('name')
+    if (classResult.error) throw classResult.error
+    classes.value = (classResult.data ?? []).map((row: any) => ({
+      id: row.id, name: row.name, grade: row.grade, major: row.major ?? ''
+    }))
+  }
+
   let requestVersion = 0
-  const load = async () => {
+  // refresh = true memaksa kelas dan statistik diambil ulang (setelah tambah/ubah/hapus/impor).
+  const load = async (refresh = false) => {
     const version = ++requestVersion
+    const level = grade.value
     loading.value = true
     error.value = null
     try {
-      const classResult = await supabase.from('classes').select('id, name, grade, major, academic_year').eq('active', true)
-        .order('academic_year', { ascending: false }).order('name')
-      if (classResult.error) throw classResult.error
-      classes.value = (classResult.data ?? []).map((row: any) => ({
-        id: row.id, name: row.name, grade: row.grade, major: row.major ?? ''
-      }))
-      let rfidIds: string[] | null = null
-      if (selectedRfid.value !== 'all') {
-        const rfidResult = await supabase.from('rfid_cards').select('student_id').eq('active', true).not('student_id', 'is', null)
-        if (rfidResult.error) throw rfidResult.error
-        rfidIds = (rfidResult.data ?? []).map((item: any) => item.student_id).filter(Boolean)
+      const needSummary = refresh || !summaries.value[level]
+      const needClasses = refresh || !classes.value.length
+      let rfidIdsPromise: Promise<string[]> | null = null
+      const getRfidIds = () => (rfidIdsPromise ??= fetchActiveRfidIds())
+      const summaryPromise = needSummary ? fetchSummary(level, getRfidIds()) : null
+      // Tangkap galat lebih awal agar tidak menjadi unhandled rejection bila alur lain keluar duluan.
+      summaryPromise?.catch(() => {})
+      if (needClasses) await fetchClasses()
+      const finish = async () => {
+        if (summaryPromise) {
+          const result = await summaryPromise
+          if (version === requestVersion) summaries.value = { ...summaries.value, [level]: result }
+        }
       }
-      let query: any = supabase.from('students').select('*, rfid_cards(uid, active)', { count: 'exact' })
-        .eq('grade', grade.value).order('name')
+      let rfidIds: string[] | null = null
+      if (selectedRfid.value !== 'all') rfidIds = await getRfidIds()
+      let query: any = supabase.from('students').select(LIST_COLUMNS, { count: 'exact' })
+        .eq('grade', level).order('name')
       const keyword = clean(searchQuery.value).replace(/[,%_()]/g, ' ')
       if (keyword) {
         const pattern = '*' + keyword + '*'
         query = query.or(['name', 'nis', 'nisn', 'nik', 'village', 'father_name', 'mother_name']
           .map(column => column + '.ilike.' + pattern).join(','))
       }
+      const emptyResult = async () => {
+        if (version !== requestVersion) return
+        students.value = []; totalStudents.value = 0
+        await finish()
+      }
       if (selectedClass.value !== 'all') {
-        const cls = findClass(selectedClass.value, grade.value)
-        if (!cls) {
-          students.value = []; totalStudents.value = 0
-          return
-        }
+        const cls = findClass(selectedClass.value, level)
+        if (!cls) return await emptyResult()
         query = query.eq('class_id', cls.id)
       }
       if (selectedMajor.value !== 'all') {
-        const classIds = classes.value.filter(item => item.grade === grade.value && item.major === selectedMajor.value).map(item => item.id)
-        if (!classIds.length) {
-          students.value = []; totalStudents.value = 0
-          return
-        }
+        const classIds = classes.value.filter(item => item.grade === level && item.major === selectedMajor.value).map(item => item.id)
+        if (!classIds.length) return await emptyResult()
         query = query.in('class_id', classIds)
       }
       if (selectedGender.value !== 'all') query = query.eq('gender', selectedGender.value)
       if (selectedStatus.value !== 'all') query = query.eq('student_status', selectedStatus.value)
       if (rfidIds) {
         if (selectedRfid.value === 'yes') {
-          if (!rfidIds.length) {
-            students.value = []; totalStudents.value = 0
-            return
-          }
+          if (!rfidIds.length) return await emptyResult()
           query = query.in('id', rfidIds)
         } else if (rfidIds.length) {
           query = query.not('id', 'in', '(' + rfidIds.join(',') + ')')
         }
       }
-      const [studentResult, totalResult, boysResult, girlsResult, activeResult] = await Promise.all([
+      const [studentResult] = await Promise.all([
         query.range((page.value - 1) * pageSize.value, page.value * pageSize.value - 1),
-        supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value),
-        supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value).eq('gender', 'L'),
-        supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value).eq('gender', 'P'),
-        supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value).eq('student_status', 'Aktif')
+        finish()
       ])
-      if (studentResult.error || totalResult.error || boysResult.error || girlsResult.error || activeResult.error) {
-        throw studentResult.error || totalResult.error || boysResult.error || girlsResult.error || activeResult.error
-      }
-      const activeRfidResult = rfidIds === null
-        ? await supabase.from('rfid_cards').select('student_id').eq('active', true).not('student_id', 'is', null)
-        : { data: rfidIds, error: null }
-      if (activeRfidResult.error) throw activeRfidResult.error
-      const activeRfidIds = (activeRfidResult.data ?? []).map((item: any) => typeof item === 'string' ? item : item.student_id).filter(Boolean)
-      const rfidCountResult = activeRfidIds.length
-        ? await supabase.from('students').select('*', { count: 'exact', head: true }).eq('grade', grade.value).eq('student_status', 'Aktif').in('id', activeRfidIds)
-        : { count: 0, error: null }
-      if (rfidCountResult.error) throw rfidCountResult.error
+      if (studentResult.error) throw studentResult.error
       if (version !== requestVersion) return
       students.value = (studentResult.data ?? []).map(mapRow)
       totalStudents.value = studentResult.count ?? 0
-      summary.value = {
-        total: totalResult.count ?? 0, boys: boysResult.count ?? 0, girls: girlsResult.count ?? 0,
-        activeCount: activeResult.count ?? 0, rfidCount: rfidCountResult.count ?? 0
-      }
     } catch (cause: any) {
       if (version !== requestVersion) return
       students.value = []
-      classes.value = []
       totalStudents.value = 0
-      summary.value = { total: 0, boys: 0, girls: 0, activeCount: 0, rfidCount: 0 }
       error.value = 'Data siswa gagal dimuat dari Supabase: ' + (cause?.message ?? 'kesalahan tidak diketahui')
     } finally {
       if (version === requestVersion) loading.value = false
@@ -297,7 +320,14 @@ export const useAdminStudents = () => {
     }
   })
 
-  const viewDetail = (item: StudentItem) => { detailModalStudent.value = item }
+  // Baris lengkap (semua kolom detail) diambil per siswa saat dibutuhkan, bukan di daftar.
+  const fetchFullStudent = async (id: string) => {
+    const result = await supabase.from('students').select(FULL_COLUMNS).eq('id', id).maybeSingle()
+    return result.error || !result.data ? null : mapRow(result.data)
+  }
+  const viewDetail = async (item: StudentItem) => {
+    detailModalStudent.value = await fetchFullStudent(item.id) ?? item
+  }
   const closeDetail = () => { detailModalStudent.value = null }
   const openAddModal = () => {
     formModalMode.value = 'add'
@@ -307,19 +337,20 @@ export const useAdminStudents = () => {
     }
     isFormModalOpen.value = true
   }
-  const openEditModal = (item: StudentItem) => {
+  const openEditModal = async (item: StudentItem) => {
+    const full = await fetchFullStudent(item.id) ?? item
     formModalMode.value = 'edit'
-    formStudent.value = { ...item } // salinan datar: structuredClone gagal pada objek reaktif Vue
+    formStudent.value = { ...full } // salinan datar: structuredClone gagal pada objek reaktif Vue
     isFormModalOpen.value = true
   }
   const openEditById = async (id: string) => {
-    if (!classes.value.length) await load()
-    const result = await supabase.from('students').select('*, rfid_cards(uid, active)').eq('id', id).maybeSingle()
-    if (result.error || !result.data) {
+    if (!classes.value.length) await fetchClasses()
+    const full = await fetchFullStudent(id)
+    if (!full) {
       error.value = 'Data siswa tidak ditemukan.'
       return
     }
-    openEditModal(mapRow(result.data))
+    await openEditModal(full)
   }
   const closeFormModal = () => { isFormModalOpen.value = false; formStudent.value = {} }
   // Hanya nama + NISN yang wajib; NIS dan kelas boleh kosong (data induk belum lengkap).
@@ -366,7 +397,7 @@ export const useAdminStudents = () => {
       error.value = 'Data siswa tersimpan, tetapi RFID gagal disinkronkan: ' + rfidResult.error.message
       return { success: false, message: error.value }
     }
-    await load()
+    await load(true)
     closeFormModal()
     operationMessage.value = 'Data ' + data.name + ' berhasil disimpan' + (checked.cls ? ' dan tersambung ke kelas ' + checked.cls.name : '') + '.'
     return { success: true, message: operationMessage.value }
@@ -383,7 +414,7 @@ export const useAdminStudents = () => {
       return { success: false, message: error.value }
     }
     deleteConfirmStudent.value = null
-    await load()
+    await load(true)
     operationMessage.value = item.name + ' berhasil dinonaktifkan.'
     return { success: true, message: operationMessage.value }
   }
@@ -395,7 +426,10 @@ export const useAdminStudents = () => {
     const seenNisn = new Set<string>()
     const seenNis = new Set<string>()
     // NISN unik lintas jenjang di database: cek semua jenjang agar impor tidak menimpa/menabrak siswa jenjang lain.
-    const allResult = await supabase.from('students').select('id, nis, nisn, grade')
+    const [allResult, nikResult] = await Promise.all([
+      supabase.from('students').select('id, nis, nisn, grade'),
+      supabase.from('students').select('nik, nisn').not('nik', 'is', null)
+    ])
     if (allResult.error) {
       return { success: false, message: 'Data siswa yang sudah ada gagal diperiksa: ' + allResult.error.message }
     }
@@ -404,7 +438,6 @@ export const useAdminStudents = () => {
     const existingNisn = new Set(existingStudents.map((item: any) => clean(item.nisn)))
     const existingNis = new Map(existingStudents.map((item: any) => [clean(item.nis), clean(item.nisn)]))
     // NIK unik lintas jenjang di database; NIK ganda tidak menolak siswa, hanya dikosongkan.
-    const nikResult = await supabase.from('students').select('nik, nisn').not('nik', 'is', null)
     if (nikResult.error) {
       return { success: false, message: 'NIK siswa yang sudah ada gagal diperiksa: ' + nikResult.error.message }
     }
@@ -469,10 +502,10 @@ export const useAdminStudents = () => {
       error.value = mutationErrorMessage('Impor gagal disimpan ke Supabase: ', result.error)
       return { success: false, message: error.value, successCount: 0, failedRows }
     }
-    for (const row of result.data ?? []) {
-      const rfidResult = await syncRfid(row.id, rfidByNisn.get(row.nisn))
-      if (rfidResult.error) failedRows.push('RFID NISN ' + row.nisn + ' gagal: ' + rfidResult.error.message)
-    }
+    const rfidResults = await Promise.all((result.data ?? []).map(row => syncRfid(row.id, rfidByNisn.get(row.nisn))))
+    rfidResults.forEach((rfidResult, index) => {
+      if (rfidResult.error) failedRows.push('RFID NISN ' + result.data[index].nisn + ' gagal: ' + rfidResult.error.message)
+    })
     if (mode === 'replace') {
       const retained = payloads.map(item => item.nisn)
       const staleIds = existingStudents.filter((item: any) => !retained.includes(item.nisn)).map((item: any) => item.id)
@@ -481,7 +514,7 @@ export const useAdminStudents = () => {
         if (staleResult.error) failedRows.push('Data lama gagal dinonaktifkan: ' + staleResult.error.message)
       }
     }
-    await load()
+    await load(true)
     closeImportModal()
     operationMessage.value = payloads.length + ' siswa berhasil diimpor.'
       + (nikDikosongkan.length ? ' NIK dikosongkan karena ganda pada ' + nikDikosongkan.length + ' siswa: ' + nikDikosongkan.join(', ') + '.' : '')
@@ -516,7 +549,7 @@ export const useAdminStudents = () => {
       if (result.error) {
         return { success: false, message: 'Kelas rekomendasi gagal dibuat: ' + result.error.message }
       }
-      await load()
+      await load(true)
       operationMessage.value = uniqueClasses.length + ' kelas rekomendasi berhasil dibuat. Data siswa siap diimpor.'
       return { success: true, message: operationMessage.value, successCount: uniqueClasses.length }
     } catch (cause: any) {
@@ -563,7 +596,7 @@ export const useAdminStudents = () => {
   }
   const exportStudentsCsv = async (targetGrade?: 'SMP' | 'SMK') => {
     const level = targetGrade ?? grade.value
-    const result = await supabase.from('students').select('*, rfid_cards(uid, active)').eq('grade', level).order('name')
+    const result = await supabase.from('students').select(FULL_COLUMNS).eq('grade', level).order('name')
     if (result.error) {
       error.value = 'Ekspor data siswa gagal: ' + result.error.message
       return
@@ -600,14 +633,14 @@ export const useAdminStudents = () => {
   })
   watch(searchQuery, () => {
     page.value = 1
-    queueLoad(250)
+    queueLoad(300)
   })
   watch(pageSize, () => {
     page.value = 1
     queueLoad()
   })
 
-  onMounted(load)
+  onMounted(() => { void load() })
   return {
     grade, students, currentGradeStudents, filteredStudents, classOptions, majorOptions, searchQuery,
     selectedClass, selectedMajor, selectedGender, selectedStatus, selectedRfid, detailModalStudent,

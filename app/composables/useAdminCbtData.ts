@@ -105,13 +105,20 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const questionsLoading = useState(`${stateKey}-questions-loading`, () => false)
   // PostgREST membatasi 1000 baris per permintaan; ambil bertahap agar hitungan siswa per kelas tidak terpotong.
   const fetchSiswaAktif = async () => {
-    const rows: any[] = []
-    for (let from = 0; ; from += 1000) {
-      const page = await client.from('students').select('class_id, gender').eq('active', true).order('id').range(from, from + 999)
+    const pageQuery = (from: number, withCount = false) => client.from('students')
+      .select('class_id, gender', withCount ? { count: 'exact' } : undefined).eq('active', true).order('id').range(from, from + 999)
+    const first = await pageQuery(0, true)
+    if (first.error) return { data: null, error: first.error }
+    const rows: any[] = [...(first.data ?? [])]
+    // Halaman berikutnya diambil paralel (total diketahui dari halaman pertama).
+    const offsets: number[] = []
+    for (let from = 1000; from < (first.count ?? 0); from += 1000) offsets.push(from)
+    const rest = await Promise.all(offsets.map(from => pageQuery(from)))
+    for (const page of rest) {
       if (page.error) return { data: null, error: page.error }
       rows.push(...(page.data ?? []))
-      if ((page.data?.length ?? 0) < 1000) return { data: rows, error: null }
     }
+    return { data: rows, error: null }
   }
   const load = async (force = false) => {
     if (loading.value || (loaded.value && !force)) return
@@ -123,7 +130,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
-        client.from(tables.exams).select('*').order('starts_at', { ascending: false }),
+        client.from(tables.exams).select('id, name, class_id, subject_id, question_bank_id, grade, starts_at, duration_minutes, status, code, supervisor_id').order('starts_at', { ascending: false }),
         client.from(tables.assignments).select('id, exam_id, status'),
         fetchSiswaAktif(),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),

@@ -246,7 +246,8 @@ export const useJadwalPelajaran = () => {
       const [kelasRes, mapelRes, guruRes, setelanRes] = await Promise.all([
         client.from('classes').select('id, name, grade, major, academic_year, teachers(name)').eq('active', true).eq('grade', grade).order('name'),
         client.from('subjects').select('id, name, kkm, hours_per_week').eq('active', true).eq('grade', grade).order('name'),
-        client.from('teachers').select('id, name, grade').eq('active', true).order('name'),
+        // Master guru jarang berubah: diambil sekali lalu dipakai ulang dari state bersama.
+        guruList.value.length ? Promise.resolve({ data: null, error: null }) : client.from('teachers').select('id, name, grade').eq('active', true).order('name'),
         client.from('jadwal_settings').select('config').eq('jenjang', grade).maybeSingle()
       ])
       if (kelasRes.error) throw kelasRes.error
@@ -265,10 +266,15 @@ export const useJadwalPelajaran = () => {
 
       const kelasRows = kelasRes.data ?? []
       const hitungSiswa = new Map<string, number>()
-      if (kelasRows.length) {
-        const siswaRes = await client.from('students').select('class_id').eq('active', true).in('class_id', kelasRows.map((k: any) => k.id))
-        for (const s of siswaRes.data ?? []) hitungSiswa.set(s.class_id, (hitungSiswa.get(s.class_id) ?? 0) + 1)
-      }
+      // Hitungan siswa, jadwal, dan sesi hari ini saling lepas: jalan paralel.
+      const [siswaRes] = await Promise.all([
+        kelasRows.length
+          ? client.from('students').select('class_id').eq('active', true).in('class_id', kelasRows.map((k: any) => k.id))
+          : Promise.resolve({ data: null }),
+        muatJadwal(grade, kelasRows.map((k: any) => k.id), slots),
+        muatSesiHariIni()
+      ])
+      for (const s of siswaRes.data ?? []) hitungSiswa.set(s.class_id, (hitungSiswa.get(s.class_id) ?? 0) + 1)
       kelasList.value = kelasRows.map((row: any) => ({
         id: row.id,
         name: row.name,
@@ -285,12 +291,11 @@ export const useJadwalPelajaran = () => {
       // Seluruh master guru aktif: guru jenjang lain boleh mengajar di sini (mis. guru SMK mengajar di SMP).
       // Guru jenjang ini + Yayasan diurutkan lebih dulu.
       const relevan = (unit: string) => unit === grade || unit === 'Yayasan' ? 0 : 1
-      guruList.value = (guruRes.data ?? [])
-        .map((row: any) => ({ id: row.id, name: row.name, unit: row.grade }))
+      const guruMaster: JadwalGuru[] = guruRes.data
+        ? guruRes.data.map((row: any) => ({ id: row.id, name: row.name, unit: row.grade }))
+        : guruList.value
+      guruList.value = [...guruMaster]
         .sort((a: JadwalGuru, b: JadwalGuru) => relevan(a.unit) - relevan(b.unit) || a.name.localeCompare(b.name, 'id'))
-
-      await muatJadwal(grade, kelasList.value.map(k => k.id), slots)
-      await muatSesiHariIni()
     } catch (e: any) {
       error.value = e?.message ?? 'Gagal memuat data jadwal.'
     } finally {

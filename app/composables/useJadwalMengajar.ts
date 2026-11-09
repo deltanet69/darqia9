@@ -95,11 +95,15 @@ export function useJadwalMengajar() {
     // 5) Siswa — roster per kelas + hitungan L/P untuk meta kelas
     // Hanya siswa aktif; diambil bertahap karena PostgREST membatasi 1000 baris per permintaan.
     const barisSiswa: any[] = []
-    for (let dari = 0; kelasIds.length; dari += 1000) {
-      const { data } = await client.from('students').select('nis, nisn, name, gender, class_id')
+    if (kelasIds.length) {
+      const halaman = (dari: number) => client.from('students').select('nis, nisn, name, gender, class_id', { count: 'exact' })
         .in('class_id', kelasIds).eq('active', true).order('name').order('id').range(dari, dari + 999)
-      barisSiswa.push(...(data ?? []))
-      if ((data?.length ?? 0) < 1000) break
+      const pertama = await halaman(0)
+      barisSiswa.push(...(pertama.data ?? []))
+      // Halaman berikutnya diambil paralel (total diketahui dari halaman pertama).
+      const awal: number[] = []
+      for (let dari = 1000; dari < (pertama.count ?? 0); dari += 1000) awal.push(dari)
+      for (const sisa of await Promise.all(awal.map(halaman))) barisSiswa.push(...(sisa.data ?? []))
     }
     const siswaSemua = barisSiswa as Array<{ nis: string | null; nisn: string; name: string; gender: string; class_id: string }>
     stateV2.roster = {}
@@ -192,7 +196,16 @@ export function useJadwalMengajar() {
       .select('id, class_id, subject_id, teacher_id, day_of_week, starts_at, ends_at, room, notes')
       .eq('active', true)
     if (ids.length) q = q.in('class_id', ids)
-    const { data: barisJadwal } = await q
+    // Sesi minggu berjalan (Senin–Jumat) tidak bergantung pada jadwal: ambil paralel.
+    const senin = tanggalDariDi(0)
+    const jumat = tanggalDariDi(4)
+    const [{ data: barisJadwal }, { data: barisSesi }] = await Promise.all([
+      q,
+      client.from('teaching_sessions')
+        .select('schedule_id, session_date, started_at, ended_at, status, hadir, alpa')
+        .gte('session_date', senin)
+        .lte('session_date', jumat)
+    ])
     const pelajaran: LessonItem[] = []
     const terjadwal = new Set<string>()
     for (const b of (barisJadwal || []) as Array<{ id: string; class_id: string; subject_id: string; teacher_id: string; day_of_week: number; starts_at: string; ends_at: string; room: string | null; notes: string | null }>) {
@@ -228,14 +241,6 @@ export function useJadwalMengajar() {
       if (!daftar.some(x => x.id === les.teacherId)) daftar.push({ id: les.teacherId, nama: les.guru })
     }
 
-    // Sesi minggu berjalan (Senin–Jumat)
-    const senin = tanggalDariDi(0)
-    const jumat = tanggalDariDi(4)
-    const { data: barisSesi } = await client
-      .from('teaching_sessions')
-      .select('schedule_id, session_date, started_at, ended_at, status, hadir, alpa')
-      .gte('session_date', senin)
-      .lte('session_date', jumat)
     stateV2.sesi = {}
     for (const s of (barisSesi || []) as Array<{ schedule_id: string; session_date: string; started_at: string | null; ended_at: string | null; status: SesiDb['status']; hadir: number | null; alpa: unknown }>) {
       stateV2.sesi[kunciSesi(s.schedule_id, s.session_date)] = {

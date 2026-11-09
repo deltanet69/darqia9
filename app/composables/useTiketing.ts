@@ -20,6 +20,9 @@ interface DetailTiket {
 }
 
 const BUCKET = 'tiket-lampiran'
+const KOL_TIKET = 'id, nomor, grade, judul, deskripsi, kategori, status, progress, pelapor_id, pelapor_nama, pelapor_peran, lampiran_path, lampiran_nama, created_at, updated_at'
+const KOL_PESAN = 'id, tiket_id, penulis_id, penulis_nama, dari_superadmin, teks, bukti_path, bukti_nama, created_at'
+const KOL_LOG = 'id, tiket_id, pelaku_id, pelaku_nama, teks, catatan, created_at'
 
 export const useTiketing = () => {
   const client = useSupabaseClient()
@@ -67,7 +70,7 @@ export const useTiketing = () => {
 
   const muatDaftar = async () => {
     state.value.memuat = true
-    const { data, error } = await client.from('tiket').select('*').order('updated_at', { ascending: false })
+    const { data, error } = await client.from('tiket').select(KOL_TIKET).order('updated_at', { ascending: false })
     state.value.memuat = false
     if (error) { tanganiGalat(error); return }
     state.value.keadaan = 'siap'
@@ -75,11 +78,11 @@ export const useTiketing = () => {
   }
 
   const muatDetail = async (id: string): Promise<DetailTiket | null> => {
-    const { data: tiket, error } = await client.from('tiket').select('*').eq('id', id).single()
+    const { data: tiket, error } = await client.from('tiket').select(KOL_TIKET).eq('id', id).single()
     if (error || !tiket) { tanganiGalat(error); return null }
     const [pesan, log] = await Promise.all([
-      client.from('tiket_pesan').select('*').eq('tiket_id', id).order('created_at', { ascending: true }),
-      client.from('tiket_log').select('*').eq('tiket_id', id).order('created_at', { ascending: false })
+      client.from('tiket_pesan').select(KOL_PESAN).eq('tiket_id', id).order('created_at', { ascending: true }),
+      client.from('tiket_log').select(KOL_LOG).eq('tiket_id', id).order('created_at', { ascending: false })
     ])
     return {
       tiket: tiket as TiketRow,
@@ -100,7 +103,7 @@ export const useTiketing = () => {
     const { data, error } = await client.from('tiket').insert({
       grade: input.grade, judul: input.judul.trim(), deskripsi: input.deskripsi.trim(),
       kategori: input.kategori, pelapor_nama: namaSaya.value, pelapor_peran: peranLabel.value
-    }).select('*').single()
+    }).select(KOL_TIKET).single()
     if (error || !data) { tanganiGalat(error); throw error || new Error('Tiket gagal dibuat') }
     const tiket = data as TiketRow
     if (input.berkas) {

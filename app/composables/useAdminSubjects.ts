@@ -67,7 +67,9 @@ export const useAdminSubjects = () => {
   const loading = useState('admin-subjects-loading', () => false)
   const error = useState<string | null>('admin-subjects-error', () => null)
 
-  const load = async () => {
+  // Master mapel di-cache di state bersama; force = true setelah tambah/ubah/hapus.
+  const load = async (force = false) => {
+    if (!force && subjects.value.length) return
     loading.value = true
     error.value = null
     const [subjectsResult, schedulesResult, banksResult, dailyBanksResult, examsResult, dailyExamsResult] = await Promise.all([
@@ -153,7 +155,7 @@ export const useAdminSubjects = () => {
       hours_per_week: input.hoursPerWeek
     })
     if (insertError) throw insertError
-    await load()
+    await load(true)
     return code
   }
 
@@ -175,7 +177,7 @@ export const useAdminSubjects = () => {
     })
     const { error: insertError } = await client.from('subjects').insert(insertRows)
     if (insertError) throw insertError
-    await load()
+    await load(true)
     return insertRows.map(row => row.code)
   }
 
@@ -190,13 +192,13 @@ export const useAdminSubjects = () => {
       hours_per_week: input.hoursPerWeek
     }).eq('id', id)
     if (updateError) throw updateError
-    await load()
+    await load(true)
   }
 
   const setActive = async (id: string, active: boolean) => {
     const { error: updateError } = await client.from('subjects').update({ active }).eq('id', id)
     if (updateError) throw updateError
-    await load()
+    await load(true)
   }
 
   const remove = async (id: string) => {
@@ -216,7 +218,7 @@ export const useAdminSubjects = () => {
     }
     const { error: deleteError } = await client.from('subjects').delete().eq('id', id)
     if (deleteError) throw deleteError
-    await load()
+    await load(true)
   }
 
   return { subjects, loading, error, load, create, importMany, update, setActive, remove }
