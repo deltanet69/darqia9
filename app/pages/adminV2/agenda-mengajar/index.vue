@@ -10,12 +10,14 @@ import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import AgendaMengajarFilter from '~/components/adminV2/agenda-mengajar/AgendaMengajarFilter.vue'
 import AgendaMengajarJournal from '~/components/adminV2/agenda-mengajar/AgendaMengajarJournal.vue'
+import AgendaMengajarRekap from '~/components/adminV2/agenda-mengajar/AgendaMengajarRekap.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import {
   calculateAgendaScore,
   type AgendaAttendance,
   type AgendaBook,
   type AgendaMode,
+  type AgendaRekapRow,
   type AgendaScore,
   type AgendaStudent,
   type AgendaTab,
@@ -49,7 +51,17 @@ const jumlahTugas = ref(5)
 const selectedClassId = ref('')
 const selectedBookId = ref('')
 const profileRole = ref('guru')
-const books = ref<AgendaBook[]>([])
+const bukuSemua = ref<AgendaBook[]>([])
+const guruSayaId = ref('')
+const rbac = useRbac()
+const adalahSuperadmin = rbac.adalahSuperadmin
+// saya = buku milik sendiri; rekap = ringkasan semua guru (Superadmin); buku = satu buku guru lain dari rekap (Superadmin).
+const tampilan = ref<'saya' | 'rekap' | 'buku'>('saya')
+const rekap = ref<AgendaRekapRow[]>([])
+const rekapMemuat = ref(false)
+const rekapError = ref('')
+// Agenda bersifat pribadi: kecuali saat membuka buku dari rekap, hanya buku milik guru yang sedang login yang tampil.
+const books = computed(() => tampilan.value === 'buku' ? bukuSemua.value : bukuSemua.value.filter(book => book.guru_id === guruSayaId.value))
 const tabData = ref<AgendaTabData>(emptyTabData())
 const loadingContext = ref(true)
 const loadingTab = ref(false)
@@ -146,8 +158,41 @@ const handleSelectModule = (title: string) => {
 }
 
 const loadProfileRole = async () => {
-  const { data: isAdmin } = await client.rpc('agenda_is_admin')
-  profileRole.value = isAdmin ? 'admin' : 'guru'
+  const [admin, guru] = await Promise.all([client.rpc('agenda_is_admin'), client.rpc('agenda_current_teacher_id'), rbac.muat()])
+  profileRole.value = admin.data ? 'admin' : 'guru'
+  guruSayaId.value = typeof guru.data === 'string' ? guru.data : ''
+}
+
+const selaraskanPilihan = () => {
+  const daftar = books.value
+  if (!daftar.some(book => book.kelas_id === selectedClassId.value)) selectedClassId.value = daftar[0]?.kelas_id || ''
+  const tersedia = daftar.filter(book => book.kelas_id === selectedClassId.value)
+  if (!tersedia.some(book => book.buku_id === selectedBookId.value)) selectedBookId.value = tersedia[0]?.buku_id || ''
+}
+
+const muatRekap = async () => {
+  rekapMemuat.value = true
+  rekapError.value = ''
+  try { rekap.value = await agenda.loadRekap(academicYear, 1, jenjang.value.toUpperCase() as 'SMP' | 'SMK') }
+  catch (error: any) { rekap.value = []; rekapError.value = error?.message || 'Rekap agenda tidak dapat dimuat.' }
+  finally { rekapMemuat.value = false }
+}
+
+const setTampilan = (nilai: 'saya' | 'rekap') => {
+  tampilan.value = nilai
+  openFilter.value = null
+  if (nilai === 'rekap') {
+    if (semester.value !== 1) semester.value = 1
+    void muatRekap()
+  } else selaraskanPilihan()
+}
+
+const bukaBukuGuru = (bukuId: string) => {
+  const book = bukuSemua.value.find(item => item.buku_id === bukuId)
+  if (!book) { triggerToast('Buku agenda tidak ditemukan.'); return }
+  tampilan.value = 'buku'
+  selectedClassId.value = book.kelas_id
+  selectedBookId.value = book.buku_id
 }
 
 const loadContext = async () => {
@@ -155,7 +200,7 @@ const loadContext = async () => {
   contextError.value = ''
   tabData.value = emptyTabData()
   if (isSemesterLocked.value) {
-    books.value = []
+    bukuSemua.value = []
     selectedClassId.value = ''
     selectedBookId.value = ''
     loadingContext.value = false
@@ -163,15 +208,13 @@ const loadContext = async () => {
   }
   try {
     const result = await agenda.loadBooks(academicYear, semester.value, jenjang.value.toUpperCase() as 'SMP' | 'SMK')
-    books.value = result
-    const tujuan = kueriTerpakai ? null : result.find(book => book.kelas_id === kueri('kelas') && book.mapel_id === kueri('mapel') && (!kueri('guru') || book.guru_id === kueri('guru')))
+    bukuSemua.value = result
+    const tujuan = kueriTerpakai ? null : books.value.find(book => book.kelas_id === kueri('kelas') && book.mapel_id === kueri('mapel') && (!kueri('guru') || book.guru_id === kueri('guru')))
     kueriTerpakai = true
     if (tujuan) { selectedClassId.value = tujuan.kelas_id; selectedBookId.value = tujuan.buku_id }
-    if (!result.some(book => book.kelas_id === selectedClassId.value)) selectedClassId.value = result[0]?.kelas_id || ''
-    const available = result.filter(book => book.kelas_id === selectedClassId.value)
-    if (!available.some(book => book.buku_id === selectedBookId.value)) selectedBookId.value = available[0]?.buku_id || ''
+    selaraskanPilihan()
   } catch (error: any) {
-    books.value = []
+    bukuSemua.value = []
     selectedClassId.value = ''
     selectedBookId.value = ''
     contextError.value = error?.message || 'Buku agenda tidak dapat dimuat.'
@@ -367,6 +410,7 @@ const studentResults = computed(() => students.value.map(student => ({
 })))
 
 watch([jenjang, semester], loadContext)
+watch(jenjang, () => { if (tampilan.value === 'rekap') void muatRekap() })
 watch([selectedBookId, activeTab], loadCurrentTab)
 watch(selectedBookId, () => { jumlahPertemuan.value = 20; jumlahTugas.value = 5; selectedMeeting.value = 1; selectedTask.value = 1 })
 onMounted(async () => { await loadProfileRole(); await loadContext() })
@@ -385,6 +429,10 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.fo
         <div><span class="grade-badge" :class="jenjang">{{ jenjang.toUpperCase() }}</span><h1 class="mt-1.5 text-2xl font-extrabold tracking-tight sm:text-3xl">Agenda Mengajar</h1><p class="mt-1 text-xs font-medium text-[#667085]">Jurnal pertemuan, daftar hadir &amp; penilaian F.32 &bull; {{ jenjang === 'smp' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9' }} &bull; Tahun Ajaran {{ academicYear }}</p></div>
         <div class="hidden items-center gap-2 sm:flex"><span class="date-pill">{{ formattedToday }}</span><span class="version-pill">Agenda F.32</span></div>
       </header>
+      <nav v-if="adalahSuperadmin" class="agenda-tabs" role="tablist" aria-label="Tampilan agenda"><button type="button" role="tab" :aria-selected="tampilan === 'saya'" :class="{ active: tampilan === 'saya' }" @click="setTampilan('saya')"><span>Agenda Saya</span></button><button type="button" role="tab" :aria-selected="tampilan !== 'saya'" :class="{ active: tampilan !== 'saya' }" @click="setTampilan('rekap')"><span>Rekap Semua Guru</span></button></nav>
+      <AgendaMengajarRekap v-if="tampilan === 'rekap'" :rows="rekap" :loading="rekapMemuat" :error="rekapError" @open="bukaBukuGuru" @reload="muatRekap" />
+      <template v-else>
+      <p v-if="tampilan === 'buku' && currentBook" class="guide"><span>Anda membuka buku agenda milik <b>{{ currentBook.guru_nama }}</b>.</span><button type="button" class="font-extrabold underline" @click="setTampilan('rekap')">Kembali ke Rekap</button></p>
       <nav class="agenda-tabs" role="tablist" aria-label="Navigasi Agenda Mengajar"><button v-for="tab in tabs" :key="tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id" :class="{ active: activeTab === tab.id }" @click="setTab(tab.id)"><AdminV2Icon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span></button></nav>
       <AgendaMengajarFilter
         :jenjang="jenjang"
@@ -448,6 +496,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.fo
           <div class="recap-mobile"><section v-for="item in studentResults" :key="item.student.id" class="agenda-card recap-card"><div class="recap-card-heading"><span class="student-avatar">{{ initials(item.student.name) }}</span><span class="student-copy"><b>{{ item.student.name }}</b><small>NISN {{ item.student.nisn }}</small></span><span v-if="item.result.finalScore === null" class="status-chip waiting">Menunggu {{ item.result.missing }}</span><span v-else-if="item.result.finalScore >= currentBook.kkm" class="status-chip success">Tuntas</span><span v-else class="status-chip danger">Belum Tuntas</span></div><div class="recap-values" :class="{ four: scoreMode === 'akhir' }"><div><span>Pertemuan N*</span><b>{{ item.result.attendanceNormalized }}</b></div><div><span>Tugas N*</span><b>{{ item.result.taskNormalized ?? '—' }}</b></div><div><span>PTS</span><b>{{ item.result.pts ?? '—' }}</b></div><div v-if="scoreMode === 'akhir'"><span>PAS</span><b>{{ item.result.pas ?? '—' }}</b></div></div><div class="recap-text-fields"><label>Predikat<input type="text" maxlength="120" placeholder="Belum diisi" :value="scoreValue(item.student.id, 'predikat')" @input="queueScore(item.student.id, 'predikat', ($event.target as HTMLInputElement).value)"></label><label>Sikap<input type="text" maxlength="120" placeholder="Belum diisi" :value="scoreValue(item.student.id, 'sikap')" @input="queueScore(item.student.id, 'sikap', ($event.target as HTMLInputElement).value)"></label></div><div class="recap-final"><span>{{ scoreMode === 'sementara' ? 'Nilai Sementara K' : 'Nilai Akhir K' }}</span><b>{{ item.result.finalScore ?? '—' }}</b></div></section></div>
           <p class="footnote">Ketentuan bobot sekolah — Sementara: Pertemuan 30% + Tugas 20% + PTS 50%. Akhir: Pertemuan 30% + Tugas 20% + PTS 10% + PAS 40%. K hanya tampil setelah seluruh komponen mode terisi.</p>
         </template>
+      </template>
       </template>
     </main>
     <AgendaMengajarJournal

@@ -18,6 +18,22 @@ export interface AgendaBook {
   pas_terbuka: boolean
 }
 
+export interface AgendaRekapRow {
+  buku_id: string
+  guru_id: string
+  guru_nama: string
+  mapel_nama: string
+  kelas_nama: string
+  jenjang: 'SMP' | 'SMK'
+  jumlah_siswa: number
+  pertemuan: number
+  tugas: number
+  pts_terisi: number
+  pas_terisi: number
+  kehadiran: number | null
+  terakhir: string | null
+}
+
 export interface AgendaStudent {
   id: string
   nis: string | null
@@ -149,6 +165,17 @@ export const useAgendaMengajar = () => {
     return (data || []) as AgendaBook[]
   }
 
+  // Hanya Superadmin: RPC menolak akun lain.
+  const loadRekap = async (academicYear: string, semester: 1 | 2, grade: 'SMP' | 'SMK') => {
+    const { data, error } = await client.rpc('agenda_rekap', {
+      target_tahun_ajaran: academicYear,
+      target_semester: semester,
+      target_grade: grade
+    })
+    if (error) throw error
+    return (data || []) as AgendaRekapRow[]
+  }
+
   const loadTab = async (bookId: string, tab: AgendaTab) => {
     const { data, error } = await client.rpc('agenda_tab_data', {
       target_buku_id: bookId,
@@ -236,6 +263,7 @@ export const useAgendaMengajar = () => {
 
   return {
     loadBooks,
+    loadRekap,
     loadTab,
     saveMeeting,
     saveAttendance,
