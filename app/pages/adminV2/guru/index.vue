@@ -50,7 +50,7 @@ onMounted(async () => {
   // Perubahan dari admin lain / hasil impor ikut terbaca; ditunda saat modal terbuka agar isian tidak terganggu.
   segarkanTimer = setInterval(() => {
     if (document.visibilityState === 'visible' && !isModalOpen.value && !isUploadModalOpen.value && !isDetailModalOpen.value) void fetchTeachersFromDb()
-  }, 20000)
+  }, 60000)
 })
 onUnmounted(() => { if (segarkanTimer) clearInterval(segarkanTimer) })
 

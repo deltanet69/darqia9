@@ -115,7 +115,8 @@ export const useRbac = () => {
     if (state.value.termuat) {
       void muatKandidatAkun()
       // Perubahan izin dari admin lain ikut terbaca tanpa muat ulang halaman (maks. 1 menit).
-      if (import.meta.client && Date.now() - state.value.dimuatPada > 60_000) { await muatMatriks(); selarasJenjang() }
+      // Dijalankan di latar belakang: pindah halaman tidak menunggu tiga query matriks.
+      if (import.meta.client && Date.now() - state.value.dimuatPada > 60_000) void muatMatriks().then(selarasJenjang)
       return
     }
     state.value.termuat = true

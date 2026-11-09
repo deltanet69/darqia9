@@ -205,7 +205,7 @@ onMounted(async () => {
   await Promise.all([rbac.muat(), store.muat()])
   pollTimer = setInterval(() => {
     if (document.visibilityState === 'visible' && !isEditing.value) void store.muat()
-  }, 15000)
+  }, 60000)
 })
 
 onUnmounted(() => {

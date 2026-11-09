@@ -137,7 +137,7 @@ const archiveClass = async (item: ClassRombel) => {
   }
 }
 
-onMounted(() => cbtData.load(true))
+onMounted(() => cbtData.load())
 
 // Export CSV Function (1:1 Versi Asli)
 const exportClassesCsv = () => {
