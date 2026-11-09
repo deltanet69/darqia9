@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useKeuangan } from '~/composables/useKeuangan'
-import { inisialNama, labelAliran, rp, type Pembayaran } from '~/composables/keuanganCore'
+import { aliranBayar, inisialNama, namaItem, rp, type Pembayaran } from '~/composables/keuanganCore'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 
 const emit = defineEmits<{ buka: [nis: string] }>()
@@ -46,11 +46,11 @@ const hapus = async (b: Pembayaran) => {
 }
 
 const ekspor = () => {
-  const kepala = 'No Kwitansi;Tanggal;NIS;Nama;Kelas;Aliran;Keterangan;Metode;Nominal;Petugas;Status\n'
+  const kepala = 'No Invoice;Tanggal;NIS;Nama;Kelas;Tingkat;Keterangan;Metode;Nominal;Petugas;Status\n'
   const isi = rows.value.map(b => {
     const s = namaSiswa(b.nis)
-    const rincian = b.items && b.items.length ? b.items.map(it => `${it.keterangan} ${it.nominal}`).join(' + ') : b.keterangan
-    return [b.no, b.tanggal, b.nis, s?.nama || '', s?.kelas || '', labelAliran(b.tingkat), rincian, b.metode, b.nominal, b.petugas, b.cutoff ? `Cut-off ${b.cutoff}` : 'Terbuka'].join(';')
+    const rincian = b.items && b.items.length ? b.items.map(it => `${namaItem(it, b.grade)} ${it.nominal}`).join(' + ') : b.keterangan
+    return [b.no, b.tanggal, b.nis, s?.nama || '', s?.kelas || '', aliranBayar(b), rincian, b.metode, b.nominal, b.petugas, b.cutoff ? `Cut-off ${b.cutoff}` : 'Terbuka'].join(';')
   }).join('\n')
   const a = document.createElement('a')
   a.href = URL.createObjectURL(new Blob(['\ufeff' + kepala + isi], { type: 'text/csv' }))
@@ -90,7 +90,7 @@ const ekspor = () => {
             </span>
           </div>
           <div class="text-[26px] sm:text-[28px] font-black tracking-tight text-white mt-1.5 tabular-nums">
-            {{ total }} Kwitansi
+            {{ total }} Invoice
           </div>
         </div>
 
@@ -143,7 +143,7 @@ const ekspor = () => {
         <div class="pt-2 border-t border-slate-100 mt-3 flex items-center justify-between text-xs">
           <span class="text-slate-500 font-medium">Fisik kasir:</span>
           <span class="inline-flex items-center text-[11px] font-bold py-0.5 px-2 rounded-full text-amber-800 bg-amber-50 border border-amber-200">
-            {{ tunaiRows.length }} Kwitansi Tunai
+            {{ tunaiRows.length }} Invoice Tunai
           </span>
         </div>
       </section>
@@ -180,7 +180,7 @@ const ekspor = () => {
           <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
           <input
             v-model="cari"
-            placeholder="Cari No. Kwitansi atau NIS..."
+            placeholder="Cari No. Invoice atau NIS..."
             class="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-[12.5px] text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#1B5FD9] focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all"
           >
         </div>
@@ -216,9 +216,9 @@ const ekspor = () => {
         <table class="w-full text-left text-[13px] border-collapse">
           <thead>
             <tr class="bg-slate-50/90 border-b border-slate-200 text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
-              <th class="py-3 px-4">No. Kwitansi</th>
+              <th class="py-3 px-4">No. Invoice</th>
               <th class="py-3 px-4">Siswa (NIS)</th>
-              <th class="py-3 px-4">Aliran</th>
+              <th class="py-3 px-4">Tingkat</th>
               <th class="py-3 px-4">Nominal &amp; Keterangan</th>
               <th class="py-3 px-4">Petugas</th>
               <th class="py-3 px-4 text-center">Status</th>
@@ -255,14 +255,14 @@ const ekspor = () => {
               </td>
               <td class="py-3.5 px-4 whitespace-nowrap">
                 <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                  {{ labelAliran(b.tingkat) }}
+                  {{ aliranBayar(b) }}
                 </span>
               </td>
               <td class="py-3.5 px-4">
                 <span class="tabular-nums font-bold text-emerald-700 block">{{ rp(b.nominal) }}</span>
                 <span class="text-[11.5px] text-slate-500">{{ b.keterangan }} &middot; {{ b.metode }}</span>
                 <span v-if="b.items && b.items.length" class="block text-[11px] text-slate-400 mt-0.5">
-                  {{ b.items.map(it => `${it.keterangan} ${rp(it.nominal)}`).join(' · ') }}
+                  {{ b.items.map(it => `${namaItem(it, b.grade)} ${rp(it.nominal)}`).join(' · ') }}
                 </span>
               </td>
               <td class="py-3.5 px-4 text-slate-600 text-[12px] whitespace-nowrap">{{ b.petugas }}</td>
@@ -332,7 +332,7 @@ const ekspor = () => {
 
           <div class="flex items-center justify-between text-[11.5px] pt-2 border-t border-slate-100">
             <span class="text-slate-500">
-              {{ b.keterangan }} &middot; <span class="font-semibold text-slate-700">{{ labelAliran(b.tingkat) }}</span>
+              {{ b.keterangan }} &middot; <span class="font-semibold text-slate-700">{{ aliranBayar(b) }}</span>
             </span>
             <button
               v-if="!b.cutoff"

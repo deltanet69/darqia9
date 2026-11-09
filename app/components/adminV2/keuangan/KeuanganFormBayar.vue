@@ -1,21 +1,30 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useKeuangan } from '~/composables/useKeuangan'
-import { METODE_BAYAR, rp, type BarisSiswa, type ItemBayar, type Pembayaran } from '~/composables/keuanganCore'
+import { LABEL_TINGKAT, METODE_BAYAR, namaItem, rp, type BarisSiswa, type ItemBayar, type Pembayaran } from '~/composables/keuanganCore'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 
 // Form Input Pembayaran NEMPEL di halaman (bukan popup) — hasil meeting
 // manajemen 4 Nov 2026:
-// - Pembayaran menempel ke SISWA (waterfall): tidak ada pilihan tingkat;
-//   alokasi menutup tagihan berurutan & kelebihan menjadi saldo.
 // - Keterangan berbentuk LIST: satu pembayaran bisa banyak keterangan,
-//   tiap baris combobox (pilih dari master atau ketik manual) + nominal.
+//   tiap baris: jenis (pilih dari master atau ketik manual) + TINGKAT tujuan + nominal.
+//   Uang masuk menutup tagihan tingkat yang dipilih (maks. sebesar sisanya);
+//   nama di invoice = jenis + tingkat, cth: "SPP - Kelas X".
 const props = defineProps<{ siswa: BarisSiswa }>()
 const emit = defineEmits<{ tersimpan: [b: Pembayaran] }>()
 const K = useKeuangan()
 
-interface BarisItem { keterangan: string, nominal: string }
-const items = ref<BarisItem[]>([{ keterangan: 'SPP', nominal: '' }])
+interface BarisItem { keterangan: string, nominal: string, tingkat: number | null }
+const labelTingkat = computed(() => LABEL_TINGKAT[props.siswa.grade])
+const sisaTingkat = (t: number) => props.siswa.hitung.per[t]?.sisa ?? 0
+// Tingkat bawaan: tingkat pertama yang masih punya sisa tagihan.
+const tingkatAwal = (): number | null => {
+  const t = props.siswa.hitung.per.findIndex(p => p.sisa > 0)
+  return t >= 0 ? t : null
+}
+const itemBaru = (keterangan = ''): BarisItem => ({ keterangan, nominal: '', tingkat: tingkatAwal() })
+const items = ref<BarisItem[]>([itemBaru('SPP')])
+watch(() => props.siswa.nis, () => { items.value = [itemBaru('SPP')] })
 const metode = ref<Pembayaran['metode']>('Tunai')
 const tanggal = ref(new Date().toISOString().slice(0, 10))
 const sibuk = ref(false)
@@ -36,21 +45,32 @@ const angkaItem = (b: BarisItem) => Math.max(0, parseInt(b.nominal.replace(/[^0-
 const total = computed(() => items.value.reduce((a, b) => a + angkaItem(b), 0))
 const itemValid = computed(() => items.value.filter(b => b.keterangan.trim() && angkaItem(b) > 0))
 const sisaSetelah = computed(() => Math.max(0, props.siswa.hitung.sisa - total.value))
-const saldoSetelah = computed(() => Math.max(0, props.siswa.hitung.saldo + total.value - props.siswa.hitung.sisa))
-const bisa = computed(() => !!props.siswa.kode && total.value > 0 && itemValid.value.length === items.value.length)
+// Jumlah yang diarahkan ke tiap tingkat dalam form ini; tidak boleh melebihi sisa tagihan tingkat itu.
+const terpakaiTingkat = computed(() => {
+  const peta = [0, 0, 0, 0]
+  for (const b of items.value) if (b.tingkat !== null) peta[b.tingkat] += angkaItem(b)
+  return peta
+})
+const melebihi = (t: number | null) => t !== null && terpakaiTingkat.value[t] > sisaTingkat(t)
+const bisa = computed(() => !!props.siswa.kode && total.value > 0 && itemValid.value.length === items.value.length
+  && items.value.every(b => b.tingkat !== null) && ![0, 1, 2, 3].some(t => melebihi(t)))
+const namaDiInvoice = (b: BarisItem) => namaItem({ keterangan: b.keterangan, nominal: 0, tingkat: b.tingkat }, props.siswa.grade)
 
-const tambahItem = () => items.value.push({ keterangan: '', nominal: '' })
+const tambahItem = () => items.value.push(itemBaru())
 const hapusItem = (i: number) => { if (items.value.length > 1) items.value.splice(i, 1) }
 
 const simpan = async () => {
   galat.value = ''
   if (!props.siswa.kode) { galat.value = 'Siswa ini belum dipasang Kode Keuangan — pasang dulu lewat tab Data Keuangan.'; return }
   if (!itemValid.value.length || itemValid.value.length !== items.value.length) { galat.value = 'Setiap baris keterangan wajib diisi nama & nominal di atas 0 (atau hapus barisnya).'; return }
+  if (items.value.some(b => b.tingkat === null)) { galat.value = 'Pilih tingkat pembayaran untuk setiap baris.'; return }
+  const lebih = [0, 1, 2, 3].find(t => melebihi(t))
+  if (lebih !== undefined) { galat.value = `Pembayaran ${labelTingkat.value[lebih]} melebihi sisa tagihannya (${rp(sisaTingkat(lebih))}).`; return }
   sibuk.value = true
   try {
-    const daftar: ItemBayar[] = itemValid.value.map(b => ({ keterangan: b.keterangan.trim(), nominal: angkaItem(b) }))
+    const daftar: ItemBayar[] = itemValid.value.map(b => ({ keterangan: b.keterangan.trim(), nominal: angkaItem(b), tingkat: b.tingkat }))
     const b = await K.simpanBayar({ grade: props.siswa.grade, nis: props.siswa.nis, nominal: total.value, items: daftar, metode: metode.value, petugas: 'Anis Azyzy, S.T', tanggalISO: tanggal.value })
-    items.value = [{ keterangan: 'SPP', nominal: '' }]
+    items.value = [itemBaru('SPP')]
     emit('tersimpan', b)
   } catch (e: any) {
     galat.value = e?.message || 'Pembayaran gagal disimpan.'
@@ -64,7 +84,7 @@ const simpan = async () => {
       <div>
         <h3 class="text-[16px] font-bold text-slate-900">Input Pembayaran</h3>
         <p class="mt-0.5 text-[12px] leading-relaxed text-slate-500">
-          Pembayaran menempel ke siswa &amp; otomatis mengalir (waterfall) menutup tagihan terlama.
+          Pilih tingkat untuk setiap pembayaran agar uang masuk menutup tagihan yang tepat.
         </p>
       </div>
       <span class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#1B5FD9] shrink-0">
@@ -95,7 +115,7 @@ const simpan = async () => {
 
         <div class="space-y-2.5">
           <div>
-            <label class="mb-1 block text-[11.5px] font-medium text-slate-600">Nama Pembayaran</label>
+            <label class="mb-1 block text-[11.5px] font-medium text-slate-600">Jenis Pembayaran</label>
             <input
               :value="b.keterangan"
               @input="b.keterangan = ($event.target as HTMLInputElement).value"
@@ -103,6 +123,25 @@ const simpan = async () => {
               placeholder="Pilih atau ketik (cth: SPP)..."
               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-[13px] text-slate-800 placeholder:text-slate-400 focus:border-[#1B5FD9] focus:outline-none focus:ring-2 focus:ring-[#1B5FD9]/15"
             >
+          </div>
+
+          <div>
+            <label class="mb-1 block text-[11.5px] font-medium text-slate-600">Tingkat Pembayaran</label>
+            <select
+              v-model="b.tingkat"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-[12.5px] text-slate-800 focus:border-[#1B5FD9] focus:outline-none"
+            >
+              <option :value="null" disabled>Pilih tingkat...</option>
+              <option v-for="(label, t) in labelTingkat" :key="t" :value="t" :disabled="sisaTingkat(t) <= 0">
+                {{ label }} &mdash; {{ sisaTingkat(t) > 0 ? 'sisa ' + rp(sisaTingkat(t)) : siswa.hitung.per[t].total > 0 ? 'lunas' : 'belum diset' }}
+              </option>
+            </select>
+            <p v-if="b.keterangan.trim() && b.tingkat !== null" class="mt-1 text-[11.5px] text-slate-500">
+              Nama di invoice: <b class="text-slate-700">{{ namaDiInvoice(b) }}</b>
+            </p>
+            <p v-if="melebihi(b.tingkat)" class="mt-1 text-[11.5px] font-medium text-rose-600">
+              Total untuk tingkat ini melebihi sisa tagihan ({{ rp(sisaTingkat(b.tingkat!)) }}).
+            </p>
           </div>
 
           <div>
@@ -173,10 +212,6 @@ const simpan = async () => {
         <span>Sisa Setelah Pembayaran:</span>
         <b class="font-bold text-slate-900 tabular-nums">{{ rp(sisaSetelah) }}</b>
       </div>
-      <div v-if="saldoSetelah > 0" class="flex items-center justify-between text-emerald-800 border-t border-emerald-200 pt-2">
-        <span>Kelebihan Jadi Saldo:</span>
-        <b class="font-bold text-emerald-700 tabular-nums">{{ rp(saldoSetelah) }}</b>
-      </div>
     </div>
 
     <!-- Alert Kesalahan jika ada -->
@@ -195,7 +230,7 @@ const simpan = async () => {
         <span>{{ sibuk ? 'Memproses Transaksi...' : 'Simpan Pembayaran' }}</span>
       </button>
       <p class="mt-2 text-center text-[11px] text-slate-400">
-        Nomor kwitansi terbit otomatis &middot; Riwayat tersimpan permanen
+        Nomor invoice terbit otomatis &middot; Riwayat tersimpan permanen
       </p>
     </div>
   </div>

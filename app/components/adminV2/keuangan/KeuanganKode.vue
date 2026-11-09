@@ -4,12 +4,14 @@ import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useKeuangan } from '~/composables/useKeuangan'
 import { LABEL_TINGKAT, rp, totalPaket, type PaketKeuangan } from '~/composables/keuanganCore'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
+import KeuanganImportModal from '~/components/adminV2/keuangan/KeuanganImportModal.vue'
 
 const grade = useAdminGrade()
 const K = useKeuangan()
 const notif = ref('')
 const modal = ref<null | { kode: string, nama: string, n: [string, string, string, string], aktif: boolean, lama: string }>(null)
 const ketBaru = ref('')
+const imporBuka = ref(false)
 
 const barisSiswa = computed(() => K.barisSiswa(grade.value))
 const paketGrade = computed(() => K.state.value.paket.filter(p => p.grade === grade.value))
@@ -167,7 +169,14 @@ const tambahKet = async () => {
           Kode penentu nominal flat per tingkat berdasarkan <b>tahun masuk &amp; kategori siswa</b>. Satu kode dipakai bersama oleh banyak siswa.
         </p>
       </div>
-      <div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          @click="imporBuka = true"
+          class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[13px] font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+        >
+          <span>Impor / Ekspor Excel</span>
+        </button>
         <button
           type="button"
           @click="bukaModal()"
@@ -305,7 +314,7 @@ const tambahKet = async () => {
           <div>
             <h4 class="text-[15px] font-bold text-slate-900">Master Keterangan Pembayaran</h4>
             <p class="mt-0.5 text-[12px] text-slate-500">
-              Pos penerimaan pembayaran siswa yang tampil di formulir kasir.
+              Jenis pembayaran di formulir kasir. Nama di invoice dibentuk otomatis bersama tingkat yang dipilih, cth: SPP - Kelas X.
             </p>
           </div>
           <span class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#1B5FD9] shrink-0">
@@ -369,6 +378,8 @@ const tambahKet = async () => {
         </ul>
       </div>
     </div>
+
+    <KeuanganImportModal :open="imporBuka" @close="imporBuka = false" @selesai="tampilNotif" />
 
     <!-- Modal Form Tambah/Ubah Kode Keuangan -->
     <div v-if="modal" class="fixed inset-0 z-[80] flex items-end justify-center bg-[#101828]/60 sm:items-center sm:p-4" @click.self="modal = null">

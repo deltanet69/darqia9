@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useKeuangan } from '~/composables/useKeuangan'
-import { formatTanggal, labelAliran, rp, type Cutoff, type Pembayaran } from '~/composables/keuanganCore'
+import { aliranBayar, formatTanggal, rp, type Cutoff, type Pembayaran } from '~/composables/keuanganCore'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 
 // Cut-off DIREDEFINISI hasil meeting manajemen 4 Nov 2026:
@@ -314,9 +314,9 @@ tampilkan()
         <table class="w-full text-left text-[13px] border-collapse">
           <thead>
             <tr class="bg-slate-50/90 border-b border-slate-200 text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
-              <th class="py-3 px-4">No. Kwitansi</th>
+              <th class="py-3 px-4">No. Invoice</th>
               <th class="py-3 px-4">Siswa</th>
-              <th class="py-3 px-4">Aliran</th>
+              <th class="py-3 px-4">Tingkat</th>
               <th class="py-3 px-4">Nominal</th>
               <th class="py-3 px-4">Keterangan</th>
               <th class="py-3 px-4 text-center">Status</th>
@@ -334,7 +334,7 @@ tampilkan()
               </td>
               <td class="py-3.5 px-4 whitespace-nowrap">
                 <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                  {{ labelAliran(b.tingkat) }}
+                  {{ aliranBayar(b) }}
                 </span>
               </td>
               <td class="py-3.5 px-4 whitespace-nowrap tabular-nums font-bold text-emerald-700">
@@ -383,7 +383,7 @@ tampilkan()
           <div class="flex items-center justify-between text-[11.5px] pt-1.5 border-t border-slate-50">
             <span class="text-slate-500">{{ b.keterangan }}</span>
             <span class="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-600 text-[10.5px]">
-              {{ labelAliran(b.tingkat) }}
+              {{ aliranBayar(b) }}
             </span>
           </div>
         </div>

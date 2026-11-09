@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import {
-  LABEL_TINGKAT, formatTanggalPanjang, persenTeks, rp, terbilangRupiah,
+  LABEL_TINGKAT, formatTanggalPanjang, namaItem, persenTeks, rp, terbilangRupiah,
   type BarisSiswa, type Pembayaran
 } from '~/composables/keuanganCore'
 
@@ -33,6 +33,15 @@ const kepsek = computed(() => {
     nama: 'H. Abd. Muiz, M.Pd., Gr.',
     keterangan: 'NPSN: 69940449 · Akreditasi A'
   }
+})
+
+// Rincian invoice: satu baris per item (nama lengkap + tingkat); data lama tanpa item memakai ringkasannya.
+const rincianInvoice = computed(() => {
+  const b = props.bayar
+  if (!b) return []
+  return b.items && b.items.length
+    ? b.items.map(it => ({ nama: namaItem(it, b.grade), nominal: it.nominal }))
+    : [{ nama: b.keterangan, nominal: b.nominal }]
 })
 
 const qrCodeUrl = ref('')
@@ -236,7 +245,7 @@ const tautanWA = computed(() => {
         </div>
       </template>
 
-      <!-- KWITANSI RESMI -->
+      <!-- INVOICE PEMBAYARAN -->
       <template v-else-if="bayar">
         <div class="keu-paper rounded-xl border border-slate-300 bg-white p-6 sm:p-8 text-[12.5px] leading-relaxed text-slate-800 shadow-sm print:border-none print:p-0">
           <div class="mb-4 overflow-hidden border-b-2 border-slate-900 pb-2">
@@ -244,8 +253,8 @@ const tautanWA = computed(() => {
           </div>
 
           <div class="border-b border-slate-200 pb-2 text-center">
-            <h4 class="text-[15px] font-bold uppercase tracking-wider text-slate-900">Kwitansi Pembayaran Resmi</h4>
-            <p class="text-[11.5px] font-medium text-slate-500">Nomor: {{ bayar.no }} &middot; Tanggal: {{ bayar.tanggal }}</p>
+            <h4 class="text-[15px] font-bold uppercase tracking-wider text-slate-900">Invoice Pembayaran</h4>
+            <p class="text-[11.5px] font-medium text-slate-500">No. Invoice: {{ bayar.no }} &middot; Tanggal: {{ bayar.tanggal }}</p>
           </div>
 
           <table class="mt-4 w-full text-[12.5px]">
@@ -259,20 +268,6 @@ const tautanWA = computed(() => {
                 <td class="font-medium text-slate-800">: {{ siswa.nis }} &middot; Kelas {{ siswa.kelas }} ({{ siswa.grade }})</td>
               </tr>
               <tr>
-                <td class="py-1 pr-3 align-top text-slate-500">Untuk pembayaran</td>
-                <td>
-                  :
-                  <template v-if="bayar.items && bayar.items.length">
-                    <span v-for="(it, ii) in bayar.items" :key="ii" class="block pl-2 text-slate-800">
-                      &bull; {{ it.keterangan }} — <b>{{ rp(it.nominal) }}</b>
-                    </span>
-                  </template>
-                  <template v-else>
-                    <span class="text-slate-800 font-semibold">{{ bayar.keterangan }}</span>
-                  </template>
-                </td>
-              </tr>
-              <tr>
                 <td class="py-1 pr-3 text-slate-500">Metode Bayar</td>
                 <td class="font-medium text-slate-800">: {{ bayar.metode }}</td>
               </tr>
@@ -280,7 +275,34 @@ const tautanWA = computed(() => {
                 <td class="py-1 pr-3 text-slate-500">Jumlah Terbilang</td>
                 <td class="italic font-medium text-slate-700">: {{ terbilangRupiah(bayar.nominal) }}</td>
               </tr>
+              <tr>
+                <td class="py-1 pr-3 text-slate-500">Sisa Tagihan Saat Ini</td>
+                <td class="font-medium text-slate-800">: {{ rp(siswa.hitung.sisa) }}</td>
+              </tr>
             </tbody>
+          </table>
+
+          <table class="mt-4 w-full border-collapse text-[12.5px]">
+            <thead>
+              <tr class="border-y border-slate-300 bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                <th class="w-10 px-2 py-1.5">No</th>
+                <th class="px-2 py-1.5">Nama Pembayaran</th>
+                <th class="px-2 py-1.5 text-right">Jumlah</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(it, ii) in rincianInvoice" :key="ii" class="border-b border-slate-200">
+                <td class="px-2 py-1.5">{{ ii + 1 }}</td>
+                <td class="px-2 py-1.5 font-medium text-slate-800">{{ it.nama }}</td>
+                <td class="px-2 py-1.5 text-right font-bold tabular-nums text-slate-900">{{ rp(it.nominal) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2" class="px-2 py-2 text-right font-bold text-slate-700">Total</td>
+                <td class="px-2 py-2 text-right font-black tabular-nums text-slate-900">{{ rp(bayar.nominal) }}</td>
+              </tr>
+            </tfoot>
           </table>
 
           <div class="mt-6 flex flex-wrap items-end justify-between gap-4 pt-3 border-t border-slate-200">

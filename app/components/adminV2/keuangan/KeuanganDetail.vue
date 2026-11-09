@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useKeuangan } from '~/composables/useKeuangan'
 import {
-  LABEL_TINGKAT, formatTanggal, inisialNama, persenTeks, rp,
+  LABEL_TINGKAT, formatTanggal, inisialNama, namaItem, persenTeks, rp,
   type Pembayaran
 } from '~/composables/keuanganCore'
 import KeuanganFormBayar from './KeuanganFormBayar.vue'
@@ -498,7 +498,7 @@ const simpanTambahan = async () => {
                   </span>
                   <h4 class="text-[14px] font-bold text-slate-900">
                     {{ b.keterangan }}
-                    <span class="font-normal text-slate-500 text-[12.5px]">
+                    <span v-if="!(b.items || []).some(it => it.tingkat !== null && it.tingkat !== undefined)" class="font-normal text-slate-500 text-[12.5px]">
                       ({{ b.tingkat === null ? 'Waterfall' : LABEL_TINGKAT[grade][b.tingkat] }})
                     </span>
                   </h4>
@@ -511,14 +511,14 @@ const simpanTambahan = async () => {
                     :key="ii"
                     class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11.5px] text-slate-700"
                   >
-                    <span class="font-medium">{{ it.keterangan }}:</span>
+                    <span class="font-medium">{{ namaItem(it, b.grade) }}:</span>
                     <span class="font-semibold text-slate-900 tabular-nums">{{ rp(it.nominal) }}</span>
                   </span>
                 </div>
 
-                <!-- Info Kwitansi & Petugas -->
+                <!-- Info Invoice & Petugas -->
                 <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-slate-500">
-                  <span>No. Kwitansi: <b class="font-medium text-slate-700">{{ b.no }}</b></span>
+                  <span>No. Invoice: <b class="font-medium text-slate-700">{{ b.no }}</b></span>
                   <span>&middot;</span>
                   <span>{{ b.tanggal }}</span>
                   <span>&middot;</span>
@@ -542,7 +542,7 @@ const simpanTambahan = async () => {
                   @click="cetak = { jenis: 'kwitansi', bayar: b }"
                   class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-colors"
                 >
-                  <span>Cetak Kwitansi</span>
+                  <span>Cetak Invoice</span>
                 </button>
               </div>
             </div>

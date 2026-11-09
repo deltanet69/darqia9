@@ -40,14 +40,14 @@ export interface PenetapanSiswa {
   tambahan: [number, number, number, number]
 }
 
-// Rekap agregat per siswa: sejak waterfall, yang dipakai hanya TOTAL dibayar
-// per NIS (baris view lama per tingkat pun cukup dijumlahkan semuanya).
-export interface RekapBayar { nis: string, tingkat?: number, dibayar: number }
+// Rekap agregat per siswa. terarah = uang yang kasir arahkan ke satu tingkat
+// (item bertingkat); selain itu (data lama) dialirkan waterfall ke sisa tagihan.
+export interface RekapBayar { nis: string, tingkat?: number | null, dibayar: number, terarah?: boolean }
 
 // Satu baris rincian keterangan dalam satu pembayaran (model LIST —
 // meeting 4 Nov 2026: satu pembayaran boleh berisi banyak keterangan,
 // masing-masing dengan nominalnya sendiri).
-export interface ItemBayar { keterangan: string, nominal: number }
+export interface ItemBayar { keterangan: string, nominal: number, tingkat?: number | null }
 
 export interface Pembayaran {
   id?: string
@@ -135,10 +135,20 @@ export function alokasiWaterfall(tagihanPer: readonly number[], totalBayar: numb
 export function hitungSiswa(paket: PaketKeuangan | undefined, tambahan: readonly number[], rekap: RekapBayar[]): HitunganSiswa {
   const totals = [0, 1, 2, 3].map(t => (paket ? paket.nominal[t] : 0) + (tambahan[t] || 0))
   const totalBayar = rekap.reduce((a, r) => a + (r.dibayar || 0), 0)
-  const alokasi = alokasiWaterfall(totals, totalBayar)
+  // Uang yang diarahkan kasir ke tingkat tertentu menutup tingkat itu lebih dulu (maks. sebesar tagihannya);
+  // sisanya (data lama tanpa tingkat + kelebihan) dialirkan waterfall ke sisa tagihan.
+  const terarah = [0, 0, 0, 0]
+  let lepas = 0
+  for (const r of rekap) {
+    if (r.terarah && r.tingkat !== null && r.tingkat !== undefined) terarah[r.tingkat] += r.dibayar || 0
+    else lepas += r.dibayar || 0
+  }
+  const bayarTerarah = totals.map((t, i) => Math.min(terarah[i], Math.max(0, t)))
+  const kelebihan = terarah.reduce((a, v, i) => a + v - bayarTerarah[i], 0)
+  const alokasi = alokasiWaterfall(totals.map((t, i) => Math.max(0, t) - bayarTerarah[i]), lepas + kelebihan)
   const per: RincianTingkat[] = [0, 1, 2, 3].map(t => {
     const total = totals[t]
-    const bayar = alokasi.per[t]
+    const bayar = bayarTerarah[t] + alokasi.per[t]
     const sisa = Math.max(0, total - bayar)
     return { master: paket ? paket.nominal[t] : 0, tambahan: tambahan[t] || 0, total, bayar, sisa, persen: total > 0 ? Math.min(100, bayar / total * 100) : 0 }
   })
@@ -149,10 +159,23 @@ export function hitungSiswa(paket: PaketKeuangan | undefined, tambahan: readonly
 
 // Ringkasan keterangan header dari daftar item (disimpan di kolom keterangan
 // pembayaran agar daftar & kwitansi tetap terbaca tanpa memuat item).
-export const ringkasKeterangan = (items: ItemBayar[]): string => {
-  const nama = items.map(i => i.keterangan.trim()).filter(Boolean)
+export const ringkasKeterangan = (items: ItemBayar[], grade?: Grade): string => {
+  const nama = items.map(i => namaItem(i, grade)).filter(Boolean)
   if (!nama.length) return ''
   return nama.length === 1 ? nama[0] : `${nama[0]} +${nama.length - 1} keterangan lain`
+}
+
+// Nama pembayaran lengkap: jenis + tingkat yang dipilih kasir (cth: "SPP - Kelas X").
+export const namaItem = (it: ItemBayar, grade?: Grade): string => {
+  const jenis = it.keterangan.trim()
+  const tingkat = grade && it.tingkat !== null && it.tingkat !== undefined ? LABEL_TINGKAT[grade][it.tingkat] : ''
+  return tingkat && jenis ? `${jenis} - ${tingkat}` : jenis
+}
+
+// Tingkat tujuan satu transaksi: dari item bertingkat; data lama tanpa tingkat tampil "Waterfall".
+export const aliranBayar = (b: Pick<Pembayaran, 'grade' | 'tingkat' | 'items'>): string => {
+  const tujuan = [...new Set((b.items || []).map(i => i.tingkat).filter((t): t is number => t !== null && t !== undefined))].sort()
+  return tujuan.length ? tujuan.map(t => LABEL_TINGKAT[b.grade][t]).join(', ') : labelAliran(b.tingkat)
 }
 
 // Label aliran pembayaran: waterfall untuk pembayaran baru, tingkat historis
