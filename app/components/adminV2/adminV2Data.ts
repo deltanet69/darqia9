@@ -190,7 +190,6 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'Modul pembelajaran': '/adminV2/modul-ajar',
   'Keuangan sekolah': '/adminV2/keuangan',
   'Pembayaran': '/adminV2/keuangan/pembayaran',
-  'Tabungan siswa': '/admin/tabungan',
   'Manajemen CBT': '/adminV2/cbt',
   'LMS': '/adminV2/lms',
   'Konten Website': '/adminV2/konten',

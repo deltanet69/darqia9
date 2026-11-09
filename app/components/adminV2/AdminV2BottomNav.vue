@@ -24,7 +24,7 @@ onMounted(() => rbac.muat())
 const destinations: Record<string, string> = {
   beranda: '/adminV2',
   akademik: '/adminV2/siswa',
-  keuangan: '/admin/keuangan',
+  keuangan: '/adminV2/keuangan',
   profil: '/adminV2/profil'
 }
 

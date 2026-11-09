@@ -172,7 +172,6 @@ const PATH_KE_MODUL: Array<[string, string | null]> = [
   ['/adminv2/users', 'Manajemen User'],
   ['/adminv2/rbac', 'Hak Akses (RBAC)'],
   ['/adminv2/log-aktivitas', 'Log Aktivitas'],
-  ['/admin/tabungan', 'Tabungan Siswa'], // halaman Tabungan masih di rute lama
   ['/adminv2/profil', null],
   ['/adminv2/profile', null]
 ]

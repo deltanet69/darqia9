@@ -102,7 +102,7 @@ export const useChatbot = () => {
       keywords: ['admin', 'portal', 'dashboard', 'guru login', 'staf'],
       text: 'Untuk akses <b>Admin Portal</b> manajemen guru &amp; staf sekolah, silakan login melalui portal admin.',
       btnText: 'Buka Admin Portal',
-      btnLink: '/admin',
+      btnLink: '/adminV2',
       isActive: true
     }
   ])

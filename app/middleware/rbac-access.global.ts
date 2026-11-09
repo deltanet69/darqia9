@@ -8,7 +8,7 @@ import { useRbac } from '~/composables/useRbac'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const path = to.path.toLowerCase()
-  if (!path.startsWith('/adminv2') && !path.startsWith('/admin/tabungan')) return
+  if (!path.startsWith('/adminv2')) return
   if (path === '/adminv2/login') return
 
   // Pengaturan berbagi halaman Profil (?tab=pengaturan), jadi dibedakan lewat query.

@@ -16,7 +16,7 @@ const paket = (grade) => {
     questions: [
       { id: 'q1', number: 1, type: 'PG', difficulty: 'Mudah', text: 'Hitung $x^{2}$ pada C# "kode" =1\nbaris kedua', key: 'B', options: opsi('Opsi'), isRtl: false },
       { id: 'q2', number: 2, type: 'PG', difficulty: 'Sedang', text: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ', key: ['A', 'C'], isMultiSelect: true, options: opsi('Pilih'), isRtl: true },
-      { id: 'q3', number: 3, type: 'Isian', difficulty: 'Sukar', text: 'Nilai pi?', key: '3,14', isRtl: false },
+      { id: 'q3', number: 3, type: 'Esai', difficulty: 'Sukar', text: 'Jelaskan nilai pi', key: '', rubric: 'Skor 3 jika benar', isRtl: false },
       { id: 'q4', number: 4, type: 'Esai', difficulty: 'Sedang', text: 'Jelaskan $$\\frac{a}{b}$$', key: '', rubric: 'Skor 4 jika lengkap; skor 2 jika sebagian', isRtl: false },
       { id: 'q5', number: 5, type: 'Interaktif', difficulty: 'Sedang', text: 'Tonton video', key: ['A', 'B'], isMultiSelect: true, options: opsi('Video'), mediaType: 'video', mediaUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', interactiveAnswerType: 'PG_Multi', isRtl: false },
       { id: 'q6', number: 6, type: 'Interaktif', difficulty: 'Mudah', text: 'Dengar audio', key: 'jawaban', mediaType: 'audio', mediaUrl: 'https://contoh.sch.id/audio.mp3', interactiveAnswerType: 'Isian', isRtl: false },
@@ -55,6 +55,16 @@ for (const grade of ['SMP', 'SMK']) {
     })
   })
 }
+
+await cek('Excel: soal bertipe Isian ditolak per baris, soal lain tetap terimpor', async () => {
+  const pkg = paket('SMK')
+  pkg.questions[2] = { id: 'q3', number: 3, type: 'Isian', difficulty: 'Sukar', text: 'Nilai pi?', key: '3,14', isRtl: false }
+  const { blob, fileName } = await buildBankExcel(pkg)
+  const hasil = await readExcelBankTemplate(new File([await blob.arrayBuffer()], fileName), 'SMK', ['X AK'], ['Matematika'])
+  assert.equal(hasil.issues.length, 1)
+  assert.match(hasil.issues[0].message, /Isian sudah tidak dipakai/)
+  assert.equal(hasil.package.questions.length, 7)
+})
 
 await cek('Excel: jenjang, kelas, dan mapel yang tidak cocok ditolak dengan pesan jelas', async () => {
   const { blob, fileName } = await buildBankExcel(paket('SMK'))

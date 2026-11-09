@@ -40,7 +40,7 @@
               </NuxtLink>
             </li>
             <li>
-              <NuxtLink to="/admin" class="inline-flex items-center gap-[6px] hover:text-white transition-colors">
+              <NuxtLink to="/adminV2" class="inline-flex items-center gap-[6px] hover:text-white transition-colors">
                 <svg class="ai w-[14px] h-[14px] shrink-0"><use href="#i-briefcase"/></svg>
                 <span>Admin Portal</span>
               </NuxtLink>

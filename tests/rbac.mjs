@@ -80,7 +80,6 @@ cek('pemetaan judul menu ke modul', () => {
 
 cek('pemetaan path: Log Aktivitas & Tabungan terjaga', () => {
   assert.equal(modulDariPath('/adminv2/log-aktivitas'), 'Log Aktivitas')
-  assert.equal(modulDariPath('/admin/tabungan'), 'Tabungan Siswa')
 })
 
 cek('pemetaan path ke modul (absensi-guru bukan absensi siswa)', () => {
