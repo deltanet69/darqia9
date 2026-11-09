@@ -19,7 +19,9 @@ export default defineEventHandler(async (event) => {
     if (error.code === 'PGRST202') {
       throw createError({ statusCode: 503, statusMessage: 'Pemuatan soal belum tersedia. Hubungi pengelola untuk menerapkan migrasi bank soal.' })
     }
-    throw createError({ statusCode: 403, statusMessage: 'NIS atau token tidak cocok dengan ujian yang tersedia.' })
+    // Hanya pesan jadwal dari fungsi database yang diteruskan; error lain tetap diratakan agar tidak membocorkan detail.
+    const pesanJadwal = /^(Jadwal ujian belum tiba\. Ujian dibuka pada [\d/. ]+ WIB\.|Waktu ujian telah berakhir\.)$/.exec(error.message || '')
+    throw createError({ statusCode: 403, statusMessage: pesanJadwal ? pesanJadwal[0] : 'NIS atau token tidak cocok dengan ujian yang tersedia.' })
   }
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return data
