@@ -176,6 +176,9 @@ export const useJadwalPelajaran = () => {
   const sesiMap = useState<Record<string, SesiHariIni>>('jadwal-sesi-hari-ini', () => ({}))
   const setelanDb = useState<JadwalSetelan>('jadwal-setelan', () => setelanBawaan())
   const setelanTersimpan = useState<boolean>('jadwal-setelan-tersimpan', () => false)
+  // Salinan data per jenjang: ganti jenjang langsung tampil dari salinan, lalu disegarkan di latar belakang.
+  const salinan = useState<Record<string, { kelas: JadwalKelas[], mapel: JadwalMapel[], entri: JadwalEntri[], setelan: JadwalSetelan, tersimpan: boolean, sesi: Record<string, SesiHariIni> } | undefined>>('jadwal-salinan', () => ({}))
+  const jenjangAktif = useState<string>('jadwal-jenjang-aktif', () => '')
   const loading = useState('jadwal-loading', () => false)
   const error = useState<string | null>('jadwal-error', () => null)
 
@@ -202,7 +205,13 @@ export const useJadwalPelajaran = () => {
   })
 
   const muatJadwal = async (grade: 'SMP' | 'SMK', classIds: string[], slots: SlotJam[]) => {
-    if (!classIds.length) { entriList.value = []; return }
+    const simpanEntriKe = (entri: JadwalEntri[]) => {
+      if (jenjangAktif.value !== grade) return // jenjang sudah berganti: jangan menimpa tampilan
+      entriList.value = entri
+      const ada = salinan.value[grade]
+      if (ada) ada.entri = entri
+    }
+    if (!classIds.length) { simpanEntriKe([]); return }
     const { data, error: err } = await client
       .from('class_schedules')
       .select('id, class_id, subject_id, teacher_id, day_of_week, starts_at, ends_at, room, notes')
@@ -218,11 +227,11 @@ export const useJadwalPelajaran = () => {
           .eq('active', true)
           .in('class_id', classIds)
           .order('day_of_week')
-        if (!ulang.error) { entriList.value = petakanEntri(ulang.data ?? [], slots); return }
+        if (!ulang.error) { simpanEntriKe(petakanEntri(ulang.data ?? [], slots)); return }
       }
       throw err
     }
-    entriList.value = petakanEntri(data ?? [], slots)
+    simpanEntriKe(petakanEntri(data ?? [], slots))
   }
 
   const muatSesiHariIni = async () => {
@@ -240,7 +249,17 @@ export const useJadwalPelajaran = () => {
   }
 
   const load = async (grade: 'SMP' | 'SMK') => {
-    loading.value = true
+    jenjangAktif.value = grade
+    const tersalin = salinan.value[grade]
+    if (tersalin) {
+      kelasList.value = tersalin.kelas
+      mapelList.value = tersalin.mapel
+      entriList.value = tersalin.entri
+      setelanDb.value = tersalin.setelan
+      setelanTersimpan.value = tersalin.tersimpan
+      sesiMap.value = tersalin.sesi
+    }
+    loading.value = !tersalin // sudah ada salinan: tanpa penanda memuat, segarkan diam-diam
     error.value = null
     try {
       const [kelasRes, mapelRes, guruRes, setelanRes] = await Promise.all([
@@ -253,6 +272,7 @@ export const useJadwalPelajaran = () => {
       if (kelasRes.error) throw kelasRes.error
       if (mapelRes.error) throw mapelRes.error
       if (guruRes.error) throw guruRes.error
+      if (jenjangAktif.value !== grade) return // jenjang sudah berganti selama memuat
 
       if (!setelanRes.error && setelanRes.data?.config) {
         const cfg = setelanRes.data.config as JadwalSetelan
@@ -274,6 +294,7 @@ export const useJadwalPelajaran = () => {
         muatJadwal(grade, kelasRows.map((k: any) => k.id), slots),
         muatSesiHariIni()
       ])
+      if (jenjangAktif.value !== grade) return
       for (const s of siswaRes.data ?? []) hitungSiswa.set(s.class_id, (hitungSiswa.get(s.class_id) ?? 0) + 1)
       kelasList.value = kelasRows.map((row: any) => ({
         id: row.id,
@@ -296,10 +317,16 @@ export const useJadwalPelajaran = () => {
         : guruList.value
       guruList.value = [...guruMaster]
         .sort((a: JadwalGuru, b: JadwalGuru) => relevan(a.unit) - relevan(b.unit) || a.name.localeCompare(b.name, 'id'))
+      if (jenjangAktif.value === grade) {
+        salinan.value[grade] = {
+          kelas: kelasList.value, mapel: mapelList.value, entri: entriList.value,
+          setelan: setelanDb.value, tersimpan: setelanTersimpan.value, sesi: sesiMap.value
+        }
+      }
     } catch (e: any) {
-      error.value = e?.message ?? 'Gagal memuat data jadwal.'
+      if (jenjangAktif.value === grade) error.value = e?.message ?? 'Gagal memuat data jadwal.'
     } finally {
-      loading.value = false
+      if (jenjangAktif.value === grade) loading.value = false
     }
   }
 
@@ -356,6 +383,8 @@ export const useJadwalPelajaran = () => {
     }
     setelanDb.value = setelan
     setelanTersimpan.value = true
+    const ada = salinan.value[grade]
+    if (ada) { ada.setelan = setelan; ada.tersimpan = true }
     await muatJadwal(grade, kelasList.value.map(k => k.id), bangunSlotJam(setelan))
   }
 
