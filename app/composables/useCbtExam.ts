@@ -546,6 +546,7 @@ export const useCbtExam = () => {
 
   const masukUjian = (lanjut: boolean): void => {
     restore()
+    void nyalakanLayar()
     try { sessionStorage.setItem(AKTIF_KEY, JSON.stringify({ source: activeExam.value?.source, id: activeExam.value?.id })) } catch { /* abaikan */ }
     screen.value = 'exam'
     window.scrollTo(0, 0)
@@ -824,6 +825,7 @@ export const useCbtExam = () => {
       sessionStorage.removeItem(AKTIF_KEY)
     } catch (e) {}
     siswa.kadaluwarsa()
+    lepasLayar()
 
     const d = new Date()
     doneTime.value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} WIB`
@@ -942,17 +944,39 @@ export const useCbtExam = () => {
     }
   }
 
+  // Layar HP tetap menyala selama ujian (Screen Wake Lock: Chrome Android, Safari iOS 16.4+, juga saat dipasang
+  // sebagai aplikasi/PWA). Layar yang mati sendiri terbaca seperti pindah tab, jadi dicegah dari awal.
+  // Wake lock lepas otomatis saat halaman tersembunyi, maka diminta ulang setiap halaman tampil lagi.
+  let kunciLayar: { release: () => Promise<void> } | null = null
+  const nyalakanLayar = async (): Promise<void> => {
+    try {
+      if (kunciLayar || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return
+      kunciLayar = await (navigator as any).wakeLock.request('screen')
+      ;(kunciLayar as any).addEventListener?.('release', () => { kunciLayar = null })
+    } catch { kunciLayar = null /* tidak didukung / ditolak perangkat: ujian tetap jalan */ }
+  }
+  const lepasLayar = (): void => {
+    try { void kunciLayar?.release() } catch { /* abaikan */ }
+    kunciLayar = null
+  }
+
   const onVisibilityChange = (): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
       if (document.visibilityState === 'hidden') {
         triggerCheatLock('Berpindah tab atau meminimalkan jendela ujian', undefined, 'pindah_tab')
+      } else {
+        void nyalakanLayar()
       }
     }
   }
 
   const onWindowBlur = (): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
-      triggerCheatLock('Kehilangan fokus jendela ujian (membuka aplikasi lain / Alt+Tab)', undefined, 'alt_tab')
+      // Mengetuk pemutar YouTube/Drive memindahkan fokus ke iframe di halaman yang sama: itu bukan pindah aplikasi.
+      setTimeout(() => {
+        if (document.activeElement?.tagName === 'IFRAME' && document.visibilityState === 'visible') return
+        triggerCheatLock('Kehilangan fokus jendela ujian (membuka aplikasi lain / Alt+Tab)', undefined, 'alt_tab')
+      }, 0)
     }
   }
 
@@ -980,6 +1004,7 @@ export const useCbtExam = () => {
     window.removeEventListener('beforeunload', onBeforeUnload)
     stopTimer()
     stopAudio()
+    lepasLayar()
   }
 
   const setRevFilter = (val: RevFilterType | string): void => {

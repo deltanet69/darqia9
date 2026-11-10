@@ -160,42 +160,15 @@
 
             <!-- Single choice / Audio / Video options -->
             <template v-if="curQuestion.type === 'single' || curQuestion.type === 'audio' || curQuestion.type === 'video'">
-              <!-- Audio card -->
-              <div v-if="curQuestion.type === 'audio'" class="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-3">
-                <div class="flex items-center gap-3">
-                  <button
-                    v-if="!curQuestion.mediaUrl"
-                    type="button"
-                    class="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-transform hover:scale-105"
-                    @click="$emit('toggle-audio', curQuestion)"
-                    aria-label="Putar audio"
-                  >
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 20 12 7 20"/></svg>
-                  </button>
-                  <audio v-if="curQuestion.mediaUrl" :src="curQuestion.mediaUrl" controls class="w-11 h-11 accent-blue-600" />
-                  <div>
-                    <div class="text-xs font-bold text-blue-950">{{ curQuestion.audioTitle || 'Audio Ujian' }}</div>
-                    <div class="text-[11px] text-blue-700">{{ curQuestion.audioSub || 'Ketuk untuk mendengarkan' }}</div>
-                  </div>
-                </div>
-                <div class="text-[11px] text-slate-500">Audio dapat diputar ulang jika diperlukan.</div>
-              </div>
-
-              <!-- Video card -->
-              <div v-if="curQuestion.type === 'video'" class="p-4 rounded-2xl bg-slate-900 text-white space-y-2 text-center">
-                <iframe v-if="videoEmbedUrl(curQuestion.mediaUrl)" class="w-full aspect-video rounded-xl border border-white/10" :src="videoEmbedUrl(curQuestion.mediaUrl)" :title="curQuestion.videoTitle || 'Video Ujian'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
-                <div v-if="videoEmbedUrl(curQuestion.mediaUrl)" class="text-xs font-bold text-slate-300 text-left pt-2">{{ curQuestion.videoTitle || 'Video Ujian' }}</div>
-                <template v-else>
-                <div class="text-xs font-bold text-slate-300">{{ curQuestion.videoTitle || 'Video Ujian' }} &bull; Mode Demo</div>
-                <button
-                  type="button"
-                  class="mx-auto w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center shadow-lg transition-transform hover:scale-110"
-                  @click="$emit('toast', 'Mode demo: video ujian akan diputar di sini.')"
-                >
-                  <svg class="w-6 h-6 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="7 4 20 12 7 20"/></svg>
-                </button>
-                </template>
-              </div>
+              <!-- Media soal interaktif (audio/video): YouTube, Google Drive, atau berkas langsung -->
+              <CbtMediaPlayer
+                v-if="curQuestion.type === 'audio' || curQuestion.type === 'video'"
+                :key="curQuestion.id || qIdx"
+                :type="curQuestion.type"
+                :url="curQuestion.mediaUrl"
+                :title="curQuestion.type === 'audio' ? curQuestion.audioTitle : curQuestion.videoTitle"
+                @toast="$emit('toast', $event)"
+              />
 
               <!-- Options Grid -->
               <div class="space-y-3" v-if="curQuestion.options && curQuestion.options.length">
@@ -405,11 +378,8 @@
 
 <script setup lang="ts">
 import type { QuestionItem, SectionItem } from '~/composables/useCbtExam'
-import { extractYouTubeId, renderKaTeXHtml, isArabicText } from '~/utils/cbtFormula'
-const videoEmbedUrl = (url?: string) => {
-  const id = extractYouTubeId(url || '')
-  return id ? 'https://www.youtube-nocookie.com/embed/' + id + '?rel=0&modestbranding=1' : ''
-}
+import { renderKaTeXHtml, isArabicText } from '~/utils/cbtFormula'
+import CbtMediaPlayer from '~/components/cbt/CbtMediaPlayer.vue'
 
 
 defineProps<{
