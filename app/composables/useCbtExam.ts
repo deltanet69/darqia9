@@ -499,7 +499,12 @@ export const useCbtExam = () => {
       void doSubmit(true)
       return
     }
-    if (info.mulaiPada) { masukUjian(true); return }
+    if (info.mulaiPada) {
+      masukUjian(true)
+      // Halaman dimuat ulang saat masih terkunci karena pelanggaran: popup kode muncul lagi tanpa menambah pelanggaran.
+      if (info.menungguKode && violations.value > 0 && violations.value < 3) triggerCheatLock('Ujian dibuka kembali, tetapi kunci pelanggaran belum dibuka', violations.value)
+      return
+    }
     screen.value = 'confirm'
     window.scrollTo(0, 0)
   }

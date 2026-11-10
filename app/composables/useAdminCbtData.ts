@@ -3,6 +3,10 @@ import type { BankPackage, BankQuestionItem, ExamItem, GradeType, LiveStudent } 
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
 const questionRequests = new Map<AssessmentSource, Promise<void>>()
+// Cache detail ujian per id: membuka detail mapel yang sama lagi tidak memicu query ulang selama masih segar.
+const cacheMonitoring = new Map<string, { at: number, data: LiveStudent[] }>()
+// Nama + NIS siswa jarang berubah: disimpan sekali, polling pelanggaran cukup satu query ringan.
+const cacheMurid = new Map<string, { name: string, nis: string }>()
 
 const assessmentTables = (source: AssessmentSource) => source === 'ujian_harian'
   ? { banks: 'ujian_harian_banks', questions: 'ujian_harian_questions', exams: 'ujian_harian', assignments: 'ujian_harian_assignments', answers: 'ujian_harian_answers', violations: 'ujian_harian_violations' }
@@ -291,7 +295,11 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
   }
 
-  const loadMonitoring = async (exam: ExamItem): Promise<LiveStudent[]> => {
+  // umurMaksMs > 0: pakai hasil cache bila belum lewat umur itu (detail mapel). 0 = selalu ambil baru (tab Monitoring).
+  const loadMonitoring = async (exam: ExamItem, umurMaksMs = 0): Promise<LiveStudent[]> => {
+    const kunci = `${source}:${exam.id}`
+    const ada = cacheMonitoring.get(kunci)
+    if (umurMaksMs > 0 && ada && Date.now() - ada.at < umurMaksMs) return ada.data
     const { data: assignments, error: assignmentError } = await client.from(tables.assignments)
       .select('id, student_id, status, started_at, submitted_at').eq('exam_id', exam.id)
     if (assignmentError) throw new Error(assignmentError.message)
@@ -313,7 +321,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     ]) : [{ data: [], error: null }, { data: [], error: null }]
     if (answers.error || violations.error) throw new Error((answers.error || violations.error)!.message)
     const sessionByStudent = new Map(sessions.map((row: any) => [row.student_id, row]))
-    return (roster.data ?? []).map((student: any) => {
+    const hasil: LiveStudent[] = (roster.data ?? []).map((student: any) => {
       const session: any = sessionByStudent.get(student.id)
       const saved = session ? (answers.data ?? []).filter((row: any) => row.assignment_id === session.id && questionIds.has(row.question_id)) : []
       const incidents = session ? (violations.data ?? []).filter((row: any) => row.assignment_id === session.id) : []
@@ -336,30 +344,37 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         lastActive: lastTime ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(lastTime)) : '-'
       }
     })
+    cacheMonitoring.set(kunci, { at: Date.now(), data: hasil })
+    if (cacheMonitoring.size > 40) cacheMonitoring.delete(cacheMonitoring.keys().next().value as string)
+    return hasil
   }
 
   // Seluruh pelanggaran siswa di satu rombel (semua mapel), lengkap dengan kode buka untuk diberikan ke siswa.
+  // Satu query: pelanggaran + penugasannya (join), difilter ujian rombel ini. Nama siswa dari cache.
   const loadPelanggaranRombel = async (examIds: string[]): Promise<PelanggaranRombel[]> => {
     if (!examIds.length) return []
-    const { data: tugas, error: e1 } = await client.from(tables.assignments).select('id, exam_id, student_id, status').in('exam_id', examIds)
+    const t = tables.assignments
+    const { data, error: e1 } = await client.from(tables.violations)
+      .select(`id, violation_type, occurred_at, occurrence, locked, unlock_code, ${t}!inner(exam_id, student_id, status)`)
+      .in(`${t}.exam_id`, examIds)
+      .order('occurred_at', { ascending: false })
     if (e1) throw new Error(e1.message)
-    if (!tugas?.length) return []
-    const [langgar, murid] = await Promise.all([
-      client.from(tables.violations).select('id, assignment_id, violation_type, occurred_at, occurrence, locked, unlock_code').in('assignment_id', tugas.map((t: any) => t.id)),
-      client.from('students').select('id, name, nis').in('id', [...new Set(tugas.map((t: any) => t.student_id))])
-    ])
-    if (langgar.error || murid.error) throw new Error((langgar.error || murid.error)!.message)
-    const tugasById = new Map(tugas.map((t: any) => [t.id, t]))
-    const muridById = new Map((murid.data ?? []).map((m: any) => [m.id, m]))
-    return (langgar.data ?? []).map((v: any) => {
-      const t: any = tugasById.get(v.assignment_id)
-      const m: any = muridById.get(t?.student_id)
+    const baris = (data ?? []) as any[]
+    const belumAda = [...new Set(baris.map(v => v[t]?.student_id).filter((id: string) => id && !cacheMurid.has(id)))]
+    if (belumAda.length) {
+      const { data: murid, error: e2 } = await client.from('students').select('id, name, nis').in('id', belumAda)
+      if (e2) throw new Error(e2.message)
+      for (const m of murid ?? []) cacheMurid.set(m.id, { name: m.name, nis: m.nis ?? '' })
+    }
+    return baris.map(v => {
+      const a = v[t] ?? {}
+      const m = cacheMurid.get(a.student_id)
       return {
-        id: v.id, examId: t?.exam_id ?? '', studentId: t?.student_id ?? '', nama: m?.name ?? '-', nis: m?.nis ?? '',
+        id: v.id, examId: a.exam_id ?? '', studentId: a.student_id ?? '', nama: m?.name ?? '-', nis: m?.nis ?? '',
         jenis: v.violation_type, waktu: v.occurred_at, ke: v.occurrence, terkunci: !!v.locked, kode: v.unlock_code ?? '',
-        selesai: t?.status === 'selesai'
+        selesai: a.status === 'selesai'
       }
-    }).sort((a: PelanggaranRombel, b: PelanggaranRombel) => b.waktu.localeCompare(a.waktu))
+    })
   }
 
   const loadQuestions = (force = false): Promise<void> => {

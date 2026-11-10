@@ -28,14 +28,26 @@ const muat = async () => {
 let timer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   void muat()
-  timer = setInterval(muat, 10_000)
+  // Satu query ringan tiap 10 detik, hanya selama panel terbuka dan tab peramban terlihat.
+  timer = setInterval(() => { if (document.visibilityState === 'visible') void muat() }, 10_000)
 })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 
 const ujianById = computed(() => new Map(props.exams.map(e => [e.id, e])))
 const isPr = (p: PelanggaranRombel) => ujianById.value.get(p.examId)?.jenis === 'pr'
 // Kode perlu diberikan bila siswa masih mengerjakan, pelanggaran belum dibuka, belum ke-3, dan bukan PR di rumah.
-const butuhKode = (p: PelanggaranRombel) => p.terkunci && p.ke < 3 && !p.selesai && !isPr(p)
+// Satu siswa cukup satu kode: hanya pelanggaran terakhir yang masih menunggu yang ditampilkan kodenya (server membuka semuanya sekaligus).
+const menunggu = (p: PelanggaranRombel) => p.terkunci && p.ke < 3 && !p.selesai && !isPr(p)
+const kodeTerbaru = computed(() => {
+  const ids = new Set<string>()
+  const sudah = new Set<string>()
+  for (const p of daftar.value ?? []) { // urut terbaru dulu
+    const k = `${p.studentId}|${p.examId}`
+    if (menunggu(p) && !sudah.has(k)) { ids.add(p.id); sudah.add(k) }
+  }
+  return ids
+})
+const butuhKode = (p: PelanggaranRombel) => kodeTerbaru.value.has(p.id)
 const perluKode = computed(() => (daftar.value ?? []).filter(butuhKode))
 const terkunciTotal = computed(() => (daftar.value ?? []).filter(p => p.ke >= 3).length)
 const siswaMelanggar = computed(() => new Set((daftar.value ?? []).map(p => p.studentId)).size)
@@ -128,6 +140,7 @@ const salin = async (p: PelanggaranRombel) => {
                     <button type="button" class="min-h-11 rounded-xl border px-3.5 text-xs font-extrabold transition" :class="disalin === p.id ? 'border-[#ABEFC6] bg-[#ECFDF3] text-[#067647]' : 'border-[#E7EBF2] bg-white text-[#344054] hover:border-[#1B5FD9] hover:text-[#1B5FD9]'" @click="salin(p)">{{ disalin === p.id ? 'Tersalin' : 'Salin' }}</button>
                   </div>
                 </template>
+                <span v-else-if="menunggu(p)" class="inline-block rounded-full bg-[#FFFAEB] px-3 py-1 text-[11px] font-bold text-[#B54708]">Ikut terbuka dengan kode terbaru</span>
                 <span v-else-if="p.ke >= 3" class="inline-block rounded-full bg-[#FDECEA] px-3 py-1 text-[11px] font-extrabold text-[#B42318]">Akun terkunci total</span>
                 <span v-else-if="isPr(p) && p.terkunci && !p.selesai" class="inline-block rounded-full bg-[#EFF2F7] px-3 py-1 text-[11px] font-bold text-[#475467]">PR: kode muncul di layar siswa</span>
                 <span v-else-if="p.terkunci" class="inline-block rounded-full bg-[#EFF2F7] px-3 py-1 text-[11px] font-bold text-[#475467]">Siswa sudah selesai</span>

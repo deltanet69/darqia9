@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { ExamItem, LiveStudent } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
@@ -15,21 +15,19 @@ const memuat = ref(false)
 const filter = ref<'semua' | 'selesai' | 'mengerjakan' | 'belum' | 'melanggar'>('semua')
 const cari = ref('')
 
-const muat = async () => {
+// Sekali muat saat dibuka, memakai cache: ujian selesai 10 menit, lainnya 1 menit. Tombol Perbarui selalu mengambil data baru.
+const muat = async (paksa = false) => {
   if (memuat.value) return
   memuat.value = true
   try {
-    siswa.value = await cbtData.loadMonitoring(props.exam)
+    siswa.value = await cbtData.loadMonitoring(props.exam, paksa ? 0 : props.exam.status === 'Selesai' ? 600_000 : 60_000)
     galat.value = ''
     diperbarui.value = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date())
   } catch (e) {
     galat.value = e instanceof Error ? e.message : 'Data ujian gagal dimuat.'
   } finally { memuat.value = false }
 }
-// Data diperbarui otomatis tiap 15 detik selama halaman terbuka.
-let timer: ReturnType<typeof setInterval> | null = null
-onMounted(() => { void muat(); timer = setInterval(muat, 15_000) })
-onUnmounted(() => { if (timer) clearInterval(timer) })
+onMounted(() => { void muat() })
 
 const kelompok = (s: LiveStudent) => s.status === 'Selesai' ? 'selesai' : s.status === 'Belum mulai' ? 'belum' : 'mengerjakan'
 const hitung = computed(() => {
@@ -83,11 +81,11 @@ const pelanggaranKelas = (n: number) => n >= 3 ? 'bg-[#FEE4E2] text-[#B42318]' :
           {{ exam.name }} <span class="text-[#D0D5DD]">/</span> Rombel {{ exam.classroom }} <span class="text-[#D0D5DD]">/</span> {{ exam.date }}, {{ exam.time }} <span class="text-[#D0D5DD]">/</span> Pengawas: {{ exam.supervisor || 'belum ditentukan' }}
         </p>
       </div>
-      <button type="button" class="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#E7EBF2] bg-white px-4 text-xs font-extrabold text-[#344054] hover:border-[#1B5FD9] hover:text-[#1B5FD9] disabled:opacity-60" :disabled="memuat" @click="muat">
-        <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#12B76A] opacity-60" /><span class="relative inline-flex h-2 w-2 rounded-full bg-[#12B76A]" /></span>
-        {{ memuat ? 'Memperbarui…' : diperbarui ? `Diperbarui ${diperbarui}` : 'Perbarui' }}
+      <button type="button" class="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#E7EBF2] bg-white px-4 text-xs font-extrabold text-[#344054] hover:border-[#1B5FD9] hover:text-[#1B5FD9] disabled:opacity-60" :disabled="memuat" @click="muat(true)">
+        {{ memuat ? 'Memperbarui…' : 'Perbarui data' }}
       </button>
     </div>
+    <p v-if="diperbarui" class="-mt-3 text-[11px] text-[#98A2B3]">Data per pukul {{ diperbarui }}. Tekan Perbarui data untuk melihat perkembangan terbaru.</p>
 
     <p v-if="galat" class="rounded-xl border border-[#F8D3CE] bg-[#FDECEA] px-4 py-3 text-xs font-semibold text-[#B42318]">{{ galat }}</p>
     <p v-else-if="!siswa" class="rounded-2xl border border-[#E7EBF2] bg-white p-10 text-center text-xs text-[#667085]">Memuat data siswa&hellip;</p>
