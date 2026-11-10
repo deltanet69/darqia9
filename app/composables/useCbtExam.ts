@@ -1,6 +1,7 @@
 import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAdminGrade } from '~/composables/useAdminGrade'
+import { useCbtSiswa } from '~/composables/useCbtSiswa'
+import { keadaanUjian, type UjianSiswa } from '~/utils/cbtSiswaJadwal'
 
 export interface SectionItem {
   id: string
@@ -65,12 +66,10 @@ export interface LoginForm {
 }
 
 export const useCbtExam = () => {
-  const router = useRouter()
   const grade = useAdminGrade()
-  const route = useRoute()
-  const activeExam = ref<{ id: string; name: string; code: string; duration: number; studentName: string; classroom: string; subject: string; startsAt?: string; serverNow?: string } | null>(null)
-  // Selisih jam server dan perangkat siswa, agar penahanan tombol Mulai tidak bergantung jam perangkat.
-  let selisihJam = 0
+  const siswa = useCbtSiswa()
+  const activeExam = ref<{ id: string; source: 'cbt' | 'ujian_harian'; name: string; code: string; duration: number; studentName: string; classroom: string; subject: string; jenis?: string; startsAt?: string } | null>(null)
+  const appTab = ref<'home' | 'jadwal' | 'rekap' | 'profil'>('home')
   const examQuestions = ref<QuestionItem[]>([])
   const loadingExam = ref(false)
 
@@ -161,10 +160,12 @@ export const useCbtExam = () => {
   const letters: string[] = ['A', 'B', 'C', 'D', 'E', 'F']
   const totalQuestions = computed<number>(() => questions.value.length)
   const DURATION = computed(() => (activeExam.value?.duration ?? 90) * 60)
-  const SAVE_KEY = computed(() => `cbt_darqia_${grade.value}_${activeExam.value?.id}_${loginForm.nis}_v2`)
+  const SAVE_KEY = computed(() => `cbt_darqia_${grade.value}_${activeExam.value?.id}_${siswa.state.value.sesi?.nis ?? loginForm.nis}_v3`)
+  const SOAL_KEY = (source: string, id: string) => `cbt_soal_${source}_${id}_v1`
+  const AKTIF_KEY = 'cbt_aktif_v1'
 
   /* ---------- STATE ---------- */
-  const screen = ref<'login' | 'confirm' | 'exam' | 'review' | 'done'>('login')
+  const screen = ref<'login' | 'app' | 'confirm' | 'exam' | 'review' | 'done'>('login')
   const loginForm = reactive<LoginForm>({ nis: '', kode: '' })
   const openedAcc = ref<string>('pg')
   const agreeStart = ref<boolean>(false)
@@ -386,49 +387,128 @@ export const useCbtExam = () => {
     openedAcc.value = openedAcc.value === id ? '' : id
   }
 
+  const pesanGalat = (e: any, cadangan: string): string => e?.data?.statusMessage || e?.statusMessage || cadangan
+
+  // Login ringan: hanya NIS + token. Soal tidak dimuat di sini.
   const doLogin = async (): Promise<void> => {
     if (loadingExam.value) return
-    if (!loginForm.nis) { triggerToast('Isi Nomor Peserta / NIS dulu.'); return }
-    if (!loginForm.kode) { triggerToast('Isi token ujian dulu.'); return }
+    if (!loginForm.nis.trim()) { triggerToast('Isi Nomor Peserta / NIS dulu.'); return }
+    if (!loginForm.kode.trim()) { triggerToast('Isi token ujian dulu.'); return }
     loadingExam.value = true
     try {
-      const result = await $fetch<any>('/api/cbt/questions', {
-        method: 'POST',
-        body: { nis: loginForm.nis, code: loginForm.kode, grade: grade.value, source: route.query.mode === 'ujian_harian' ? 'ujian_harian' : 'cbt' }
-      })
-      if (!result.questions?.length) throw new Error('Ujian belum memiliki soal. Hubungi pengawas.')
-      activeExam.value = result
-      selisihJam = result.serverNow ? new Date(result.serverNow).getTime() - Date.now() : 0
-      examQuestions.value = mapExamQuestions(result.questions)
-      remainingTime.value = DURATION.value
-      Object.keys(answers).forEach(key => delete answers[Number(key)])
-      flags.clear()
-      qIdx.value = 0
+      await siswa.masuk(loginForm.nis.trim(), loginForm.kode.trim().toUpperCase(), grade.value as 'SMP' | 'SMK')
+      loginForm.nis = ''
+      loginForm.kode = ''
+      appTab.value = 'home'
+      screen.value = 'app'
+      window.scrollTo(0, 0)
     } catch (error: any) {
-      triggerToast(error?.data?.statusMessage || error?.message || 'Soal ujian gagal dimuat.')
-      return
+      triggerToast(pesanGalat(error, 'Login gagal. Periksa koneksi lalu coba lagi.'), 3500)
     } finally { loadingExam.value = false }
+  }
 
-    // Resume otomatis pasca re-login jika sudah ada sesi tersimpan
-    const restored = restore()
-    if (restored && remainingTime.value > 0) {
-      triggerToast('Sesi ujian sebelumnya dipulihkan otomatis.', 3000)
+  const keluarAplikasi = (): void => {
+    siswa.keluar()
+    activeExam.value = null
+    screen.value = 'login'
+    window.scrollTo(0, 0)
+  }
+
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+  const bacaSoalCache = (source: string, id: string): any[] | null => {
+    try { const d = JSON.parse(localStorage.getItem(SOAL_KEY(source, id)) || 'null'); return Array.isArray(d) && d.length ? d : null } catch { return null }
+  }
+  const kunciDasar = (): { nis: string; token: string; grade: string; source: string; examId: string } => {
+    const sesi = siswa.state.value.sesi
+    if (!sesi || !activeExam.value) throw new Error('Sesi ujian tidak tersedia. Masuk ulang.')
+    return { nis: sesi.nis, token: sesi.token, grade: sesi.grade, source: activeExam.value.source, examId: activeExam.value.id }
+  }
+
+  // Jawaban yang sudah sampai ke server (tanda tangan per soal) agar hanya perubahan yang dikirim.
+  const terkirim = new Map<string, string>()
+  const tandaJawaban = (i: number) => JSON.stringify([answers[i], flags.has(i)])
+  const adaJawaban = (i: number) => answers[i] !== undefined && answers[i] !== null
+
+  // Ambil data ujian + keadaan tersimpan di server. lanjut = true: kembali ke ujian yang sedang berjalan.
+  const siapkanUjian = async (ref: { source: 'cbt' | 'ujian_harian'; id: string; mulai?: string }, lanjut = false): Promise<void> => {
+    const sesi = siswa.state.value.sesi
+    if (!sesi) throw new Error('Sesi berakhir. Masuk ulang.')
+    const cache = bacaSoalCache(ref.source, ref.id)
+    // Saat jam ujian baru tiba, ribuan siswa membuka bersamaan: jeda acak singkat agar beban server tersebar.
+    if (!lanjut && !cache && ref.mulai && siswa.sekarang() - new Date(ref.mulai).getTime() < 60_000) await sleep(Math.random() * 2500)
+    const hasil = await $fetch<any>('/api/cbt/siapkan', {
+      method: 'POST',
+      body: { nis: sesi.nis, token: sesi.token, grade: sesi.grade, source: ref.source, examId: ref.id, tanpaSoal: !!cache }
+    })
+    const soalMentah = hasil.questions || cache
+    if (!soalMentah?.length) throw new Error('Ujian belum memiliki soal. Hubungi pengawas.')
+    if (hasil.questions) { try { localStorage.setItem(SOAL_KEY(ref.source, ref.id), JSON.stringify(hasil.questions)) } catch { /* penyimpanan penuh: soal tetap dari server */ } }
+
+    const { questions: _soal, jawaban, ...info } = hasil
+    activeExam.value = info
+    examQuestions.value = mapExamQuestions(soalMentah)
+    Object.keys(answers).forEach(key => delete answers[Number(key)])
+    flags.clear()
+    terkirim.clear()
+    qIdx.value = 0
+    violations.value = info.pelanggaran ?? 0
+    remainingTime.value = typeof info.sisaDetik === 'number' ? info.sisaDetik : DURATION.value
+    const indeks = new Map(examQuestions.value.map((q, i) => [q.id, i]))
+    for (const [qid, nilai] of Object.entries<any>(jawaban || {})) {
+      const i = indeks.get(qid)
+      if (i === undefined) continue
+      answers[i] = nilai.a
+      if (nilai.d) flags.add(i)
+      terkirim.set(qid, tandaJawaban(i))
     }
+    restore() // cadangan di perangkat bisa lebih baru dari server (belum sempat terkirim)
+    agreeStart.value = false
 
+    if (info.terkunci) {
+      triggerToast('Ujian dikunci karena pelanggaran. Jawabanmu dikumpulkan otomatis.', 4000)
+      void doSubmit(true)
+      return
+    }
+    if (info.mulaiPada) { masukUjian(true); return }
     screen.value = 'confirm'
     window.scrollTo(0, 0)
+  }
+
+  // Dari Beranda/Jadwal: hanya bisa dibuka bila jam ujiannya sudah tiba.
+  const bukaUjian = async (u: UjianSiswa): Promise<void> => {
+    if (loadingExam.value) return
+    const k = keadaanUjian(u, siswa.sekarang())
+    if (k === 'terkunci' || k === 'belum') { triggerToast('Waktu ujian tersebut belum tiba.'); return }
+    if (k === 'selesai') { triggerToast('Kamu sudah mengumpulkan ujian ini.'); return }
+    if (k === 'akun-terkunci') { triggerToast('Akunmu terkunci untuk ujian ini. Hubungi pengawas.', 3500); return }
+    if (k === 'lewat') { triggerToast('Waktu ujian telah berakhir.'); return }
+    loadingExam.value = true
+    try {
+      await siapkanUjian(u)
+    } catch (error: any) {
+      triggerToast(pesanGalat(error, error?.message || 'Ujian gagal dibuka. Coba lagi.'), 3500)
+      void siswa.muatJadwal(true)
+    } finally { loadingExam.value = false }
+  }
+
+  // Setelah refresh di tengah ujian: kembali ke ujian tanpa verifikasi ulang.
+  const pulihkanUjian = async (): Promise<boolean> => {
+    let aktif: { source: 'cbt' | 'ujian_harian'; id: string } | null = null
+    try { aktif = JSON.parse(sessionStorage.getItem(AKTIF_KEY) || 'null') } catch { aktif = null }
+    if (!aktif || !siswa.state.value.sesi) return false
+    loadingExam.value = true
+    try {
+      await siapkanUjian(aktif, true)
+      return true
+    } catch {
+      try { sessionStorage.removeItem(AKTIF_KEY) } catch { /* abaikan */ }
+      return false
+    } finally { loadingExam.value = false }
   }
 
   const startExam = (): void => {
     if (!agreeStart.value) {
       triggerToast('Centang persetujuan tata tertib terlebih dahulu.')
-      return
-    }
-    // Login dibuka 5 menit lebih awal, tetapi pengerjaan baru boleh dimulai tepat pada jadwal.
-    const mulai = activeExam.value?.startsAt ? new Date(activeExam.value.startsAt).getTime() : 0
-    if (mulai && Date.now() + selisihJam < mulai) {
-      const jam = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).format(mulai)
-      triggerToast(`Ujian dimulai pukul ${jam} WIB. Tombol Mulai aktif saat waktu ujian tiba.`, 3500)
       return
     }
     openModal({
@@ -437,7 +517,7 @@ export const useCbtExam = () => {
       okText: 'Mulai sekarang',
       cancelText: 'Batal',
       btnClass: 'btn-primary',
-      onOk: () => beginExam()
+      onOk: () => { void beginExam() }
     })
   }
 
@@ -449,34 +529,82 @@ export const useCbtExam = () => {
     }
   }
 
-  const beginExam = (): void => {
+  // Timer dimulai di server saat siswa menekan Mulai (tahan refresh/ganti perangkat).
+  const beginExam = async (): Promise<void> => {
+    try {
+      const hasil = await $fetch<any>('/api/cbt/mulai', { method: 'POST', body: kunciDasar() })
+      remainingTime.value = hasil.sisaDetik
+    } catch (error: any) {
+      triggerToast(pesanGalat(error, 'Ujian belum bisa dimulai. Coba lagi.'), 3500)
+      return
+    }
+    masukUjian(false)
+  }
+
+  const masukUjian = (lanjut: boolean): void => {
     restore()
+    try { sessionStorage.setItem(AKTIF_KEY, JSON.stringify({ source: activeExam.value?.source, id: activeExam.value?.id })) } catch { /* abaikan */ }
     screen.value = 'exam'
     window.scrollTo(0, 0)
     startTimer()
-    triggerToast('Selamat mengerjakan! Jawaban tersimpan otomatis setiap 10 detik.', 3000)
+    triggerToast(lanjut ? 'Melanjutkan ujianmu. Jawaban yang tersimpan sudah dipulihkan.' : 'Selamat mengerjakan! Jawaban tersimpan otomatis setiap 10 detik.', 3000)
   }
 
+  let batasWaktu = 0
+  let denyut = 0
   const startTimer = (): void => {
     stopTimer()
+    batasWaktu = Date.now() + remainingTime.value * 1000
+    denyut = 0
     timerId = setInterval(() => {
-      if (isTimerFrozen.value) return // Fitur darurat: Freeze timer aktif
+      if (isTimerFrozen.value) { batasWaktu += 1000; return } // Fitur darurat: Freeze timer aktif
 
-      remainingTime.value--
+      // Dihitung dari batas waktu (bukan hitung mundur 1 detik) agar tetap akurat saat HP melambat.
+      remainingTime.value = Math.max(0, Math.ceil((batasWaktu - Date.now()) / 1000))
       if (remainingTime.value === 300) {
         triggerToast('Sisa waktu 5 menit! Periksa kembali jawabanmu.')
       }
       if (remainingTime.value <= 0) {
-        remainingTime.value = 0
         autoSubmit()
-      } else if (remainingTime.value % 10 === 0) {
+      } else if (++denyut % 10 === 0) {
         persist(true)
+        void sinkronServer()
       }
     }, 1000)
   }
 
   const stopTimer = (): void => {
     if (timerId) { clearInterval(timerId); timerId = null }
+  }
+
+  // Kirim jawaban yang berubah + pelanggaran yang tertunda (bila jaringan sempat putus).
+  let sedangKirim = false
+  const antrePelanggaran: string[] = []
+  const jawabanBerubah = (semua = false) => {
+    const daftar: Array<{ q: string; a: unknown; d: boolean }> = []
+    questions.value.forEach((q, i) => {
+      if (!q.id || !adaJawaban(i)) return
+      if (semua || terkirim.get(q.id) !== tandaJawaban(i)) daftar.push({ q: q.id, a: answers[i], d: flags.has(i) })
+    })
+    return daftar
+  }
+  const sinkronServer = async (): Promise<void> => {
+    if (sedangKirim || !activeExam.value) return
+    sedangKirim = true
+    try {
+      while (antrePelanggaran.length) {
+        await $fetch('/api/cbt/pelanggaran', { method: 'POST', body: { ...kunciDasar(), jenis: antrePelanggaran[0] } })
+        antrePelanggaran.shift()
+      }
+      const daftar = jawabanBerubah()
+      if (!daftar.length) return
+      await $fetch('/api/cbt/simpan', { method: 'POST', body: { ...kunciDasar(), jawaban: daftar } })
+      for (const item of daftar) {
+        const i = questions.value.findIndex(q => q.id === item.q)
+        if (i >= 0) terkirim.set(item.q, tandaJawaban(i))
+      }
+    } catch { /* jaringan lemot: dicoba lagi di denyut berikutnya; cadangan di perangkat tetap ada */ }
+    finally { sedangKirim = false }
   }
 
   const toggleFreezeTimer = (): void => {
@@ -494,7 +622,6 @@ export const useCbtExam = () => {
         nis: loginForm.nis,
         answers,
         flags: [...flags],
-        remaining: remainingTime.value,
         idx: qIdx.value,
         violations: violations.value,
         savedAt: Date.now()
@@ -516,9 +643,8 @@ export const useCbtExam = () => {
         flags.clear()
         d.flags.forEach((f: number) => flags.add(f))
       }
-      if (typeof d.remaining === 'number' && d.remaining > 0) remainingTime.value = d.remaining
-      if (typeof d.idx === 'number') qIdx.value = Math.min(d.idx, totalQuestions.value - 1)
-      if (typeof d.violations === 'number') violations.value = d.violations
+      if (typeof d.idx === 'number') qIdx.value = Math.max(0, Math.min(d.idx, totalQuestions.value - 1))
+      if (typeof d.violations === 'number') violations.value = Math.max(violations.value, d.violations)
       return true
     } catch (e) {
       return false
@@ -610,6 +736,7 @@ export const useCbtExam = () => {
   const goReview = (): void => {
     stopAudio()
     persist(true)
+    void sinkronServer()
     submitAgree.value = false
     revFilter.value = 'all'
     screen.value = 'review'
@@ -661,10 +788,34 @@ export const useCbtExam = () => {
     })
   }
 
-  const doSubmit = (auto: boolean): void => {
+  let sedangKumpul = false
+  const doSubmit = async (auto: boolean): Promise<void> => {
+    if (sedangKumpul) return
+    sedangKumpul = true
     stopTimer()
     stopAudio()
-    try { localStorage.removeItem(SAVE_KEY.value) } catch (e) {}
+    try {
+      await $fetch('/api/cbt/kumpulkan', { method: 'POST', body: { ...kunciDasar(), jawaban: jawabanBerubah(true) } })
+    } catch (error: any) {
+      sedangKumpul = false
+      // Jangan lanjut ke layar selesai bila server belum menerima jawaban.
+      openModal({
+        title: 'Pengumpulan belum berhasil',
+        desc: `${pesanGalat(error, 'Koneksi bermasalah.')}<br><br>Jawabanmu aman di perangkat ini. Periksa koneksi internet lalu coba lagi.`,
+        okText: 'Coba Lagi',
+        btnClass: 'btn-primary',
+        onOk: () => { void doSubmit(auto) }
+      })
+      return
+    }
+    sedangKumpul = false
+    const kunci = activeExam.value
+    try {
+      localStorage.removeItem(SAVE_KEY.value)
+      if (kunci) localStorage.removeItem(SOAL_KEY(kunci.source, kunci.id))
+      sessionStorage.removeItem(AKTIF_KEY)
+    } catch (e) {}
+    siswa.kadaluwarsa()
 
     const d = new Date()
     doneTime.value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} WIB`
@@ -674,6 +825,8 @@ export const useCbtExam = () => {
 
     if (auto) {
       doneMsg.value = 'Waktu ujian telah habis. Jawabanmu dikumpulkan otomatis dan sudah terkirim ke server.'
+    } else {
+      doneMsg.value = 'Jawabanmu sudah tersimpan dan terkirim ke server. Terima kasih sudah mengerjakan dengan jujur.'
     }
 
     screen.value = 'done'
@@ -681,8 +834,11 @@ export const useCbtExam = () => {
   }
 
   const resetToHome = (): void => {
-    try { localStorage.removeItem(SAVE_KEY.value) } catch (e) {}
-    router.push('/')
+    appTab.value = 'home'
+    screen.value = 'app'
+    activeExam.value = null
+    void siswa.muatJadwal(true)
+    window.scrollTo(0, 0)
   }
 
   /* Keyboard handler */
@@ -711,7 +867,7 @@ export const useCbtExam = () => {
   /* Anti cheat & leave protection */
   let lastViolationTimestamp = 0
 
-  const triggerCheatLock = (customReason?: string, explicitLevel?: number): void => {
+  const triggerCheatLock = (customReason?: string, explicitLevel?: number, jenis?: string): void => {
     const now = Date.now()
     if (!explicitLevel && now - lastViolationTimestamp < 1200) return // debounce rapid blur & visibility events
     lastViolationTimestamp = now
@@ -722,6 +878,13 @@ export const useCbtExam = () => {
       violations.value++
     }
     persist(true)
+    // Simulasi (uji coba) tidak dicatat; pelanggaran nyata dicatat di server dan menjadi bagian Rekap Ujian.
+    if (jenis && activeExam.value) {
+      if (jenis === 'tutup_browser') {
+        // Saat halaman ditutup/dimuat ulang, fetch biasa terputus: pakai sendBeacon agar tetap tercatat.
+        try { navigator.sendBeacon('/api/cbt/pelanggaran', new Blob([JSON.stringify({ ...kunciDasar(), jenis })], { type: 'application/json' })) } catch { antrePelanggaran.push(jenis) }
+      } else { antrePelanggaran.push(jenis); void sinkronServer() }
+    }
 
     const defaultReason = 'Meninggalkan layar ujian (terdeteksi perpindahan tab, alt+tab, atau aplikasi lain)'
     const reasonText = customReason || defaultReason
@@ -774,14 +937,14 @@ export const useCbtExam = () => {
   const onVisibilityChange = (): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
       if (document.visibilityState === 'hidden') {
-        triggerCheatLock('Berpindah tab atau meminimalkan jendela ujian')
+        triggerCheatLock('Berpindah tab atau meminimalkan jendela ujian', undefined, 'pindah_tab')
       }
     }
   }
 
   const onWindowBlur = (): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
-      triggerCheatLock('Kehilangan fokus jendela ujian (membuka aplikasi lain / Alt+Tab)')
+      triggerCheatLock('Kehilangan fokus jendela ujian (membuka aplikasi lain / Alt+Tab)', undefined, 'alt_tab')
     }
   }
 
@@ -789,7 +952,7 @@ export const useCbtExam = () => {
     if (screen.value === 'exam' || screen.value === 'review') {
       e.preventDefault()
       e.returnValue = 'Dilarang meninggalkan atau menutup halaman ujian! Tindakan ini akan mengunci akun ujian Anda.'
-      triggerCheatLock('Mencoba menutup atau me-reload jendela ujian')
+      triggerCheatLock('Mencoba menutup atau me-reload jendela ujian', undefined, 'tutup_browser')
     }
   }
 
@@ -832,6 +995,11 @@ export const useCbtExam = () => {
   }
 
   return {
+    siswa,
+    appTab,
+    bukaUjian,
+    pulihkanUjian,
+    keluarAplikasi,
     activeExam,
     loadingExam,
     grade,

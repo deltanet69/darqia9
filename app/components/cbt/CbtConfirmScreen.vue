@@ -8,6 +8,7 @@
           <div class="text-sm font-extrabold text-slate-900 leading-tight">{{ jenjangText }}</div>
           <div class="text-xs font-semibold text-slate-500">Verifikasi Data Ujian</div>
         </div>
+        <button type="button" class="ml-auto shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 bg-white" @click="$emit('kembali')">Kembali</button>
       </div>
     </div>
 
@@ -53,22 +54,22 @@
               <div>
                 <div class="text-[11px] font-bold uppercase tracking-wider text-blue-300">Kartu Peserta Ujian</div>
                 <div class="text-lg font-black text-white leading-tight">{{ exam?.studentName }}</div>
-                <div class="text-xs text-slate-300 mt-0.5">NIS {{ loginForm.nis }} &bull; {{ exam?.classroom }}</div>
+                <div class="text-xs text-slate-300 mt-0.5">NIS {{ nis }} &bull; {{ exam?.classroom }}</div>
               </div>
             </div>
 
             <div class="grid grid-cols-3 gap-2 pt-4 border-t border-white/10 text-center text-xs">
               <div class="bg-white/5 rounded-xl p-2.5 backdrop-blur-sm">
                 <span class="block text-[10px] text-slate-400 uppercase font-semibold">Token</span>
-                <b class="text-blue-300 font-mono font-bold text-xs truncate block mt-0.5">{{ exam?.code }}</b>
+                <b class="text-blue-300 font-mono font-bold text-xs truncate block mt-0.5">{{ token }}</b>
               </div>
               <div class="bg-white/5 rounded-xl p-2.5 backdrop-blur-sm">
                 <span class="block text-[10px] text-slate-400 uppercase font-semibold">Ruang</span>
-                <b class="text-white font-bold block mt-0.5">Online</b>
+                <b class="text-white font-bold block mt-0.5">{{ ruang || 'Online' }}</b>
               </div>
               <div class="bg-white/5 rounded-xl p-2.5 backdrop-blur-sm">
-                <span class="block text-[10px] text-slate-400 uppercase font-semibold">Sesi</span>
-                <b class="text-white font-bold block mt-0.5">1</b>
+                <span class="block text-[10px] text-slate-400 uppercase font-semibold">Jenjang</span>
+                <b class="text-white font-bold block mt-0.5">{{ grade }}</b>
               </div>
             </div>
           </div>
@@ -168,7 +169,7 @@
                 <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                 </span>
-                <span>Kerjakan tepat waktu — durasi ujian <b>90 menit</b> dan tidak bisa diperpanjang.</span>
+                <span>Kerjakan tepat waktu — durasi ujian <b>{{ exam?.duration }} menit</b> dan tidak bisa diperpanjang.</span>
               </li>
               <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
@@ -222,14 +223,16 @@
 </template>
 
 <script setup lang="ts">
-import type { LoginForm, SectionItem } from '~/composables/useCbtExam'
+import type { SectionItem } from '~/composables/useCbtExam'
 
 defineProps<{
   screen: string
   exam?: { studentName: string; classroom: string; code: string; name: string; subject: string; duration: number } | null
   jenjangText: string
   grade: string
-  loginForm: LoginForm
+  nis: string
+  token: string
+  ruang?: string | null
   totalQuestions: number
   sections: SectionItem[]
   openedAcc: string
@@ -241,5 +244,6 @@ defineEmits<{
   (e: 'toggle-acc', id: string): void
   (e: 'update:agreeStart', val: boolean): void
   (e: 'start-exam'): void
+  (e: 'kembali'): void
 }>()
 </script>

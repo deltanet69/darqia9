@@ -43,6 +43,7 @@ export interface ExamItem {
   violations: number
   supervisor: string
   supervisorId?: string
+  jenis?: 'akhir' | 'tengah_semester'
 }
 
 export interface BankQuestionItem {

@@ -62,6 +62,7 @@ export interface CbtExamInput {
   startsAt: string
   duration: number
   token?: string
+  jenis?: 'akhir' | 'tengah_semester' // hanya ujian CBT (bukan ujian harian)
 }
 
 const isUuid = (value?: string) =>
@@ -127,11 +128,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     error.value = null
 
     try {
-      const [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult] = await Promise.all([
+      // Kolom jenis (migrasi 0047) hanya ada di tabel ujian CBT; sebelum migrasi dijalankan, ulangi tanpa kolom itu.
+      const kolomUjianDasar = 'id, name, class_id, subject_id, question_bank_id, grade, starts_at, duration_minutes, status, code, supervisor_id'
+      const ambilUjian = (kolom: string) => client.from(tables.exams).select(kolom).order('starts_at', { ascending: false })
+      const [classResult, subjectResult, bankResult, examAwal, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult] = await Promise.all([
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
-        client.from(tables.exams).select('id, name, class_id, subject_id, question_bank_id, grade, starts_at, duration_minutes, status, code, supervisor_id').order('starts_at', { ascending: false }),
+        ambilUjian(source === 'cbt' ? `${kolomUjianDasar}, jenis` : kolomUjianDasar),
         client.from(tables.assignments).select('id, exam_id, status'),
         fetchSiswaAktif(),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
@@ -140,6 +144,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from('class_schedules').select('class_id, subject_id, teacher_id').eq('active', true)
       ])
 
+      const examResult = examAwal.error && /jenis/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
       const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult]
         .find(result => result.error)?.error
       if (firstError) throw firstError
@@ -252,7 +257,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             violations: violationCounts.get(row.id) ?? 0,
             supervisor: teacherById.get(row.supervisor_id)?.name ?? '',
             supervisorId: row.supervisor_id ?? '',
-            bankCode: bankById.get(row.question_bank_id)?.code ?? ''
+            bankCode: bankById.get(row.question_bank_id)?.code ?? '',
+            jenis: row.jenis ?? 'akhir'
           } as ExamItem
         })
 
@@ -508,6 +514,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     // ujian; token tetap dapat diterbitkan dari panel Token Peserta.
     if (typeof savedExamId === 'string' && savedExamId) {
       try { await client.rpc('issue_exam_tokens', { target_exam_id: savedExamId, source }) } catch { /* diabaikan */ }
+      // Jenis ujian (Akhir / Tengah Semester) hanya untuk ujian CBT; kolomnya dibuat migrasi 0047.
+      if (source === 'cbt' && input.jenis) {
+        const { error: jenisError } = await client.from('exams').update({ jenis: input.jenis }).eq('id', savedExamId)
+        if (jenisError) {
+          await load(true)
+          throw new Error('Ujian tersimpan, tetapi jenis ujian belum tersimpan. Jalankan migrasi 0047_cbt_siswa_app.sql di Supabase SQL Editor.')
+        }
+      }
     }
     await load(true)
     return token

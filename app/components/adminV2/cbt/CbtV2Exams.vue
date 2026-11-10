@@ -67,7 +67,8 @@ const emptyExam = () => ({
   startsAt: localDateTime(new Date(Date.now() + 86_400_000)),
   duration: 90,
   token: '',
-  supervisorId: ''
+  supervisorId: '',
+  jenis: 'akhir' as 'akhir' | 'tengah_semester'
 })
 
 const newExam = ref(emptyExam())
@@ -237,7 +238,8 @@ const openEditSchedule = (exam: ExamItem) => {
     startsAt: exam.startsAt ? localDateTime(new Date(exam.startsAt)) : localDateTime(new Date()),
     duration: exam.duration,
     token: exam.token,
-    supervisorId: exam.supervisorId ?? ''
+    supervisorId: exam.supervisorId ?? '',
+    jenis: exam.jenis ?? 'akhir'
   }
   wizardStep.value = 1
   soalMode.value = 'manual'
@@ -246,7 +248,7 @@ const openEditSchedule = (exam: ExamItem) => {
   void loadSelection(exam.questionIds)
 }
 
-const draftKey = `cbt-ujian-draf:${props.source ?? 'cbt'}:${props.grade}`
+const draftKey = () => `cbt-ujian-draf:${props.source ?? 'cbt'}:${props.grade}`
 watch([isCreateModalOpen, newExam, wizardStep, soalMode, acakCount, selectedQuestionIds, acakRolled], () => {
   try {
     if (!isCreateModalOpen.value) sessionStorage.removeItem(draftKey())
@@ -466,6 +468,13 @@ const removeSchedule = async (exam: ExamItem) => {
                   </select>
                 </div>
                 <p v-if="!subjectHasBank" class="sm:col-span-2 p-3 rounded-xl bg-[#FEF4E5] text-[#7A4A03] font-semibold">Belum ada bank soal untuk mapel ini di rombel ini. Buat dulu bank soalnya di tab Bank Soal — ujian belum dapat dilanjutkan ke jadwal sebelum bank soal tersedia.</p>
+              </div>
+              <div v-if="source !== 'ujian_harian'">
+                <label class="block font-bold text-[#344054] mb-1">Jenis Ujian</label>
+                <select v-model="newExam.jenis" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
+                  <option value="akhir">Ujian Akhir</option>
+                  <option value="tengah_semester">Ujian Tengah Semester</option>
+                </select>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

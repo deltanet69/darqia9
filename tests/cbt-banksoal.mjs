@@ -283,19 +283,36 @@ assert.ok(tablesRead.includes('ujian_harian'))
 assert.ok(!tablesRead.includes('question_banks'))
 assert.ok(!tablesRead.includes('exams'))
 
-globalThis.useRoute = () => ({ query: {} })
 let studentSession
 const { useCbtExam } = await import('../app/composables/useCbtExam.ts')
 const studentApp = createSSRApp({ setup() { studentSession = useCbtExam(); return () => h('div') } })
-studentApp.provide(routerKey, { push() {} })
 await renderToString(studentApp)
+// Login ringan: hanya profil + jadwal, tanpa soal.
+const jam = Date.now()
+const ujianSiswa = { source: 'cbt', id: 'exam-uji', jenis: 'akhir', mulai: new Date(jam - 60000).toISOString(), durasi: 30, terkunci: false, nama: 'Ujian uji', mapel: 'Mapel uji', statusUjian: 'terjadwal', statusSiswa: 'belum_mulai', dikumpulkan: null }
+let panggilan = []
+globalThis.$fetch = async (url, opsi) => {
+  panggilan.push(url)
+  if (url === '/api/cbt/login') return { serverNow: new Date(jam).toISOString(), siswa: { nama: 'Peserta Uji', nis: 'nis-uji', nisn: '1', jenjang: 'SMK', gender: 'L', kelas: 'Kelas uji', token: 'TOKENUJI', ruang: null }, ujian: [ujianSiswa] }
+  if (url === '/api/cbt/siapkan') return { id: 'exam-uji', source: 'cbt', name: 'Ujian uji', duration: 30, sisaDetik: 1800, studentName: 'Peserta Uji', classroom: 'Kelas uji', subject: 'Mapel uji', pelanggaran: 0, terkunci: false, jawaban: {}, questions: [rows[2], rows[0]] }
+  throw new Error('panggilan tak terduga ' + url)
+}
 studentSession.loginForm.nis = 'nis-uji'
 studentSession.loginForm.kode = 'token-uji'
-globalThis.$fetch = async () => ({ id: 'exam-uji', duration: 30, questions: [rows[2], rows[0]] })
 await studentSession.doLogin()
+assert.equal(studentSession.screen.value, 'app')
+assert.deepEqual(panggilan, ['/api/cbt/login'], 'Login tidak memuat soal')
+assert.equal(studentSession.questions.value.length, 0)
+await studentSession.bukaUjian(ujianSiswa)
+assert.equal(studentSession.screen.value, 'confirm')
 assert.deepEqual(studentSession.questions.value.map(q => q.id), [ids[2], ids[0]], 'Siswa hanya menerima subset dalam urutan respons server')
-globalThis.$fetch = async () => ({ id: 'exam-lama-uji', duration: 90, questions: rows })
-await studentSession.doLogin()
+// Ujian yang jamnya belum tiba tidak dapat dibuka dan tidak memanggil server
+panggilan = []
+await studentSession.bukaUjian({ ...ujianSiswa, mulai: new Date(jam + 3600000).toISOString() })
+assert.deepEqual(panggilan, [], 'Ujian yang belum waktunya tidak diminta ke server')
+assert.equal(studentSession.toastMsg.value, 'Waktu ujian tersebut belum tiba.')
+globalThis.$fetch = async url => url === '/api/cbt/siapkan' ? { id: 'exam-lama-uji', source: 'cbt', duration: 90, sisaDetik: 5400, jawaban: {}, questions: rows } : {}
+await studentSession.bukaUjian(ujianSiswa)
 assert.equal(studentSession.questions.value.length, 3)
 assert.equal(studentSession.questions.value[1].type, 'short', 'Soal lama Isian masih dimuat siswa')
 

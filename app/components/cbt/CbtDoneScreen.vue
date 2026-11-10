@@ -21,16 +21,16 @@
             <span class="text-[11px] font-bold uppercase tracking-wider text-blue-300 block">Ringkasan Pengumpulan</span>
             
             <dl class="space-y-2.5 text-xs">
-              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Nama</dt><dd class="font-bold">Ahmad Fauzi</dd></div>
-              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Mata Pelajaran</dt><dd class="font-bold">Informatika</dd></div>
-              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Materi</dt><dd class="font-bold">{{ grade === 'SMP' ? 'Informatika & Komputer Dasar' : 'Jaringan Komputer Dasar' }}</dd></div>
+              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Nama</dt><dd class="font-bold text-right">{{ studentName }}</dd></div>
+              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Mata Pelajaran</dt><dd class="font-bold text-right">{{ subject }}</dd></div>
+              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Materi</dt><dd class="font-bold text-right">{{ examName }}</dd></div>
               <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Waktu Selesai</dt><dd class="font-bold">{{ doneTime }}</dd></div>
               <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Durasi Pengerjaan</dt><dd class="font-bold">{{ doneDur }}</dd></div>
               <div class="flex justify-between pb-1"><dt class="text-slate-400">Soal Terjawab</dt><dd class="font-bold text-blue-400">{{ answeredCount }} dari {{ totalQuestions }}</dd></div>
             </dl>
 
             <div class="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div class="h-full bg-emerald-400" :style="{ width: Math.round(answeredCount / totalQuestions * 100) + '%' }"></div>
+              <div class="h-full bg-emerald-400" :style="{ width: (totalQuestions ? Math.round(answeredCount / totalQuestions * 100) : 0) + '%' }"></div>
             </div>
           </div>
 
@@ -40,7 +40,7 @@
             <ul class="space-y-2.5 text-xs text-slate-700">
               <li class="flex items-start gap-2.5">
                 <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 font-bold">✓</span>
-                <span>Nilai akan diumumkan oleh guru/pengawas setelah diperiksa.</span>
+                <span>Nilai ujian harian dapat dilihat di menu Rekap Ujian; nilai ujian lainnya diumumkan oleh guru.</span>
               </li>
               <li class="flex items-start gap-2.5">
                 <span class="w-5 h-5 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5 font-bold">✓</span>
@@ -66,6 +66,9 @@
 defineProps<{
   screen: string
   grade: string
+  studentName: string
+  subject: string
+  examName: string
   doneMsg: string
   doneTime: string
   doneDur: string

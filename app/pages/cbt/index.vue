@@ -9,12 +9,29 @@
       @login="cbt.doLogin"
     />
 
+    <!-- SCREEN 1B : APLIKASI SISWA (Beranda, Jadwal Ujian, Rekap Ujian, Profil) -->
+    <CbtAppScreen
+      v-model:tab="cbt.appTab.value"
+      :screen="cbt.screen.value"
+      :jenjang-text="cbt.jenjangText.value"
+      :profil="cbt.siswa.state.value.siswa"
+      :ujian="cbt.siswa.state.value.ujian"
+      :rekap="cbt.siswa.state.value.rekap"
+      :memuat="cbt.siswa.state.value.memuat"
+      :sekarang="cbt.siswa.sekarang"
+      @buka-ujian="cbt.bukaUjian"
+      @muat-ulang="segarkan"
+      @keluar="cbt.keluarAplikasi"
+    />
+
     <!-- SCREEN 2 : VERIFIKASI & TATA TERTIB -->
     <CbtConfirmScreen
       :screen="cbt.screen.value"
       :jenjang-text="cbt.jenjangText.value"
       :grade="cbt.grade.value"
-      :login-form="cbt.loginForm"
+      :nis="cbt.siswa.state.value.siswa?.nis ?? ''"
+      :token="cbt.siswa.state.value.siswa?.token ?? ''"
+      :ruang="cbt.siswa.state.value.siswa?.ruang"
       :total-questions="cbt.totalQuestions.value"
       :exam="cbt.activeExam.value"
       :sections="cbt.sections"
@@ -24,6 +41,7 @@
       @toggle-acc="cbt.toggleAcc"
       @update:agree-start="cbt.setAgreeStart"
       @start-exam="cbt.startExam"
+      @kembali="cbt.screen.value = 'app'"
     />
 
     <!-- SCREEN 3 : UJIAN -->
@@ -97,6 +115,9 @@
     <CbtDoneScreen
       :screen="cbt.screen.value"
       :grade="cbt.grade.value"
+      :student-name="cbt.activeExam.value?.studentName ?? ''"
+      :subject="cbt.activeExam.value?.subject ?? ''"
+      :exam-name="cbt.activeExam.value?.name ?? ''"
       :done-msg="cbt.doneMsg.value"
       :done-time="cbt.doneTime.value"
       :done-dur="cbt.doneDur.value"
@@ -108,7 +129,7 @@
     <!-- TOAST NOTIFICATION -->
     <div
       v-if="cbt.toastMsg.value !== ''"
-      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs sm:text-sm shadow-2xl border border-slate-700 animate-fadeIn"
+      class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs sm:text-sm shadow-2xl border border-slate-700 animate-fadeIn"
     >
       {{ cbt.toastMsg.value }}
     </div>
@@ -125,9 +146,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useCbtExam } from '~/composables/useCbtExam'
 import CbtLoginScreen from '~/components/cbt/CbtLoginScreen.vue'
+import CbtAppScreen from '~/components/cbt/CbtAppScreen.vue'
 import CbtConfirmScreen from '~/components/cbt/CbtConfirmScreen.vue'
 import CbtExamScreen from '~/components/cbt/CbtExamScreen.vue'
 import CbtReviewScreen from '~/components/cbt/CbtReviewScreen.vue'
@@ -147,8 +169,27 @@ useHead({
 
 const cbt = useCbtExam()
 
-onMounted(() => {
+// Segarkan jadwal + rekap (dipaksa) dari tombol Segarkan.
+const segarkan = async () => {
+  await cbt.siswa.muatJadwal(true)
+  if (cbt.appTab.value === 'rekap') await cbt.siswa.muatRekap(true)
+}
+
+onMounted(async () => {
   cbt.registerListeners()
+  // Refresh: sesi login tetap ada; bila sedang di tengah ujian, langsung kembali ke ujiannya.
+  if (cbt.siswa.pulihkan()) {
+    cbt.grade.value = cbt.siswa.state.value.sesi!.grade
+    cbt.screen.value = 'app'
+    if (!await cbt.pulihkanUjian()) void cbt.siswa.muatJadwal()
+  }
+})
+
+// Buka tab: ambil ulang jadwal/rekap hanya bila data sudah lebih dari 1 menit.
+watch(() => cbt.appTab.value, (tab) => {
+  if (cbt.screen.value !== 'app') return
+  void cbt.siswa.muatJadwal()
+  if (tab === 'rekap') void cbt.siswa.muatRekap()
 })
 
 onUnmounted(() => {

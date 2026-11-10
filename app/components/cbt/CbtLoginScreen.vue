@@ -1,240 +1,87 @@
 <template>
-  <section v-show="screen === 'login'" class="min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#08152B] via-[#0E2754] to-[#F1F5F9] relative overflow-hidden text-slate-900 font-sans">
-    <!-- Ambient Background Lighting & Particles -->
-    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-br from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-    <div class="absolute top-20 right-[-100px] w-[350px] h-[350px] bg-sky-400/15 rounded-full blur-3xl pointer-events-none" />
-    <div class="absolute top-32 left-[-100px] w-[300px] h-[300px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
-
-    <!-- Top Navigation / Brand Status Bar -->
-    <header class="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <!-- School Identity -->
-      <div class="flex items-center gap-3.5">
-        <div class="relative w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-2 flex items-center justify-center shadow-lg">
-          <img src="/asset/logo.png" alt="Logo Sekolah" class="w-full h-full object-contain drop-shadow-md">
-        </div>
-        <div class="text-left text-white">
-          <div class="flex items-center gap-2">
-            <h1 class="text-base sm:text-lg font-black tracking-tight leading-tight text-white">{{ jenjangText }}</h1>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/30 text-blue-200 border border-blue-400/30">
-              CBT v2.5
-            </span>
-          </div>
-          <p class="text-xs text-blue-200/80 font-medium">Computer Based Test &bull; Ujian Terstandar Komputer</p>
-        </div>
+  <section v-show="screen === 'login'" class="min-h-screen flex flex-col bg-gradient-to-b from-[#08152B] via-[#0E2754] to-[#F1F5F9] text-slate-900 font-sans">
+    <main class="flex-1 w-full max-w-md mx-auto px-4 pt-10 pb-8 flex flex-col items-center">
+      <!-- Identitas -->
+      <div class="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 p-2.5 flex items-center justify-center shadow-lg">
+        <img src="/asset/logo.png" alt="Logo Sekolah" class="w-full h-full object-contain">
       </div>
+      <p class="mt-3 text-xs font-bold text-blue-100 text-center">{{ jenjangText }}</p>
+      <span class="mt-3 inline-flex px-3.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-white/15 text-blue-100 border border-white/20">
+        Tahun Ajaran {{ tahunAjaran }}
+      </span>
 
-      <!-- Live Server & Grade Switcher -->
-      <div class="flex flex-wrap items-center gap-2.5">
-        <!-- Live Server Status Indicator -->
-        <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white text-xs font-semibold shadow-xs">
-          <span class="relative flex h-2.5 w-2.5">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-          </span>
-          <span class="text-emerald-300 font-bold">Server CBT Online</span>
-          <span class="text-white/40">&bull;</span>
-          <span class="text-slate-300 font-mono text-[11px]">Latensi: 8ms</span>
-        </div>
+      <h1 class="mt-4 text-3xl font-black text-white tracking-tight text-center">Portal Ujian Online</h1>
+      <p class="mt-2 text-xs sm:text-sm text-blue-100/90 leading-relaxed font-medium text-center">
+        Masuk menggunakan akun peserta yang telah diverifikasi oleh panitia ujian untuk memulai sesi pengerjaan.
+      </p>
 
-        <!-- Grade Segmented Switcher -->
-        <div class="bg-black/30 backdrop-blur-md p-1 rounded-2xl border border-white/15 flex items-center shadow-xs">
+      <!-- Kartu login -->
+      <div class="mt-6 w-full bg-white rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.35)]">
+        <div class="bg-slate-100 p-1 rounded-2xl grid grid-cols-2 gap-1 mb-4" role="group" aria-label="Pilih jenjang">
           <button
             type="button"
-            class="px-3 py-1 rounded-xl text-xs font-extrabold transition-all"
-            :class="activeGrade === 'SMK' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/40' : 'text-slate-300 hover:text-white'"
+            class="py-2 rounded-xl text-xs font-extrabold transition-all"
+            :class="activeGrade === 'SMK' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-500'"
             @click="setGrade('SMK')"
           >
-            SMK IT 9
+            SMK IT Attaqwa 9
           </button>
           <button
             type="button"
-            class="px-3 py-1 rounded-xl text-xs font-extrabold transition-all"
-            :class="activeGrade === 'SMP' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/40' : 'text-slate-300 hover:text-white'"
+            class="py-2 rounded-xl text-xs font-extrabold transition-all"
+            :class="activeGrade === 'SMP' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'text-slate-500'"
             @click="setGrade('SMP')"
           >
             SMP IT BCA
           </button>
         </div>
-      </div>
-    </header>
 
-    <!-- Main Content Container -->
-    <main class="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-6 max-w-5xl w-full mx-auto">
-      <!-- Title Section -->
-      <div class="text-center mb-7 space-y-2 max-w-xl mx-auto">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-white/15 text-blue-100 border border-white/20 shadow-inner">
-          <span>T.A 2026/2027</span>
-          <span class="text-white/40">&bull;</span>
-          <span>Semester Ganjil</span>
-        </div>
-        <h2 class="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-sm">
-          Portal Ujian Terstandar <br>
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-sky-200 to-indigo-200">
-            Mandiri &amp; Terintegrasi
-          </span>
-        </h2>
-        <p class="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-medium">
-          Masuk menggunakan akun peserta yang telah diverifikasi oleh panitia ujian untuk memulai sesi pengerjaan.
-        </p>
-      </div>
-
-      <!-- Login Card & Info Bento Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full max-w-4xl items-stretch">
-        <!-- Left: Interactive Login Card -->
-        <div class="lg:col-span-7 bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.3)] border border-white/80 flex flex-col justify-between">
+        <form autocomplete="off" class="space-y-3.5" @submit.prevent="emit('login')">
           <div>
-            <!-- Card Header -->
-            <div class="flex items-start justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
-              <div>
-                <span class="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider block mb-0.5">Autentikasi Siswa</span>
-                <h3 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Masuk Ujian</h3>
-              </div>
-              <span class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg shadow-inner">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
-              </span>
-            </div>
-
-            <!-- Login Form -->
-            <form @submit.prevent="doLogin" autocomplete="off" class="space-y-4">
-              <!-- NIS Input -->
-              <div>
-                <label for="f-nis" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>Nomor Peserta / NIS</span>
-                  <span class="text-[10.5px] font-normal text-slate-400">10 Digit NIS</span>
-                </label>
-                <div class="relative flex items-center">
-                  <span class="absolute left-3.5 text-slate-400 pointer-events-none">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  </span>
-                  <input
-                    id="f-nis"
-                    v-model="loginForm.nis"
-                    inputmode="numeric"
-                    placeholder="Contoh: 2024001234"
-                    class="w-full pl-10 pr-4 py-3 text-sm font-mono font-medium bg-slate-50/80 border-2 border-slate-200/90 rounded-2xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 placeholder:font-sans"
-                  />
-                  <button
-                    v-if="loginForm.nis"
-                    type="button"
-                    class="absolute right-3.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
-                    @click="loginForm.nis = ''"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <!-- Kode Ujian (Opsional) -->
-              <div>
-                <label for="f-kode" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>Kode Ujian / Token *</span>
-                </label>
-                <div class="relative flex items-center">
-                  <span class="absolute left-3.5 text-slate-400 pointer-events-none">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="16 18 22 12 16 6" />
-                      <polyline points="8 6 2 12 8 18" />
-                    </svg>
-                  </span>
-                  <input
-                    id="f-kode"
-                    v-model="loginForm.kode"
-                    placeholder="Contoh: IF-1201"
-                    class="w-full pl-10 pr-4 py-3 text-sm font-mono uppercase font-bold bg-slate-50/80 border-2 border-slate-200/90 rounded-2xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal"
-                  />
-                </div>
-              </div>
-
-              <!-- Submit Button -->
-              <button
-                type="submit"
-                :disabled="loading"
-                class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm shadow-xl shadow-blue-500/30 flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-[0.98] mt-3 cursor-pointer"
-              >
-                <span>{{ loading ? 'Memuat soal…' : 'Masuk Ujian Sekarang' }}</span>
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </button>
-            </form>
+            <label for="f-nis" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nomor Peserta / NIS</label>
+            <input
+              id="f-nis"
+              v-model="loginForm.nis"
+              inputmode="numeric"
+              autocomplete="username"
+              placeholder="Masukkan NIS"
+              class="w-full px-4 py-3 text-sm font-mono font-medium bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 placeholder:font-sans"
+            >
           </div>
-
-        </div>
-
-        <!-- Right: Security & Features Highlights -->
-        <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
-          <!-- Anti-Cheat Card -->
-          <div class="bg-gradient-to-br from-[#0F1E38] via-[#122B52] to-[#0A1A33] rounded-3xl p-6 text-white shadow-xl relative overflow-hidden border border-white/10 space-y-4">
-            <div class="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
-
-            <div class="flex items-center gap-3">
-              <span class="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center font-black">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-              </span>
-              <div>
-                <h4 class="text-sm font-black text-white">Sistem Integritas Ujian</h4>
-                <p class="text-[11px] text-blue-200/80">Protokol Keamanan &amp; Anti-Kecurangan</p>
-              </div>
-            </div>
-
-            <ul class="space-y-2.5 text-xs text-slate-200">
-              <li class="flex items-start gap-2.5">
-                <span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">✓</span>
-                <span><b>Autosave 10 Detik</b>: Jawaban tersimpan otomatis secara berkala ke cloud.</span>
-              </li>
-              <li class="flex items-start gap-2.5">
-                <span class="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">!</span>
-                <span><b>Deteksi Multitab</b>: Pindah tab atau keluar aplikasi memicu peringatan &amp; penguncian akun.</span>
-              </li>
-              <li class="flex items-start gap-2.5">
-                <span class="w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">✕</span>
-                <span><b>Batas 2x Pelanggaran</b>: Pelanggaran ke-3 mengunci akun total dari ujian.</span>
-              </li>
-            </ul>
-
-            <div class="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-slate-300 flex items-center gap-2">
-              <span class="text-blue-300 font-bold">ℹ️ Info:</span>
-              <span>Pastikan baterai perangkat cukup dan koneksi stabil selama ujian.</span>
-            </div>
+          <div>
+            <label for="f-kode" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Token Ujian</label>
+            <input
+              id="f-kode"
+              v-model="loginForm.kode"
+              autocomplete="off"
+              autocapitalize="characters"
+              placeholder="Masukkan token"
+              class="w-full px-4 py-3 text-sm font-mono uppercase font-bold bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal placeholder:normal-case"
+            >
           </div>
+          <button
+            type="submit"
+            :disabled="loading"
+            class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white font-black text-sm shadow-xl shadow-blue-500/30 transition-all active:scale-[0.98] disabled:opacity-60"
+          >
+            {{ loading ? 'Memeriksa akun…' : 'Masuk' }}
+          </button>
+        </form>
+      </div>
 
-          <!-- 2 Bento Mini Cards -->
-          <div class="grid grid-cols-2 gap-3">
-            <div class="p-4 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-1">
-              <span class="text-[10.5px] font-black uppercase tracking-wider text-blue-600 block">Format Soal</span>
-              <b class="text-xs font-black text-slate-900 block">4 Tipe Soal Ujian</b>
-              <span class="text-[10px] text-slate-500 block leading-tight">PG, Singkat, Essay &amp; Audio/Video Interaktif</span>
-            </div>
-
-            <div class="p-4 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-1">
-              <span class="text-[10.5px] font-black uppercase tracking-wider text-emerald-600 block">Waktu Ujian</span>
-              <b class="text-xs font-black text-slate-900 block">Standar 90 Menit</b>
-              <span class="text-[10px] text-slate-500 block leading-tight">Timer sinkron realtime dengan server sekolah</span>
-            </div>
-          </div>
-        </div>
+      <!-- Sistem Integritas Ujian -->
+      <div class="mt-4 w-full bg-gradient-to-br from-[#0F1E38] via-[#122B52] to-[#0A1A33] rounded-3xl p-5 text-white shadow-xl border border-white/10">
+        <h2 class="text-sm font-black">Sistem Integritas Ujian</h2>
+        <ul class="mt-3 space-y-2 text-xs text-slate-200 leading-relaxed">
+          <li><b>Jawaban tersimpan otomatis</b> ke server setiap 10 detik.</li>
+          <li><b>Pindah tab atau keluar aplikasi</b> terdeteksi dan memicu peringatan.</li>
+          <li><b>Pelanggaran ke-3</b> mengunci akunmu dari ujian tersebut.</li>
+        </ul>
       </div>
     </main>
 
-    <!-- Footer Note -->
-    <footer class="relative z-10 w-full text-center py-6 px-4 text-xs text-slate-500 border-t border-slate-200/60 bg-white/40 backdrop-blur-sm">
-      <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-medium">
-        <div>
-          Butuh bantuan teknis? Hubungi proktor di ruang pengawas atau panitia CBT.
-        </div>
-        <div class="text-slate-400 font-semibold text-[11px]">
-          &copy; 2026 {{ jenjangText }} &bull; Yayasan Darqia Attaqwa
-        </div>
-      </div>
+    <footer class="w-full text-center py-5 px-4 text-[11px] text-slate-500 border-t border-slate-200/60 bg-white/40">
+      Butuh bantuan? Hubungi proktor atau panitia ujian. &copy; 2026 {{ jenjangText }}
     </footer>
   </section>
 </template>
@@ -256,11 +103,14 @@ const emit = defineEmits<{
 
 const activeGrade = useAdminGrade()
 
+// Tahun ajaran berganti setiap Juli.
+const sekarang = new Date()
+const mulaiTahun = sekarang.getMonth() >= 6 ? sekarang.getFullYear() : sekarang.getFullYear() - 1
+const tahunAjaran = `${mulaiTahun}/${mulaiTahun + 1}`
+
 const setGrade = (gradeVal: 'SMK' | 'SMP') => {
   activeGrade.value = gradeVal
   props.loginForm.nis = ''
   props.loginForm.kode = ''
 }
-
-const doLogin = () => emit('login')
 </script>
