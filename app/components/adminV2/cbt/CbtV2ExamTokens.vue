@@ -160,7 +160,7 @@ const printCards = () => {
 
 <template>
   <Teleport to="body">
-    <div class="fixed inset-0 z-50 overflow-y-auto flex items-start sm:items-center justify-center p-4 bg-black/50 backdrop-blur-xs" role="dialog" aria-modal="true" aria-label="Token peserta ujian" @keydown.esc="emit('close')">
+    <div class="fixed inset-0 z-[100] overflow-y-auto flex items-start sm:items-center justify-center p-4 bg-black/50 backdrop-blur-xs" role="dialog" aria-modal="true" aria-label="Token peserta ujian" @keydown.esc="emit('close')">
       <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90dvh] overflow-y-auto shadow-2xl border border-[#E7EBF2]">
         <div class="p-5 border-b border-[#E7EBF2] flex items-start justify-between gap-3">
           <div>

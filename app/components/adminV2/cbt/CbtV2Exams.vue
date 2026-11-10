@@ -72,6 +72,11 @@ const emptyExam = () => ({
 })
 
 const newExam = ref(emptyExam())
+// Pengawas: guru jenjang ini + Yayasan. Bila daftar jenjang ini kosong (data guru belum berjenjang), semua guru aktif ditampilkan.
+const pengawasOpsi = computed(() => {
+  const sesuai = cbtData.teachers.value.filter(t => t.grade === props.grade || t.grade === 'Yayasan')
+  return sesuai.length ? sesuai : cbtData.teachers.value
+})
 const currentExams = computed(() => props.exams.filter(exam => exam.grade === props.grade))
 const statusKey = (e: { status: string }) => e.status === 'Berlangsung' ? 'berlangsung' : e.status === 'Selesai' ? 'selesai' : 'siap'
 const statusLabel = (e: { status: string }) => e.status === 'Berlangsung' ? 'Sedang Berlangsung' : e.status === 'Selesai' ? 'Selesai' : 'Siap Tayang'
@@ -420,7 +425,7 @@ const removeSchedule = async (exam: ExamItem) => {
         v-if="isCreateModalOpen"
         ref="scheduleDialog"
         tabindex="-1"
-        class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+        class="fixed inset-0 z-[100] overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
         role="dialog"
         aria-modal="true"
         aria-label="Penjadwalan ujian"
@@ -485,7 +490,7 @@ const removeSchedule = async (exam: ExamItem) => {
                   <label class="block font-bold text-[#344054] mb-1">Pengawas</label>
                   <select v-model="newExam.supervisorId" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
                     <option value="">Belum ditentukan</option>
-                    <option v-for="t in cbtData.teachers.value.filter(t => t.grade === grade || t.grade === 'Yayasan')" :key="t.id" :value="t.id">{{ t.name }}</option>
+                    <option v-for="t in pengawasOpsi" :key="t.id" :value="t.id">{{ t.name }}{{ t.grade !== grade && t.grade !== 'Yayasan' ? ` (${t.grade})` : '' }}</option>
                   </select>
                 </div>
               </div>

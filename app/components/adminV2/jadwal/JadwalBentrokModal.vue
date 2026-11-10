@@ -31,7 +31,7 @@ const ringkas = computed(() => ({
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-label="Detail bentrok jadwal" @keydown.esc="emit('tutup')">
+    <div v-if="open" class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-label="Detail bentrok jadwal" @keydown.esc="emit('tutup')">
       <div class="absolute inset-0 bg-blue-950/50" @click="emit('tutup')" />
       <div class="relative flex max-h-[90dvh] w-full max-w-2xl flex-col rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
         <div class="flex items-start justify-between gap-3 border-b border-slate-100 p-5">

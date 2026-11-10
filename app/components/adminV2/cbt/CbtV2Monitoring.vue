@@ -537,7 +537,7 @@ const exportRosterCsv = () => {
     <Teleport to="body">
       <div
         v-if="isStudentDrawerOpen && selectedStudent"
-        class="fixed inset-0 z-50 overflow-hidden"
+        class="fixed inset-0 z-[100] overflow-hidden"
         aria-modal="true"
         role="dialog"
       >

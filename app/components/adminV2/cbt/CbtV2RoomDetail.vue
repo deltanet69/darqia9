@@ -460,7 +460,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
 
     <!-- MODAL TAMBAH SISWA -->
     <Teleport to="body">
-      <div v-if="tambahOpen" class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Tambah siswa ke ruang" @keydown.esc="tambahOpen = false">
+      <div v-if="tambahOpen" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Tambah siswa ke ruang" @keydown.esc="tambahOpen = false">
         <div class="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl border border-[#E7EBF2] bg-white shadow-2xl sm:rounded-2xl">
           <div class="flex items-center justify-between border-b border-[#E7EBF2] p-5">
             <div><h3 class="text-base font-extrabold text-[#101828]">Tambah Siswa</h3><p class="text-xs text-[#667085]">Sisa kapasitas {{ sisaKapasitas }} siswa · hanya siswa tanpa ruang pada periode ini</p></div>
@@ -496,7 +496,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
 
     <!-- MODAL BUAT UJIAN -->
     <Teleport to="body">
-      <div v-if="ujianOpen" class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Buat ujian untuk ruang" @keydown.esc="!saving && (ujianOpen = false)">
+      <div v-if="ujianOpen" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Buat ujian untuk ruang" @keydown.esc="!saving && (ujianOpen = false)">
         <div class="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl border border-[#E7EBF2] bg-white shadow-2xl sm:rounded-2xl">
           <div class="flex items-center justify-between border-b border-[#E7EBF2] p-5">
             <div><span class="text-[10px] font-extrabold uppercase tracking-wider text-[#1B5FD9]">{{ room.name }} · {{ room.periode }}</span><h3 class="mt-0.5 text-base font-extrabold text-[#101828]">Buat Ujian</h3></div>

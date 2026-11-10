@@ -216,7 +216,7 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
 
     <!-- FORM RUANG -->
     <Teleport to="body">
-      <div v-if="formOpen" class="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Form ruang ujian" @keydown.esc="formOpen = false">
+      <div v-if="formOpen" class="fixed inset-0 z-[100] flex items-end justify-center overflow-y-auto bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Form ruang ujian" @keydown.esc="formOpen = false">
         <div class="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-[#E7EBF2] bg-white shadow-2xl sm:rounded-2xl">
           <div class="flex items-center justify-between border-b border-[#E7EBF2] p-5">
             <div><span class="text-[10px] font-extrabold uppercase tracking-wider text-[#1B5FD9]">{{ periode }}</span><h3 class="mt-0.5 text-base font-extrabold text-[#101828]">{{ form.id ? 'Ubah Ruang Ujian' : 'Buat Ruang Ujian' }}</h3></div>
