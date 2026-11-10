@@ -142,4 +142,23 @@ await cek('KELAS template dicocokkan toleran terhadap penulisan (8.4 = VIII.4, s
   assert.equal(cocokKelas('8-4', ['8.4', 'VIII.4']), null, 'ambigu ditolak, bukan ditebak')
 })
 
+await cek('Word: Rumus Word (OMML), simbol font, dan pangkat terbaca, tidak lagi kosong', () => {
+  const r = t => `<w:r><w:t>${t}</w:t></w:r>`
+  const mr = t => `<m:r><w:rPr><w:rFonts w:ascii="Cambria Math"/></w:rPr><m:t>${t}</m:t></m:r>`
+  const p = isi => `<w:p><w:pPr><w:spacing/></w:pPr>${isi}</w:p>`
+  const xml = [
+    p(r('PILIHAN_A: ') + `<m:oMath>${mr('15')}<m:rad><m:radPr><m:degHide m:val="1"/></m:radPr><m:deg/><m:e>${mr('3')}</m:e></m:rad></m:oMath>`),
+    p(r('PILIHAN_B: ') + `<m:oMathPara><m:oMath><m:f><m:num>${mr('1')}</m:num><m:den>${mr('3')}</m:den></m:f><m:rad><m:deg/><m:e>${mr('3')}</m:e></m:rad></m:oMath></m:oMathPara>`),
+    p(r('PILIHAN_C: ') + '<w:r><w:sym w:font="Symbol" w:char="F0A5"/></w:r>'),
+    p(r('PERTANYAAN: Cos 30') + '<w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>0</w:t></w:r>' + r(' = …')),
+    p(r('PILIHAN_D: ') + `<m:oMath><m:sSup><m:e>${mr('x')}</m:e><m:sup>${mr('2')}</m:sup></m:sSup>${mr('+')}<m:d><m:dPr><m:begChr m:val="{"/><m:endChr m:val="}"/></m:dPr><m:e>${mr('a_b')}</m:e></m:d></m:oMath>`)
+  ].join('')
+  assert.deepEqual(linesFromXml(xml), [
+    String.raw`PILIHAN_A: $15\sqrt{3}$`,
+    String.raw`PILIHAN_B: $\frac{1}{3}\sqrt{3}$`,
+    'PILIHAN_C: ∞',
+    'PERTANYAAN: Cos 30$^{0}$ = …',
+    'PILIHAN_D: $' + String.raw`{x}^{2}+\{a\_b\}` + '$'
+  ])
+})
 console.log(`\n${lulus} tes lulus`)
