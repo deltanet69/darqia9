@@ -44,10 +44,15 @@ export async function bacaBodySiswa(event: H3Event, perluUjian = false): Promise
   return hasil
 }
 
+// Satu klien dipakai ulang untuk semua permintaan (tanpa sesi per pengguna), supaya tidak membuat objek klien
+// baru setiap kali dan koneksi HTTP ke Supabase tetap dipakai bersama.
+let klienBersama: ReturnType<typeof serverSupabaseServiceRole> | null = null
 const klienService = (event: H3Event) => {
-  try { return serverSupabaseServiceRole(event) } catch {
+  if (klienBersama) return klienBersama
+  try { klienBersama = serverSupabaseServiceRole(event) } catch {
     throw createError({ statusCode: 500, statusMessage: 'Secret key Supabase belum dikonfigurasi di server.' })
   }
+  return klienBersama
 }
 
 export async function rpcSiswa(event: H3Event, fungsi: string, args: Record<string, unknown>, b: BodySiswa) {

@@ -37,6 +37,14 @@ export default defineNuxtConfig({
     url: process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL,
     key: process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NUXT_PUBLIC_SUPABASE_KEY
   },
+  // Halaman ujian siswa sepenuhnya digerakkan klien: dilayani sebagai cangkang statis (tanpa render server)
+  // agar 1000 siswa membuka /cbt bersamaan tidak membebani CPU VPS. Aset publik juga dikompres saat build.
+  routeRules: {
+    '/cbt': { ssr: false }
+  },
+  nitro: {
+    compressPublicAssets: true
+  },
   runtimeConfig: {
     // Kredensial server-only (tidak bocor ke browser)
     instagramAppSecret: process.env.INSTAGRAM_APP_SECRET || '',
