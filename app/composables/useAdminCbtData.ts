@@ -375,8 +375,12 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   // CBT PTS/PAS: ujian dan token peserta hanya dikelola Superadmin (guru/wali kelas hanya bank soal + pemantauan). Ujian harian (LMS) tidak dibatasi.
   const bolehKelolaUjian = () => source === 'ujian_harian' || adalahSuperadmin.value
   const wajibKelolaUjian = () => { if (!bolehKelolaUjian()) throw new Error('Hanya Superadmin yang dapat mengelola ujian dan token peserta.') }
+  // shortcut (keputusan owner): selama admin masih melengkapi Jadwal Pelajaran, semua guru boleh mengelola bank soal
+  // seluruh kelas & mapel jenjangnya; penyusun tetap tercatat atas nama akun guru (lihat saveBankPackage).
+  // Ubah ke false untuk kembali membatasi guru ke kelas+mapel yang ia ampu.
+  const BANK_TERBUKA_SEMUA_GURU = true
   const bolehKelolaBank = (classId?: string | null, subjectId?: string | null) => {
-    if (adalahSuperadmin.value) return true
+    if (adalahSuperadmin.value || BANK_TERBUKA_SEMUA_GURU) return true
     const saya = rbac.state.value.subjekSaya
     if (!saya || !classId) return false
     const wali = classes.value.some(item => item.id === classId && item.homeroomTeacherId && String(item.homeroomTeacherId) === saya)

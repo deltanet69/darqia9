@@ -183,7 +183,7 @@ const subjectsForClass = (classroom: string) => {
   const target = cbtData.classes.value.find(item => item.grade === props.grade && item.name === classroom)
   if (!target) return []
   const ids = scheduledSubjectIds(target.id)
-  if (!ids.size) return cbtData.adalahSuperadmin.value ? allSubjects.value : []
+  if (!ids.size) return allSubjects.value // kelas belum berjadwal: semua mapel jenjang (selama bank soal terbuka untuk semua guru)
   return cbtData.subjects.value.filter(item => item.grade === props.grade && ids.has(item.id) && cbtData.bolehKelolaBank(target.id, item.id)).map(item => item.name)
 }
 
