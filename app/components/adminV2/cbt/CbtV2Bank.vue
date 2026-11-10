@@ -380,9 +380,12 @@ const pesanKelasDiluarPenugasan = (error: unknown): string | null => {
   if (isian === undefined) return null
   const semua = cbtData.classes.value.filter(item => item.grade === props.grade).map(item => item.name)
   const ada = cocokKelas(isian, semua)
-  return ada
+  if (!ada) return null
+  const saya = useRbac().state.value.subjekSaya
+  const punyaJadwal = !!saya && cbtData.classSubjects.value.some(item => item.teacher_id && String(item.teacher_id) === saya)
+  return punyaJadwal
     ? `Kelas "${ada}" ada di Manajemen Kelas, tetapi bukan kelas yang kamu ampu (tidak ada di jadwal pelajaranmu). Hubungi admin untuk penugasan jadwal.`
-    : null
+    : `Kelas "${ada}" ada di Manajemen Kelas, tetapi akunmu belum memiliki jadwal mengajar atau belum tertaut ke data guru. Hubungi admin.`
 }
 
 const closeImport = () => {
