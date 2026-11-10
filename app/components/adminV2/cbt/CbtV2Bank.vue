@@ -781,13 +781,14 @@ const confirmImport = async () => {
     <Teleport to="body">
       <div
         v-if="isImportModalOpen"
-        class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
         role="dialog"
         aria-modal="true"
       >
-        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-[#E7EBF2]">
+        <!-- Kartu dibatasi tinggi layar: kepala & kaki tetap terlihat, hanya isi (body) yang di-scroll -->
+        <div class="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[#E7EBF2] bg-white shadow-2xl">
           <!-- Head -->
-          <div class="p-5 border-b border-[#E7EBF2] flex items-center justify-between">
+          <div class="shrink-0 p-5 border-b border-[#E7EBF2] flex items-center justify-between">
             <div>
               <h3 class="text-base font-semibold text-[#101828]">Impor {{ bankLabel }}</h3>
               <p class="text-xs text-[#667085] mt-0.5">Unggah template Word .docx atau Excel .xlsx lalu konfirmasi metadata yang terdeteksi.</p>
@@ -803,7 +804,7 @@ const confirmImport = async () => {
           </div>
 
           <!-- Body -->
-          <div class="p-5 space-y-4 text-xs">
+          <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 space-y-4 text-xs">
             <div class="p-3.5 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] flex items-start gap-2.5 font-semibold">
               <AdminV2Icon name="book" :size="16" class="mt-0.5 shrink-0" />
               <span>Gunakan template resmi agar metadata kelas dan mata pelajaran dapat terdeteksi otomatis sebelum disimpan.</span>
@@ -866,7 +867,7 @@ const confirmImport = async () => {
           </div>
 
           <!-- Foot -->
-          <div class="p-4 border-t border-[#E7EBF2] bg-[#FAFBFC] flex items-center justify-end gap-2">
+          <div class="shrink-0 p-4 border-t border-[#E7EBF2] bg-[#FAFBFC] flex items-center justify-end gap-2">
             <button type="button" class="min-h-10 px-4 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-white" @click="closeImport">
               Batal
             </button>
