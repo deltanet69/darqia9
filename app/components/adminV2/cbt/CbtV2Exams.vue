@@ -68,7 +68,7 @@ const emptyExam = () => ({
   duration: 90,
   token: '',
   supervisorId: '',
-  jenis: 'akhir' as 'akhir' | 'tengah_semester'
+  jenis: 'akhir' as 'akhir' | 'tengah_semester' | 'harian' | 'pr'
 })
 
 const newExam = ref(emptyExam())
@@ -220,6 +220,7 @@ const openCreateSchedule = (classroom?: string) => {
   const classItem = gradeClasses.value.find(item => item.name === classroom)
     ?? gradeClasses.value[0]
   newExam.value = emptyExam()
+  if (props.source === 'ujian_harian') newExam.value.jenis = 'harian'
   newExam.value.classId = classItem?.id ?? ''
   const firstPackage = gradePackages.value.find(pkg => pkg.classId === newExam.value.classId)
   newExam.value.subjectId = firstPackage?.subjectId ?? ''
@@ -244,7 +245,7 @@ const openEditSchedule = (exam: ExamItem) => {
     duration: exam.duration,
     token: exam.token,
     supervisorId: exam.supervisorId ?? '',
-    jenis: exam.jenis ?? 'akhir'
+    jenis: exam.jenis ?? (props.source === 'ujian_harian' ? 'harian' : 'akhir')
   }
   wizardStep.value = 1
   soalMode.value = 'manual'
@@ -474,7 +475,14 @@ const removeSchedule = async (exam: ExamItem) => {
                 </div>
                 <p v-if="!subjectHasBank" class="sm:col-span-2 p-3 rounded-xl bg-[#FEF4E5] text-[#7A4A03] font-semibold">Belum ada bank soal untuk mapel ini di rombel ini. Buat dulu bank soalnya di tab Bank Soal — ujian belum dapat dilanjutkan ke jadwal sebelum bank soal tersedia.</p>
               </div>
-              <div v-if="source !== 'ujian_harian'">
+              <div v-if="source === 'ujian_harian'">
+                <label class="block font-bold text-[#344054] mb-1">Jenis Ujian</label>
+                <select v-model="newExam.jenis" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
+                  <option value="harian">Ujian Harian (diawasi, kode buka dari guru/pengawas)</option>
+                  <option value="pr">PR di Rumah (kode buka muncul acak)</option>
+                </select>
+              </div>
+              <div v-else>
                 <label class="block font-bold text-[#344054] mb-1">Jenis Ujian</label>
                 <select v-model="newExam.jenis" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
                   <option value="akhir">Ujian Akhir</option>

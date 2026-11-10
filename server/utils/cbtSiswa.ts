@@ -17,6 +17,7 @@ export interface BodySiswa {
   examId?: string
   jawaban?: unknown[]
   jenis?: string
+  kode?: string
   tanpaSoal?: boolean
 }
 
@@ -40,6 +41,7 @@ export async function bacaBodySiswa(event: H3Event, perluUjian = false): Promise
     hasil.jawaban = b.jawaban
   }
   if (typeof b?.jenis === 'string') hasil.jenis = b.jenis.slice(0, 20)
+  if (typeof b?.kode === 'string') hasil.kode = b.kode.trim().slice(0, 12)
   if (b?.tanpaSoal === true) hasil.tanpaSoal = true
   return hasil
 }
@@ -53,6 +55,12 @@ const klienService = (event: H3Event) => {
     throw createError({ statusCode: 500, statusMessage: 'Secret key Supabase belum dikonfigurasi di server.' })
   }
   return klienBersama
+}
+
+// Tebakan kode buka kunci yang salah ikut dihitung pembatas, agar kode 6 karakter tidak bisa ditebak berulang.
+export function catatTebakanSalah(event: H3Event, nis: string) {
+  batasNis.catat(nis)
+  batasIp.catat(getRequestIP(event, { xForwardedFor: true }) || 'tak-dikenal')
 }
 
 export async function rpcSiswa(event: H3Event, fungsi: string, args: Record<string, unknown>, b: BodySiswa) {

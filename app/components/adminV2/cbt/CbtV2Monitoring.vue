@@ -572,6 +572,11 @@ const exportRosterCsv = () => {
                 <span>{{ selectedStudent.status }} · {{ selectedStudent.violations }} peringatan</span>
               </div>
 
+              <div v-if="selectedStudent.kodeBuka" class="p-3.5 rounded-xl border border-[#F5D9A8] bg-[#FEF4E5] text-center">
+                <span class="block text-[10.5px] font-bold text-[#7A4A03]">Kode buka kunci (berikan ke siswa setelah ditegur)</span>
+                <b class="block mt-1 font-mono text-2xl tracking-[0.3em] text-[#101828]">{{ selectedStudent.kodeBuka }}</b>
+              </div>
+
               <div class="space-y-3 divide-y divide-[#E7EBF2] text-xs">
                 <div class="pt-2">
                   <span class="block text-[10.5px] text-[#667085]">NISN</span>

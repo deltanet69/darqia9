@@ -60,6 +60,8 @@ export interface ModalState {
   fatal: boolean
   level?: number
   badge?: string
+  kodeTampil?: string // PR di rumah: kode acak yang ditampilkan di popup dan harus diketik ulang
+  memeriksa?: boolean
 }
 
 export interface LoginForm {
@@ -204,12 +206,13 @@ export const useCbtExam = () => {
     requiresPin: false,
     pin: '',
     pinError: false,
-    fatal: false
+    fatal: false,
+    kodeTampil: '',
+    memeriksa: false
   })
 
   /* Anti cheat */
   const violations = ref<number>(0)
-  const CHEAT_PIN = 'cbt'
 
   const defaultQuestion: QuestionItem = {
     sec: 'pg',
@@ -340,6 +343,7 @@ export const useCbtExam = () => {
     fatal?: boolean
     level?: number
     badge?: string
+    kodeTampil?: string
     onOk?: () => void
   }): void => {
     modal.title = opts.title
@@ -353,6 +357,8 @@ export const useCbtExam = () => {
     modal.fatal = !!opts.fatal
     modal.level = opts.level || (opts.fatal ? 3 : opts.requiresPin ? 1 : 0)
     modal.badge = opts.badge || ''
+    modal.kodeTampil = opts.kodeTampil || ''
+    modal.memeriksa = false
     modal.onOk = opts.onOk || null
     modal.show = true
   }
@@ -367,17 +373,31 @@ export const useCbtExam = () => {
     }
   }
 
-  const handleModalOk = (): void => {
+  const bukaKunciBerhasil = (): void => {
+    modal.show = false
+    modal.pin = ''
+    modal.pinError = false
+    triggerToast('Kunci ujian berhasil dibuka.')
+  }
+
+  const handleModalOk = async (): Promise<void> => {
     if (modal.requiresPin) {
-      const cleanPin = modal.pin.trim().toLowerCase()
-      if (cleanPin === 'cbt' || cleanPin === 'pengawas123') {
-        modal.show = false
-        modal.pin = ''
-        modal.pinError = false
-        triggerToast('Kunci ujian berhasil dibuka oleh pengawas.')
-      } else {
-        modal.pinError = true
+      if (modal.memeriksa) return
+      const kode = modal.pin.trim().toUpperCase()
+      // Simulasi (hanya development): sandi uji coba. Di production kode selalu dicek server atau dicocokkan dengan kode di popup.
+      if (import.meta.dev && (kode === 'CBT' || kode === 'PENGAWAS123')) { bukaKunciBerhasil(); return }
+      if (modal.kodeTampil) { // PR di rumah: tanpa pengawas, cukup mengetik ulang kode acak
+        if (kode === modal.kodeTampil) bukaKunciBerhasil(); else modal.pinError = true
+        return
       }
+      // Ujian diawasi: kode diberikan guru/pengawas dan dicek di server.
+      modal.memeriksa = true
+      try {
+        const hasil = await $fetch<{ ok: boolean }>('/api/cbt/buka-kunci', { method: 'POST', body: { ...kunciDasar(), kode } })
+        if (hasil?.ok) bukaKunciBerhasil(); else modal.pinError = true
+      } catch (e: any) {
+        triggerToast(pesanGalat(e, 'Kode belum bisa diperiksa. Coba lagi.'), 3500)
+      } finally { modal.memeriksa = false }
     } else {
       const cb = modal.onOk
       closeModal()
@@ -448,8 +468,15 @@ export const useCbtExam = () => {
 
     const { questions: _soal, jawaban, ...info } = hasil
     activeExam.value = info
-    // Urutan soal dan pilihan jawaban diacak berbeda untuk tiap siswa, tetap sama saat siswa itu memuat ulang.
-    examQuestions.value = acakPerSiswa(mapExamQuestions(soalMentah), `${sesi.nis}|${ref.source}|${ref.id}`, sections.map(s => s.id))
+    // Urutan soal dan pilihan jawaban diacak berbeda untuk tiap siswa. Garam acak dibuat sekali per siswa per ujian
+    // dan disimpan di perangkat, jadi urutan tidak bisa ditebak dari NIS dan tidak berubah saat halaman dimuat ulang.
+    const kunciGaram = `cbt-garam:${sesi.nis}|${ref.source}|${ref.id}`
+    let garam = ''
+    try {
+      garam = localStorage.getItem(kunciGaram) || Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('')
+      localStorage.setItem(kunciGaram, garam)
+    } catch { /* penyimpanan tidak tersedia: acak tetap per siswa, hanya tidak bergaram */ }
+    examQuestions.value = acakPerSiswa(mapExamQuestions(soalMentah), `${sesi.nis}|${ref.source}|${ref.id}|${garam}`, sections.map(s => s.id))
     Object.keys(answers).forEach(key => delete answers[Number(key)])
     flags.clear()
     terkirim.clear()
@@ -883,6 +910,9 @@ export const useCbtExam = () => {
   /* Anti cheat & leave protection */
   let lastViolationTimestamp = 0
 
+  // Tanpa karakter yang mirip (0/O, 1/I) agar mudah diketik ulang.
+  const kodeAcak = (): string => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('')
+
   const triggerCheatLock = (customReason?: string, explicitLevel?: number, jenis?: string): void => {
     const now = Date.now()
     if (!explicitLevel && now - lastViolationTimestamp < 1200) return // debounce rapid blur & visibility events
@@ -904,6 +934,9 @@ export const useCbtExam = () => {
 
     const defaultReason = 'Meninggalkan layar ujian (terdeteksi perpindahan tab, alt+tab, atau aplikasi lain)'
     const reasonText = customReason || defaultReason
+    // PR di rumah tidak diawasi: kode buka muncul acak di popup. Ujian lain: kode diminta ke guru/pengawas.
+    const kodePR = activeExam.value?.jenis === 'pr' ? kodeAcak() : ''
+    const petunjukBuka = kodePR ? 'Ketik ulang kode acak di bawah ini untuk melanjutkan.' : 'Silakan lapor kepada guru/pengawas, lalu masukkan kode buka kunci yang mereka berikan untuk melanjutkan.'
 
     if (violations.value >= 3) {
       // PERINGATAN 3: FATAL LOCKDOWN & PAKSA SUBMIT
@@ -923,8 +956,9 @@ export const useCbtExam = () => {
         title: 'PERINGATAN 2: PERINGATAN KERAS (WASPADA)',
         badge: 'PERINGATAN 2 • SISA 1 KESEMPATAN!',
         level: 2,
-        desc: `<span class="text-amber-700 font-black block mb-2">⚠️ PERINGATAN WASPADA TINGKAT TINGGI</span>Anda kembali terdeteksi <b>${reasonText}</b>!<br><br>Ini adalah <b>kesempatan terakhir Anda</b>. Jika terdeteksi meninggalkan layar 1x lagi, akun Anda akan <b>DIBLOKIR TOTAL DAN UJIAN DIPAKSA SUBMIT</b>.<br><br>Silakan minta pengawas memasukkan password proktor untuk membuka kunci.`,
+        desc: `<span class="text-amber-700 font-black block mb-2">⚠️ PERINGATAN WASPADA TINGKAT TINGGI</span>Anda kembali terdeteksi <b>${reasonText}</b>!<br><br>Ini adalah <b>kesempatan terakhir Anda</b>. Jika terdeteksi meninggalkan layar 1x lagi, akun Anda akan <b>DIBLOKIR TOTAL DAN UJIAN DIPAKSA SUBMIT</b>.<br><br>${petunjukBuka}`,
         requiresPin: true,
+        kodeTampil: kodePR,
         okText: 'Buka Kunci Ujian (Peringatan Terakhir)',
         btnClass: 'btn-primary'
       })
@@ -934,8 +968,9 @@ export const useCbtExam = () => {
         title: 'PERINGATAN 1: TERDETEKSI PINDAH TAB',
         badge: 'PERINGATAN 1 • TOLERANSI SISA 2X',
         level: 1,
-        desc: `Anda terdeteksi <b>${reasonText}</b>.<br><br>Sesuai tata tertib CBT, <b>layar ujian Anda telah dikunci sementara oleh sistem</b>. Silakan lapor kepada pengawas ujian dan masukkan password proktor untuk melanjutkan (Toleransi tersisa: <b>2x</b> sebelum akun diblokir permanen).`,
+        desc: `Anda terdeteksi <b>${reasonText}</b>.<br><br>Sesuai tata tertib CBT, <b>layar ujian Anda telah dikunci sementara oleh sistem</b>. ${petunjukBuka} (Toleransi tersisa: <b>2x</b> sebelum akun diblokir permanen).`,
         requiresPin: true,
+        kodeTampil: kodePR,
         okText: 'Buka Kunci Ujian',
         btnClass: 'btn-primary'
       })

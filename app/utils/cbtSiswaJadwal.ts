@@ -1,7 +1,7 @@
 // Logika murni jadwal ujian di aplikasi CBT siswa (tanpa Vue/Supabase) agar bisa diuji.
 // Semua penentuan tanggal memakai WIB (UTC+7), sama dengan aturan di fungsi database cbt_siswa_login.
 
-export type JenisUjian = 'akhir' | 'tengah_semester' | 'harian'
+export type JenisUjian = 'akhir' | 'tengah_semester' | 'harian' | 'pr'
 
 export interface UjianSiswa {
   source: 'cbt' | 'ujian_harian'
@@ -46,7 +46,7 @@ export function keadaanUjian(u: UjianSiswa, sekarangMs: number): KeadaanUjian {
   if (sekarangMs >= akhir) return 'lewat'
   if (sekarangMs >= mulai) return 'dibuka'
   // Ujian akhir/tengah semester: sebelum H-2 hanya tanggal & jam yang terlihat.
-  if (u.terkunci || (u.jenis !== 'harian' && hariWib(mulai) - 2 > hariWib(sekarangMs))) return 'terkunci'
+  if (u.terkunci || (u.jenis !== 'harian' && u.jenis !== 'pr' && hariWib(mulai) - 2 > hariWib(sekarangMs))) return 'terkunci'
   return 'belum'
 }
 
@@ -65,7 +65,8 @@ export const KEADAAN_INFO: Record<KeadaanUjian, { label: string, kelas: string }
 export const JENIS_LABEL: Record<JenisUjian, string> = {
   akhir: 'Ujian Akhir',
   tengah_semester: 'Ujian Tengah Semester',
-  harian: 'Ujian Harian'
+  harian: 'Ujian Harian',
+  pr: 'PR di Rumah'
 }
 
 const fmt = (opsi: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('id-ID', { ...opsi, timeZone: 'Asia/Jakarta' })

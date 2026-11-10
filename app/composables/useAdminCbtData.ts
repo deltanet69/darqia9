@@ -62,7 +62,7 @@ export interface CbtExamInput {
   startsAt: string
   duration: number
   token?: string
-  jenis?: 'akhir' | 'tengah_semester' // hanya ujian CBT (bukan ujian harian)
+  jenis?: 'akhir' | 'tengah_semester' | 'harian' | 'pr' // CBT: akhir/tengah semester; LMS: harian/pr
 }
 
 const isUuid = (value?: string) =>
@@ -128,14 +128,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     error.value = null
 
     try {
-      // Kolom jenis (migrasi 0047) hanya ada di tabel ujian CBT; sebelum migrasi dijalankan, ulangi tanpa kolom itu.
+      // Kolom jenis (0047) / tipe (0049) belum ada sebelum migrasi dijalankan; ulangi tanpa kolom itu.
       const kolomUjianDasar = 'id, name, class_id, subject_id, question_bank_id, grade, starts_at, duration_minutes, status, code, supervisor_id'
       const ambilUjian = (kolom: string) => client.from(tables.exams).select(kolom).order('starts_at', { ascending: false })
       const [classResult, subjectResult, bankResult, examAwal, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult] = await Promise.all([
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
-        ambilUjian(source === 'cbt' ? `${kolomUjianDasar}, jenis` : kolomUjianDasar),
+        ambilUjian(`${kolomUjianDasar}, ${source === 'cbt' ? 'jenis' : 'tipe'}`),
         client.from(tables.assignments).select('id, exam_id, status'),
         fetchSiswaAktif(),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
@@ -144,7 +144,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from('class_schedules').select('class_id, subject_id, teacher_id').eq('active', true)
       ])
 
-      const examResult = examAwal.error && /jenis/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
+      const examResult = examAwal.error && /jenis|tipe/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
       const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult]
         .find(result => result.error)?.error
       if (firstError) throw firstError
@@ -258,7 +258,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             supervisor: teacherById.get(row.supervisor_id)?.name ?? '',
             supervisorId: row.supervisor_id ?? '',
             bankCode: bankById.get(row.question_bank_id)?.code ?? '',
-            jenis: row.jenis ?? 'akhir'
+            jenis: source === 'ujian_harian' ? (row.tipe ?? 'harian') : (row.jenis ?? 'akhir')
           } as ExamItem
         })
 
@@ -293,7 +293,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const assignmentIds = sessions.map((row: any) => row.id)
     const [answers, violations] = assignmentIds.length ? await Promise.all([
       client.from(tables.answers).select('assignment_id, question_id, answer, saved_at').in('assignment_id', assignmentIds),
-      client.from(tables.violations).select('assignment_id, occurred_at').in('assignment_id', assignmentIds)
+      client.from(tables.violations).select('assignment_id, occurred_at, occurrence, locked, unlock_code').in('assignment_id', assignmentIds)
     ]) : [{ data: [], error: null }, { data: [], error: null }]
     if (answers.error || violations.error) throw new Error((answers.error || violations.error)!.message)
     const sessionByStudent = new Map(sessions.map((row: any) => [row.student_id, row]))
@@ -314,6 +314,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         status: session?.status === 'selesai' ? 'Selesai' : session?.status === 'terkunci' ? 'Terkunci'
           : session?.status === 'berlangsung' ? 'Mengerjakan' : 'Belum mulai',
         violations: incidents.length,
+        // Kode buka kunci pelanggaran 1-2 yang masih terkunci; guru/pengawas membacakannya ke siswa.
+        kodeBuka: incidents.filter((row: any) => row.locked && row.occurrence < 3).sort((a: any, b: any) => b.occurrence - a.occurrence)[0]?.unlock_code ?? '',
         lastActive: lastTime ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(lastTime)) : '-'
       }
     })
@@ -539,12 +541,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     // ujian; token tetap dapat diterbitkan dari panel Token Peserta.
     if (typeof savedExamId === 'string' && savedExamId) {
       try { await client.rpc('issue_exam_tokens', { target_exam_id: savedExamId, source }) } catch { /* diabaikan */ }
-      // Jenis ujian (Akhir / Tengah Semester) hanya untuk ujian CBT; kolomnya dibuat migrasi 0047.
-      if (source === 'cbt' && input.jenis) {
-        const { error: jenisError } = await client.from('exams').update({ jenis: input.jenis }).eq('id', savedExamId)
+      // Jenis ujian: CBT = Akhir / Tengah Semester (migrasi 0047); LMS = Harian / PR di Rumah (migrasi 0049).
+      if (input.jenis) {
+        const { error: jenisError } = source === 'cbt'
+          ? await client.from('exams').update({ jenis: input.jenis }).eq('id', savedExamId)
+          : await client.from('ujian_harian').update({ tipe: input.jenis }).eq('id', savedExamId)
         if (jenisError) {
           await load(true)
-          throw new Error('Ujian tersimpan, tetapi jenis ujian belum tersimpan. Jalankan migrasi 0047_cbt_siswa_app.sql di Supabase SQL Editor.')
+          throw new Error(`Ujian tersimpan, tetapi jenis ujian belum tersimpan. Jalankan migrasi ${source === 'cbt' ? '0047_cbt_siswa_app' : '0049_ujian_harian_pr_kode_buka'}.sql di Supabase SQL Editor.`)
         }
       }
     }

@@ -1,5 +1,5 @@
 // Pengacakan soal per siswa: urutan soal dan urutan pilihan jawaban berbeda untuk tiap siswa,
-// tetapi tetap sama setiap kali siswa yang sama memuat ulang ujiannya (acak deterministik dari NIS + ujian).
+// tetapi tetap sama setiap kali siswa yang sama memuat ulang ujiannya (acak deterministik dari kunci: NIS + ujian + garam acak).
 // Bagian soal tetap berurutan (PG, Singkat, Essay, Interaktif); pengacakan terjadi di dalam tiap bagian.
 
 export interface SoalAcak {

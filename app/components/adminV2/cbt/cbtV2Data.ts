@@ -43,7 +43,7 @@ export interface ExamItem {
   violations: number
   supervisor: string
   supervisorId?: string
-  jenis?: 'akhir' | 'tengah_semester'
+  jenis?: 'akhir' | 'tengah_semester' | 'harian' | 'pr'
 }
 
 export interface BankQuestionItem {
@@ -131,6 +131,7 @@ export interface LiveStudent {
   status: 'Belum mulai' | 'Mengerjakan' | 'Selesai' | 'Terkunci' | 'Terkunci (1x)'
   violations: number
   lastActive: string
+  kodeBuka?: string
 }
 
 export interface ParticipantItem {

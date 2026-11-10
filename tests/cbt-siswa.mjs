@@ -18,8 +18,9 @@ cek('akhir: H-3 terkunci, H-2 terbuka (belum mulai), saat jam tiba dibuka', () =
   assert.equal(keadaanUjian(ujian(), ms('2026-11-12T00:00:00Z')), 'belum') // 12 Nov 07.00 WIB = H-2
   assert.equal(keadaanUjian(ujian(), ms(mulai)), 'dibuka')
 })
-cek('harian tidak pernah terkunci H-2', () => {
+cek('harian dan PR tidak pernah terkunci H-2', () => {
   assert.equal(keadaanUjian(ujian({ jenis: 'harian' }), ms('2026-11-01T00:00:00Z')), 'belum')
+  assert.equal(keadaanUjian(ujian({ jenis: 'pr' }), ms('2026-11-01T00:00:00Z')), 'belum')
 })
 cek('penanda terkunci dari server tidak menahan ujian yang jamnya sudah tiba (cache usang)', () => {
   assert.equal(keadaanUjian(ujian({ terkunci: true, nama: null }), ms('2026-11-14T00:31:00Z')), 'dibuka')

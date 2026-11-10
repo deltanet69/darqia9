@@ -89,26 +89,20 @@
 
         <!-- PIN Input Box for Proctor Unlock (Level 1 & 2 only) -->
         <div v-if="modal.requiresPin && !modal.fatal" class="space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-          <div class="flex items-center justify-between">
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Password Pengawas / Proktor
-            </label>
-            <button
-              type="button"
-              class="text-[11px] font-extrabold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-              @click="fillProctorPin"
-            >
-              Isi Password (cbt)
-            </button>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Kode Buka Kunci</label>
+          <div v-if="modal.kodeTampil" class="rounded-xl bg-white border-2 border-dashed border-blue-300 py-3 text-center">
+            <span class="block text-[11px] text-slate-500">Ketik ulang kode ini untuk melanjutkan</span>
+            <b class="block mt-1 font-mono text-2xl tracking-[0.3em] text-blue-700 select-none">{{ modal.kodeTampil }}</b>
           </div>
 
           <div class="relative">
             <input
-              type="password"
+              type="text"
               :value="modal.pin"
-              placeholder="Masukkan password pengawas (contoh: cbt)"
+              :placeholder="modal.kodeTampil ? 'Ketik kode di atas' : 'Masukkan kode dari guru / pengawas'"
               autocomplete="off"
-              class="w-full px-4 py-3 text-sm font-mono bg-white border-2 rounded-xl outline-none transition-all"
+              autocapitalize="characters"
+              class="w-full px-4 py-3 text-sm font-mono uppercase bg-white border-2 rounded-xl outline-none transition-all"
               :class="modal.pinError ? 'border-rose-500 bg-rose-50/50 text-rose-900' : 'border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-100'"
               @input="modal.pin = ($event.target as HTMLInputElement).value; modal.pinError = false"
               @keydown.enter.prevent="$emit('ok')"
@@ -120,7 +114,7 @@
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-            <span>Password pengawas salah! (Gunakan kata sandi: <b>cbt</b>).</span>
+            <span>Kode salah. Periksa lagi kodenya.</span>
           </div>
         </div>
 
@@ -136,7 +130,8 @@
           </button>
           <button
             type="button"
-            class="px-6 py-3 rounded-2xl font-black text-xs sm:text-sm text-white shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
+            :disabled="modal.memeriksa"
+            class="px-6 py-3 rounded-2xl font-black text-xs sm:text-sm text-white shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
             :class="[
               modal.level === 3 || modal.fatal ? 'bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 shadow-rose-600/40 hover:from-rose-700 hover:to-red-900' :
               modal.level === 2 ? 'bg-gradient-to-r from-orange-600 to-red-600 shadow-orange-600/30 hover:from-orange-700 hover:to-red-700' :
@@ -159,7 +154,7 @@
 import { computed } from 'vue'
 import type { ModalState } from '~/composables/useCbtExam'
 
-const props = defineProps<{
+defineProps<{
   grade: string
   modal: ModalState
 }>()
@@ -174,9 +169,4 @@ const currentTimestamp = computed(() => {
   const d = new Date()
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')} WIB`
 })
-
-const fillProctorPin = () => {
-  props.modal.pin = 'cbt'
-  props.modal.pinError = false
-}
 </script>

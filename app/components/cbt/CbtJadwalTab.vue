@@ -20,7 +20,7 @@
       </button>
     </div>
 
-    <p v-if="aktif !== 'harian'" class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium leading-relaxed">
+    <p v-if="aktif !== 'harian' && aktif !== 'pr'" class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium leading-relaxed">
       Detail {{ JENIS_LABEL[aktif] }} (mata pelajaran dan materi) terbuka mulai 2 hari sebelum hari ujian.
     </p>
 
@@ -69,7 +69,7 @@ import {
 const props = defineProps<{ ujian: UjianSiswa[], now: number }>()
 const emit = defineEmits<{ (e: 'buka', u: UjianSiswa): void }>()
 
-const jenisTab: JenisUjian[] = ['akhir', 'tengah_semester', 'harian']
+const jenisTab: JenisUjian[] = ['akhir', 'tengah_semester', 'harian', 'pr']
 // Tab awal: jenis pertama (urutan Akhir, Tengah Semester, Harian) yang punya jadwal.
 const aktif = ref<JenisUjian>(jenisTab.find(j => props.ujian.some(u => u.jenis === j)) ?? 'akhir')
 
