@@ -305,7 +305,7 @@ assert.deepEqual(panggilan, ['/api/cbt/login'], 'Login tidak memuat soal')
 assert.equal(studentSession.questions.value.length, 0)
 await studentSession.bukaUjian(ujianSiswa)
 assert.equal(studentSession.screen.value, 'confirm')
-assert.deepEqual(studentSession.questions.value.map(q => q.id), [ids[2], ids[0]], 'Siswa hanya menerima subset dalam urutan respons server')
+assert.deepEqual(studentSession.questions.value.map(q => q.id).sort(), [ids[2], ids[0]].sort(), 'Siswa hanya menerima subset soal yang dipilih (urutannya diacak per siswa)')
 // Ujian yang jamnya belum tiba tidak dapat dibuka dan tidak memanggil server
 panggilan = []
 await studentSession.bukaUjian({ ...ujianSiswa, mulai: new Date(jam + 3600000).toISOString() })
@@ -314,7 +314,7 @@ assert.equal(studentSession.toastMsg.value, 'Waktu ujian tersebut belum tiba.')
 globalThis.$fetch = async url => url === '/api/cbt/siapkan' ? { id: 'exam-lama-uji', source: 'cbt', duration: 90, sisaDetik: 5400, jawaban: {}, questions: rows } : {}
 await studentSession.bukaUjian(ujianSiswa)
 assert.equal(studentSession.questions.value.length, 3)
-assert.equal(studentSession.questions.value[1].type, 'short', 'Soal lama Isian masih dimuat siswa')
+assert.ok(studentSession.questions.value.some(q => q.type === 'short'), 'Soal lama Isian masih dimuat siswa')
 
 const monitoringDb = {
   classes: [{ id: classId, name: 'Kelas uji', grade: 'SMK', active: true }],

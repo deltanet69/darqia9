@@ -2,6 +2,7 @@ import { ref, reactive, computed } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useCbtSiswa } from '~/composables/useCbtSiswa'
 import { keadaanUjian, type UjianSiswa } from '~/utils/cbtSiswaJadwal'
+import { acakPerSiswa } from '~/utils/cbtAcak'
 
 export interface SectionItem {
   id: string
@@ -33,6 +34,7 @@ export interface QuestionItem {
   videoDur?: string
   videoTitle?: string
   imageUrl?: string
+  optionOrder?: number[] // posisi tampil -> indeks pilihan asli (acak per siswa)
 }
 
 export type RevFilterType = 'all' | 'un' | 'fl' | 'ok'
@@ -446,7 +448,8 @@ export const useCbtExam = () => {
 
     const { questions: _soal, jawaban, ...info } = hasil
     activeExam.value = info
-    examQuestions.value = mapExamQuestions(soalMentah)
+    // Urutan soal dan pilihan jawaban diacak berbeda untuk tiap siswa, tetap sama saat siswa itu memuat ulang.
+    examQuestions.value = acakPerSiswa(mapExamQuestions(soalMentah), `${sesi.nis}|${ref.source}|${ref.id}`, sections.map(s => s.id))
     Object.keys(answers).forEach(key => delete answers[Number(key)])
     flags.clear()
     terkirim.clear()
@@ -667,20 +670,25 @@ export const useCbtExam = () => {
     }
   }
 
+  // Jawaban disimpan dengan indeks pilihan ASLI; layar memakai posisi tampil (yang diacak per siswa).
+  const indeksAsli = (i: number, oi: number): number => questions.value[i]?.optionOrder?.[oi] ?? oi
+
   const isOptionSelected = (i: number, oi: number): boolean => {
     const a = answers[i]
-    return Array.isArray(a) && a.includes(oi)
+    const asli = indeksAsli(i, oi)
+    return Array.isArray(a) ? a.includes(asli) : a === String(asli)
   }
 
   const selectOption = (i: number, oi: number): void => {
     const q = questions.value[i]
     if (!q) return
+    const asli = indeksAsli(i, oi)
     if (q.type === 'multiple') {
       let cur = Array.isArray(answers[i]) ? [...answers[i]] : []
-      cur = cur.includes(oi) ? cur.filter(x => x !== oi) : [...cur, oi]
+      cur = cur.includes(asli) ? cur.filter(x => x !== asli) : [...cur, asli]
       if (cur.length) answers[i] = cur; else delete answers[i]
     } else {
-      answers[i] = String(oi)
+      answers[i] = String(asli)
     }
     persist(true)
   }

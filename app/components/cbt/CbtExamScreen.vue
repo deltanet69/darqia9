@@ -204,12 +204,12 @@
                   v-for="(op, oi) in (curQuestion.options || [])"
                   :key="oi"
                   class="w-full p-4 rounded-2xl border-2 text-left flex items-start gap-3.5 transition-all duration-150 group"
-                  :class="answers[qIdx] === String(oi) ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                  :class="isOptionSelected(qIdx, oi) ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
                   @click="$emit('select-option', qIdx, oi)"
                 >
                   <span
                     class="w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors"
-                    :class="answers[qIdx] === String(oi) ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 group-hover:bg-slate-200'"
+                    :class="isOptionSelected(qIdx, oi) ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 group-hover:bg-slate-200'"
                   >
                     {{ letters[oi] }}
                   </span>

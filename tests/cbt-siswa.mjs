@@ -1,6 +1,7 @@
 // Uji logika murni aplikasi CBT siswa — jalankan: node --experimental-strip-types tests/cbt-siswa.mjs
 import assert from 'node:assert/strict'
 import { bisaDibuka, hitungMundur, jamRentang, kelompokPerHari, keadaanUjian } from '../app/utils/cbtSiswaJadwal.ts'
+import { acakPerSiswa } from '../app/utils/cbtAcak.ts'
 import { buatPembatas } from '../server/utils/pembatas.ts'
 
 let lulus = 0
@@ -49,5 +50,20 @@ cek('pembatas: blokir setelah batas, reset setelah jendela, hapus saat berhasil'
   p.catat('a'); assert.equal(p.terblokir('a'), true); assert.equal(p.terblokir('b'), false)
   t = 1000; assert.equal(p.terblokir('a'), false)
   p.catat('a'); p.catat('a'); p.catat('a'); p.hapus('a'); assert.equal(p.terblokir('a'), false)
+})
+cek('acak per siswa: deterministik, beda antar siswa, bagian tetap berurutan, pilihan terpetakan ke indeks asli', () => {
+  const soal = Array.from({ length: 12 }, (_, i) => ({ id: i, sec: i < 8 ? 'pg' : 'essay', options: i < 8 ? ['a', 'b', 'c', 'd'] : undefined }))
+  const urut = ['pg', 'singkat', 'essay', 'interaktif']
+  const a1 = acakPerSiswa(soal, 'nis1|cbt|u1', urut)
+  assert.deepEqual(a1.map(q => q.id), acakPerSiswa(soal, 'nis1|cbt|u1', urut).map(q => q.id), 'siswa sama + ujian sama = urutan sama')
+  assert.notDeepEqual(a1.map(q => q.id), acakPerSiswa(soal, 'nis2|cbt|u1', urut).map(q => q.id), 'siswa lain = urutan lain')
+  assert.deepEqual(a1.map(q => q.sec), [...Array(8).fill('pg'), ...Array(4).fill('essay')], 'bagian PG tetap sebelum Essay')
+  assert.deepEqual([...a1.map(q => q.id)].sort((x, y) => x - y), soal.map(q => q.id), 'tidak ada soal hilang/ganda')
+  for (const q of a1.filter(x => x.options)) {
+    assert.deepEqual([...q.optionOrder].sort(), [0, 1, 2, 3])
+    assert.deepEqual(q.options, q.optionOrder.map(i => ['a', 'b', 'c', 'd'][i]), 'teks pilihan mengikuti indeks asli')
+  }
+  assert.ok(a1.filter(x => x.options).some(q => q.optionOrder.join() !== '0,1,2,3'), 'pilihan benar-benar teracak')
+  assert.equal(a1.find(q => !q.options).optionOrder, undefined)
 })
 console.log(`\n${lulus} uji lulus`)
