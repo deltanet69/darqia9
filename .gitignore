@@ -50,3 +50,4 @@ supabase/migrations/*
 !/docs/laporan-impor-ekspor-mapel.md
 !docs/laporan-impor-ekspor-bank-soal.md
 !/docs/laporan-perbaikan-crud-bank-soal.md
+tests/k6-siswa.json
