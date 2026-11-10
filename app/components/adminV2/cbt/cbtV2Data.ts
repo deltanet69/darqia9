@@ -133,6 +133,7 @@ export interface LiveStudent {
   violations: number
   lastActive: string
   kodeBuka?: string
+  pelanggaran?: { id: string, jenis: string, waktu: string, ke: number, terkunci: boolean, kode: string }[]
 }
 
 export interface ParticipantItem {

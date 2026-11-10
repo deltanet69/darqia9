@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2ExamTokens from './CbtV2ExamTokens.vue'
+import CbtV2ExamDetail from './CbtV2ExamDetail.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 
@@ -34,6 +35,7 @@ const ubahKueri = (ubah: Record<string, string | undefined>, ganti = false) => {
   return ganti ? router.replace({ query }) : router.push({ query })
 }
 const rombelAktif = computed(() => kueri('rombel'))
+const ujianDetail = computed(() => props.exams.find(e => e.id === kueri('ujian')) ?? null)
 const isCreateModalOpen = ref(false)
 const scheduleDialog = ref<HTMLElement | null>(null)
 watch(isCreateModalOpen, async open => {
@@ -326,8 +328,12 @@ const removeSchedule = async (exam: ExamItem) => {
 
 <template>
   <div class="space-y-4">
+    <!-- DETAIL SATU UJIAN: daftar siswa + pelanggaran -->
+    <CbtV2ExamDetail v-if="ujianDetail" :key="ujianDetail.id" :exam="ujianDetail" :source="source ?? 'cbt'" @back="ubahKueri({ ujian: undefined })" @toast="emit('toast', $event)" />
+    <p v-else-if="kueri('ujian')" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Memuat ujian&hellip; <button type="button" class="font-bold text-[#1B5FD9] underline" @click="ubahKueri({ ujian: undefined })">Kembali ke Daftar Ujian</button></p>
+
     <!-- DAFTAR UJIAN: RINGKASAN ROMBEL -> JADWAL PER ROMBEL -->
-    <div class="space-y-4">
+    <div v-else class="space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
         <div>
           <h2 class="text-lg font-extrabold text-[#101828]">Daftar Ujian<template v-if="rombelDetail"> &middot; {{ rombelDetail.classroom }}</template></h2>
@@ -398,11 +404,11 @@ const removeSchedule = async (exam: ExamItem) => {
       <div v-else class="space-y-3.5">
         <section v-for="hari in jadwalPerHari" :key="hari.key" class="bg-white border border-[#E7EBF2] rounded-2xl shadow-xs overflow-hidden">
           <h3 class="px-4 sm:px-5 py-2.5 bg-[#F6F8FC] border-b border-[#E7EBF2] text-xs font-extrabold text-[#0A2A5C]">{{ hari.label }} <span class="font-bold text-[#667085]">&middot; {{ hari.exams.length }} mapel</span></h3>
-          <div class="hidden md:grid grid-cols-[130px_minmax(0,1fr)_minmax(0,190px)_80px_120px_100px] gap-4 px-5 py-2 border-b border-[#EFF2F7] text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">
+          <div class="hidden md:grid grid-cols-[130px_minmax(0,1fr)_minmax(0,190px)_80px_120px_170px] gap-4 px-5 py-2 border-b border-[#EFF2F7] text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">
             <span>Jam</span><span>Mata Pelajaran</span><span>Pengawas</span><span class="text-center">Peserta</span><span>Status</span><span class="text-right">Aksi</span>
           </div>
           <ul class="divide-y divide-[#EFF2F7]">
-            <li v-for="e in hari.exams" :key="e.id" class="grid gap-1.5 px-4 sm:px-5 py-3 md:grid-cols-[130px_minmax(0,1fr)_minmax(0,190px)_80px_120px_100px] md:items-center md:gap-4">
+            <li v-for="e in hari.exams" :key="e.id" class="grid gap-1.5 px-4 sm:px-5 py-3 md:grid-cols-[130px_minmax(0,1fr)_minmax(0,190px)_80px_120px_170px] md:items-center md:gap-4">
               <span class="text-xs font-bold text-[#101828]">{{ e.time }}</span>
               <div class="min-w-0">
                 <b class="block text-sm font-extrabold text-[#101828] break-words">{{ e.subject }}</b>
@@ -412,6 +418,7 @@ const removeSchedule = async (exam: ExamItem) => {
               <span class="text-xs font-mono font-bold md:text-center"><span class="md:hidden font-sans font-normal text-[#667085]">Peserta: </span>{{ e.participants }}</span>
               <span><span class="inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded-full" :class="statusKey(e) === 'berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : statusKey(e) === 'siap' ? 'bg-[#E8F0FE] text-[#1B5FD9]' : 'bg-[#EFF2F7] text-[#344054]'">{{ statusLabel(e) }}</span></span>
               <div class="flex items-center gap-3 md:justify-end">
+                <button type="button" class="rounded-full bg-[#E8F0FE] px-3 py-1.5 text-xs font-extrabold text-[#1B5FD9] hover:bg-[#D6E5FD]" @click="ubahKueri({ ujian: e.id })">Detail</button>
                 <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#1B5FD9] hover:underline" @click="openEditSchedule(e)">Ubah</button>
                 <button v-if="bolehKelola" type="button" class="text-xs font-bold text-[#B42318] hover:underline" @click="removeSchedule(e)">Hapus</button>
               </div>

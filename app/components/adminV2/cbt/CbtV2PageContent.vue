@@ -80,6 +80,8 @@ const bankEntry = ref(0)
 // Nama ruang yang sedang dibuka (null = tampil daftar ruang). Saat ada, sub menu CBT disembunyikan.
 const roomDetail = ref<string | null>(null)
 const inRoomDetail = computed(() => activeTab.value === 'rooms' && !!roomDetail.value)
+// Detail satu ujian (?ujian=<id>): sub menu utama disembunyikan, hanya ada tombol kembali.
+const inExamDetail = computed(() => activeTab.value === 'exams' && !!queryValue(route.query.ujian))
 const exams = computed(() => cbtData.exams.value)
 const students = ref<StudentScore[]>([...INITIAL_STUDENTS])
 
@@ -105,6 +107,7 @@ const syncRoute = (gantiJenjang = false) => router.push({
     // Rombel/token/filter hanya berlaku di Daftar Ujian; id rombel milik satu jenjang.
     rombel: activeTab.value === 'exams' && !gantiJenjang ? route.query.rombel : undefined,
     token: activeTab.value === 'exams' && !gantiJenjang ? route.query.token : undefined,
+    ujian: activeTab.value === 'exams' && !gantiJenjang ? route.query.ujian : undefined,
     ujianStatus: activeTab.value === 'exams' ? route.query.ujianStatus : undefined,
     ujianCari: activeTab.value === 'exams' ? route.query.ujianCari : undefined
   }
@@ -380,7 +383,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- SUBMODULE TABS (1440px) -->
     <CbtV2Tabs
-      v-if="!inRoomDetail"
+      v-if="!inRoomDetail && !inExamDetail"
       :bank-label="moduleDescription"
       :active-tab="activeTab"
       :live-exam-count="liveExamCount"
@@ -497,7 +500,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- MOBILE BOTTOM NAVIGATION -->
     <CbtV2MobileNav
-      v-if="!inRoomDetail"
+      v-if="!inRoomDetail && !inExamDetail"
       :active-tab="activeTab"
       :grade="grade"
       :module-name="moduleName"

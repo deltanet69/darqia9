@@ -295,7 +295,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const assignmentIds = sessions.map((row: any) => row.id)
     const [answers, violations] = assignmentIds.length ? await Promise.all([
       client.from(tables.answers).select('assignment_id, question_id, answer, saved_at').in('assignment_id', assignmentIds),
-      client.from(tables.violations).select('assignment_id, occurred_at, occurrence, locked, unlock_code').in('assignment_id', assignmentIds)
+      client.from(tables.violations).select('id, assignment_id, violation_type, occurred_at, occurrence, locked, unlock_code').in('assignment_id', assignmentIds)
     ]) : [{ data: [], error: null }, { data: [], error: null }]
     if (answers.error || violations.error) throw new Error((answers.error || violations.error)!.message)
     const sessionByStudent = new Map(sessions.map((row: any) => [row.student_id, row]))
@@ -316,6 +316,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         status: session?.status === 'selesai' ? 'Selesai' : session?.status === 'terkunci' ? 'Terkunci'
           : session?.status === 'berlangsung' ? 'Mengerjakan' : 'Belum mulai',
         violations: incidents.length,
+        pelanggaran: incidents.map((row: any) => ({ id: row.id, jenis: row.violation_type, waktu: row.occurred_at, ke: row.occurrence, terkunci: !!row.locked, kode: row.unlock_code ?? '' })).sort((a: any, b: any) => a.ke - b.ke),
         // Kode buka kunci pelanggaran 1-2 yang masih terkunci; guru/pengawas membacakannya ke siswa.
         kodeBuka: incidents.filter((row: any) => row.locked && row.occurrence < 3).sort((a: any, b: any) => b.occurrence - a.occurrence)[0]?.unlock_code ?? '',
         lastActive: lastTime ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(lastTime)) : '-'

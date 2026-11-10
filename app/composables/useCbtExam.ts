@@ -911,7 +911,7 @@ export const useCbtExam = () => {
   let lastViolationTimestamp = 0
 
   // Tanpa karakter yang mirip (0/O, 1/I) agar mudah diketik ulang.
-  const kodeAcak = (): string => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('')
+  const kodeAcak = (): string => Array.from(crypto.getRandomValues(new Uint8Array(3)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('')
 
   const triggerCheatLock = (customReason?: string, explicitLevel?: number, jenis?: string): void => {
     const now = Date.now()
@@ -934,7 +934,7 @@ export const useCbtExam = () => {
 
     const defaultReason = 'Meninggalkan layar ujian (terdeteksi perpindahan tab, alt+tab, atau aplikasi lain)'
     const reasonText = customReason || defaultReason
-    // PR di rumah tidak diawasi: kode buka muncul acak di popup. Ujian lain: kode diminta ke guru/pengawas.
+    // PR di rumah tidak diawasi: kode buka (3 karakter) muncul acak di popup. Ujian lain: kode diminta ke guru/pengawas.
     const kodePR = activeExam.value?.jenis === 'pr' ? kodeAcak() : ''
     const petunjukBuka = kodePR ? 'Ketik ulang kode acak di bawah ini untuk melanjutkan.' : 'Silakan lapor kepada guru/pengawas, lalu masukkan kode buka kunci yang mereka berikan untuk melanjutkan.'
 
