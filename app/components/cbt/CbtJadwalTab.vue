@@ -28,8 +28,9 @@
       <section v-for="hari in kelompok" :key="hari.kunci" class="bg-white border-2 border-slate-200/90 rounded-3xl overflow-hidden shadow-sm">
         <h3 class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-extrabold text-[#0A2A5C]">{{ hari.label }}</h3>
         <ul class="divide-y divide-slate-100">
-          <li v-for="u in hari.ujian" :key="u.source + u.id">
-            <button type="button" class="w-full text-left px-4 py-3.5 flex items-start gap-3 active:bg-slate-50" @click="emit('buka', u)">
+          <li v-for="u in hari.ujian" :key="u.source + u.id" class="px-4 py-3.5">
+            <!-- Menyentuh jadwal tidak membuka ujian; ujian yang belum waktunya hanya memunculkan pemberitahuan -->
+            <div class="flex items-start gap-3" @click="klik(u)">
               <div class="w-[78px] shrink-0 text-xs font-extrabold text-slate-900 tabular-nums leading-snug">
                 {{ jamWib(u.mulai) }}
                 <span class="block text-[11px] font-semibold text-slate-400">{{ u.durasi }} menit</span>
@@ -39,6 +40,14 @@
                 <div class="text-xs text-slate-500 break-words">{{ u.nama || 'Detail terbuka H-2' }}</div>
               </div>
               <span class="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full" :class="KEADAAN_INFO[keadaan(u)].kelas">{{ KEADAAN_INFO[keadaan(u)].label }}</span>
+            </div>
+            <button
+              v-if="bisaDibuka(keadaan(u))"
+              type="button"
+              class="mt-3 w-full py-2.5 rounded-2xl bg-blue-600 text-white font-extrabold text-sm active:scale-[0.98]"
+              @click="emit('buka', u)"
+            >
+              {{ keadaan(u) === 'berjalan' ? 'Lanjutkan Ujian' : 'Masuk Ujian' }}
             </button>
           </li>
         </ul>
@@ -53,7 +62,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import {
-  JENIS_LABEL, KEADAAN_INFO, jamWib, kelompokPerHari, keadaanUjian,
+  JENIS_LABEL, KEADAAN_INFO, bisaDibuka, jamWib, kelompokPerHari, keadaanUjian,
   type JenisUjian, type UjianSiswa
 } from '~/utils/cbtSiswaJadwal'
 
@@ -65,5 +74,7 @@ const jenisTab: JenisUjian[] = ['akhir', 'tengah_semester', 'harian']
 const aktif = ref<JenisUjian>(jenisTab.find(j => props.ujian.some(u => u.jenis === j)) ?? 'akhir')
 
 const keadaan = (u: UjianSiswa) => keadaanUjian(u, props.now)
+// Ujian yang sudah bisa dimulai hanya dimasuki lewat tombolnya; sentuhan pada jadwal lain memunculkan pemberitahuan (belum tiba, terkunci, selesai).
+const klik = (u: UjianSiswa) => { if (!bisaDibuka(keadaan(u))) emit('buka', u) }
 const kelompok = computed(() => kelompokPerHari(props.ujian.filter(u => u.jenis === aktif.value)))
 </script>
