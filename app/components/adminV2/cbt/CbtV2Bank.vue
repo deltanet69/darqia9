@@ -6,6 +6,7 @@ import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import { readWordBankTemplate, type WordBankPreview } from '~/utils/cbtWordBank'
+import { cocokKelas } from '~/utils/cbtKelas'
 import { readExcelBankTemplate, buildBankExcel } from '~/utils/cbtExcelBank'
 import { buildBankCsv } from '~/utils/cbtCsvBank'
 
@@ -368,8 +369,20 @@ const readImportFile = async (event: Event) => {
       ? await readExcelBankTemplate(file, props.grade, allClasses.value, allSubjects.value)
       : await readWordBankTemplate(file, props.grade, allClasses.value, allSubjects.value)
   } catch (error) {
-    importError.value = error instanceof Error ? error.message : 'Dokumen Word tidak dapat dibaca.'
+    importError.value = pesanKelasDiluarPenugasan(error) ?? (error instanceof Error ? error.message : 'Dokumen Word tidak dapat dibaca.')
   }
+}
+
+// Guru hanya melihat kelas yang ia ampu. Bila kelas di template ada di Manajemen Kelas tetapi bukan penugasannya,
+// pesannya harus jelas (bukan "tidak ditemukan", yang menyesatkan).
+const pesanKelasDiluarPenugasan = (error: unknown): string | null => {
+  const isian = error instanceof Error ? /^KELAS "(.*)" pada template tidak ditemukan/.exec(error.message)?.[1] : undefined
+  if (isian === undefined) return null
+  const semua = cbtData.classes.value.filter(item => item.grade === props.grade).map(item => item.name)
+  const ada = cocokKelas(isian, semua)
+  return ada
+    ? `Kelas "${ada}" ada di Manajemen Kelas, tetapi bukan kelas yang kamu ampu (tidak ada di jadwal pelajaranmu). Hubungi admin untuk penugasan jadwal.`
+    : null
 }
 
 const closeImport = () => {
