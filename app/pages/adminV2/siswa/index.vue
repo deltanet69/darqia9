@@ -555,7 +555,7 @@ onMounted(() => {
           </div>
           <div class="flex items-center gap-2">
             <button type="button" class="inline-flex h-8 items-center gap-1 rounded-lg border border-[#D0D5DD] bg-white px-2.5 font-semibold text-[#344054] transition hover:bg-[#F2F4F7] disabled:cursor-not-allowed disabled:opacity-50" :disabled="studentsStore.page.value === 1" @click="studentsStore.goToPage(studentsStore.page.value - 1)">
-              <AdminV2Icon name="arrow-left" :size="13" />
+              <AdminV2Icon name="back" :size="13" />
               Sebelumnya
             </button>
             <span class="min-w-16 text-center font-semibold text-[#475467]">Hal. {{ studentsStore.page.value }}/{{ studentsStore.totalPages.value }}</span>

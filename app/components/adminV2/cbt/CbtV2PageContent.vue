@@ -108,6 +108,7 @@ const syncRoute = (gantiJenjang = false) => router.push({
     rombel: activeTab.value === 'exams' && !gantiJenjang ? route.query.rombel : undefined,
     token: activeTab.value === 'exams' && !gantiJenjang ? route.query.token : undefined,
     ujian: activeTab.value === 'exams' && !gantiJenjang ? route.query.ujian : undefined,
+    pelanggaran: activeTab.value === 'exams' && !gantiJenjang ? route.query.pelanggaran : undefined,
     ujianStatus: activeTab.value === 'exams' ? route.query.ujianStatus : undefined,
     ujianCari: activeTab.value === 'exams' ? route.query.ujianCari : undefined
   }

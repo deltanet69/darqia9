@@ -8,6 +8,20 @@ const assessmentTables = (source: AssessmentSource) => source === 'ujian_harian'
   ? { banks: 'ujian_harian_banks', questions: 'ujian_harian_questions', exams: 'ujian_harian', assignments: 'ujian_harian_assignments', answers: 'ujian_harian_answers', violations: 'ujian_harian_violations' }
   : { banks: 'question_banks', questions: 'questions', exams: 'exams', assignments: 'exam_assignments', answers: 'exam_answers', violations: 'exam_violations' }
 
+export interface PelanggaranRombel {
+  id: string
+  examId: string
+  studentId: string
+  nama: string
+  nis: string
+  jenis: string
+  waktu: string
+  ke: number
+  terkunci: boolean
+  kode: string
+  selesai: boolean
+}
+
 export interface CbtClass {
   id: string
   name: string
@@ -282,7 +296,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       .select('id, student_id, status, started_at, submitted_at').eq('exam_id', exam.id)
     if (assignmentError) throw new Error(assignmentError.message)
     const sessions = assignments ?? []
-    let rosterQuery = client.from('students').select('id, name, nisn').eq('grade', exam.grade)
+    let rosterQuery = client.from('students').select('id, name, nis, nisn').eq('grade', exam.grade)
     rosterQuery = sessions.length
       ? rosterQuery.in('id', sessions.map((row: any) => row.student_id))
       : rosterQuery.eq('class_id', exam.classId).eq('active', true)
@@ -310,7 +324,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         : Array.isArray(row.answer) ? row.answer.length > 0
         : row.answer !== null && (typeof row.answer !== 'object' || Object.keys(row.answer).length > 0))
       return {
-        id: student.id, name: student.name, nisn: student.nisn,
+        id: student.id, name: student.name, nis: student.nis, nisn: student.nisn,
         progress: new Set(answered.map((row: any) => row.question_id)).size,
         total: questionIds.size,
         status: session?.status === 'selesai' ? 'Selesai' : session?.status === 'terkunci' ? 'Terkunci'
@@ -322,6 +336,30 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         lastActive: lastTime ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(lastTime)) : '-'
       }
     })
+  }
+
+  // Seluruh pelanggaran siswa di satu rombel (semua mapel), lengkap dengan kode buka untuk diberikan ke siswa.
+  const loadPelanggaranRombel = async (examIds: string[]): Promise<PelanggaranRombel[]> => {
+    if (!examIds.length) return []
+    const { data: tugas, error: e1 } = await client.from(tables.assignments).select('id, exam_id, student_id, status').in('exam_id', examIds)
+    if (e1) throw new Error(e1.message)
+    if (!tugas?.length) return []
+    const [langgar, murid] = await Promise.all([
+      client.from(tables.violations).select('id, assignment_id, violation_type, occurred_at, occurrence, locked, unlock_code').in('assignment_id', tugas.map((t: any) => t.id)),
+      client.from('students').select('id, name, nis').in('id', [...new Set(tugas.map((t: any) => t.student_id))])
+    ])
+    if (langgar.error || murid.error) throw new Error((langgar.error || murid.error)!.message)
+    const tugasById = new Map(tugas.map((t: any) => [t.id, t]))
+    const muridById = new Map((murid.data ?? []).map((m: any) => [m.id, m]))
+    return (langgar.data ?? []).map((v: any) => {
+      const t: any = tugasById.get(v.assignment_id)
+      const m: any = muridById.get(t?.student_id)
+      return {
+        id: v.id, examId: t?.exam_id ?? '', studentId: t?.student_id ?? '', nama: m?.name ?? '-', nis: m?.nis ?? '',
+        jenis: v.violation_type, waktu: v.occurred_at, ke: v.occurrence, terkunci: !!v.locked, kode: v.unlock_code ?? '',
+        selesai: t?.status === 'selesai'
+      }
+    }).sort((a: PelanggaranRombel, b: PelanggaranRombel) => b.waktu.localeCompare(a.waktu))
   }
 
   const loadQuestions = (force = false): Promise<void> => {
@@ -707,6 +745,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     questionsLoading,
     loadQuestions,
     loadMonitoring,
+    loadPelanggaranRombel,
     load,
     saveBankPackage,
     deleteBankPackage,

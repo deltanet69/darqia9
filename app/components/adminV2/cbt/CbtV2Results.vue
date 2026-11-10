@@ -195,7 +195,7 @@ const exportCsv = (clsFilter: string | null) => {
         class="text-xs font-bold text-[#667085] hover:text-[#101828] inline-flex items-center gap-1.5 transition"
         @click="resultMode = 'classes'; selectedClass = ''"
       >
-        <AdminV2Icon name="arrow-left" :size="12" />
+        <AdminV2Icon name="back" :size="12" />
         <span>Kembali ke rombel</span>
       </button>
 
@@ -315,7 +315,7 @@ const exportCsv = (clsFilter: string | null) => {
         class="text-xs font-bold text-[#667085] hover:text-[#101828] inline-flex items-center gap-1.5 transition"
         @click="resultMode = 'students'"
       >
-        <AdminV2Icon name="arrow-left" :size="12" />
+        <AdminV2Icon name="back" :size="12" />
         <span>Kembali ke daftar nilai</span>
       </button>
 

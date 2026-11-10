@@ -11,138 +11,157 @@ const cbtData = useAdminCbtData(props.source)
 const siswa = ref<LiveStudent[] | null>(null)
 const galat = ref('')
 const diperbarui = ref('')
+const memuat = ref(false)
+const filter = ref<'semua' | 'selesai' | 'mengerjakan' | 'belum' | 'melanggar'>('semua')
+const cari = ref('')
 
 const muat = async () => {
+  if (memuat.value) return
+  memuat.value = true
   try {
     siswa.value = await cbtData.loadMonitoring(props.exam)
     galat.value = ''
     diperbarui.value = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date())
   } catch (e) {
     galat.value = e instanceof Error ? e.message : 'Data ujian gagal dimuat.'
-  }
+  } finally { memuat.value = false }
 }
-// Data diperbarui otomatis tiap 15 detik agar pelanggaran baru langsung terlihat.
+// Data diperbarui otomatis tiap 15 detik selama halaman terbuka.
 let timer: ReturnType<typeof setInterval> | null = null
 onMounted(() => { void muat(); timer = setInterval(muat, 15_000) })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 
-const jumlah = (status: string) => (siswa.value ?? []).filter(s => s.status === status).length
-const selesai = computed(() => jumlah('Selesai'))
-const mengerjakan = computed(() => jumlah('Mengerjakan'))
-const belum = computed(() => jumlah('Belum mulai'))
-const terkunci = computed(() => (siswa.value ?? []).filter(s => s.status.startsWith('Terkunci')).length)
+const kelompok = (s: LiveStudent) => s.status === 'Selesai' ? 'selesai' : s.status === 'Belum mulai' ? 'belum' : 'mengerjakan'
+const hitung = computed(() => {
+  const h = { selesai: 0, mengerjakan: 0, belum: 0, melanggar: 0, total: siswa.value?.length ?? 0 }
+  for (const s of siswa.value ?? []) { h[kelompok(s)]++; if (s.violations) h.melanggar++ }
+  return h
+})
+const persen = (n: number) => hitung.value.total ? (n / hitung.value.total) * 100 : 0
 
-const isPr = computed(() => props.exam.jenis === 'pr')
-const jenisLabel = computed(() => props.source === 'cbt' ? (props.exam.jenis === 'tengah_semester' ? 'Ujian Tengah Semester' : 'Ujian Akhir') : isPr.value ? 'PR di Rumah' : 'Ujian Harian')
+const tampil = computed(() => {
+  const q = cari.value.trim().toLowerCase()
+  return (siswa.value ?? []).filter(s => {
+    if (filter.value === 'melanggar' ? !s.violations : filter.value !== 'semua' && kelompok(s) !== filter.value) return false
+    return !q || s.name.toLowerCase().includes(q) || (s.nis ?? '').includes(q)
+  })
+})
 
-const JENIS_PELANGGARAN: Record<string, string> = {
-  pindah_tab: 'Pindah tab',
-  alt_tab: 'Keluar dari layar ujian',
-  tutup_browser: 'Menutup browser'
-}
-const waktu = (iso: string) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+const FILTER = [
+  { id: 'semua', label: 'Semua' },
+  { id: 'selesai', label: 'Sudah selesai' },
+  { id: 'mengerjakan', label: 'Mengerjakan' },
+  { id: 'belum', label: 'Belum mulai' },
+  { id: 'melanggar', label: 'Melanggar' }
+] as const
 
-const daftarPelanggaran = computed(() => (siswa.value ?? [])
-  .flatMap(s => (s.pelanggaran ?? []).map(p => ({ ...p, nama: s.name, selesai: s.status === 'Selesai' })))
-  .sort((a, b) => b.waktu.localeCompare(a.waktu)))
+const jenisLabel = computed(() => props.source === 'cbt'
+  ? (props.exam.jenis === 'tengah_semester' ? 'Ujian Tengah Semester' : 'Ujian Akhir')
+  : props.exam.jenis === 'pr' ? 'PR di Rumah' : 'Ujian Harian')
 
-// Kode hanya perlu diberikan bila siswa masih mengerjakan dan pelanggarannya belum dibuka.
-const menunggu = computed(() => daftarPelanggaran.value.filter(p => p.terkunci && p.ke < 3 && !p.selesai).length)
-
-const statusKelas = (status: string) => status === 'Selesai' ? 'bg-[#E7F8F0] text-[#087C52]'
-  : status === 'Mengerjakan' ? 'bg-[#E8F0FE] text-[#1B5FD9]'
-    : status.startsWith('Terkunci') ? 'bg-[#FDECEA] text-[#B42318]' : 'bg-[#EFF2F7] text-[#475467]'
-
-const salin = async (kode: string) => {
-  try { await navigator.clipboard.writeText(kode); emit('toast', `Kode ${kode} disalin.`) } catch { emit('toast', 'Kode gagal disalin. Salin manual.') }
-}
+const statusTeks = (s: LiveStudent) => s.status === 'Selesai' ? 'Sudah selesai' : s.status.startsWith('Terkunci') ? 'Akun terkunci' : s.status
+const statusWarna = (s: LiveStudent) => s.status === 'Selesai' ? 'text-[#067647]'
+  : s.status.startsWith('Terkunci') ? 'text-[#B42318]' : s.status === 'Mengerjakan' ? 'text-[#1B5FD9]' : 'text-[#667085]'
+const barWarna = (s: LiveStudent) => s.status === 'Selesai' ? 'bg-[#12B76A]' : s.status.startsWith('Terkunci') ? 'bg-[#F04438]' : 'bg-[#1B5FD9]'
+const pelanggaranKelas = (n: number) => n >= 3 ? 'bg-[#FEE4E2] text-[#B42318]' : n === 2 ? 'bg-[#FEF0C7] text-[#B54708]' : 'bg-[#FFFAEB] text-[#B54708]'
 </script>
 
 <template>
   <div class="space-y-5">
-    <!-- Kepala: tombol kembali + identitas ujian -->
-    <div>
-      <button type="button" class="inline-flex items-center gap-1.5 rounded-full border border-[#E7EBF2] bg-white px-4 py-2.5 text-xs font-extrabold text-[#344054] hover:border-[#1B5FD9]" @click="emit('back')">
-        <AdminV2Icon name="arrow-left" :size="12" />
-        <span>Kembali ke Daftar Ujian</span>
-      </button>
-      <div class="mt-4 flex flex-wrap items-start justify-between gap-3">
-        <div class="min-w-0">
-          <span class="inline-block rounded-full bg-[#E8F0FE] px-2.5 py-0.5 text-[10px] font-extrabold text-[#1B5FD9]">{{ jenisLabel }}</span>
-          <h2 class="mt-1.5 break-words text-xl font-extrabold text-[#101828]">{{ exam.subject }}</h2>
-          <p class="mt-0.5 break-words text-xs text-[#667085]">{{ exam.name }} &middot; {{ exam.classroom }} &middot; {{ exam.date }} &middot; {{ exam.time }} &middot; Pengawas: {{ exam.supervisor || '-' }}</p>
+    <!-- Kepala -->
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="min-w-0">
+        <button type="button" class="group inline-flex items-center gap-1.5 text-xs font-extrabold text-[#475467] hover:text-[#1B5FD9]" @click="emit('back')">
+          <AdminV2Icon name="back" :size="14" class="transition-transform group-hover:-translate-x-0.5" />
+          <span>Kembali ke Daftar Ujian</span>
+        </button>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <h2 class="break-words text-2xl font-extrabold tracking-tight text-[#101828]">{{ exam.subject }}</h2>
+          <span class="rounded-full bg-[#E8F0FE] px-2.5 py-0.5 text-[11px] font-extrabold text-[#1B5FD9]">{{ jenisLabel }}</span>
         </div>
-        <button type="button" class="rounded-full border border-[#E7EBF2] bg-white px-4 py-2.5 text-xs font-extrabold text-[#1B5FD9]" @click="muat">Perbarui Data</button>
+        <p class="mt-1 break-words text-xs text-[#667085]">
+          {{ exam.name }} <span class="text-[#D0D5DD]">/</span> Rombel {{ exam.classroom }} <span class="text-[#D0D5DD]">/</span> {{ exam.date }}, {{ exam.time }} <span class="text-[#D0D5DD]">/</span> Pengawas: {{ exam.supervisor || 'belum ditentukan' }}
+        </p>
       </div>
-      <p v-if="diperbarui" class="mt-1 text-[11px] text-[#98A2B3]">Diperbarui otomatis tiap 15 detik &middot; terakhir {{ diperbarui }}</p>
+      <button type="button" class="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#E7EBF2] bg-white px-4 text-xs font-extrabold text-[#344054] hover:border-[#1B5FD9] hover:text-[#1B5FD9] disabled:opacity-60" :disabled="memuat" @click="muat">
+        <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#12B76A] opacity-60" /><span class="relative inline-flex h-2 w-2 rounded-full bg-[#12B76A]" /></span>
+        {{ memuat ? 'Memperbarui…' : diperbarui ? `Diperbarui ${diperbarui}` : 'Perbarui' }}
+      </button>
     </div>
 
     <p v-if="galat" class="rounded-xl border border-[#F8D3CE] bg-[#FDECEA] px-4 py-3 text-xs font-semibold text-[#B42318]">{{ galat }}</p>
-    <p v-else-if="!siswa" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Memuat data siswa&hellip;</p>
+    <p v-else-if="!siswa" class="rounded-2xl border border-[#E7EBF2] bg-white p-10 text-center text-xs text-[#667085]">Memuat data siswa&hellip;</p>
 
     <template v-else>
-      <!-- Ringkasan -->
-      <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-        <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#101828]">{{ siswa.length }}</b><span class="text-[11px] text-[#667085]">Peserta</span></div>
-        <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#087C52]">{{ selesai }}</b><span class="text-[11px] text-[#667085]">Sudah selesai</span></div>
-        <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#1B5FD9]">{{ mengerjakan }}</b><span class="text-[11px] text-[#667085]">Sedang mengerjakan</span></div>
-        <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#344054]">{{ belum }}</b><span class="text-[11px] text-[#667085]">Belum mulai</span></div>
-        <div class="col-span-2 rounded-2xl border border-[#E7EBF2] bg-white p-3.5 sm:col-span-1"><b class="block text-xl font-extrabold" :class="daftarPelanggaran.length ? 'text-[#B42318]' : 'text-[#101828]'">{{ daftarPelanggaran.length }}</b><span class="text-[11px] text-[#667085]">Pelanggaran{{ terkunci ? ` · ${terkunci} akun terkunci` : '' }}</span></div>
-      </div>
-
-      <!-- Bagian 1: Token pelanggaran (paling atas agar langsung terlihat) -->
-      <section class="overflow-hidden rounded-2xl border border-[#E7EBF2] bg-white">
-        <div class="border-b border-[#E7EBF2] bg-[#FEF4E5] px-4 py-3 sm:px-5">
-          <h3 class="text-sm font-extrabold text-[#7A4A03]">Token Pelanggaran Siswa<span v-if="menunggu" class="ml-2 rounded-full bg-[#B42318] px-2 py-0.5 text-[10px] text-white">{{ menunggu }} menunggu kode</span></h3>
-          <p class="text-[11px] text-[#7A4A03]">
-            <template v-if="isPr">Tiap pelanggaran tercatat otomatis. Pada PR di rumah, kode buka muncul sendiri di layar siswa, jadi tidak perlu diberikan.</template>
-            <template v-else>Tiap pelanggaran tercatat otomatis. Tegur siswanya, lalu berikan kode di bawah agar ia bisa melanjutkan. Pelanggaran ke-3 mengunci akun total.</template>
-          </p>
+      <!-- Ringkasan: satu bilah kemajuan kelas -->
+      <section class="rounded-2xl border border-[#E7EBF2] bg-white p-4 sm:p-5">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p class="text-xs font-bold text-[#667085]">Kemajuan kelas</p>
+            <p class="mt-0.5 text-2xl font-extrabold tabular-nums text-[#101828]">{{ hitung.selesai }}<span class="text-base font-bold text-[#98A2B3]"> / {{ hitung.total }} siswa selesai</span></p>
+          </div>
+          <button type="button" class="rounded-xl px-3 py-2 text-left transition" :class="hitung.melanggar ? 'bg-[#FEF3F2] hover:bg-[#FEE4E2]' : 'bg-[#F6F8FC]'" @click="filter = 'melanggar'">
+            <b class="block text-lg font-extrabold tabular-nums" :class="hitung.melanggar ? 'text-[#B42318]' : 'text-[#101828]'">{{ hitung.melanggar }}</b>
+            <span class="text-[11px] font-bold" :class="hitung.melanggar ? 'text-[#B42318]' : 'text-[#667085]'">siswa melanggar</span>
+          </button>
         </div>
-        <ul v-if="daftarPelanggaran.length" class="divide-y divide-[#EFF2F7]">
-          <li v-for="p in daftarPelanggaran" :key="p.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
-            <div class="min-w-0">
-              <b class="block break-words text-sm font-bold text-[#101828]">{{ p.nama }}</b>
-              <span class="text-[11px] text-[#667085]">Pelanggaran ke-{{ p.ke }} &middot; {{ JENIS_PELANGGARAN[p.jenis] ?? p.jenis }} &middot; {{ waktu(p.waktu) }}</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span v-if="p.ke >= 3" class="rounded-full bg-[#FDECEA] px-2.5 py-1 text-[11px] font-extrabold text-[#B42318]">Akun terkunci total</span>
-              <span v-else-if="p.selesai && p.terkunci" class="text-[11px] text-[#667085]">Siswa sudah selesai</span>
-              <span v-else-if="isPr" class="text-[11px] text-[#667085]">{{ p.terkunci ? 'Menunggu siswa' : 'Sudah dibuka' }}</span>
-              <template v-else-if="p.terkunci">
-                <div class="text-right">
-                  <span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Kode untuk siswa</span>
-                  <b class="font-mono text-xl tracking-[0.25em] text-[#101828]">{{ p.kode }}</b>
-                </div>
-                <button type="button" class="min-h-10 rounded-xl border border-[#E7EBF2] bg-white px-3 text-xs font-bold text-[#344054]" @click="salin(p.kode)">Salin</button>
-              </template>
-              <span v-else class="rounded-full bg-[#E7F8F0] px-2.5 py-1 text-[11px] font-extrabold text-[#087C52]">Sudah dibuka</span>
-            </div>
-          </li>
-        </ul>
-        <p v-else class="p-8 text-center text-xs text-[#667085]">Belum ada pelanggaran. Pelanggaran akan muncul di sini otomatis.</p>
+        <div class="mt-4 flex h-2.5 overflow-hidden rounded-full bg-[#EFF2F7]" role="img" :aria-label="`${hitung.selesai} selesai, ${hitung.mengerjakan} mengerjakan, ${hitung.belum} belum mulai`">
+          <span class="bg-[#12B76A] transition-all duration-700 ease-out" :style="{ width: `${persen(hitung.selesai)}%` }" />
+          <span class="bg-[#1B5FD9] transition-all duration-700 ease-out" :style="{ width: `${persen(hitung.mengerjakan)}%` }" />
+        </div>
+        <div class="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-[11.5px] text-[#475467]">
+          <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-[#12B76A]" />Sudah selesai <b class="tabular-nums text-[#101828]">{{ hitung.selesai }}</b></span>
+          <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-[#1B5FD9]" />Mengerjakan <b class="tabular-nums text-[#101828]">{{ hitung.mengerjakan }}</b></span>
+          <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-[#D0D5DD]" />Belum mulai <b class="tabular-nums text-[#101828]">{{ hitung.belum }}</b></span>
+        </div>
       </section>
-      <!-- Bagian 2: Daftar siswa -->
+
+      <!-- Daftar siswa -->
       <section class="overflow-hidden rounded-2xl border border-[#E7EBF2] bg-white">
-        <div class="border-b border-[#E7EBF2] bg-[#F6F8FC] px-4 py-3 sm:px-5">
-          <h3 class="text-sm font-extrabold text-[#0A2A5C]">Daftar Siswa</h3>
-          <p class="text-[11px] text-[#667085]">Status pengerjaan dan jumlah pelanggaran tiap siswa.</p>
+        <div class="flex flex-col gap-3 border-b border-[#E7EBF2] px-4 py-3.5 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex gap-1.5 overflow-x-auto">
+            <button
+              v-for="f in FILTER"
+              :key="f.id"
+              type="button"
+              class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-extrabold transition"
+              :class="filter === f.id ? 'border-[#101828] bg-[#101828] text-white' : 'border-[#E7EBF2] bg-white text-[#475467] hover:border-[#98A2B3]'"
+              @click="filter = f.id"
+            >
+              {{ f.label }} <span class="tabular-nums opacity-70">{{ f.id === 'semua' ? hitung.total : hitung[f.id] }}</span>
+            </button>
+          </div>
+          <input v-model="cari" type="search" placeholder="Cari nama atau NIS…" class="w-full rounded-full border border-[#E7EBF2] px-4 py-2 text-xs outline-none focus:border-[#1B5FD9] lg:w-64">
         </div>
-        <div class="hidden grid-cols-[40px_minmax(0,1fr)_140px_130px_110px] gap-4 border-b border-[#EFF2F7] px-5 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#667085] md:grid">
-          <span>No</span><span>Nama Siswa</span><span>Status</span><span>Soal Terjawab</span><span class="text-center">Pelanggaran</span>
+
+        <div class="hidden grid-cols-[44px_minmax(0,1fr)_minmax(0,260px)_110px] gap-4 border-b border-[#EFF2F7] bg-[#F9FAFB] px-5 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#667085] md:grid">
+          <span>No</span><span>Nama Siswa</span><span>Progres Pengerjaan</span><span class="text-center">Pelanggaran</span>
         </div>
         <ul class="divide-y divide-[#EFF2F7]">
-          <li v-for="(s, i) in siswa" :key="s.id" class="grid gap-1.5 px-4 py-3 sm:px-5 md:grid-cols-[40px_minmax(0,1fr)_140px_130px_110px] md:items-center md:gap-4">
-            <span class="hidden text-xs text-[#667085] md:block">{{ i + 1 }}</span>
-            <b class="break-words text-sm font-bold text-[#101828]">{{ s.name }}</b>
-            <span><span class="inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold" :class="statusKelas(s.status)">{{ s.status === 'Selesai' ? 'Sudah selesai' : s.status }}</span></span>
-            <span class="text-xs text-[#344054]"><span class="text-[#667085] md:hidden">Soal terjawab: </span>{{ s.progress }} dari {{ s.total }}</span>
-            <span class="text-xs font-bold md:text-center" :class="s.violations ? 'text-[#B42318]' : 'text-[#667085]'"><span class="font-normal text-[#667085] md:hidden">Pelanggaran: </span>{{ s.violations }} kali</span>
+          <li v-for="(s, i) in tampil" :key="s.id" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2.5 px-4 py-3.5 transition-colors hover:bg-[#F9FAFB] sm:px-5 md:grid-cols-[44px_minmax(0,1fr)_minmax(0,260px)_110px] md:items-center md:gap-4">
+            <span class="hidden text-xs tabular-nums text-[#98A2B3] md:block">{{ i + 1 }}</span>
+            <div class="min-w-0">
+              <b class="block break-words text-sm font-bold text-[#101828]">{{ s.name }}</b>
+              <span class="text-[11px] tabular-nums text-[#667085]">NIS {{ s.nis || '-' }}</span>
+            </div>
+            <div class="col-span-2 row-start-2 md:col-span-1 md:row-start-auto">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="font-extrabold" :class="statusWarna(s)">{{ statusTeks(s) }}</span>
+                <span class="tabular-nums text-[#475467]">{{ s.progress }} dari {{ s.total }} soal</span>
+              </div>
+              <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#EFF2F7]">
+                <div class="h-full rounded-full transition-all duration-700 ease-out" :class="barWarna(s)" :style="{ width: `${Math.round((s.progress / Math.max(1, s.total)) * 100)}%` }" />
+              </div>
+            </div>
+            <div class="col-start-2 row-start-1 self-start md:col-start-auto md:row-start-auto md:self-auto md:text-center">
+              <span v-if="s.violations" class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold tabular-nums" :class="pelanggaranKelas(s.violations)">{{ Math.min(s.violations, 3) }}x<span class="font-bold">{{ s.violations >= 3 ? ' · terkunci' : '' }}</span></span>
+              <span v-else class="text-[11px] text-[#98A2B3]">Tidak ada</span>
+            </div>
           </li>
         </ul>
-        <p v-if="!siswa.length" class="p-8 text-center text-xs text-[#667085]">Belum ada siswa di ujian ini.</p>
+        <p v-if="!tampil.length" class="p-10 text-center text-xs text-[#667085]">{{ siswa.length ? 'Tidak ada siswa yang cocok dengan filter ini.' : 'Belum ada siswa di ujian ini.' }}</p>
+        <p v-if="hitung.melanggar" class="border-t border-[#EFF2F7] bg-[#F9FAFB] px-5 py-3 text-[11.5px] text-[#475467]">Kode buka kunci untuk siswa yang melanggar ada di tombol <b>Pelanggaran Siswa</b> pada halaman rombel.</p>
       </section>
-
     </template>
   </div>
 </template>

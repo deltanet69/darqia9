@@ -132,6 +132,7 @@ export interface LiveStudent {
   status: 'Belum mulai' | 'Mengerjakan' | 'Selesai' | 'Terkunci' | 'Terkunci (1x)'
   violations: number
   lastActive: string
+  nis?: string
   kodeBuka?: string
   pelanggaran?: { id: string, jenis: string, waktu: string, ke: number, terkunci: boolean, kode: string }[]
 }

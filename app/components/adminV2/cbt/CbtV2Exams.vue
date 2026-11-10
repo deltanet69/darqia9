@@ -4,6 +4,7 @@ import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2ExamTokens from './CbtV2ExamTokens.vue'
 import CbtV2ExamDetail from './CbtV2ExamDetail.vue'
+import CbtV2RombelViolations from './CbtV2RombelViolations.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 
@@ -125,6 +126,10 @@ const jadwalPerHari = computed(() => {
 })
 
 // Modal token terbuka selama ?token=1 ada di URL; satu token berlaku untuk seluruh mapel rombel, jadi ujian mana pun cukup sebagai acuan.
+// Panel Pelanggaran Siswa (?pelanggaran=1) mencakup seluruh mapel rombel yang sedang dibuka.
+const ujianRombel = computed(() => currentExams.value.filter(x => x.classId === rombelAktif.value))
+const jumlahPelanggaranRombel = computed(() => ujianRombel.value.reduce((n, e) => n + (e.violations || 0), 0))
+
 const tokenExam = computed(() => kueri('token') && rombelDetail.value
   ? currentExams.value.filter(x => x.classId === rombelAktif.value).sort(urutWaktu)[0] ?? null
   : null)
@@ -344,10 +349,15 @@ const removeSchedule = async (exam: ExamItem) => {
         </div>
         <div class="flex items-center gap-2 flex-wrap">
           <button v-if="rombelDetail" type="button" class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#344054] text-xs font-extrabold inline-flex items-center gap-1.5" @click="ubahKueri({ rombel: undefined, token: undefined })">
-            <AdminV2Icon name="arrow-left" :size="12" />
+            <AdminV2Icon name="back" :size="12" />
             <span>Semua Rombel</span>
           </button>
           <button v-if="rombelDetail && bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#1B5FD9] text-xs font-extrabold" @click="ubahKueri({ token: '1' })">Token Peserta</button>
+          <button v-if="rombelDetail" type="button" class="relative px-4 py-2.5 rounded-full bg-white border text-xs font-extrabold inline-flex items-center gap-1.5 transition" :class="jumlahPelanggaranRombel ? 'border-[#F8D3CE] text-[#B42318] hover:bg-[#FEF3F2]' : 'border-[#E7EBF2] text-[#344054] hover:border-[#1B5FD9]'" @click="ubahKueri({ pelanggaran: '1' })">
+            <AdminV2Icon name="alert" :size="13" />
+            <span>Pelanggaran Siswa</span>
+            <span v-if="jumlahPelanggaranRombel" class="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1.5 rounded-full bg-[#D92D20] text-white text-[10px] font-extrabold leading-5 text-center tabular-nums ring-2 ring-[#F6F8FC]" :aria-label="`${jumlahPelanggaranRombel} pelanggaran`">{{ jumlahPelanggaranRombel > 99 ? '99+' : jumlahPelanggaranRombel }}</span>
+          </button>
           <button v-if="bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5" @click="openCreateSchedule(rombelDetail?.classroom)">
             <AdminV2Icon name="plus" :size="14" />
             <span>{{ rombelDetail ? 'Tambah Ujian' : 'Buat Ujian' }}</span>
@@ -614,6 +624,14 @@ const removeSchedule = async (exam: ExamItem) => {
       </div>
     </Teleport>
 
+    <CbtV2RombelViolations
+      v-if="kueri('pelanggaran') && rombelDetail"
+      :classroom="rombelDetail.classroom"
+      :exams="ujianRombel"
+      :source="source ?? 'cbt'"
+      @close="ubahKueri({ pelanggaran: undefined })"
+      @toast="emit('toast', $event)"
+    />
     <CbtV2ExamTokens
       v-if="tokenExam"
       :exam="tokenExam"
