@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <div>
       <h2 class="text-2xl font-black text-slate-900 tracking-tight">Rekap Ujian</h2>
-      <p class="text-xs sm:text-sm text-slate-600 mt-0.5">Ujian yang sudah kamu ikuti, nilai ujian harian, dan jumlah pelanggaran di setiap ujian.</p>
+      <p class="text-xs sm:text-sm text-slate-600 mt-0.5">Ujian yang sudah kamu ikuti, nilai, dan jumlah pelanggaran di setiap ujian.</p>
     </div>
 
     <div v-if="rekap === null" class="bg-white border-2 border-slate-200/90 rounded-3xl p-8 text-center text-sm text-slate-500">Memuat rekap…</div>
@@ -14,7 +14,7 @@
           <b class="block text-xl font-black text-slate-900 tabular-nums mt-1">{{ rekap.length }}</b>
         </div>
         <div class="bg-white border-2 border-slate-200/90 rounded-2xl p-3.5">
-          <span class="block text-[10.5px] font-bold uppercase tracking-wider text-slate-500">Rata-rata Harian</span>
+          <span class="block text-[10.5px] font-bold uppercase tracking-wider text-slate-500">Rata-rata Nilai</span>
           <b class="block text-xl font-black text-slate-900 tabular-nums mt-1">{{ rataHarian === null ? '-' : rataHarian }}</b>
         </div>
         <div class="bg-white border-2 border-slate-200/90 rounded-2xl p-3.5">
@@ -58,15 +58,13 @@ const props = defineProps<{ rekap: RekapUjian[] | null }>()
 
 const totalPelanggaran = computed(() => (props.rekap || []).reduce((a, r) => a + r.pelanggaran, 0))
 const rataHarian = computed(() => {
-  const nilai = (props.rekap || []).filter(r => r.jenis === 'harian' && r.nilai !== null && !r.menunggu).map(r => r.nilai as number)
+  const nilai = (props.rekap || []).filter(r => r.statusSiswa === 'selesai' && r.nilai !== null && !r.menunggu).map(r => r.nilai as number)
   return nilai.length ? Math.round(nilai.reduce((a, b) => a + b, 0) / nilai.length * 10) / 10 : null
 })
 
 const statusLabel = (r: RekapUjian) => r.statusSiswa === 'selesai' ? 'Selesai' : r.statusSiswa === 'terkunci' ? 'Akun terkunci' : 'Sedang dikerjakan'
 const statusKelas = (r: RekapUjian) => r.statusSiswa === 'selesai' ? 'bg-emerald-50 text-emerald-700' : r.statusSiswa === 'terkunci' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'
-// Nilai hanya ditampilkan untuk ujian harian; ujian lain diumumkan oleh guru.
 const teksNilai = (r: RekapUjian) => {
-  if (r.jenis !== 'harian') return 'Diumumkan guru'
   if (r.statusSiswa !== 'selesai') return '-'
   if (r.menunggu) return 'Menunggu penilaian guru'
   return r.nilai === null ? '-' : String(r.nilai)

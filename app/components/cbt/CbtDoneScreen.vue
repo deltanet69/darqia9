@@ -1,63 +1,53 @@
 <template>
-  <section v-show="screen === 'done'" class="min-h-screen py-12 px-4 sm:px-6 flex items-center justify-center">
-    <div class="max-w-3xl w-full mx-auto">
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        <!-- Left Hero Summary -->
-        <div class="md:col-span-5 bg-white border-2 border-slate-200/90 rounded-3xl p-6 sm:p-8 text-center shadow-lg space-y-4">
-          <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
-          </div>
-          <h2 class="text-2xl font-black text-slate-900 tracking-tight">Ujian Selesai!</h2>
-          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">{{ doneMsg }}</p>
-          <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
-            <span>Jawaban terkirim</span>
-          </div>
+  <section v-show="screen === 'done'" class="min-h-screen py-8 px-4 bg-[#F1F5F9] flex items-start sm:items-center justify-center">
+    <div class="max-w-xl w-full mx-auto space-y-4">
+      <!-- Nilai -->
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0F1E38] via-[#122B52] to-[#0A1A33] p-6 text-white shadow-xl text-center">
+        <div class="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+        <span class="relative inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-400/15 text-emerald-300 border border-emerald-400/30">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4.5 12.5l5 5L19.5 7" /></svg>
+          Jawaban terkirim
+        </span>
+        <p class="relative mt-4 text-xs font-bold uppercase tracking-wider text-blue-200">Nilai Ujian</p>
+        <div class="relative mt-1 text-6xl font-black tabular-nums tracking-tight">{{ hasil ? formatNilai(hasil.nilai) : '-' }}</div>
+        <p class="relative mt-1 text-xs text-slate-300">{{ subject }} &bull; {{ examName }}</p>
+        <p v-if="hasil && hasil.menunggu" class="relative mt-2 text-[11px] text-amber-200">{{ hasil.menunggu }} soal esai masih menunggu penilaian guru.</p>
+      </div>
+
+      <!-- Benar / Salah / Tidak dijawab -->
+      <div v-if="hasil" class="grid grid-cols-3 gap-2.5">
+        <div class="bg-white border-2 border-emerald-200 rounded-2xl p-3.5 text-center">
+          <b class="block text-2xl font-black text-emerald-600 tabular-nums">{{ hasil.benar }}</b>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Benar</span>
         </div>
-
-        <!-- Right Detail Card -->
-        <div class="md:col-span-7 space-y-6">
-          <div class="bg-gradient-to-br from-[#0F1E38] via-[#122B52] to-[#0A1A33] rounded-3xl p-6 text-white shadow-xl space-y-4">
-            <span class="text-[11px] font-bold uppercase tracking-wider text-blue-300 block">Ringkasan Pengumpulan</span>
-            
-            <dl class="space-y-2.5 text-xs">
-              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Nama</dt><dd class="font-bold text-right">{{ studentName }}</dd></div>
-              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Mata Pelajaran</dt><dd class="font-bold text-right">{{ subject }}</dd></div>
-              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Materi</dt><dd class="font-bold text-right">{{ examName }}</dd></div>
-              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Waktu Selesai</dt><dd class="font-bold">{{ doneTime }}</dd></div>
-              <div class="flex justify-between border-b border-white/10 pb-2"><dt class="text-slate-400">Durasi Pengerjaan</dt><dd class="font-bold">{{ doneDur }}</dd></div>
-              <div class="flex justify-between pb-1"><dt class="text-slate-400">Soal Terjawab</dt><dd class="font-bold text-blue-400">{{ answeredCount }} dari {{ totalQuestions }}</dd></div>
-            </dl>
-
-            <div class="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div class="h-full bg-emerald-400" :style="{ width: (totalQuestions ? Math.round(answeredCount / totalQuestions * 100) : 0) + '%' }"></div>
-            </div>
-          </div>
-
-          <!-- Next Steps -->
-          <div class="bg-white border-2 border-slate-200/90 rounded-3xl p-6 shadow-sm space-y-3">
-            <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Langkah Selanjutnya</h3>
-            <ul class="space-y-2.5 text-xs text-slate-700">
-              <li class="flex items-start gap-2.5">
-                <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 font-bold">✓</span>
-                <span>Nilai ujian harian dapat dilihat di menu Rekap Ujian; nilai ujian lainnya diumumkan oleh guru.</span>
-              </li>
-              <li class="flex items-start gap-2.5">
-                <span class="w-5 h-5 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5 font-bold">✓</span>
-                <span>Jawabanmu tersimpan aman di server sekolah.</span>
-              </li>
-            </ul>
-          </div>
-
-          <button
-            type="button"
-            class="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 transition-all"
-            @click="$emit('reset-home')"
-          >
-            Kembali ke Beranda
-          </button>
+        <div class="bg-white border-2 border-rose-200 rounded-2xl p-3.5 text-center">
+          <b class="block text-2xl font-black text-rose-600 tabular-nums">{{ hasil.salah }}</b>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Salah</span>
+        </div>
+        <div class="bg-white border-2 border-slate-200 rounded-2xl p-3.5 text-center">
+          <b class="block text-2xl font-black text-slate-700 tabular-nums">{{ hasil.total }}</b>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Soal</span>
         </div>
       </div>
+
+      <!-- Ringkasan -->
+      <div class="bg-white border-2 border-slate-200/90 rounded-3xl p-5 shadow-sm">
+        <dl class="space-y-2.5 text-xs">
+          <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="text-slate-500">Nama</dt><dd class="font-bold text-right text-slate-900">{{ studentName }}</dd></div>
+          <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="text-slate-500">Waktu Selesai</dt><dd class="font-bold text-slate-900">{{ doneTime }}</dd></div>
+          <div class="flex justify-between gap-4 border-b border-slate-100 pb-2"><dt class="text-slate-500">Durasi Pengerjaan</dt><dd class="font-bold text-slate-900">{{ doneDur }}</dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-slate-500">Tidak Dijawab</dt><dd class="font-bold text-slate-900">{{ hasil ? hasil.kosong : totalQuestions - answeredCount }} soal</dd></div>
+        </dl>
+        <p class="mt-3 text-[11px] leading-relaxed text-slate-500">{{ doneMsg }} Nilai juga tersimpan di menu Rekap Ujian.</p>
+      </div>
+
+      <button
+        type="button"
+        class="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 transition-all"
+        @click="$emit('reset-home')"
+      >
+        Kembali ke Beranda
+      </button>
     </div>
   </section>
 </template>
@@ -74,9 +64,12 @@ defineProps<{
   doneDur: string
   answeredCount: number
   totalQuestions: number
+  hasil: { total: number; benar: number; salah: number; kosong: number; menunggu: number; nilai: number } | null
 }>()
 
 defineEmits<{
   (e: 'reset-home'): void
 }>()
+
+const formatNilai = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',')
 </script>

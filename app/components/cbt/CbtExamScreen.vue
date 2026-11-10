@@ -31,8 +31,8 @@
             <span>Anti-Cheat {{ violations > 0 ? `(${violations}/3)` : 'Aktif' }}</span>
           </div>
 
-          <!-- Presenter Demo Simulation Buttons -->
-          <div class="hidden md:flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <!-- Tombol simulasi pelanggaran: hanya saat development, tidak pernah tampil ke siswa -->
+          <div v-if="isDev" class="hidden md:flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
             <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 px-1.5">Simulasi:</span>
             <button
               type="button"
@@ -62,6 +62,7 @@
 
           <!-- Mobile Simulation Single Trigger -->
           <button
+            v-if="isDev"
             type="button"
             class="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
             title="Uji coba simulasi deteksi kecurangan"
@@ -380,6 +381,8 @@
 import type { QuestionItem, SectionItem } from '~/composables/useCbtExam'
 import { renderKaTeXHtml, isArabicText } from '~/utils/cbtFormula'
 import CbtMediaPlayer from '~/components/cbt/CbtMediaPlayer.vue'
+
+const isDev = import.meta.dev
 
 
 defineProps<{

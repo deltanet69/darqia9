@@ -118,6 +118,7 @@
       :student-name="cbt.activeExam.value?.studentName ?? ''"
       :subject="cbt.activeExam.value?.subject ?? ''"
       :exam-name="cbt.activeExam.value?.name ?? ''"
+      :hasil="cbt.hasil.value"
       :done-msg="cbt.doneMsg.value"
       :done-time="cbt.doneTime.value"
       :done-dur="cbt.doneDur.value"
@@ -125,6 +126,19 @@
       :total-questions="cbt.totalQuestions.value"
       @reset-home="cbt.resetToHome"
     />
+
+    <!-- MENGHITUNG NILAI (setelah mengumpulkan) -->
+    <div v-if="cbt.menghitung.value" class="fixed inset-0 z-[200] flex items-center justify-center bg-[#08152B]/80 backdrop-blur-sm p-6" role="status" aria-live="polite">
+      <div class="w-full max-w-xs rounded-3xl bg-white p-6 text-center shadow-2xl">
+        <div class="relative mx-auto h-20 w-20">
+          <span class="absolute inset-0 rounded-full border-4 border-blue-100" />
+          <span class="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-600 border-r-indigo-500 animate-spin" />
+          <span class="absolute inset-3 rounded-full bg-blue-50 animate-pulse" />
+        </div>
+        <p class="mt-4 text-base font-black text-slate-900">Menghitung nilaimu…</p>
+        <p class="mt-1 text-xs text-slate-500">Jawaban sedang diperiksa. Mohon tunggu sebentar dan jangan tutup halaman ini.</p>
+      </div>
+    </div>
 
     <!-- TOAST NOTIFICATION -->
     <div

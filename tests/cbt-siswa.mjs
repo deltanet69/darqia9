@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import { bisaDibuka, hitungMundur, jamRentang, kelompokPerHari, keadaanUjian } from '../app/utils/cbtSiswaJadwal.ts'
 import { acakPerSiswa } from '../app/utils/cbtAcak.ts'
+import { skorKemiripan } from '../server/utils/cbtNilaiEsai.ts'
 import { buatPembatas } from '../server/utils/pembatas.ts'
 
 let lulus = 0
@@ -65,5 +66,14 @@ cek('acak per siswa: deterministik, beda antar siswa, bagian tetap berurutan, pi
   }
   assert.ok(a1.filter(x => x.options).some(q => q.optionOrder.join() !== '0,1,2,3'), 'pilihan benar-benar teracak')
   assert.equal(a1.find(q => !q.options).optionOrder, undefined)
+})
+cek('nilai esai cadangan (tanpa AI): kosong = 0, sesuai rubrik = 1, sebagian = di antaranya', () => {
+  const rubrik = 'Suku ke-40 = a + (n-1)b = 7 + 39(-2) = -71'
+  assert.equal(skorKemiripan('', rubrik), 0)
+  assert.equal(skorKemiripan(null, rubrik), 0)
+  assert.equal(skorKemiripan('suku ke 40 = 7 + 39 x -2 = -71', rubrik), 1)
+  const sebagian = skorKemiripan('suku 40', rubrik)
+  assert.ok(sebagian > 0 && sebagian < 1)
+  assert.equal(skorKemiripan('jawaban apa saja', ''), 0.5)
 })
 console.log(`\n${lulus} uji lulus`)

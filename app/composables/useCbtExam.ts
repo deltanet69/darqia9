@@ -797,16 +797,21 @@ export const useCbtExam = () => {
     })
   }
 
+  // Hasil ujian yang langsung tampil setelah dikumpulkan (dihitung server, esai dinilai AI).
+  const hasil = ref<{ total: number; benar: number; salah: number; kosong: number; menunggu: number; nilai: number } | null>(null)
+  const menghitung = ref(false)
   let sedangKumpul = false
   const doSubmit = async (auto: boolean): Promise<void> => {
     if (sedangKumpul) return
     sedangKumpul = true
     stopTimer()
     stopAudio()
+    menghitung.value = true
     try {
-      await $fetch('/api/cbt/kumpulkan', { method: 'POST', body: { ...kunciDasar(), jawaban: jawabanBerubah(true) } })
+      hasil.value = await $fetch<any>('/api/cbt/kumpulkan', { method: 'POST', body: { ...kunciDasar(), jawaban: jawabanBerubah(true) } })
     } catch (error: any) {
       sedangKumpul = false
+      menghitung.value = false
       // Jangan lanjut ke layar selesai bila server belum menerima jawaban.
       openModal({
         title: 'Pengumpulan belum berhasil',
@@ -818,6 +823,7 @@ export const useCbtExam = () => {
       return
     }
     sedangKumpul = false
+    menghitung.value = false
     const kunci = activeExam.value
     try {
       localStorage.removeItem(SAVE_KEY.value)
@@ -963,6 +969,8 @@ export const useCbtExam = () => {
   const onVisibilityChange = (): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
       if (document.visibilityState === 'hidden') {
+        // Pindah aplikasi memicu blur lalu halaman tersembunyi: cukup dihitung sekali.
+        if (tundaBlur) { clearTimeout(tundaBlur); tundaBlur = null }
         triggerCheatLock('Berpindah tab atau meminimalkan jendela ujian', undefined, 'pindah_tab')
       } else {
         void nyalakanLayar()
@@ -970,15 +978,22 @@ export const useCbtExam = () => {
     }
   }
 
+  // Kehilangan fokus sesaat (tarik panel notifikasi, popup sistem/izin, keyboard, pemilih tanggal, mengetuk pemutar
+  // YouTube/Drive) bukan pindah aplikasi. Hanya dihitung bila fokus tidak kembali dalam 2 detik; pindah aplikasi di HP
+  // tetap langsung terdeteksi lewat visibilitychange (halaman tersembunyi).
+  let tundaBlur: ReturnType<typeof setTimeout> | null = null
   const onWindowBlur = (): void => {
-    if (screen.value === 'exam' || screen.value === 'review') {
-      // Mengetuk pemutar YouTube/Drive memindahkan fokus ke iframe di halaman yang sama: itu bukan pindah aplikasi.
-      setTimeout(() => {
-        if (document.activeElement?.tagName === 'IFRAME' && document.visibilityState === 'visible') return
+    if (screen.value !== 'exam' && screen.value !== 'review') return
+    if (tundaBlur) clearTimeout(tundaBlur)
+    tundaBlur = setTimeout(() => {
+      tundaBlur = null
+      if (document.hasFocus() || document.activeElement?.tagName === 'IFRAME') return
+      if (screen.value === 'exam' || screen.value === 'review') {
         triggerCheatLock('Kehilangan fokus jendela ujian (membuka aplikasi lain / Alt+Tab)', undefined, 'alt_tab')
-      }, 0)
-    }
+      }
+    }, 2000)
   }
+  const onWindowFocus = (): void => { if (tundaBlur) { clearTimeout(tundaBlur); tundaBlur = null } }
 
   const onBeforeUnload = (e: BeforeUnloadEvent): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
@@ -993,6 +1008,7 @@ export const useCbtExam = () => {
     document.addEventListener('keydown', onKeydown)
     document.addEventListener('visibilitychange', onVisibilityChange)
     window.addEventListener('blur', onWindowBlur)
+    window.addEventListener('focus', onWindowFocus)
     window.addEventListener('beforeunload', onBeforeUnload)
   }
 
@@ -1001,6 +1017,7 @@ export const useCbtExam = () => {
     document.removeEventListener('keydown', onKeydown)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('blur', onWindowBlur)
+    window.removeEventListener('focus', onWindowFocus)
     window.removeEventListener('beforeunload', onBeforeUnload)
     stopTimer()
     stopAudio()
@@ -1028,6 +1045,8 @@ export const useCbtExam = () => {
   }
 
   return {
+    hasil,
+    menghitung,
     siswa,
     appTab,
     bukaUjian,
