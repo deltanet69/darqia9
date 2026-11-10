@@ -68,6 +68,7 @@ const emptyExam = () => ({
   duration: 90,
   token: '',
   supervisorId: '',
+  acakEsai: true,
   jenis: 'akhir' as 'akhir' | 'tengah_semester' | 'harian' | 'pr'
 })
 
@@ -245,6 +246,7 @@ const openEditSchedule = (exam: ExamItem) => {
     duration: exam.duration,
     token: exam.token,
     supervisorId: exam.supervisorId ?? '',
+    acakEsai: exam.acakEsai !== false,
     jenis: exam.jenis ?? (props.source === 'ujian_harian' ? 'harian' : 'akhir')
   }
   wizardStep.value = 1
@@ -489,6 +491,10 @@ const removeSchedule = async (exam: ExamItem) => {
                   <option value="tengah_semester">Ujian Tengah Semester</option>
                 </select>
               </div>
+              <label class="flex items-start gap-2.5 p-3 rounded-xl border border-[#E7EBF2] cursor-pointer">
+                <input v-model="newExam.acakEsai" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#1B5FD9]">
+                <span><b class="block text-[#344054]">Acak urutan soal Esai</b><span class="text-[#667085]">Aktif: tiap siswa mendapat urutan Esai berbeda. Nonaktif: urutan Esai sesuai susunan guru.</span></span>
+              </label>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block font-bold text-[#344054] mb-1">Durasi (menit)</label>

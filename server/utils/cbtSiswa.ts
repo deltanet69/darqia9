@@ -96,6 +96,19 @@ export const argumenUjian = (b: BodySiswa) => ({ ...argumenSiswa(b), p_source: b
 const TTL_SOAL = 120_000
 const soalCache = new Map<string, { at: number, data?: unknown, janji?: Promise<unknown> }>()
 
+// Opsi "acak soal Esai" per ujian. Kolom belum ada (migrasi 0050 belum dijalankan) atau gagal dibaca = tetap diacak.
+const esaiCache = new Map<string, { at: number, nilai: boolean }>()
+export async function acakEsai(event: H3Event, source: string, examId: string): Promise<boolean> {
+  const kunci = `${source}:${examId}`
+  const ada = esaiCache.get(kunci)
+  if (ada && Date.now() - ada.at < TTL_SOAL) return ada.nilai
+  const { data, error } = await klienService(event).from(source === 'cbt' ? 'exams' : 'ujian_harian').select('acak_esai').eq('id', examId).maybeSingle()
+  const nilai = error ? true : data?.acak_esai !== false
+  esaiCache.set(kunci, { at: Date.now(), nilai })
+  if (esaiCache.size > 60) esaiCache.delete(esaiCache.keys().next().value as string)
+  return nilai
+}
+
 export async function soalUjian(event: H3Event, source: string, examId: string): Promise<unknown[]> {
   const kunci = `${source}:${examId}`
   const ada = soalCache.get(kunci)

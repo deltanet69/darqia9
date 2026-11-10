@@ -476,7 +476,7 @@ export const useCbtExam = () => {
       garam = localStorage.getItem(kunciGaram) || Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('')
       localStorage.setItem(kunciGaram, garam)
     } catch { /* penyimpanan tidak tersedia: acak tetap per siswa, hanya tidak bergaram */ }
-    examQuestions.value = acakPerSiswa(mapExamQuestions(soalMentah), `${sesi.nis}|${ref.source}|${ref.id}|${garam}`, sections.map(s => s.id))
+    examQuestions.value = acakPerSiswa(mapExamQuestions(soalMentah), `${sesi.nis}|${ref.source}|${ref.id}|${garam}`, sections.map(s => s.id), info.acakEsai === false ? ['essay'] : [])
     Object.keys(answers).forEach(key => delete answers[Number(key)])
     flags.clear()
     terkirim.clear()

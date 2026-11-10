@@ -53,6 +53,10 @@ cek('pembatas: blokir setelah batas, reset setelah jendela, hapus saat berhasil'
   t = 1000; assert.equal(p.terblokir('a'), false)
   p.catat('a'); p.catat('a'); p.catat('a'); p.hapus('a'); assert.equal(p.terblokir('a'), false)
 })
+cek('acak Esai nonaktif: Esai tetap berurutan, PG tetap diacak', () => {
+  const soal = Array.from({ length: 12 }, (_, i) => ({ id: i, sec: i < 8 ? 'pg' : 'essay', options: i < 8 ? ['a', 'b', 'c', 'd'] : undefined }))
+  for (const nis of ['n1', 'n2', 'n3']) assert.deepEqual(acakPerSiswa(soal, nis, ['pg', 'essay'], ['essay']).filter(q => q.sec === 'essay').map(q => q.id), [8, 9, 10, 11])
+})
 cek('acak per siswa: deterministik, beda antar siswa, bagian tetap berurutan, pilihan terpetakan ke indeks asli', () => {
   const soal = Array.from({ length: 12 }, (_, i) => ({ id: i, sec: i < 8 ? 'pg' : 'essay', options: i < 8 ? ['a', 'b', 'c', 'd'] : undefined }))
   const urut = ['pg', 'singkat', 'essay', 'interaktif']

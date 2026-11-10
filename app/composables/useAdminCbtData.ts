@@ -62,6 +62,7 @@ export interface CbtExamInput {
   startsAt: string
   duration: number
   token?: string
+  acakEsai?: boolean
   jenis?: 'akhir' | 'tengah_semester' | 'harian' | 'pr' // CBT: akhir/tengah semester; LMS: harian/pr
 }
 
@@ -135,7 +136,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
-        ambilUjian(`${kolomUjianDasar}, ${source === 'cbt' ? 'jenis' : 'tipe'}`),
+        ambilUjian(`${kolomUjianDasar}, ${source === 'cbt' ? 'jenis' : 'tipe'}, acak_esai`),
         client.from(tables.assignments).select('id, exam_id, status'),
         fetchSiswaAktif(),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
@@ -144,7 +145,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from('class_schedules').select('class_id, subject_id, teacher_id').eq('active', true)
       ])
 
-      const examResult = examAwal.error && /jenis|tipe/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
+      const examResult = examAwal.error && /jenis|tipe|acak_esai/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
       const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult]
         .find(result => result.error)?.error
       if (firstError) throw firstError
@@ -258,6 +259,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             supervisor: teacherById.get(row.supervisor_id)?.name ?? '',
             supervisorId: row.supervisor_id ?? '',
             bankCode: bankById.get(row.question_bank_id)?.code ?? '',
+            acakEsai: row.acak_esai !== false,
             jenis: source === 'ujian_harian' ? (row.tipe ?? 'harian') : (row.jenis ?? 'akhir')
           } as ExamItem
         })
@@ -541,6 +543,11 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     // ujian; token tetap dapat diterbitkan dari panel Token Peserta.
     if (typeof savedExamId === 'string' && savedExamId) {
       try { await client.rpc('issue_exam_tokens', { target_exam_id: savedExamId, source }) } catch { /* diabaikan */ }
+      const { error: esaiError } = await client.from(tables.exams).update({ acak_esai: input.acakEsai !== false }).eq('id', savedExamId)
+      if (esaiError) {
+        await load(true)
+        throw new Error('Ujian tersimpan, tetapi opsi acak Esai belum tersimpan. Jalankan migrasi 0050_acak_esai.sql di Supabase SQL Editor.')
+      }
       // Jenis ujian: CBT = Akhir / Tengah Semester (migrasi 0047); LMS = Harian / PR di Rumah (migrasi 0049).
       if (input.jenis) {
         const { error: jenisError } = source === 'cbt'

@@ -34,12 +34,13 @@ const kocok = <T>(daftar: T[], rnd: () => number): T[] => {
   return hasil
 }
 
-export function acakPerSiswa<T extends SoalAcak>(soal: T[], kunci: string, urutBagian: string[]): T[] {
+export function acakPerSiswa<T extends SoalAcak>(soal: T[], kunci: string, urutBagian: string[], bagianTetap: string[] = []): T[] {
   const rnd = acakan(sidik(kunci))
   const bagian = [...new Set([...urutBagian, ...soal.map(q => q.sec)])]
   const hasil: T[] = []
   for (const sec of bagian) {
-    for (const q of kocok(soal.filter(item => item.sec === sec), rnd)) {
+    const isi = soal.filter(item => item.sec === sec)
+    for (const q of bagianTetap.includes(sec) ? isi : kocok(isi, rnd)) {
       const pilihan = q.options
       if (pilihan && pilihan.length > 1) {
         const urut = kocok(pilihan.map((_, i) => i), rnd)
