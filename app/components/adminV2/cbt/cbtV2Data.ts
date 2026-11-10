@@ -41,6 +41,7 @@ export interface ExamItem {
   collected: number
   doing: number
   violations: number
+  violatorIds?: string[] // siswa unik yang pernah melanggar di ujian ini
   supervisor: string
   supervisorId?: string
   acakEsai?: boolean

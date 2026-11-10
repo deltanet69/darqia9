@@ -155,7 +155,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
         ambilUjian(`${kolomUjianDasar}, ${source === 'cbt' ? 'jenis' : 'tipe'}, acak_esai`),
-        client.from(tables.assignments).select('id, exam_id, status'),
+        client.from(tables.assignments).select('id, exam_id, student_id, status'),
         fetchSiswaAktif(),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
         client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
@@ -237,11 +237,15 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         assignments.set(row.exam_id, count)
       }
       const bankById = new Map(bankPackages.value.map(item => [item.id, item]))
-      const examByAssignment = new Map((assignmentResult.data ?? []).map((row: any) => [row.id, row.exam_id]))
+      const assignmentById = new Map((assignmentResult.data ?? []).map((row: any) => [row.id, row]))
       const violationCounts = new Map<string, number>()
+      const violatorsByExam = new Map<string, Set<string>>()
       for (const row of violationResult.data ?? []) {
-        const examId = examByAssignment.get(row.assignment_id)
-        if (examId) violationCounts.set(examId, (violationCounts.get(examId) ?? 0) + 1)
+        const a: any = assignmentById.get(row.assignment_id)
+        if (!a) continue
+        violationCounts.set(a.exam_id, (violationCounts.get(a.exam_id) ?? 0) + 1)
+        if (!violatorsByExam.has(a.exam_id)) violatorsByExam.set(a.exam_id, new Set())
+        violatorsByExam.get(a.exam_id)!.add(a.student_id)
       }
 
       exams.value = (examResult.data ?? [])
@@ -274,6 +278,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             collected: counts.collected,
             doing: counts.doing,
             violations: violationCounts.get(row.id) ?? 0,
+            violatorIds: [...(violatorsByExam.get(row.id) ?? [])],
             supervisor: teacherById.get(row.supervisor_id)?.name ?? '',
             supervisorId: row.supervisor_id ?? '',
             bankCode: bankById.get(row.question_bank_id)?.code ?? '',

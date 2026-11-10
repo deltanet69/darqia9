@@ -128,7 +128,8 @@ const jadwalPerHari = computed(() => {
 // Modal token terbuka selama ?token=1 ada di URL; satu token berlaku untuk seluruh mapel rombel, jadi ujian mana pun cukup sebagai acuan.
 // Panel Pelanggaran Siswa (?pelanggaran=1) mencakup seluruh mapel rombel yang sedang dibuka.
 const ujianRombel = computed(() => currentExams.value.filter(x => x.classId === rombelAktif.value))
-const jumlahPelanggaranRombel = computed(() => ujianRombel.value.reduce((n, e) => n + (e.violations || 0), 0))
+// Badge = jumlah siswa unik yang melanggar di rombel ini (bukan jumlah kejadian), lintas mapel.
+const jumlahPelanggaranRombel = computed(() => new Set(ujianRombel.value.flatMap(e => e.violatorIds ?? [])).size)
 
 const tokenExam = computed(() => kueri('token') && rombelDetail.value
   ? currentExams.value.filter(x => x.classId === rombelAktif.value).sort(urutWaktu)[0] ?? null
@@ -356,7 +357,7 @@ const removeSchedule = async (exam: ExamItem) => {
           <button v-if="rombelDetail" type="button" class="relative px-4 py-2.5 rounded-full bg-white border text-xs font-extrabold inline-flex items-center gap-1.5 transition" :class="jumlahPelanggaranRombel ? 'border-[#F8D3CE] text-[#B42318] hover:bg-[#FEF3F2]' : 'border-[#E7EBF2] text-[#344054] hover:border-[#1B5FD9]'" @click="ubahKueri({ pelanggaran: '1' })">
             <AdminV2Icon name="alert" :size="13" />
             <span>Pelanggaran Siswa</span>
-            <span v-if="jumlahPelanggaranRombel" class="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1.5 rounded-full bg-[#D92D20] text-white text-[10px] font-extrabold leading-5 text-center tabular-nums ring-2 ring-[#F6F8FC]" :aria-label="`${jumlahPelanggaranRombel} pelanggaran`">{{ jumlahPelanggaranRombel > 99 ? '99+' : jumlahPelanggaranRombel }}</span>
+            <span v-if="jumlahPelanggaranRombel" class="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1.5 rounded-full bg-[#D92D20] text-white text-[10px] font-extrabold leading-5 text-center tabular-nums ring-2 ring-[#F6F8FC]" :aria-label="`${jumlahPelanggaranRombel} siswa melanggar`">{{ jumlahPelanggaranRombel > 99 ? '99+' : jumlahPelanggaranRombel }}</span>
           </button>
           <button v-if="bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-extrabold transition shadow-sm inline-flex items-center gap-1.5" @click="openCreateSchedule(rombelDetail?.classroom)">
             <AdminV2Icon name="plus" :size="14" />
