@@ -1,6 +1,7 @@
 // Tes ekspor/impor bank soal (Excel, CSV, Word) — jalankan: node tests/cbt-import-export.mjs
 import assert from 'node:assert/strict'
 import { buildBankExcel, readExcelBankTemplate } from '../app/utils/cbtExcelBank.ts'
+import { cocokKelas } from '../app/utils/cbtKelas.ts'
 import { buildBankCsv } from '../app/utils/cbtCsvBank.ts'
 import { decodeXml, fields, linesFromXml } from '../app/utils/cbtWordBank.ts'
 
@@ -122,6 +123,23 @@ await cek('Word: kolom satu baris tidak menyerap teks lain; penanda --- dan bann
   assert.equal(pg.MODEPG, 'Multi')
   const tanpaPemisah = fields(['RUBRIK: Skor', 'BLOK SOAL 5 · PG'])
   assert.equal(tanpaPemisah.RUBRIK, 'Skor')
+})
+
+
+await cek('KELAS template dicocokkan toleran terhadap penulisan (8.4 = VIII.4, spasi tak terlihat, huruf kecil)', () => {
+  const daftar = ['7.1', '8.4', 'VIII.A', 'X RPL 1', 'XI AKL']
+  assert.equal(cocokKelas('8.4', daftar), '8.4')
+  assert.equal(cocokKelas(' 8.4 ', daftar), '8.4')
+  assert.equal(cocokKelas('8,4'.replace(',', '.'), daftar), '8.4')
+  assert.equal(cocokKelas('VIII-4', daftar), '8.4')
+  assert.equal(cocokKelas('viii a', daftar), 'VIII.A')
+  assert.equal(cocokKelas('8 A', daftar), 'VIII.A')
+  assert.equal(cocokKelas('10 rpl 1', daftar), 'X RPL 1')
+  assert.equal(cocokKelas('X-RPL-1', daftar), 'X RPL 1')
+  assert.equal(cocokKelas('9.4', daftar), null)
+  assert.equal(cocokKelas('', daftar), null)
+  assert.equal(cocokKelas('8.4', ['8.4', 'VIII.4']), '8.4', 'persis menang bila ada dua kelas sepadan')
+  assert.equal(cocokKelas('8-4', ['8.4', 'VIII.4']), null, 'ambigu ditolak, bukan ditebak')
 })
 
 console.log(`\n${lulus} tes lulus`)

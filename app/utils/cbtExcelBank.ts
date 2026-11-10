@@ -1,4 +1,5 @@
 import type { BankPackage, BankQuestionItem, GradeType } from '~/components/adminV2/cbt/cbtV2Data'
+import { cocokKelas } from './cbtKelas.ts'
 import type { WordBankIssue, WordBankPreview } from './cbtWordBank'
 
 const clean = (value: unknown) => String(value ?? '').trim()
@@ -29,12 +30,14 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
     if (key) metadata[key] = clean(row[1])
   }
   const grade = clean(metadata.JENJANG).toUpperCase() as GradeType
-  const classroom = clean(metadata.KELAS)
+  const kelasIsian = clean(metadata.KELAS)
   const subject = clean(metadata.MATAPELAJARAN)
   const teacherName = clean(metadata.PENYUSUN)
   if (!['SMP', 'SMK'].includes(grade)) throw new Error('Metadata JENJANG harus SMP atau SMK.')
   if (grade !== currentGrade) throw new Error(`Template ini untuk ${grade}, sedangkan Bank Soal aktif adalah ${currentGrade}.`)
-  if (!classes.includes(classroom)) throw new Error('KELAS pada template tidak ditemukan di Manajemen Kelas.')
+  // Nama kelas dicocokkan toleran (cth: 8.4 = VIII.4) lalu dipakai sesuai tulisan di Manajemen Kelas.
+  const classroom = cocokKelas(kelasIsian, classes)
+  if (!classroom) throw new Error(`KELAS "${kelasIsian}" pada template tidak ditemukan di Manajemen Kelas. Tulis persis seperti di daftar kelas.`)
   if (!subjects.includes(subject)) throw new Error('MATA_PELAJARAN pada template tidak ditemukan pada jenjang ini.')
   if (!teacherName) throw new Error('PENYUSUN pada template wajib diisi.')
 
