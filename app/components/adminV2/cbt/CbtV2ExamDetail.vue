@@ -43,8 +43,11 @@ const JENIS_PELANGGARAN: Record<string, string> = {
 const waktu = (iso: string) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 
 const daftarPelanggaran = computed(() => (siswa.value ?? [])
-  .flatMap(s => (s.pelanggaran ?? []).map(p => ({ ...p, nama: s.name })))
+  .flatMap(s => (s.pelanggaran ?? []).map(p => ({ ...p, nama: s.name, selesai: s.status === 'Selesai' })))
   .sort((a, b) => b.waktu.localeCompare(a.waktu)))
+
+// Kode hanya perlu diberikan bila siswa masih mengerjakan dan pelanggarannya belum dibuka.
+const menunggu = computed(() => daftarPelanggaran.value.filter(p => p.terkunci && p.ke < 3 && !p.selesai).length)
 
 const statusKelas = (status: string) => status === 'Selesai' ? 'bg-[#E7F8F0] text-[#087C52]'
   : status === 'Mengerjakan' ? 'bg-[#E8F0FE] text-[#1B5FD9]'
@@ -87,7 +90,39 @@ const salin = async (kode: string) => {
         <div class="col-span-2 rounded-2xl border border-[#E7EBF2] bg-white p-3.5 sm:col-span-1"><b class="block text-xl font-extrabold" :class="daftarPelanggaran.length ? 'text-[#B42318]' : 'text-[#101828]'">{{ daftarPelanggaran.length }}</b><span class="text-[11px] text-[#667085]">Pelanggaran{{ terkunci ? ` · ${terkunci} akun terkunci` : '' }}</span></div>
       </div>
 
-      <!-- Bagian 1: Daftar siswa -->
+      <!-- Bagian 1: Token pelanggaran (paling atas agar langsung terlihat) -->
+      <section class="overflow-hidden rounded-2xl border border-[#E7EBF2] bg-white">
+        <div class="border-b border-[#E7EBF2] bg-[#FEF4E5] px-4 py-3 sm:px-5">
+          <h3 class="text-sm font-extrabold text-[#7A4A03]">Token Pelanggaran Siswa<span v-if="menunggu" class="ml-2 rounded-full bg-[#B42318] px-2 py-0.5 text-[10px] text-white">{{ menunggu }} menunggu kode</span></h3>
+          <p class="text-[11px] text-[#7A4A03]">
+            <template v-if="isPr">Tiap pelanggaran tercatat otomatis. Pada PR di rumah, kode buka muncul sendiri di layar siswa, jadi tidak perlu diberikan.</template>
+            <template v-else>Tiap pelanggaran tercatat otomatis. Tegur siswanya, lalu berikan kode di bawah agar ia bisa melanjutkan. Pelanggaran ke-3 mengunci akun total.</template>
+          </p>
+        </div>
+        <ul v-if="daftarPelanggaran.length" class="divide-y divide-[#EFF2F7]">
+          <li v-for="p in daftarPelanggaran" :key="p.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+            <div class="min-w-0">
+              <b class="block break-words text-sm font-bold text-[#101828]">{{ p.nama }}</b>
+              <span class="text-[11px] text-[#667085]">Pelanggaran ke-{{ p.ke }} &middot; {{ JENIS_PELANGGARAN[p.jenis] ?? p.jenis }} &middot; {{ waktu(p.waktu) }}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span v-if="p.ke >= 3" class="rounded-full bg-[#FDECEA] px-2.5 py-1 text-[11px] font-extrabold text-[#B42318]">Akun terkunci total</span>
+              <span v-else-if="p.selesai && p.terkunci" class="text-[11px] text-[#667085]">Siswa sudah selesai</span>
+              <span v-else-if="isPr" class="text-[11px] text-[#667085]">{{ p.terkunci ? 'Menunggu siswa' : 'Sudah dibuka' }}</span>
+              <template v-else-if="p.terkunci">
+                <div class="text-right">
+                  <span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Kode untuk siswa</span>
+                  <b class="font-mono text-xl tracking-[0.25em] text-[#101828]">{{ p.kode }}</b>
+                </div>
+                <button type="button" class="min-h-10 rounded-xl border border-[#E7EBF2] bg-white px-3 text-xs font-bold text-[#344054]" @click="salin(p.kode)">Salin</button>
+              </template>
+              <span v-else class="rounded-full bg-[#E7F8F0] px-2.5 py-1 text-[11px] font-extrabold text-[#087C52]">Sudah dibuka</span>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="p-8 text-center text-xs text-[#667085]">Belum ada pelanggaran. Pelanggaran akan muncul di sini otomatis.</p>
+      </section>
+      <!-- Bagian 2: Daftar siswa -->
       <section class="overflow-hidden rounded-2xl border border-[#E7EBF2] bg-white">
         <div class="border-b border-[#E7EBF2] bg-[#F6F8FC] px-4 py-3 sm:px-5">
           <h3 class="text-sm font-extrabold text-[#0A2A5C]">Daftar Siswa</h3>
@@ -108,37 +143,6 @@ const salin = async (kode: string) => {
         <p v-if="!siswa.length" class="p-8 text-center text-xs text-[#667085]">Belum ada siswa di ujian ini.</p>
       </section>
 
-      <!-- Bagian 2: Pelanggaran siswa + kode buka -->
-      <section class="overflow-hidden rounded-2xl border border-[#E7EBF2] bg-white">
-        <div class="border-b border-[#E7EBF2] bg-[#FEF4E5] px-4 py-3 sm:px-5">
-          <h3 class="text-sm font-extrabold text-[#7A4A03]">Pelanggaran Siswa</h3>
-          <p class="text-[11px] text-[#7A4A03]">
-            <template v-if="isPr">Tiap pelanggaran tercatat otomatis. Pada PR di rumah, kode buka muncul sendiri di layar siswa, jadi tidak perlu diberikan.</template>
-            <template v-else>Tiap pelanggaran tercatat otomatis. Tegur siswanya, lalu berikan kode di bawah agar ia bisa melanjutkan. Pelanggaran ke-3 mengunci akun total.</template>
-          </p>
-        </div>
-        <ul v-if="daftarPelanggaran.length" class="divide-y divide-[#EFF2F7]">
-          <li v-for="p in daftarPelanggaran" :key="p.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
-            <div class="min-w-0">
-              <b class="block break-words text-sm font-bold text-[#101828]">{{ p.nama }}</b>
-              <span class="text-[11px] text-[#667085]">Pelanggaran ke-{{ p.ke }} &middot; {{ JENIS_PELANGGARAN[p.jenis] ?? p.jenis }} &middot; {{ waktu(p.waktu) }}</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span v-if="p.ke >= 3" class="rounded-full bg-[#FDECEA] px-2.5 py-1 text-[11px] font-extrabold text-[#B42318]">Akun terkunci total</span>
-              <span v-else-if="isPr" class="text-[11px] text-[#667085]">{{ p.terkunci ? 'Menunggu siswa' : 'Sudah dibuka' }}</span>
-              <template v-else-if="p.terkunci">
-                <div class="text-right">
-                  <span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Kode untuk siswa</span>
-                  <b class="font-mono text-xl tracking-[0.25em] text-[#101828]">{{ p.kode }}</b>
-                </div>
-                <button type="button" class="min-h-10 rounded-xl border border-[#E7EBF2] bg-white px-3 text-xs font-bold text-[#344054]" @click="salin(p.kode)">Salin</button>
-              </template>
-              <span v-else class="rounded-full bg-[#E7F8F0] px-2.5 py-1 text-[11px] font-extrabold text-[#087C52]">Sudah dibuka</span>
-            </div>
-          </li>
-        </ul>
-        <p v-else class="p-8 text-center text-xs text-[#667085]">Belum ada pelanggaran. Pelanggaran akan muncul di sini otomatis.</p>
-      </section>
     </template>
   </div>
 </template>
