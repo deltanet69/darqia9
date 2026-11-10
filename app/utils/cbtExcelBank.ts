@@ -70,7 +70,7 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
     try {
       const typeKey = keyOf(typeValue)
       const type = typeKey === 'PG' || typeKey === 'PILIHANGANDA' ? 'PG'
-        : typeKey === 'ESAI' || typeKey === 'ESSAY' ? 'Esai'
+        : ['ESAI', 'ESSAY', 'ESSAI', 'ESAY', 'URAIAN'].includes(typeKey) ? 'Esai'
         : typeKey === 'INTERAKTIF' ? 'Interaktif' : null
       if (!type) throw new Error(`Soal ${number}: Tipe harus PG, Esai, atau Interaktif (soal Isian sudah tidak dipakai).`)
       const text = cellOf(row, 'Pertanyaan')
@@ -104,7 +104,7 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
         question.key = question.isMultiSelect ? answers : answers[0]
       }
       if (type === 'Esai') {
-        const rubric = cellOf(row, 'Rubrik')
+        const rubric = cellOf(row, 'Rubrik') || cellOf(row, 'Kunci')
         if (!rubric) throw new Error(`Soal ${number}: RUBRIK wajib diisi untuk soal Esai.`)
         question.rubric = rubric
       }

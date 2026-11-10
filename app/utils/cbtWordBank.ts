@@ -184,7 +184,7 @@ export const linesFromXml = (xml: string) => Array.from(xml.matchAll(/<w:p(?:\s[
 const toType = (value: string): ImportType | null => {
   const type = keyOf(value)
   if (['PG', 'PILIHANGANDA'].includes(type)) return 'PG'
-  if (['ESAI', 'ESSAY'].includes(type)) return 'Esai'
+  if (['ESAI', 'ESSAY', 'ESSAI', 'ESAY', 'URAIAN'].includes(type)) return 'Esai'
   return type === 'INTERAKTIF' ? 'Interaktif' : null
 }
 
@@ -255,7 +255,8 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
         if (!question.isMultiSelect && answers.length !== 1) throw new Error(`Soal ${number}: PG tunggal hanya boleh memiliki satu KUNCI.`)
         question.key = question.isMultiSelect ? answers : answers[0]
       }
-      if (type === 'Esai') question.rubric = required(row.RUBRIK, 'RUBRIK', number)
+      // Sebagian guru menulis kunci esai di KUNCI, bukan RUBRIK: keduanya diterima.
+      if (type === 'Esai') question.rubric = required(row.RUBRIK || row.KUNCI, 'RUBRIK', number)
       if (type === 'Interaktif') {
         const mediaUrl = required(row.LINKMEDIA, 'LINK_MEDIA', number)
         const mediaType = keyOf(row.MEDIA) === 'AUDIO' ? 'audio' : 'video'

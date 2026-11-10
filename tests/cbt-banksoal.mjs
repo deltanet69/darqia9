@@ -199,7 +199,7 @@ globalThis.useSupabaseClient = () => ({
   from(table) {
     tablesRead.push(table)
     const result = { data: table.endsWith('questions') ? rows : table === 'teachers' ? [{ id: 'teacher', name: 'Guru uji', grade: 'SMK' }] : [], error: null }
-    const chain = { select: () => chain, eq: () => chain, order: () => chain, then: (resolve) => Promise.resolve(result).then(resolve) }
+    const chain = { select: () => chain, eq: () => chain, order: () => chain, range: () => chain, then: (resolve) => Promise.resolve(result).then(resolve) }
     return chain
   },
   async rpc(name, args) { calls.push({ name, args }); return { data: bankId, error: null } }

@@ -326,11 +326,19 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const request = (async () => {
     questionsLoading.value = true
     try {
-      const { data, error: questionError } = await client
+      // Supabase membatasi 1000 baris per permintaan: tanpa paging, bank soal di atas 1000 butir terpotong diam-diam.
+      const halaman = (from: number, withCount = false) => client
         .from(tables.questions)
-        .select('id, bank_id, number, type, difficulty, text, image_url, is_rtl, is_multi_select, options, answer_key, rubric, media_type, media_url, media_file_name, interactive_answer_type')
-        .order('number')
-      if (questionError) throw questionError
+        .select('id, bank_id, number, type, difficulty, text, image_url, is_rtl, is_multi_select, options, answer_key, rubric, media_type, media_url, media_file_name, interactive_answer_type', withCount ? { count: 'exact' } : undefined)
+        .order('number').order('id').range(from, from + 999)
+      const pertama = await halaman(0, true)
+      if (pertama.error) throw pertama.error
+      const offsets: number[] = []
+      for (let from = 1000; from < (pertama.count ?? 0); from += 1000) offsets.push(from)
+      const sisa = await Promise.all(offsets.map(from => halaman(from)))
+      const gagal = sisa.find(page => page.error)
+      if (gagal?.error) throw gagal.error
+      const data = [...(pertama.data ?? []), ...sisa.flatMap(page => page.data ?? [])]
 
       const questionsByBank = new Map<string, BankQuestionItem[]>()
       for (const row of data ?? []) {
@@ -435,10 +443,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       subject_id: subjectItem.id,
       updated_at: new Date().toISOString()
     }
-    if (isUuid(pkg.id)) payload.id = pkg.id
+    // Id bank & soal baru ditetapkan sekali di sini (disimpan ke objeknya) agar percobaan ulang setelah
+    // koneksi terputus menimpa data yang sama, bukan membuat bank soal ganda.
+    if (!isUuid(pkg.id)) pkg.id = crypto.randomUUID()
+    payload.id = pkg.id
+    for (const question of pkg.questions) if (!isUuid(question.id)) question.id = crypto.randomUUID()
 
     const rows = pkg.questions.map((question, index) => ({
-        id: isUuid(question.id) ? question.id : crypto.randomUUID(),
+        id: question.id,
         number: index + 1,
         type: question.type,
         text: question.text,
@@ -454,15 +466,24 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         media_file_name: question.mediaFileName ?? null,
         interactive_answer_type: question.interactiveAnswerType ?? null
       }))
-    const { data: bankId, error: packageError } = await client.rpc('save_assessment_bank', {
-      source,
-      bank_data: payload,
-      question_data: rows
-    })
-    if (packageError) throw new Error(packageError.message)
-
-    await load(true)
-    await loadQuestions(true)
+    // Koneksi lemot/putus sesaat ("Failed to fetch"): coba lagi otomatis 2x; aman karena id sudah tetap.
+    const putus = (pesan?: string) => /failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(pesan || '')
+    let hasil = await client.rpc('save_assessment_bank', { source, bank_data: payload, question_data: rows })
+    for (let coba = 1; coba <= 2 && hasil.error && putus(hasil.error.message); coba++) {
+      await new Promise(resolve => setTimeout(resolve, 1500 * coba))
+      hasil = await client.rpc('save_assessment_bank', { source, bank_data: payload, question_data: rows })
+    }
+    if (hasil.error) {
+      throw new Error(putus(hasil.error.message)
+        ? 'Koneksi ke server terputus saat menyimpan. Periksa internet lalu tekan Konfirmasi dan Simpan sekali lagi (soal tidak akan tergandakan).'
+        : hasil.error.message)
+    }
+    const bankId = hasil.data
+    // Bank soal sudah tersimpan; gagal memuat ulang daftar tidak boleh membuatnya tampak gagal.
+    try {
+      await load(true)
+      await loadQuestions(true)
+    } catch { /* daftar disegarkan saat halaman dibuka ulang */ }
     return bankId
   }
 
