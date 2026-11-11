@@ -12,7 +12,7 @@
         <!-- Informasi Mata Pelajaran -->
         <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
           <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 border border-blue-100 p-1 flex items-center justify-center shrink-0 shadow-2xs">
-            <img src="/asset/logo.png" alt="Logo" class="w-full h-full object-contain">
+            <img :src="grade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo" class="w-full h-full object-contain">
           </div>
           <div class="min-w-0">
             <h1 class="text-sm sm:text-base font-black text-slate-900 leading-tight truncate tracking-tight">{{ exam?.subject }}</h1>

@@ -5,7 +5,7 @@
       <div class="max-w-5xl mx-auto flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
           <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 p-1 flex items-center justify-center shrink-0">
-            <img src="/asset/logo.png" alt="Logo" class="w-full h-full object-contain">
+            <img :src="activeGrade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo" class="w-full h-full object-contain">
           </div>
           <div class="min-w-0">
             <h1 class="text-sm sm:text-base font-black text-slate-900 leading-tight truncate tracking-tight">Periksa Kembali Jawaban</h1>
@@ -235,7 +235,10 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminGrade } from '~/composables/useAdminGrade'
 import type { FilteredQuestionItem, SectionItem, RevFilterType } from '~/composables/useCbtExam'
+
+const activeGrade = useAdminGrade()
 
 defineProps<{
   screen: string

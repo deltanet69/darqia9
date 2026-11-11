@@ -6,7 +6,7 @@
         <!-- Logo & Identitas Portal -->
         <div class="flex items-center gap-3 min-w-0">
           <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 border border-blue-200/60 p-1.5 flex items-center justify-center shrink-0 shadow-2xs">
-            <img src="/asset/logo.png" alt="Logo Sekolah" class="w-full h-full object-contain">
+            <img :src="activeGrade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo Sekolah" class="w-full h-full object-contain">
           </div>
           <div class="min-w-0">
             <h1 class="text-sm font-black text-slate-900 leading-tight tracking-tight truncate">{{ jenjangText }}</h1>
@@ -79,6 +79,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminGrade } from '~/composables/useAdminGrade'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import type { ProfilSiswa } from '~/composables/useCbtSiswa'
 import type { RekapUjian, UjianSiswa } from '~/utils/cbtSiswaJadwal'
@@ -89,6 +90,7 @@ import CbtProfilTab from '~/components/cbt/CbtProfilTab.vue'
 
 type Tab = 'home' | 'jadwal' | 'rekap' | 'profil'
 
+const activeGrade = useAdminGrade()
 const props = defineProps<{
   screen: string
   tab: Tab
