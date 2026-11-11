@@ -38,7 +38,7 @@ const beranda = (modul: Modul, jenjang?: Jenjang): string | null => {
   return null
 }
 
-const hostUntuk = (modul: Modul, jenjang?: Jenjang) =>
+export const hostUntuk = (modul: Modul, jenjang?: Jenjang) =>
   Object.keys(HOST).find(h => HOST[h]!.modul === modul && (!HOST[h]!.jenjang || HOST[h]!.jenjang === jenjang))
 
 // Modul dan jenjang pemilik sebuah path. 'bebas' = boleh di semua domain; null = bukan rute modul mana pun.
@@ -72,6 +72,8 @@ export const awalanSekolahHost = (hostname: string): string | null => {
   return peran?.modul === 'sekolah' ? `/${peran.jenjang}` : null
 }
 const tanpaAwalan = (url: string) => url.replace(/^\/(smp|smk)(?=[/?#]|$)/i, '').replace(/^(?!\/)/, '/')
+// Jenjang pemilik domain (cbt.smpitbca.sch.id = smp); null bila host tidak terdaftar atau tidak terikat jenjang.
+export const jenjangHost = (hostname: string): Jenjang | null => HOST[normalHost(hostname)]?.jenjang ?? null
 export const adalahHostAbsen =(hostname: string) => HOST[normalHost(hostname)]?.modul === 'absen'
 
 // Mengembalikan tujuan pengalihan (path internal atau URL domain lain), atau null bila akses diizinkan.

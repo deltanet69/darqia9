@@ -33,17 +33,9 @@ const activeTabLabel = computed(() => {
   <div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-3">
     <!-- Pagehead Flex -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 pb-1">
-      <div>
-        <div class="text-[10px] font-extrabold uppercase tracking-widest text-[#1B5FD9] mb-1">
-          Portal administrasi · V2
-        </div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#101828]">
-          {{ moduleName }}
-        </h1>
-        <p class="text-xs sm:text-[13px] text-[#667085] mt-1 font-medium">
-          {{ moduleDescription }} · {{ schoolName }} · Tahun Ajaran 2026/2027
-        </p>
-      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#101828]">
+        {{ moduleName }}
+      </h1>
 
       <div class="flex items-center gap-2 flex-wrap">
         <span

@@ -74,13 +74,13 @@ const questionsInStep = computed(() => {
   return draft.value.questions.filter(q => q.type === currentStep.value)
 })
 
+// Butir yang terbuka selalu ditampilkan lewat kepala butirnya (sub-soal pertama untuk soal cerita).
 const activeQuestion = computed(() => {
-  return questionsInStep.value.find(q => q.id === activeQuestionId.value) || questionsInStep.value[0] || null
+  const aktif = questionsInStep.value.find(q => q.id === activeQuestionId.value)
+  return (aktif && daftarButir.value.find(b => anggota(b).includes(aktif))) || daftarButir.value[0] || null
 })
 
-const activeQuestionIndex = computed(() => {
-  return activeQuestion.value ? questionsInStep.value.findIndex(q => q.id === activeQuestion.value?.id) + 1 : 0
-})
+const activeQuestionIndex = computed(() => activeQuestion.value ? daftarButir.value.indexOf(activeQuestion.value) + 1 : 0)
 
 watch(questionsInStep, questions => {
   if (!questions.some(q => q.id === activeQuestionId.value)) {
@@ -88,8 +88,28 @@ watch(questionsInStep, questions => {
   }
 }, { immediate: true })
 
+// Mapel hitungan (Matematika/IPA/Akuntansi) otomatis memilih esai hitungan; mapel lain memilih soal cerita.
+const modeBawaan = computed<'cerita' | 'hitung'>(() => /matematika|ipa|akuntansi|akutansi|fisika|kimia|biologi/i.test(draft.value.subject) ? 'hitung' : 'cerita')
+const modeEsai = (q: BankQuestionItem) => q.essayMode ?? modeBawaan.value
+const setModeEsai = (q: BankQuestionItem, mode: 'cerita' | 'hitung') => {
+  q.essayMode = mode
+  if (mode === 'cerita') q.storyGroup = q.storyGroup || crypto.randomUUID()
+  else { q.storyGroup = undefined; q.storyText = undefined }
+}
+// Teks cerita dipakai bersama oleh semua sub-soal dalam kelompok yang sama.
+const setCerita = (q: BankQuestionItem, value: string) => {
+  q.storyGroup = q.storyGroup || crypto.randomUUID()
+  for (const item of draft.value.questions) if (item.storyGroup === q.storyGroup) item.storyText = value
+}
+const subSoalCerita = (q: BankQuestionItem) => questionsInStep.value.filter(item => item.storyGroup && item.storyGroup === q.storyGroup)
+// Satu butir = satu soal, atau satu cerita beserta semua sub-soalnya.
+const anggota = (q: BankQuestionItem) => q.type === 'Esai' && modeEsai(q) === 'cerita' && q.storyGroup ? subSoalCerita(q) : [q]
+const daftarButir = computed(() => questionsInStep.value.filter((q, i, list) =>
+  !(q.type === 'Esai' && modeEsai(q) === 'cerita' && q.storyGroup) || list.findIndex(x => x.storyGroup === q.storyGroup) === i))
+
 const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuestionItem => {
   return {
+    ...(type === 'Esai' ? { essayMode: modeBawaan.value, storyGroup: modeBawaan.value === 'cerita' ? crypto.randomUUID() : undefined } : {}),
     id: crypto.randomUUID(),
     number: draft.value.questions.length + 1,
     type,
@@ -110,7 +130,7 @@ const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuesti
 // Selama gambar dibaca OCR, pindah/tambah/hapus butir dikunci: hasil OCR ditulis ke butir yang sedang terbuka.
 const ocrBerjalan = ref(false)
 const ringkasSoal = (q: BankQuestionItem) => {
-  const teks = q.text.replace(/\$+/g, '').replace(/[*_#`>]/g, ' ').replace(/\s+/g, ' ').trim()
+  const teks = (anggota(q).length > 1 || q.storyText?.trim() ? q.storyText || q.text : q.text).replace(/\$+/g, '').replace(/[*_#`>]/g, ' ').replace(/\s+/g, ' ').trim()
   return teks.length > 80 ? teks.slice(0, 80) + '…' : teks
 }
 const kosongDiStep = computed(() => questionsInStep.value.filter(q => !q.text.trim()).length)
@@ -123,17 +143,39 @@ const addQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif') => {
   emit('toast', `Butir soal ${type} baru ditambahkan.`)
 }
 
-const removeQuestion = (qId: string) => {
-  const currentCount = draft.value.questions.filter(q => q.type === currentStep.value).length
-  if (currentCount <= 1) {
+const addSubSoal = (q: BankQuestionItem) => {
+  const baru = blankQuestion('Esai')
+  baru.essayMode = 'cerita'
+  q.storyGroup = q.storyGroup || crypto.randomUUID()
+  baru.storyGroup = q.storyGroup
+  baru.storyText = q.storyText
+  baru.difficulty = q.difficulty
+  // Sub-soal baru diselipkan tepat setelah sub-soal terakhir dalam kelompoknya.
+  const akhir = draft.value.questions.lastIndexOf(subSoalCerita(q).at(-1) || q)
+  draft.value.questions.splice(akhir + 1, 0, baru)
+  draft.value.questions.forEach((item, i) => { item.number = i + 1 })
+  emit('toast', 'Sub-soal baru ditambahkan pada cerita ini.')
+}
+
+// Hapus satu butir utuh: untuk soal cerita, cerita beserta semua sub-soalnya.
+const removeQuestion = (q: BankQuestionItem) => {
+  if (daftarButir.value.length <= 1) {
     emit('toast', `Sisakan minimal 1 butir soal ${currentStep.value}.`)
     return
   }
-  const removedIndex = questionsInStep.value.findIndex(q => q.id === qId)
-  draft.value.questions = draft.value.questions.filter(q => q.id !== qId)
-  draft.value.questions.forEach((q, i) => { q.number = i + 1 })
-  const remaining = draft.value.questions.filter(q => q.type === currentStep.value)
-  activeQuestionId.value = remaining[Math.min(removedIndex, remaining.length - 1)]?.id || ''
+  const removedIndex = daftarButir.value.indexOf(q)
+  const hapus = new Set(anggota(q).map(item => item.id))
+  draft.value.questions = draft.value.questions.filter(item => !hapus.has(item.id))
+  draft.value.questions.forEach((item, i) => { item.number = i + 1 })
+  activeQuestionId.value = daftarButir.value[Math.min(removedIndex, daftarButir.value.length - 1)]?.id || ''
+}
+
+const removeSubSoal = (q: BankQuestionItem, sub: BankQuestionItem) => {
+  const sisa = anggota(q).filter(item => item.id !== sub.id)
+  if (!sisa.length) return
+  draft.value.questions = draft.value.questions.filter(item => item.id !== sub.id)
+  draft.value.questions.forEach((item, i) => { item.number = i + 1 })
+  activeQuestionId.value = sisa[0]!.id
 }
 
 const toggleInteractiveMode = () => {
@@ -217,6 +259,8 @@ const submitForm = () => {
     emit('toast', 'Isi minimal 1 pertanyaan Pilihan Ganda.')
     return
   }
+  // Simpan mode esai yang sedang tampil, termasuk untuk soal lama yang belum punya mode.
+  for (const q of validQuestions) if (q.type === 'Esai') setModeEsai(q, modeEsai(q))
   draft.value.questions = validQuestions
   draft.value.updatedAt = 'Baru saja'
   emit('save', draft.value)
@@ -417,7 +461,7 @@ const submitForm = () => {
             <p class="text-xs text-[#667085] mt-0.5">
               {{ currentStep === 'PG' ? 'Pilih satu kunci atau aktifkan multi-select untuk PG kompleks.'
                 : currentStep === 'Isian' ? 'Tulis kunci jawaban yang benar untuk setiap soal. Rumus dan teks Arab didukung.'
-                : currentStep === 'Esai' ? 'Siapkan rubrik serta skor maksimal untuk koreksi guru. Siswa wajib menjawab minimal 50 kata, tanpa batas maksimum.'
+                : currentStep === 'Esai' ? 'Siapkan rubrik serta skor maksimal untuk koreksi guru. Soal cerita wajib dijawab minimal 50 kata; soal Matematika/IPA/Akuntansi tanpa minimal kata. Tidak ada batas maksimum.'
                 : 'Pilih media dan jenis jawaban untuk setiap soal.' }}
             </p>
           </div>
@@ -446,23 +490,24 @@ const submitForm = () => {
         <div v-else class="space-y-4">
           <section v-if="questionsInStep.length" class="rounded-2xl border border-[#E7EBF2] bg-[#F9FAFC] p-2" aria-label="Daftar butir soal">
             <div class="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
-              <span class="text-[11px] font-extrabold uppercase tracking-wide text-[#667085]">Daftar butir · {{ questionsInStep.length }} soal</span>
+              <span class="text-[11px] font-extrabold uppercase tracking-wide text-[#667085]">Daftar butir · {{ daftarButir.length }} butir</span>
               <span v-if="ocrBerjalan" class="text-[11px] font-bold text-[#1B5FD9]" role="status">Membaca gambar… pindah butir dikunci sampai selesai.</span>
               <span v-else-if="kosongDiStep" class="text-[11px] font-bold text-[#A15C00]">{{ kosongDiStep }} butir belum terisi</span>
             </div>
             <ul class="max-h-52 space-y-1 overflow-y-auto pr-1">
-              <li v-for="(item, itemIndex) in questionsInStep" :key="item.id">
+              <li v-for="(item, itemIndex) in daftarButir" :key="item.id">
                 <button
                   type="button"
                   class="flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-2.5 text-left text-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9] disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="activeQuestionId === item.id ? 'border-[#1B5FD9] bg-[#E8F0FE]' : 'border-[#E7EBF2] bg-white hover:border-[#B9D1F9]'"
+                  :class="activeQuestion?.id === item.id ? 'border-[#1B5FD9] bg-[#E8F0FE]' : 'border-[#E7EBF2] bg-white hover:border-[#B9D1F9]'"
                   :disabled="ocrBerjalan"
-                  :aria-current="activeQuestionId === item.id ? 'true' : undefined"
+                  :aria-current="activeQuestion?.id === item.id ? 'true' : undefined"
                   @click="activeQuestionId = item.id"
                 >
                   <span class="flex h-6 min-w-6 items-center justify-center rounded-md bg-[#EFF2F7] px-1 font-mono text-[11px] font-extrabold text-[#344054]">{{ itemIndex + 1 }}</span>
-                  <span class="min-w-0 flex-1 truncate" :class="item.text.trim() ? 'font-semibold text-[#344054]' : 'italic text-[#98A2B3]'">{{ item.text.trim() ? ringkasSoal(item) : 'Belum diisi' }}</span>
-                  <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold" :class="item.text.trim() ? 'bg-[#E7F8F0] text-[#087C52]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ item.text.trim() ? 'Terisi' : 'Kosong' }}</span>
+                  <span class="min-w-0 flex-1 truncate" :class="ringkasSoal(item) ? 'font-semibold text-[#344054]' : 'italic text-[#98A2B3]'">{{ ringkasSoal(item) || 'Belum diisi' }}</span>
+                  <span v-if="anggota(item).length > 1" class="shrink-0 rounded-full bg-[#EFF2F7] px-2 py-0.5 text-[10px] font-extrabold text-[#344054]">{{ anggota(item).length }} sub-soal</span>
+                  <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold" :class="anggota(item).every(s => s.text.trim()) ? 'bg-[#E7F8F0] text-[#087C52]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ anggota(item).every(s => s.text.trim()) ? 'Terisi' : 'Kosong' }}</span>
                 </button>
               </li>
             </ul>
@@ -483,6 +528,7 @@ const submitForm = () => {
                 <select
                   v-model="q.difficulty"
                   class="border border-[#E7EBF2] rounded-lg px-2 py-1 text-xs font-bold text-[#344054] bg-white outline-none"
+                  @change="anggota(q).forEach(s => { s.difficulty = q.difficulty })"
                 >
                   <option value="Mudah">Mudah</option>
                   <option value="Sedang">Sedang</option>
@@ -503,16 +549,90 @@ const submitForm = () => {
                   type="button"
                   class="px-2.5 py-1 rounded-lg border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   :disabled="ocrBerjalan"
-                  @click="removeQuestion(q.id)"
+                  @click="removeQuestion(q)"
                 >
-                  Hapus
+                  {{ anggota(q).length > 1 ? 'Hapus cerita' : 'Hapus' }}
                 </button>
               </div>
             </div>
 
             <!-- Question Body -->
             <div class="p-4 space-y-3">
-              <div>
+              <fieldset v-if="q.type === 'Esai'" class="rounded-xl border border-[#E7EBF2] bg-[#F9FAFC] p-3 space-y-3">
+                <legend class="px-1 text-xs font-bold text-[#344054]">Jenis soal esai</legend>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label
+                    v-for="opsi in [{ id: 'cerita', label: 'Soal Cerita', info: 'Satu cerita, beberapa sub-soal. Siswa wajib menjawab minimal 50 kata.' }, { id: 'hitung', label: 'Soal Matematika / IPA / Akuntansi', info: 'Jawaban boleh singkat atau berupa rumus, tanpa minimal kata.' }] as const"
+                    :key="opsi.id"
+                    class="flex min-h-11 cursor-pointer items-start gap-2 rounded-xl border bg-white p-2.5 text-xs"
+                    :class="modeEsai(q) === opsi.id ? 'border-[#1B5FD9] bg-[#E8F0FE]' : 'border-[#E7EBF2]'"
+                  >
+                    <input type="radio" :name="'mode-esai-' + q.id" :checked="modeEsai(q) === opsi.id" class="mt-0.5 h-4 w-4 accent-[#1B5FD9]" @change="anggota(q).forEach(s => setModeEsai(s, opsi.id))">
+                    <span><b class="block text-[#101828]">{{ opsi.label }}</b><span class="text-[#667085]">{{ opsi.info }}</span></span>
+                  </label>
+                </div>
+                <div v-if="modeEsai(q) === 'cerita'">
+                  <label class="block text-xs font-bold text-[#344054] mb-1">Teks Cerita</label>
+                  <CbtRichQuestionEditor
+                    :model-value="q.storyText || ''"
+                    @update:model-value="setCerita(q, $event)"
+                    @message="emit('toast', $event)"
+                    @busy="ocrBerjalan = $event"
+                  />
+                  <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">Kosongkan bila ini esai uraian biasa tanpa cerita. Soal-soal di bawah ini merujuk pada cerita tersebut.</p>
+                </div>
+              </fieldset>
+
+              <!-- Soal cerita: semua sub-soal tampil dalam satu butir -->
+              <template v-if="q.type === 'Esai' && modeEsai(q) === 'cerita'">
+                <section v-for="(sub, si) in anggota(q)" :key="sub.id" class="rounded-xl border border-[#E7EBF2] p-3 space-y-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-extrabold text-[#0A2A5C]">Soal {{ si + 1 }}</span>
+                    <button
+                      v-if="anggota(q).length > 1"
+                      type="button"
+                      class="px-2.5 py-1 rounded-lg border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-bold disabled:opacity-50"
+                      :disabled="ocrBerjalan"
+                      @click="removeSubSoal(q, sub)"
+                    >
+                      Hapus soal {{ si + 1 }}
+                    </button>
+                  </div>
+                  <CbtRichQuestionEditor
+                    v-model="sub.text"
+                    v-model:image-url="sub.imageUrl"
+                    v-model:rtl="sub.isRtl"
+                    @message="emit('toast', $event)"
+                    @busy="ocrBerjalan = $event"
+                  />
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2">
+                      <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
+                      <textarea
+                        v-model="sub.rubric"
+                        rows="2"
+                        placeholder="Pedoman poin penilaian jawaban siswa..."
+                        class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-[#344054] mb-1">Skor Maksimal</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value="20"
+                        class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                      >
+                    </div>
+                  </div>
+                </section>
+                <button type="button" class="w-full min-h-11 rounded-xl border border-[#B9D1F9] bg-white px-3 text-xs font-extrabold text-[#1B5FD9] hover:bg-[#E8F0FE] disabled:opacity-50" :disabled="ocrBerjalan" @click="addSubSoal(q)">
+                  Tambah soal pada cerita ini
+                </button>
+              </template>
+
+              <div v-else>
                 <label class="block text-xs font-bold text-[#344054] mb-1">Pertanyaan</label>
                 <CbtRichQuestionEditor
                   v-model="q.text"
@@ -575,7 +695,7 @@ const submitForm = () => {
               </div>
 
               <!-- Esai Specific -->
-              <div v-else-if="q.type === 'Esai'" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div v-else-if="q.type === 'Esai' && modeEsai(q) !== 'cerita'" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div class="sm:col-span-2">
                   <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
                   <textarea

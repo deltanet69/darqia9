@@ -47,9 +47,13 @@ const wizardStep = ref(1)
 const soalMode = ref<'acak' | 'manual'>('acak')
 const acakCount = ref(40)
 const acakRolled = ref(false)
-const statusFilter = ref<'semua' | 'siap' | 'berlangsung' | 'selesai'>(['siap', 'berlangsung', 'selesai'].includes(kueri('ujianStatus')) ? kueri('ujianStatus') as 'siap' : 'semua')
+// Filter status tidak disimpan di URL: setiap membuka daftar selalu mulai dari semua ujian.
+const statusFilter = ref<'semua' | 'siap' | 'berlangsung' | 'selesai'>('semua')
 const searchQuery = ref(kueri('ujianCari'))
-watch([statusFilter, searchQuery], ([status, cari]) => { void ubahKueri({ ujianStatus: status === 'semua' ? undefined : status, ujianCari: cari || undefined }, true) })
+// Dua tampilan di halaman daftar ujian: kartu rombel, atau time table jadwal seluruh rombel.
+const tampilan = ref<'rombel' | 'jadwal'>(kueri('ujianTab') === 'jadwal' ? 'jadwal' : 'rombel')
+watch(tampilan, t => { void ubahKueri({ ujianTab: t === 'jadwal' ? t : undefined }, true) })
+watch(searchQuery, cari => { void ubahKueri({ ujianStatus: undefined, ujianCari: cari || undefined }, true) })
 const selectedQuestionIds = ref<string[]>([])
 const selectionError = ref('')
 const loadingSelection = ref(false)
@@ -92,7 +96,6 @@ const filteredExams = computed(() => currentExams.value.filter(e => {
   return true
 }))
 const gradeClasses = computed(() => cbtData.classes.value.filter(item => item.grade === props.grade))
-const totalSiswaAktif = computed(() => gradeClasses.value.reduce((sum, c) => sum + (c.studentCount ?? 0), 0))
 const gradePackages = computed(() => cbtData.bankPackages.value.filter(item => item.grade === props.grade))
 
 // Ringkasan per rombel; rombel tanpa jadwal yang cocok tidak ditampilkan.
@@ -113,7 +116,9 @@ const rombelDetail = computed(() => {
 // Jadwal rombel terpilih dikelompokkan per hari agar mudah dibaca.
 const jadwalPerHari = computed(() => {
   const hasil: { key: string; label: string; exams: ExamItem[] }[] = []
-  for (const e of filteredExams.value.filter(x => x.classId === rombelAktif.value).sort(urutWaktu)) {
+  // Tanpa rombel terpilih = time table seluruh rombel yang punya ujian.
+  const sumber = rombelAktif.value ? filteredExams.value.filter(x => x.classId === rombelAktif.value) : [...filteredExams.value]
+  for (const e of sumber.sort(urutWaktu)) {
     const key = localDateTime(new Date(e.startsAt ?? Date.now())).slice(0, 10)
     let hari = hasil.find(h => h.key === key)
     if (!hari) {
@@ -124,6 +129,11 @@ const jadwalPerHari = computed(() => {
   }
   return hasil
 })
+
+// Kolom time table: view semua rombel punya kolom Rombel tambahan.
+const kolomJadwal = computed(() => rombelDetail.value
+  ? 'md:grid-cols-[130px_minmax(0,1fr)_minmax(0,190px)_80px_120px_170px]'
+  : 'md:grid-cols-[110px_64px_minmax(0,1fr)_minmax(0,170px)_72px_120px_170px]')
 
 // Modal token terbuka selama ?token=1 ada di URL; satu token berlaku untuk seluruh mapel rombel, jadi ujian mana pun cukup sebagai acuan.
 // Panel Pelanggaran Siswa (?pelanggaran=1) mencakup seluruh mapel rombel yang sedang dibuka.
@@ -340,19 +350,13 @@ const removeSchedule = async (exam: ExamItem) => {
 
     <!-- DAFTAR UJIAN: RINGKASAN ROMBEL -> JADWAL PER ROMBEL -->
     <div v-else class="space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
-        <div>
-          <h2 class="text-lg font-extrabold text-[#101828]">Daftar Ujian<template v-if="rombelDetail"> &middot; {{ rombelDetail.classroom }}</template></h2>
-          <p class="text-xs text-[#667085] mt-0.5">
-            <template v-if="rombelDetail">{{ rombelDetail.students }} siswa aktif &middot; jadwal diurutkan menurut tanggal dan jam.</template>
-            <template v-else>Pilih rombel untuk melihat jadwal ujiannya &middot; {{ totalSiswaAktif }} siswa aktif di jenjang ini.</template>
-          </p>
-        </div>
+      <button v-if="rombelAktif" type="button" class="inline-flex min-h-11 items-center gap-1.5 text-xs font-extrabold text-[#475467] hover:text-[#1B5FD9]" @click="ubahKueri({ rombel: undefined, token: undefined })">
+        <AdminV2Icon name="back" :size="14" />
+        <span>Kembali</span>
+      </button>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
+        <h2 class="text-lg font-extrabold text-[#101828]">Daftar Ujian<template v-if="rombelDetail"> &middot; {{ rombelDetail.classroom }}</template></h2>
         <div class="flex items-center gap-2 flex-wrap">
-          <button v-if="rombelDetail" type="button" class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#344054] text-xs font-extrabold inline-flex items-center gap-1.5" @click="ubahKueri({ rombel: undefined, token: undefined })">
-            <AdminV2Icon name="back" :size="12" />
-            <span>Semua Rombel</span>
-          </button>
           <button v-if="rombelDetail && bolehKelola" type="button" class="px-4 py-2.5 rounded-full bg-white border border-[#E7EBF2] text-[#1B5FD9] text-xs font-extrabold" @click="ubahKueri({ token: '1' })">Token Peserta</button>
           <button v-if="rombelDetail" type="button" class="relative px-4 py-2.5 rounded-full bg-white border text-xs font-extrabold inline-flex items-center gap-1.5 transition" :class="jumlahPelanggaranRombel ? 'border-[#F8D3CE] text-[#B42318] hover:bg-[#FEF3F2]' : 'border-[#E7EBF2] text-[#344054] hover:border-[#1B5FD9]'" @click="ubahKueri({ pelanggaran: '1' })">
             <AdminV2Icon name="alert" :size="13" />
@@ -366,26 +370,23 @@ const removeSchedule = async (exam: ExamItem) => {
         </div>
       </div>
 
-      <div v-if="bolehKelola && !rombelDetail" class="flex items-center gap-2 text-xs font-bold text-[#667085] flex-wrap">
-        <button type="button" class="inline-flex items-center gap-1.5 hover:text-[#1B5FD9]" @click="emit('switch-tab', 'bank')"><span class="w-5 h-5 rounded-full bg-[#1B5FD9] text-white inline-flex items-center justify-center text-[10px] font-extrabold">1</span> Siapkan Soal</button>
-        <span aria-hidden="true">&rarr;</span>
-        <span class="inline-flex items-center gap-1.5 text-[#101828]"><span class="w-5 h-5 rounded-full bg-[#1B5FD9] text-white inline-flex items-center justify-center text-[10px] font-extrabold">2</span> Buat Ujian</span>
-        <span aria-hidden="true">&rarr;</span>
-        <span class="inline-flex items-center gap-1.5 text-[#101828]"><span class="w-5 h-5 rounded-full bg-[#1B5FD9] text-white inline-flex items-center justify-center text-[10px] font-extrabold">3</span> Jadwal &amp; Tayang</span>
+      <div v-if="!rombelDetail" class="inline-flex w-full sm:w-auto rounded-xl bg-[#EEF1F6] p-1 gap-1" role="tablist" aria-label="Tampilan daftar ujian">
+        <button type="button" role="tab" :aria-selected="tampilan === 'rombel'" class="flex-1 sm:flex-none min-h-10 px-4 rounded-lg text-xs font-extrabold" :class="tampilan === 'rombel' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#667085]'" @click="tampilan = 'rombel'">Daftar Ujian Rombel</button>
+        <button type="button" role="tab" :aria-selected="tampilan === 'jadwal'" class="flex-1 sm:flex-none min-h-10 px-4 rounded-lg text-xs font-extrabold" :class="tampilan === 'jadwal' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#667085]'" @click="tampilan = 'jadwal'">Jadwal Ujian</button>
       </div>
 
-      <div class="flex flex-col lg:flex-row gap-2.5">
-        <div class="flex gap-1.5 flex-wrap">
-          <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'semua' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'semua'">Semua</button>
-          <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'siap' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'siap'">Siap Tayang</button>
-          <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'berlangsung' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'berlangsung'">Sedang Berlangsung</button>
-          <button type="button" class="px-3.5 py-2 rounded-full text-xs font-extrabold border" :class="statusFilter === 'selesai' ? 'bg-[#101828] text-white border-[#101828]' : 'bg-white text-[#667085] border-[#E7EBF2]'" @click="statusFilter = 'selesai'">Sudah Selesai</button>
-        </div>
-        <input v-model="searchQuery" type="text" placeholder="Cari nama ujian atau mapel..." class="flex-1 border border-[#E7EBF2] rounded-full px-4 py-2 text-xs bg-white outline-none focus:border-[#1B5FD9]">
+      <div class="flex flex-col sm:flex-row gap-2.5">
+        <select v-model="statusFilter" aria-label="Filter status ujian" class="sm:w-56 border border-[#E7EBF2] rounded-full px-4 py-2.5 text-xs font-bold text-[#344054] bg-white outline-none focus:border-[#1B5FD9]">
+          <option value="semua">Semua status</option>
+          <option value="siap">Siap Tayang</option>
+          <option value="berlangsung">Sedang Berlangsung</option>
+          <option value="selesai">Sudah Selesai</option>
+        </select>
+        <input v-model="searchQuery" type="text" placeholder="Cari nama ujian atau mapel..." class="flex-1 border border-[#E7EBF2] rounded-full px-4 py-2.5 text-xs bg-white outline-none focus:border-[#1B5FD9]">
       </div>
 
       <!-- Ringkasan: satu kartu per rombel, tersusun dalam kolom -->
-      <div v-if="!rombelDetail">
+      <div v-if="!rombelDetail && tampilan === 'rombel'">
         <div v-if="rombelGroups.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           <button v-for="g in rombelGroups" :key="g.id" type="button" class="text-left bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-2xl p-4 shadow-xs transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9] flex flex-col gap-3" @click="ubahKueri({ rombel: g.id })">
             <div class="flex items-start justify-between gap-2">
@@ -411,16 +412,17 @@ const removeSchedule = async (exam: ExamItem) => {
         </div>
       </div>
 
-      <!-- Jadwal satu rombel, dikelompokkan per hari -->
-      <div v-else class="space-y-3.5">
+      <!-- Time table jadwal ujian: satu rombel, atau seluruh rombel bila belum ada yang dipilih; dikelompokkan per hari -->
+      <div v-if="rombelDetail || tampilan === 'jadwal'" class="space-y-3.5">
         <section v-for="hari in jadwalPerHari" :key="hari.key" class="bg-white border border-[#E7EBF2] rounded-2xl shadow-xs overflow-hidden">
           <h3 class="px-4 sm:px-5 py-2.5 bg-[#F6F8FC] border-b border-[#E7EBF2] text-xs font-extrabold text-[#0A2A5C]">{{ hari.label }} <span class="font-bold text-[#667085]">&middot; {{ hari.exams.length }} mapel</span></h3>
-          <div class="hidden md:grid grid-cols-[130px_minmax(0,1fr)_minmax(0,190px)_80px_120px_170px] gap-4 px-5 py-2 border-b border-[#EFF2F7] text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">
-            <span>Jam</span><span>Mata Pelajaran</span><span>Pengawas</span><span class="text-center">Peserta</span><span>Status</span><span class="text-right">Aksi</span>
+          <div class="hidden md:grid gap-4 px-5 py-2 border-b border-[#EFF2F7] text-[10px] font-extrabold uppercase tracking-wider text-[#667085]" :class="kolomJadwal">
+            <span>Jam</span><span v-if="!rombelDetail">Rombel</span><span>Mata Pelajaran</span><span>Pengawas</span><span class="text-center">Peserta</span><span>Status</span><span class="text-right">Aksi</span>
           </div>
           <ul class="divide-y divide-[#EFF2F7]">
-            <li v-for="e in hari.exams" :key="e.id" class="grid gap-1.5 px-4 sm:px-5 py-3 md:grid-cols-[130px_minmax(0,1fr)_minmax(0,190px)_80px_120px_170px] md:items-center md:gap-4">
+            <li v-for="e in hari.exams" :key="e.id" class="grid gap-1.5 px-4 sm:px-5 py-3 md:items-center md:gap-4" :class="kolomJadwal">
               <span class="text-xs font-bold text-[#101828]">{{ e.time }}</span>
+              <span v-if="!rombelDetail" class="text-xs font-extrabold text-[#0A2A5C]"><span class="md:hidden font-normal text-[#667085]">Rombel: </span>{{ e.classroom }}</span>
               <div class="min-w-0">
                 <b class="block text-sm font-extrabold text-[#101828] break-words">{{ e.subject }}</b>
                 <span class="block text-[10.5px] text-[#667085] break-words">{{ e.name }} &middot; {{ soalLabel(e) }}</span>
@@ -436,7 +438,7 @@ const removeSchedule = async (exam: ExamItem) => {
             </li>
           </ul>
         </section>
-        <div v-if="!jadwalPerHari.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Tidak ada jadwal yang cocok di rombel ini.</div>
+        <div v-if="!jadwalPerHari.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Tidak ada jadwal yang cocok.</div>
       </div>
     </div>
 
@@ -509,10 +511,6 @@ const removeSchedule = async (exam: ExamItem) => {
                   <option value="tengah_semester">Ujian Tengah Semester</option>
                 </select>
               </div>
-              <label class="flex items-start gap-2.5 p-3 rounded-xl border border-[#E7EBF2] cursor-pointer">
-                <input v-model="newExam.acakEsai" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#1B5FD9]">
-                <span><b class="block text-[#344054]">Acak urutan soal Esai</b><span class="text-[#667085]">Aktif: tiap siswa mendapat urutan Esai berbeda. Nonaktif: urutan Esai sesuai susunan guru.</span></span>
-              </label>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block font-bold text-[#344054] mb-1">Durasi (menit)</label>
@@ -602,6 +600,10 @@ const removeSchedule = async (exam: ExamItem) => {
                 </div>
               </template>
             </fieldset>
+              <label class="flex items-start gap-2.5 p-3 rounded-xl border border-[#E7EBF2] cursor-pointer">
+                <input v-model="newExam.acakEsai" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#1B5FD9]">
+                <span><b class="block text-[#344054]">Acak urutan soal Esai</b><span class="text-[#667085]">Aktif: tiap siswa mendapat urutan Esai berbeda. Nonaktif: urutan Esai sesuai susunan guru.</span></span>
+              </label>
               <div class="rounded-xl bg-[#101828] text-[#C9D6F2] p-4 space-y-1.5">
                 <p class="font-extrabold text-white">Ringkasan Ujian</p>
                 <div class="flex justify-between gap-3"><span>Nama</span><b class="text-white text-right">{{ newExam.name || '-' }}</b></div>

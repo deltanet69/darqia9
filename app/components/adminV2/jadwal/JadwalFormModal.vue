@@ -76,6 +76,7 @@ const pesanBentrok = computed<string | null>(() => {
   if (!b) return null
   const jamTeks = (j: JadwalEntri) => `${j.startsAt}–${j.endsAt}`
   if (b.guru) return `${namaGuru(b.guru.teacherId)} sudah mengajar ${namaMapel(b.guru.subjectId)} di kelas ${namaKelas(b.guru.classId)} pada hari ${HARI_NAMA[b.guru.day]} pukul ${jamTeks(b.guru)}. Pilih guru lain atau geser jamnya.`
+  if (b.kelas?.mulaiKe === null) return `Kelas ${namaKelas(b.kelas.classId)} masih menyimpan jadwal pola jam lama: ${namaMapel(b.kelas.subjectId)} (${namaGuru(b.kelas.teacherId)}) hari ${HARI_NAMA[b.kelas.day]} pukul ${jamTeks(b.kelas)}. Jadwal ini tidak tampil di grid. Hapus jadwal lama tersebut agar slot ini dapat diisi.`
   if (b.kelas) return `Kelas ${namaKelas(b.kelas.classId)} sudah terisi ${namaMapel(b.kelas.subjectId)} (${namaGuru(b.kelas.teacherId)}) pada hari ${HARI_NAMA[b.kelas.day]} pukul ${jamTeks(b.kelas)}.`
   if (b.ruangan) return `Ruangan ${b.ruangan.room} sedang dipakai kelas ${namaKelas(b.ruangan.classId)} (${namaMapel(b.ruangan.subjectId)}) pada hari ${HARI_NAMA[b.ruangan.day]} pukul ${jamTeks(b.ruangan)}. Pilih ruangan lain atau geser jamnya.`
   return null
@@ -164,6 +165,7 @@ const kirim = () => {
           <div>
             <div class="text-[12.5px] font-semibold text-red-600">Jadwal bentrok — tidak dapat disimpan</div>
             <p class="text-[12.5px] text-red-500 mt-0.5">{{ pesanBentrok }}</p>
+            <button v-if="bentrok?.kelas && bentrok.kelas.mulaiKe === null && !bentrok.guru" type="button" class="mt-2 text-[12px] font-medium bg-white border border-red-200 text-red-600 rounded-lg px-2.5 py-1.5 hover:border-red-300" :disabled="menyimpan" @click="emit('hapus', bentrok.kelas.id)">Hapus Jadwal Lama</button>
           </div>
         </div>
         <div v-else class="rounded-xl bg-emerald-50 border border-emerald-100 px-3.5 py-3 flex gap-2.5">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2BankForm from './CbtV2BankForm.vue'
 import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
@@ -22,10 +22,18 @@ const cbtData = useAdminCbtData(props.source ?? 'cbt')
 const emit = defineEmits<{
   (e: 'open-drawer', type: string, payload?: any): void
   (e: 'toast', msg: string): void
+  (e: 'detail-change', value: boolean): void
 }>()
 
 // Navigation & Filters: 'classes' | 'subjects' | 'detail' | 'form'
 const bankMode = ref<'subjects' | 'detail' | 'form'>('subjects')
+watch(bankMode, mode => emit('detail-change', mode !== 'subjects'))
+// Tombol kembali di halaman induk: dari form/detail kembali ke daftar paket.
+const kembali = () => {
+  if (bankMode.value === 'form') handleCancelForm()
+  else bankMode.value = 'subjects'
+}
+defineExpose({ kembali })
 const hasSavedDraft = ref(false)
 const isSaving = ref(false)
 const selectedClass = ref('')

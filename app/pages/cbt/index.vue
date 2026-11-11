@@ -170,6 +170,8 @@ import CbtReviewScreen from '~/components/cbt/CbtReviewScreen.vue'
 import CbtDoneScreen from '~/components/cbt/CbtDoneScreen.vue'
 import CbtCheatModal from '~/components/cbt/CbtCheatModal.vue'
 
+import { jenjangHost } from '~/composables/domainCore'
+
 definePageMeta({
   layout: 'exam'
 })
@@ -182,6 +184,12 @@ useHead({
 })
 
 const cbt = useCbtExam()
+
+// Jenjang mengikuti domain: cbt.smpitbca.sch.id = SMP, cbt.smkitattaqwa9.sch.id = SMK.
+// Di localhost/staging (host tidak terdaftar) bisa dipilih lewat ?jenjang=smp atau ?jenjang=smk.
+const kueriJenjang = String(useRoute().query.jenjang ?? '').toLowerCase()
+const jenjangAktif = jenjangHost(useRequestURL().hostname) ?? (kueriJenjang === 'smp' || kueriJenjang === 'smk' ? kueriJenjang : null)
+if (jenjangAktif) cbt.grade.value = jenjangAktif === 'smp' ? 'SMP' : 'SMK'
 
 // Segarkan jadwal + rekap (dipaksa) dari tombol Segarkan.
 const segarkan = async () => {

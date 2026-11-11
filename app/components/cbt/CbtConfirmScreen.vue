@@ -1,127 +1,171 @@
 <template>
-  <section v-show="screen === 'confirm'" class="min-h-screen pb-10 bg-[#F1F5F9]">
-    <div class="bg-white border-b border-slate-200 sticky top-0 z-30 py-3 px-4">
-      <div class="max-w-xl mx-auto flex items-center gap-3">
-        <img src="/asset/logo.png" alt="Logo" class="w-9 h-9 object-contain">
-        <div class="min-w-0">
-          <div class="text-sm font-extrabold text-slate-900 leading-tight truncate">{{ jenjangText }}</div>
-          <div class="text-xs font-semibold text-slate-500">Verifikasi Sebelum Ujian</div>
+  <section v-show="screen === 'confirm'" class="min-h-screen pb-16 bg-[#F1F5F9] antialiased">
+    <!-- Header Sticky -->
+    <div class="bg-white/95 backdrop-blur-md border-b border-slate-200/90 sticky top-0 z-30 py-3 px-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+      <div class="max-w-xl mx-auto flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 p-1 flex items-center justify-center shrink-0">
+            <img src="/asset/logo.png" alt="Logo" class="w-full h-full object-contain">
+          </div>
+          <div class="min-w-0">
+            <div class="text-sm font-black text-slate-900 leading-tight truncate tracking-tight">{{ jenjangText }}</div>
+            <div class="text-xs font-semibold text-slate-500">Konfirmasi Sesi Ujian</div>
+          </div>
         </div>
+        <button
+          type="button"
+          class="text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 bg-white cursor-pointer transition-colors shadow-2xs active:scale-95"
+          @click="$emit('kembali')"
+        >
+          Batal
+        </button>
       </div>
     </div>
 
     <div class="max-w-xl mx-auto px-4 pt-5 space-y-4">
-      <div>
-        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Siap mengikuti ujian?</h2>
-        <p class="text-xs sm:text-sm text-slate-600 mt-0.5">Periksa datamu dan baca tata tertib sebelum mulai.</p>
+      <!-- Hero Briefing Card Ujian (Keren, Menarik & Informatif) -->
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#08152B] via-[#0E2754] to-[#163673] p-5 sm:p-6 text-white shadow-xl shadow-blue-950/20 border border-white/10">
+        <div class="absolute -top-16 -right-16 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div class="relative z-10 space-y-3">
+          <!-- Top Tag -->
+          <div class="flex items-center justify-between gap-2">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Sesi Terbuka &bull; Terverifikasi</span>
+            </span>
+            <span class="text-xs font-bold text-blue-200 font-mono">{{ token }}</span>
+          </div>
+
+          <!-- Exam Title -->
+          <div>
+            <h2 class="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight break-words">
+              {{ exam?.subject }}
+            </h2>
+            <p class="text-xs sm:text-sm text-blue-100/90 font-medium mt-1 break-words">
+              {{ exam?.name }}
+            </p>
+          </div>
+
+          <!-- 3 Quick Specs Pills -->
+          <div class="grid grid-cols-3 gap-2 pt-3 border-t border-white/10 text-center">
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
+              <span class="block text-[10px] text-blue-200 uppercase font-bold">Durasi</span>
+              <b class="text-xs sm:text-sm text-white font-black mt-0.5 block">{{ exam?.duration }} Menit</b>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
+              <span class="block text-[10px] text-blue-200 uppercase font-bold">Total Soal</span>
+              <b class="text-xs sm:text-sm text-white font-black mt-0.5 block">{{ totalQuestions }} Butir</b>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
+              <span class="block text-[10px] text-blue-200 uppercase font-bold">Ruang</span>
+              <b class="text-xs sm:text-sm text-white font-black mt-0.5 block truncate">{{ ruang || 'Online' }}</b>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- 1. Data singkat siswa -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-3xl p-4 shadow-sm">
-        <div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Data Peserta</div>
-        <div class="text-base font-black text-slate-900 leading-tight break-words">{{ exam?.studentName }}</div>
-        <dl class="mt-3 grid grid-cols-3 gap-2 text-xs">
-          <div class="bg-slate-50 rounded-xl p-2.5">
-            <dt class="text-[10px] text-slate-400 uppercase font-semibold">NIS</dt>
-            <dd class="font-bold text-slate-900 font-mono mt-0.5 break-all">{{ nis }}</dd>
+      <!-- Kartu Identitas Peserta -->
+      <div class="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black uppercase tracking-wider text-slate-500">Identitas Peserta Ujian</span>
+          <span class="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">Peserta Sah</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-base flex items-center justify-center shrink-0 shadow-xs">
+            {{ exam?.studentName ? exam.studentName.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() : 'PS' }}
           </div>
-          <div class="bg-slate-50 rounded-xl p-2.5">
-            <dt class="text-[10px] text-slate-400 uppercase font-semibold">Kelas</dt>
-            <dd class="font-bold text-slate-900 mt-0.5 break-words">{{ exam?.classroom }}</dd>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-base font-black text-slate-900 leading-tight break-words">{{ exam?.studentName }}</h3>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">NIS <b class="font-mono text-slate-800">{{ nis }}</b> &bull; Kelas {{ exam?.classroom }}</p>
           </div>
-          <div class="bg-slate-50 rounded-xl p-2.5">
-            <dt class="text-[10px] text-slate-400 uppercase font-semibold">Token</dt>
-            <dd class="font-bold text-blue-700 font-mono mt-0.5 break-all">{{ token }}</dd>
-          </div>
-        </dl>
+        </div>
       </div>
 
-      <!-- 2. Informasi ujian -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-3xl p-4 shadow-sm">
-        <div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Informasi Ujian</div>
-        <dl class="divide-y divide-slate-100 text-sm">
-          <div class="py-2.5 flex items-start justify-between gap-4">
-            <dt class="text-slate-500 shrink-0">Mata Pelajaran</dt>
-            <dd class="font-extrabold text-slate-900 text-right break-words">{{ exam?.subject }}</dd>
-          </div>
-          <div class="py-2.5 flex items-start justify-between gap-4">
-            <dt class="text-slate-500 shrink-0">Materi</dt>
-            <dd class="font-extrabold text-slate-900 text-right break-words">{{ exam?.name }}</dd>
-          </div>
-          <div class="py-2.5 flex items-start justify-between gap-4">
-            <dt class="text-slate-500 shrink-0">Durasi &amp; Soal</dt>
-            <dd class="font-extrabold text-slate-900 text-right">{{ exam?.duration }} menit &bull; {{ totalQuestions }} soal</dd>
-          </div>
-        </dl>
-      </div>
-
-      <!-- 3. Bagian soal (sesuai isi bank soal ujian ini) -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-3xl p-4 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Bagian Soal</h3>
-          <span class="text-xs text-slate-400">Ketuk untuk detail</span>
+      <!-- Komposisi Soal Accordion -->
+      <div class="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-black uppercase tracking-wider text-slate-500">Komposisi Butir Soal</h3>
+          <span class="text-xs font-semibold text-slate-400">Ketuk untuk rincian</span>
         </div>
         <div class="space-y-2">
           <div
             v-for="sec in sectionsAda"
             :key="sec.id"
-            class="border rounded-2xl overflow-hidden transition-all"
-            :class="openedAcc === sec.id ? 'border-blue-400 bg-blue-50/20' : 'border-slate-200 bg-white'"
+            class="border rounded-2xl overflow-hidden transition-all duration-150"
+            :class="openedAcc === sec.id ? 'border-blue-500 bg-blue-50/20 ring-1 ring-blue-100' : 'border-slate-200/90 bg-white'"
           >
-            <button type="button" class="w-full p-3 flex items-center justify-between gap-3 text-left" @click="$emit('toggle-acc', sec.id)">
-              <span class="text-sm font-bold text-slate-900">{{ sec.title }}</span>
-              <span class="flex items-center gap-2 shrink-0">
-                <span class="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">{{ secRange(sec.id).length }} soal</span>
+            <button
+              type="button"
+              class="w-full p-3.5 flex items-center justify-between gap-3 text-left cursor-pointer"
+              @click="$emit('toggle-acc', sec.id)"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                <span class="text-xs sm:text-sm font-black text-slate-900 truncate">{{ sec.title }}</span>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full">{{ secRange(sec.id).length }} Soal</span>
                 <svg
                   class="w-4 h-4 text-slate-400 transition-transform duration-200"
                   :class="{ 'rotate-180 text-blue-600': openedAcc === sec.id }"
                   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
                 ><path d="M6 9l6 6 6-6" /></svg>
-              </span>
+              </div>
             </button>
-            <div v-show="openedAcc === sec.id" class="px-3.5 pb-3 pt-2 text-xs text-slate-600 leading-relaxed border-t border-slate-100" v-html="sec.desc" />
+            <div v-show="openedAcc === sec.id" class="px-4 pb-3.5 pt-2 text-xs text-slate-600 leading-relaxed border-t border-slate-100" v-html="sec.desc" />
           </div>
         </div>
       </div>
 
-      <!-- 4. Tata tertib -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-3xl p-4 shadow-sm">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Tata Tertib Ujian</h3>
-        <ul class="space-y-2 text-xs sm:text-sm text-slate-700 list-disc pl-5 leading-relaxed">
-          <li>Kerjakan tepat waktu. Durasi ujian <b>{{ exam?.duration }} menit</b> dan tidak bisa diperpanjang.</li>
-          <li>Pastikan <b>koneksi internet stabil</b> selama ujian berlangsung.</li>
-          <li>Kerjakan <b>secara mandiri</b>. Dilarang membuka catatan, aplikasi, atau tab lain.</li>
-          <li>Pelanggaran tata tertib berakibat <b>akun terkunci dan nilai dibatalkan</b>.</li>
-          <li>Jawaban <b>tersimpan otomatis setiap 10 detik</b> dan aman walau halaman dimuat ulang.</li>
+      <!-- Tata Tertib & Ketentuan Integritas -->
+      <div class="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-sm space-y-3">
+        <h3 class="text-xs font-black uppercase tracking-wider text-slate-500">Ketentuan Penting Ujian</h3>
+        <ul class="space-y-2 text-xs text-slate-700 leading-relaxed">
+          <li class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Waktu berjalan otomatis selama <b>{{ exam?.duration }} menit</b> dan tidak dapat diulang.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Jawaban tersimpan otomatis ke server setiap 10 detik.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Dilarang keluar jendela/tab browser. Pelanggaran ke-3 mengunci akun total.</span>
+          </li>
         </ul>
       </div>
 
-      <!-- 5. Checklist -->
-      <label class="flex items-start gap-3 p-4 rounded-2xl border-2 bg-white cursor-pointer transition-all" :class="agreeStart ? 'border-blue-400' : 'border-slate-200'">
+      <!-- Checklist Persetujuan -->
+      <label
+        class="flex items-start gap-3 p-4 rounded-2xl border-2 bg-white cursor-pointer transition-all duration-150 shadow-2xs"
+        :class="agreeStart ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-100' : 'border-slate-200/90'"
+      >
         <input
           type="checkbox"
           :checked="agreeStart"
-          class="mt-0.5 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+          class="mt-0.5 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
           @change="$emit('update:agreeStart', ($event.target as HTMLInputElement).checked)"
         >
-        <span class="text-xs sm:text-sm text-slate-700 leading-relaxed">
-          Saya telah membaca tata tertib dan <b>siap mengikuti ujian dengan jujur</b>.
+        <span class="text-xs sm:text-sm text-slate-900 leading-relaxed font-bold">
+          Saya telah memeriksa data di atas dan siap mengerjakan ujian dengan tertib dan jujur.
         </span>
       </label>
 
-      <!-- 6. Mulai ujian -->
-      <div class="space-y-2.5">
+      <!-- Tombol Aksi Mulai Ujian -->
+      <div class="space-y-2.5 pt-1">
         <button
           type="button"
-          class="w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base text-white transition-all"
+          class="w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base text-white transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
           :class="agreeStart ? 'bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30' : 'bg-slate-300 cursor-not-allowed opacity-60'"
           :disabled="!agreeStart"
           @click="$emit('start-exam')"
         >
-          Mulai Ujian
-        </button>
-        <button type="button" class="w-full py-3 rounded-2xl text-sm font-bold text-slate-500" @click="$emit('kembali')">
-          Kembali ke Beranda
+          <span>Mulai Mengerjakan Ujian</span>
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
       </div>
     </div>
@@ -154,6 +198,6 @@ defineEmits<{
   (e: 'kembali'): void
 }>()
 
-// Hanya bagian yang benar-benar ada di bank soal ujian ini (mis. tanpa Jawaban Singkat bila tidak ada soalnya).
+// Hanya bagian yang benar-benar ada di bank soal ujian ini.
 const sectionsAda = computed(() => props.sections.filter(sec => props.secRange(sec.id).length > 0))
 </script>

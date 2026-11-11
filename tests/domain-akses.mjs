@@ -1,6 +1,6 @@
 // Tes aturan akses domain — jalankan: node tests/domain-akses.mjs
 import assert from 'node:assert/strict'
-import { arahkanDomain as a } from '../app/composables/domainCore.ts'
+import { arahkanDomain as a, jenjangHost } from '../app/composables/domainCore.ts'
 
 // Tidak dibatasi: localhost, staging Vercel, host asing
 for (const h of ['localhost', 'darqia9.vercel.app', '127.0.0.1']) {

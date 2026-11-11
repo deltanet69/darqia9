@@ -22,6 +22,7 @@ export interface QuestionItem {
   placeholder?: string
   minWords?: number
   maxWords?: number
+  storyText?: string
   isRtl?: boolean
   mediaUrl?: string
   mediaFileName?: string
@@ -148,7 +149,8 @@ export const useCbtExam = () => {
           text: q.text,
           options: options.length > 0 ? options : undefined,
           placeholder: q.type === 'Esai' ? 'Tulis jawaban essay-mu di sini…' : 'Ketik jawaban singkatmu…',
-          minWords: q.type === 'Esai' ? 50 : undefined,
+          minWords: q.type === 'Esai' && q.essay_mode !== 'hitung' ? 50 : undefined,
+          storyText: q.story_text || undefined,
           isRtl: q.is_rtl,
           imageUrl: q.image_url,
           audioTitle: q.media_file_name || 'Audio Ujian',

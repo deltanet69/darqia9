@@ -17,6 +17,7 @@ import CbtV2Results from '~/components/adminV2/cbt/CbtV2Results.vue'
 import CbtV2Management from '~/components/adminV2/cbt/CbtV2Management.vue'
 import CbtV2Drawer from '~/components/adminV2/cbt/CbtV2Drawer.vue'
 import CbtV2MobileNav from '~/components/adminV2/cbt/CbtV2MobileNav.vue'
+import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 import {
@@ -81,7 +82,12 @@ const bankEntry = ref(0)
 const roomDetail = ref<string | null>(null)
 const inRoomDetail = computed(() => activeTab.value === 'rooms' && !!roomDetail.value)
 // Detail satu ujian (?ujian=<id>): sub menu utama disembunyikan, hanya ada tombol kembali.
-const inExamDetail = computed(() => activeTab.value === 'exams' && !!queryValue(route.query.ujian))
+const inExamDetail = computed(() => activeTab.value === 'exams' && !!(queryValue(route.query.ujian) || queryValue(route.query.rombel)))
+// Detail konten (bank soal form/paket): halaman hanya menampilkan konten dan tombol kembali.
+const bankRef = ref<{ kembali: () => void } | null>(null)
+const bankDetail = ref(false)
+watch(activeTab, () => { bankDetail.value = false })
+const inDetail = computed(() => inRoomDetail.value || inExamDetail.value || bankDetail.value)
 const exams = computed(() => cbtData.exams.value)
 const students = ref<StudentScore[]>([...INITIAL_STUDENTS])
 
@@ -109,7 +115,6 @@ const syncRoute = (gantiJenjang = false) => router.push({
     token: activeTab.value === 'exams' && !gantiJenjang ? route.query.token : undefined,
     ujian: activeTab.value === 'exams' && !gantiJenjang ? route.query.ujian : undefined,
     pelanggaran: activeTab.value === 'exams' && !gantiJenjang ? route.query.pelanggaran : undefined,
-    ujianStatus: activeTab.value === 'exams' ? route.query.ujianStatus : undefined,
     ujianCari: activeTab.value === 'exams' ? route.query.ujianCari : undefined
   }
 })
@@ -349,6 +354,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
       <!-- SUB NAVBAR KHUSUS BREADCRUMB (Desktop & Mobile: Sticky Sub-Navbar) -->
       <AdminV2Breadcrumb
+        v-if="!inDetail"
         :items="[
           { label: 'Portal Admin', to: '/adminV2' },
           { label: 'Aplikasi' },
@@ -375,6 +381,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- CBT PAGE HERO HEADER (1440px) -->
     <CbtV2Header
+      v-if="!inDetail"
       :grade="grade"
       :active-tab="activeTab"
       :module-name="moduleName"
@@ -384,8 +391,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- SUBMODULE TABS (1440px) -->
     <CbtV2Tabs
-      v-if="!inRoomDetail && !inExamDetail"
-      :bank-label="moduleDescription"
+      v-if="!inDetail"
       :active-tab="activeTab"
       :live-exam-count="liveExamCount"
       :grade="grade"
@@ -394,6 +400,15 @@ const handleDocumentClick = (e: MouseEvent) => {
     />
 
     <main class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-8 lg:pb-10">
+      <button
+        v-if="bankDetail"
+        type="button"
+        class="mt-4 mb-3 inline-flex min-h-11 items-center gap-1.5 text-xs font-extrabold text-[#475467] hover:text-[#1B5FD9]"
+        @click="bankRef?.kembali()"
+      >
+        <AdminV2Icon name="back" :size="14" />
+        <span>Kembali</span>
+      </button>
       <!-- TAB 1: SUMMARY TAB -->
       <div
         v-if="cbtData.loading.value || cbtData.questionsLoading.value"
@@ -438,11 +453,13 @@ const handleDocumentClick = (e: MouseEvent) => {
       <!-- TAB 3: QUESTION BANK TAB -->
       <CbtV2Bank
         :key="`bank-${assessmentSource}-${grade}-${bankEntry}`"
+        ref="bankRef"
         v-else-if="activeTab === 'bank'"
         :grade="grade"
         :source="assessmentSource"
         @open-drawer="openDrawer"
         @toast="triggerToast"
+        @detail-change="bankDetail = $event"
       />
 
       <!-- TAB 4: EXAM SCHEDULE & LIST TAB -->
@@ -501,7 +518,7 @@ const handleDocumentClick = (e: MouseEvent) => {
 
     <!-- MOBILE BOTTOM NAVIGATION -->
     <CbtV2MobileNav
-      v-if="!inRoomDetail && !inExamDetail"
+      v-if="!inDetail"
       :active-tab="activeTab"
       :grade="grade"
       :module-name="moduleName"

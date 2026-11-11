@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { ExamItem } from './cbtV2Data'
+import { JENIS_LABEL } from '~/utils/cbtSiswaJadwal'
+import { hostUntuk } from '~/composables/domainCore'
 import { useAdminCbtData, type AssessmentSource, type ExamParticipant } from '~/composables/useAdminCbtData'
 
 const props = defineProps<{ exam: ExamItem; source?: AssessmentSource }>()
@@ -134,26 +136,72 @@ const printCards = () => {
     emit('toast', 'Jendela cetak terblokir. Izinkan pop-up untuk mencetak kartu.')
     return
   }
-  const cards = printable.value.map(p => `
+  // Nama siswa berasal dari database: di-escape agar tidak bisa menyisipkan HTML ke jendela cetak.
+  const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+  const origin = window.location.origin
+  // Alamat dari daftar domain live, bukan host browser, agar kartu tidak pernah mencetak localhost/staging.
+  const alamat = hostUntuk('cbt', props.exam.grade === 'SMK' ? 'smk' : 'smp')
+  const logo = `${origin}/asset/${props.exam.grade === 'SMK' ? 'logo.png' : 'logosmp.png'}`
+  const jenis = JENIS_LABEL[props.exam.jenis ?? (props.source === 'ujian_harian' ? 'harian' : 'akhir')]
+  // Tema warna mengikuti jenjang: SMP hijau, SMK navy-biru (sama seperti badge jenjang di Admin).
+  const tema = props.exam.grade === 'SMK'
+    ? '--utama:#0A2A5C;--sub:#C7D7F2;--aksen:#1B5FD9;--panel:#EEF4FF;--garis-panel:#C9DAF8;--label:#1B4FB0;--garis:#C9D5E8'
+    : '--utama:#0B5138;--sub:#BDE8D2;--aksen:#15803D;--panel:#E7F6ED;--garis-panel:#A6E9C5;--label:#166534;--garis:#BFDCCB'
+  const kartu = printable.value.map(p => `
     <section class="kartu">
-      <p class="sekolah">${schoolName.value} · Kartu Peserta Ujian</p>
-      <h2>${p.name}</h2>
-      <p class="meta">NIS ${p.nis} · ${p.classroom}${p.room ? `<br>Ruang ${p.room}` : ''}</p>
-      <div class="token"><span>TOKEN</span><b>${p.token}</b></div>
-    </section>`).join('')
-  win.document.write(`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Kartu Ujian — ${props.exam.classroom}</title>
+      <header>
+        <img src="${logo}" alt="">
+        <div><h1>Kartu Peserta Ujian</h1><p>${esc(schoolName.value)}</p></div>
+        <span class="jenis">${esc(jenis)}</span>
+      </header>
+      <div class="isi">
+        <h2${String(p.name).length > 34 ? ' class="panjang"' : ''}>${esc(p.name)}</h2>
+        <dl>
+          <div><dt>NIS</dt><dd>${esc(p.nis)}</dd></div>
+          <div><dt>Kelas</dt><dd>${esc(p.classroom)}</dd></div>
+          <div><dt>Ruang</dt><dd>${esc(p.room || '–')}</dd></div>
+        </dl>
+        <p class="token"><span class="label">Token masuk</span><mark>${esc(p.token)}</mark></p>
+      </div>
+      <footer>
+        <p>Buka <b>${esc(alamat)}</b>, lalu masukkan NIS dan token.</p>
+        <p>Token hanya untuk NIS di atas, berlaku semua mata pelajaran. Jangan berikan kepada siapa pun.</p>
+      </footer>
+    </section>`)
+  // A4 = 10 kartu (2 kolom × 5 baris) per halaman; halaman terakhir berisi sisa siswa.
+  const halaman: string[] = []
+  for (let i = 0; i < kartu.length; i += 10) halaman.push(`<div class="halaman">${kartu.slice(i, i + 10).join('')}</div>`)
+  win.document.write(`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Kartu Ujian — ${esc(props.exam.classroom)}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-      body { font-family: Arial, sans-serif; margin: 16px; color: #101828; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .kartu { border: 1.5px dashed #8AA3C7; border-radius: 12px; padding: 14px 16px; break-inside: avoid; }
-      .sekolah { font-size: 10px; font-weight: bold; letter-spacing: .05em; text-transform: uppercase; color: #1B5FD9; margin: 0; }
-      h2 { font-size: 16px; margin: 6px 0 2px; color: #0A2A5C; }
-      .meta { font-size: 11.5px; color: #555; line-height: 1.6; margin: 0; }
-      .token { border-top: 1px solid #DDD; margin-top: 10px; padding-top: 8px; display: flex; justify-content: space-between; align-items: baseline; }
-      .token span { font-size: 10px; font-weight: bold; letter-spacing: .06em; color: #667085; }
-      .token b { font-size: 19px; letter-spacing: .1em; color: #0A2A5C; font-family: 'Courier New', monospace; }
-    </style></head><body><div class="grid">${cards}</div>
-    <script>window.onload = () => window.print()<\/script></body></html>`)
+      @page { size: A4; margin: 8mm; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-family: Inter, Arial, sans-serif; margin: 0; color: #101828; background: #fff; ${tema}; }
+      .halaman { width: 194mm; height: 281mm; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(5, 1fr); gap: 4mm 6mm; break-after: page; }
+      .halaman:last-child { break-after: auto; }
+      .kartu { border: 1px solid var(--garis); border-radius: 10px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+      header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--utama); color: #fff; }
+      header img { width: 22px; height: 25px; object-fit: contain; flex-shrink: 0; }
+      header div { min-width: 0; flex: 1; }
+      h1 { margin: 0; font-size: 12px; font-weight: 800; }
+      header p { margin: 1px 0 0; font-size: 9.5px; font-weight: 500; color: var(--sub); }
+      .jenis { flex-shrink: 0; padding: 3px 7px; border-radius: 5px; background: var(--aksen); font-size: 9.5px; font-weight: 700; }
+      .isi { padding: 7px 10px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+      h2 { margin: 0; font-size: 14px; font-weight: 800; color: var(--utama); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      h2.panjang { font-size: 11.5px; }
+      dl { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 6px; margin: 0; }
+      dl div { min-width: 0; }
+      dt { font-size: 9px; font-weight: 600; color: #475467; }
+      dd { margin: 1px 0 0; font-size: 12px; font-weight: 700; color: #101828; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .token { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; padding: 5px 6px 5px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--garis-panel); }
+      .label { font-size: 10.5px; font-weight: 700; color: var(--label); }
+      mark { padding: 2px 9px; border-radius: 5px; background: #FFE27A; color: #101828; font-size: 20px; font-weight: 800; letter-spacing: 0.14em; line-height: 1.2; }
+      footer { padding: 5px 10px 6px; border-top: 1px dashed var(--garis); background: #F7F9FC; }
+      footer p { margin: 0; font-size: 9px; line-height: 1.4; color: #344054; }
+      footer b { color: var(--utama); }
+    </style></head><body>${halaman.join('')}
+    <script>window.onload = () => (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => window.print())<\/script></body></html>`)
   win.document.close()
 }
 </script>

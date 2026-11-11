@@ -60,6 +60,9 @@ export interface BankQuestionItem {
   options?: { key: string; text: string }[]
   key: string | string[]
   rubric?: string
+  essayMode?: 'cerita' | 'hitung'
+  storyText?: string
+  storyGroup?: string
   mediaType?: 'audio' | 'video'
   mediaUrl?: string
   mediaFileName?: string
