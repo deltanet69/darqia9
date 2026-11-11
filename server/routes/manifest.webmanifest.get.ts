@@ -74,12 +74,15 @@ function manifestFor(host: string, app: string) {
   const sub = host.split('.')[0]
   const school = schoolOf(host)
   const isCbt = sub === 'cbt' || app === 'cbt'
+  // Di subdomain cbt.* halaman ujian ada di "/" (/cbt dialihkan ke "/"). Scope /cbt membuat aplikasi terpental
+  // keluar di Chrome lama karena hasil pengalihan berada di luar scope.
+  const awalCbt = sub === 'cbt' ? '/' : '/cbt'
 
   if (isCbt && school === 'smp') {
-    return toManifest({ id: 'cbt-smp', school: 'smp', name: 'CBT SMP IT Bina Cendekia Assalam', shortName: 'CBT SMP', themeColor: '#15803d', startUrl: '/cbt', scope: '/cbt' })
+    return toManifest({ id: 'cbt-smp', school: 'smp', name: 'CBT SMP IT Bina Cendekia Assalam', shortName: 'CBT SMP', themeColor: '#15803d', startUrl: awalCbt, scope: awalCbt })
   }
   if (isCbt && school === 'smk') {
-    return toManifest({ id: 'cbt-smk', school: 'smk', name: 'CBT SMK IT Attaqwa 9', shortName: 'CBT SMK', themeColor: '#0A2A5C', startUrl: '/cbt', scope: '/cbt' })
+    return toManifest({ id: 'cbt-smk', school: 'smk', name: 'CBT SMK IT Attaqwa 9', shortName: 'CBT SMK', themeColor: '#0A2A5C', startUrl: awalCbt, scope: awalCbt })
   }
   if (isCbt) {
     // Staging/localhost: host tidak membawa info sekolah.
