@@ -365,12 +365,13 @@ export const useCbtExam = () => {
     modal.show = true
   }
 
+  let waktuHabis = false // true sejak waktu habis sampai pengumpulan berhasil: modal gagal-kumpul tidak bisa ditutup
   const closeModal = (): void => {
     modal.show = false
   }
 
   const onModalBackClick = (e: MouseEvent): void => {
-    if ((e.target as HTMLElement).classList.contains('modal-back') && !modal.requiresPin && !modal.fatal) {
+    if ((e.target as HTMLElement).classList.contains('modal-back') && !modal.requiresPin && !modal.fatal && !waktuHabis) {
       closeModal()
     }
   }
@@ -592,6 +593,9 @@ export const useCbtExam = () => {
   let denyut = 0
   const startTimer = (): void => {
     stopTimer()
+    waktuHabis = false
+    // Dibuka ulang setelah waktunya lewat: langsung dikumpulkan, soal tidak bisa dikerjakan lagi.
+    if (remainingTime.value <= 0) { autoSubmit(); return }
     batasWaktu = Date.now() + remainingTime.value * 1000
     denyut = 0
     timerId = setInterval(() => {
@@ -636,7 +640,9 @@ export const useCbtExam = () => {
       }
       const daftar = jawabanBerubah()
       if (!daftar.length) return
-      await $fetch('/api/cbt/simpan', { method: 'POST', body: { ...kunciDasar(), jawaban: daftar } })
+      const res = await $fetch<any>('/api/cbt/simpan', { method: 'POST', body: { ...kunciDasar(), jawaban: daftar } })
+      // Jam server yang menentukan: jam HP yang dimundurkan tidak bisa memperpanjang waktu.
+      if (res?.waktuHabis) { autoSubmit(); return }
       for (const item of daftar) {
         const i = questions.value.findIndex(q => q.id === item.q)
         if (i >= 0) terkirim.set(item.q, tandaJawaban(i))
@@ -820,15 +826,11 @@ export const useCbtExam = () => {
     })
   }
 
+  // Waktu habis: langsung dikumpulkan tanpa menunggu siswa menekan tombol, dan tidak bisa kembali ke soal.
   const autoSubmit = (): void => {
     stopTimer()
-    openModal({
-      title: 'Waktu habis!',
-      desc: 'Jawabanmu dikumpulkan otomatis oleh sistem.',
-      okText: 'Lihat Hasil',
-      btnClass: 'btn-primary',
-      onOk: () => doSubmit(true)
-    })
+    waktuHabis = true
+    void doSubmit(true)
   }
 
   // Hasil ujian yang langsung tampil setelah dikumpulkan (dihitung server, esai dinilai AI).
@@ -857,6 +859,7 @@ export const useCbtExam = () => {
       return
     }
     sedangKumpul = false
+    waktuHabis = false
     menghitung.value = false
     const kunci = activeExam.value
     try {
