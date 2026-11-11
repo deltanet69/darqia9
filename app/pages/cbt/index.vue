@@ -160,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onErrorCaptured, onMounted, onUnmounted, watch } from 'vue'
 import { useCbtExam } from '~/composables/useCbtExam'
 import CbtLoginScreen from '~/components/cbt/CbtLoginScreen.vue'
 import CbtAppScreen from '~/components/cbt/CbtAppScreen.vue'
@@ -216,5 +216,10 @@ watch(() => cbt.appTab.value, (tab) => {
 
 onUnmounted(() => {
   cbt.unregisterListeners()
+})
+
+// shortcut: diagnosa sementara masalah login iOS 16/17 — tampilkan galat di layar; hapus setelah penyebab ketemu.
+onErrorCaptured((e) => {
+  cbt.triggerToast(`Galat: ${(e as Error)?.message || e}`, 10000)
 })
 </script>

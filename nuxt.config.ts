@@ -25,6 +25,13 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap' }
+      ],
+      // Polyfill kecil untuk iOS 12–15: API yang dipakai Nuxt/Vue tanpa pengecekan. Harus jalan sebelum skrip aplikasi.
+      script: [
+        {
+          tagPosition: 'head',
+          innerHTML: 'self.globalThis||(self.globalThis=self);Object.hasOwn||(Object.hasOwn=function(o,k){return Object.prototype.hasOwnProperty.call(o,k)});Object.fromEntries||(Object.fromEntries=function(i){var o={};Array.from(i).forEach(function(e){o[e[0]]=e[1]});return o});self.queueMicrotask||(self.queueMicrotask=function(f){Promise.resolve().then(f)});self.AbortController||(self.AbortController=function(){var s={aborted:!1,reason:void 0,addEventListener:function(){},removeEventListener:function(){}};this.signal=s;this.abort=function(r){s.aborted=!0;s.reason=r}});'
+        }
       ]
     }
   },
@@ -66,6 +73,8 @@ export default defineNuxtConfig({
     }
   },
   vite: {
+    // Siswa masih memakai iPhone lama (iOS 12–17) dan Android lawas: sintaks JS/CSS diturunkan agar tetap jalan.
+    build: { target: ['es2018', 'safari12', 'chrome64'], cssTarget: ['safari12', 'chrome64'] },
     server: {
       watch: {
         usePolling: true,
