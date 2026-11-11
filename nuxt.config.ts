@@ -31,6 +31,11 @@ export default defineNuxtConfig({
         {
           tagPosition: 'head',
           innerHTML: 'self.globalThis||(self.globalThis=self);Object.hasOwn||(Object.hasOwn=function(o,k){return Object.prototype.hasOwnProperty.call(o,k)});Object.fromEntries||(Object.fromEntries=function(i){var o={};Array.from(i).forEach(function(e){o[e[0]]=e[1]});return o});self.queueMicrotask||(self.queueMicrotask=function(f){Promise.resolve().then(f)});self.AbortController||(self.AbortController=function(){var s={aborted:!1,reason:void 0,addEventListener:function(){},removeEventListener:function(){}};this.signal=s;this.abort=function(r){s.aborted=!0;s.reason=r}});'
+            + 'var P=function(n,f){Array.prototype[n]||Object.defineProperty(Array.prototype,n,{value:f,writable:!0,configurable:!0})};'
+            + 'P("at",function(i){i=Math.trunc(i)||0;if(i<0)i+=this.length;return this[i]});'
+            + 'P("flat",function(d){d=d===void 0?1:Math.trunc(d)||0;return d<1?Array.prototype.slice.call(this):Array.prototype.reduce.call(this,function(a,v){return a.concat(Array.isArray(v)?v.flat(d-1):[v])},[])});'
+            + 'P("flatMap",function(f,t){return Array.prototype.map.call(this,f,t).flat()});'
+            + 'self.IntersectionObserver||(self.IntersectionObserver=function(){this.observe=this.unobserve=this.disconnect=function(){}});'
         }
       ]
     }
@@ -75,6 +80,8 @@ export default defineNuxtConfig({
   vite: {
     // Siswa masih memakai iPhone lama (iOS 12–17) dan Android lawas: sintaks JS/CSS diturunkan agar tetap jalan.
     build: { target: ['es2018', 'safari12', 'chrome64'], cssTarget: ['safari12', 'chrome64'] },
+    // Literal BigInt (32n) di fnv1a-64 (dependency Nuxt) = galat sintaks di Safari <14 / Chrome <67; ganti ke BigInt(32).
+    plugins: [{ name: 'bigint-lawas', transform: (code: string, id: string) => id.includes('fnv1a-64') ? code.replace(/\b32n\b/g, 'BigInt(32)') : undefined }],
     server: {
       watch: {
         usePolling: true,
