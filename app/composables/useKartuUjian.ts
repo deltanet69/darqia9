@@ -16,6 +16,7 @@ export interface SiswaKartu {
   classroom: string
   room: string
   eligible: boolean
+  active: boolean
   cardId?: string
   token?: string
 }
@@ -64,26 +65,42 @@ export const useKartuUjian = () => {
     return typeof data === 'string' ? data : ''
   }
 
-  // shortcut: satu permintaan 1000 siswa per jenjang, cukup untuk sekolah ini; paginasi bila melebihi.
+  // Sumber utama = tabel kartu (kartu tidak hilang walau siswa pindah kelas/nonaktif), ditambah siswa aktif yang belum punya kartu.
+  // shortcut: satu permintaan 1000 baris per jenjang, cukup untuk sekolah ini; paginasi bila melebihi.
   const muatSiswa = async (periode: PeriodeKartu): Promise<SiswaKartu[]> => {
-    const [siswa, kartu, ruang] = await Promise.all([
-      client.from('students').select('id, nis, name, class_id, exam_eligible, classes(name)').eq('grade', periode.grade).eq('active', true).order('name').range(0, 999),
-      client.from('exam_cards').select('id, student_id, token').eq('period_id', periode.id).range(0, 999),
+    const [kartu, siswa, ruang] = await Promise.all([
+      client.from('exam_cards').select('id, student_id, token, class_id, classroom, students(name, nis, exam_eligible, active)').eq('period_id', periode.id).range(0, 999),
+      client.from('students').select('id, nis, name, class_id, exam_eligible, classes(name)').eq('grade', periode.grade).eq('active', true).range(0, 999),
       client.from('exam_room_members').select('student_id, exam_rooms!inner(name)').eq('periode', periode.periode).is('deleted_at', null).is('exam_rooms.deleted_at', null).range(0, 999)
     ])
-    galat(siswa.error)
     galat(kartu.error)
+    galat(siswa.error)
     // Gagal memuat ruang tidak menggagalkan daftar: kolom ruang kosong saja.
-    const kartuByStudent = new Map((kartu.data ?? []).map((row: any) => [row.student_id, row]))
     const ruangByStudent = new Map((ruang.error ? [] : ruang.data ?? []).map((row: any) => [row.student_id, row.exam_rooms?.name ?? '']))
-    return (siswa.data ?? []).map((row: any) => {
-      const card: any = kartuByStudent.get(row.id)
+    const punyaKartu = new Set<string>()
+    const rows: SiswaKartu[] = (kartu.data ?? []).map((row: any) => {
+      punyaKartu.add(row.student_id)
       return {
-        studentId: row.id, name: row.name, nis: row.nis || '', classId: row.class_id,
-        classroom: row.classes?.name ?? '-', room: ruangByStudent.get(row.id) ?? '',
-        eligible: row.exam_eligible !== false, cardId: card?.id, token: card?.token
-      } as SiswaKartu
+        studentId: row.student_id, name: row.students?.name ?? '-', nis: row.students?.nis || '', classId: row.class_id,
+        classroom: row.classroom || 'Tanpa kelas', room: ruangByStudent.get(row.student_id) ?? '',
+        eligible: row.students?.exam_eligible !== false, active: row.students?.active !== false, cardId: row.id, token: row.token
+      }
     })
+    for (const row of (siswa.data ?? []) as any[]) {
+      if (punyaKartu.has(row.id)) continue
+      rows.push({
+        studentId: row.id, name: row.name, nis: row.nis || '', classId: row.class_id,
+        classroom: row.classes?.name ?? 'Tanpa kelas', room: ruangByStudent.get(row.id) ?? '',
+        eligible: row.exam_eligible !== false, active: true
+      })
+    }
+    return rows.sort((a, b) => a.name.localeCompare(b.name, 'id'))
+  }
+
+  const hapusKartu = async (cardIds: string[]) => {
+    wajibSuperadmin()
+    const { error } = await client.from('exam_cards').delete().in('id', cardIds)
+    galat(error)
   }
 
   const setEligible = async (studentId: string, eligible: boolean) => {
@@ -92,5 +109,5 @@ export const useKartuUjian = () => {
     galat(error)
   }
 
-  return { muatPeriode, simpanPeriode, hapusPeriode, rilis, regenerasi, muatSiswa, setEligible }
+  return { muatPeriode, simpanPeriode, hapusPeriode, rilis, regenerasi, muatSiswa, hapusKartu, setEligible }
 }

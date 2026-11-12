@@ -115,27 +115,21 @@ const rombelDetail = computed(() => {
 
 const selectedMajor = ref('Semua')
 
-const majorName = (classroom: string) => {
-  const upper = classroom.toUpperCase()
-  if (upper.includes('AK') || upper.includes('AKL')) return 'Akuntansi'
-  if (upper.includes('TKJ')) return 'Teknik Komputer & Jaringan'
-  if (upper.includes('TSM') || upper.includes('TBSM')) return 'Teknik Sepeda Motor'
-  if (upper.includes('RPL') || upper.includes('PPLG')) return 'Rekayasa Perangkat Lunak'
-  if (upper.includes('MM') || upper.includes('DKV')) return 'Desain Komunikasi Visual'
-  if (upper.includes('OTKP') || upper.includes('MPLB')) return 'Manajemen Perkantoran'
-  if (props.grade === 'SMP') return 'SMP IT BCA'
-  return 'Reguler'
+const isToday = (startsAt?: string) => {
+  if (!startsAt) return false
+  const d = new Date(startsAt)
+  const today = new Date()
+  return (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
+  )
 }
 
-const majorBadgeClass = (classroom: string) => {
-  const upper = classroom.toUpperCase()
-  if (upper.includes('AK') || upper.includes('AKL')) return 'bg-amber-50 text-amber-900 border-amber-200/80'
-  if (upper.includes('TKJ')) return 'bg-purple-50 text-purple-900 border-purple-200/80'
-  if (upper.includes('TSM') || upper.includes('TBSM')) return 'bg-orange-50 text-orange-900 border-orange-200/80'
-  if (upper.includes('RPL') || upper.includes('PPLG')) return 'bg-blue-50 text-blue-900 border-blue-200/80'
-  if (upper.includes('MM') || upper.includes('DKV')) return 'bg-rose-50 text-rose-900 border-rose-200/80'
-  if (upper.includes('OTKP') || upper.includes('MPLB')) return 'bg-teal-50 text-teal-900 border-teal-200/80'
-  return 'bg-slate-100 text-slate-800 border-slate-200/80'
+const mapelHariIni = (exams: ExamItem[]) => {
+  const list = exams.filter(e => isToday(e.startsAt))
+  const set = new Set(list.map(e => e.subjectId || e.subject))
+  return set.size
 }
 
 const totalRombel = computed(() => rombelGroups.value.length)
@@ -570,31 +564,15 @@ const removeSchedule = async (exam: ExamItem) => {
             class="bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04),0_6px_16px_-6px_rgba(16,24,40,0.06)] hover:shadow-[0_8px_24px_-4px_rgba(27,95,217,0.12)] -translate-y-0 hover:-translate-y-0.5 transition-all duration-200 group flex flex-col justify-between cursor-pointer"
             @click="ubahKueri({ rombel: g.id })"
           >
-            <!-- Card Header: Level Tag, Class Name, Student Count & Status Badge -->
-            <div class="flex items-start justify-between gap-3 mb-3">
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5 mb-1.5">
-                  <span
-                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-2xs"
-                    :class="majorBadgeClass(g.classroom)"
-                  >
-                    <span class="w-1.5 h-1.5 rounded-full" :class="props.grade === 'SMP' ? 'bg-[#16A34A]' : 'bg-[#1B5FD9]'" />
-                    <span>{{ props.grade }} &middot; {{ majorName(g.classroom) }}</span>
-                  </span>
-                </div>
+            <!-- 1. Nama Kelas & 2. Status -->
+            <div class="flex items-center justify-between gap-3 mb-4">
+              <h3 class="text-xl font-black text-slate-900 group-hover:text-[#1B5FD9] transition-colors tracking-tight">
+                {{ g.classroom }}
+              </h3>
 
-                <h3 class="text-xl font-black text-slate-900 group-hover:text-[#1B5FD9] transition-colors tracking-tight">
-                  {{ g.classroom }}
-                </h3>
-                <p class="text-[11.5px] text-slate-500 font-medium mt-0.5 flex items-center gap-1.5">
-                  <AdminV2Icon name="user" :size="12" class="text-slate-400" />
-                  <span>{{ g.students }} Siswa Aktif</span>
-                </p>
-              </div>
-
-              <!-- Status Badge -->
+              <!-- 2. Status -->
               <span
-                class="text-[10px] font-black px-2.5 py-1 rounded-full border shadow-2xs shrink-0 flex items-center gap-1.5"
+                class="text-[11px] font-black px-2.5 py-1 rounded-full border shadow-2xs shrink-0 flex items-center gap-1.5"
                 :class="statusKey(g.status) === 'berlangsung'
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                   : statusKey(g.status) === 'siap'
@@ -613,64 +591,43 @@ const removeSchedule = async (exam: ExamItem) => {
               </span>
             </div>
 
-            <!-- Exam Spotlight Box (Informasi Nyata Ujian: Mapel, Jam, Pengawas & Token) -->
-            <div class="my-2 rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 group-hover:bg-blue-50/30 group-hover:border-blue-200/60 transition-colors">
-              <template v-if="g.exams.length > 0">
-                <div class="space-y-2">
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      {{ g.next ? 'Jadwal Terdekat' : 'Ujian Terakhir' }}
-                    </span>
-                    <span class="text-[10.5px] font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200/80 shadow-2xs">
-                      {{ (g.next || g.exams[0]).time || '07:30 - 09:00 WIB' }}
-                    </span>
-                  </div>
-
-                  <div>
-                    <b class="text-sm font-black text-slate-900 group-hover:text-blue-900 transition-colors block truncate">
-                      {{ (g.next || g.exams[0]).subject }}
-                    </b>
-                    <p class="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-                      {{ (g.next || g.exams[0]).name }} &middot; {{ soalLabel(g.next || g.exams[0]) }}
-                    </p>
-                  </div>
-
-                  <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-2 text-[11px] text-slate-600">
-                    <span class="truncate flex items-center gap-1.5 text-slate-600">
-                      <span class="text-slate-400 text-[10px]">Pengawas:</span>
-                      <b class="truncate font-semibold text-slate-700">{{ (g.next || g.exams[0]).supervisor || 'Belum diset' }}</b>
-                    </span>
-                    <span v-if="(g.next || g.exams[0]).token" class="font-mono font-bold text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded text-[10px] shrink-0" title="Token Ujian">
-                      {{ (g.next || g.exams[0]).token }}
-                    </span>
-                  </div>
-                </div>
-
-                <div v-if="g.exams.length > 1" class="mt-2.5 pt-2 border-t border-dashed border-slate-200 flex items-center justify-between text-[11px]">
-                  <span class="font-bold text-blue-600">
-                    + {{ g.exams.length - 1 }} sesi ujian lainnya
-                  </span>
-                  <span class="text-[10px] text-slate-400">Total {{ g.exams.length }} sesi</span>
-                </div>
-              </template>
-
-              <template v-else>
-                <p class="py-2 text-center text-xs text-slate-400">Belum ada sesi ujian terjadwal</p>
-              </template>
-            </div>
-
-            <!-- Card Footer: Metrik Mapel & Link Aksi -->
-            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
-              <div class="text-[11.5px] font-semibold text-slate-500 flex items-center gap-1.5">
-                <span>{{ g.subjects }} Mapel</span>
-                <span class="text-slate-300">&middot;</span>
-                <span>{{ g.exams.length }} Sesi Ujian</span>
+            <!-- 3, 4, 5: Informasi Utama Sesuai Kebutuhan -->
+            <div class="border-t border-slate-100 pt-3.5 space-y-2.5">
+              <!-- 3. Jadwal Ujian Hari Ini -->
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-500 font-medium flex items-center gap-2">
+                  <AdminV2Icon name="cal" :size="14" class="text-blue-600 shrink-0" />
+                  <span>Ujian Hari Ini</span>
+                </span>
+                <b
+                  class="tabular-nums"
+                  :class="mapelHariIni(g.exams) > 0 ? 'text-blue-700 font-black' : 'text-slate-400 font-bold'"
+                >
+                  {{ mapelHariIni(g.exams) > 0 ? `${mapelHariIni(g.exams)} Pelajaran` : '0 Pelajaran' }}
+                </b>
               </div>
 
-              <span class="text-xs font-bold text-[#1B5FD9] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                <span>Kelola Rombel</span>
-                <span>&rarr;</span>
-              </span>
+              <!-- 4. Berapa Sesi Ujian -->
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-500 font-medium flex items-center gap-2">
+                  <AdminV2Icon name="clock" :size="14" class="text-indigo-600 shrink-0" />
+                  <span>Sesi Ujian</span>
+                </span>
+                <b class="text-slate-900 font-black tabular-nums">
+                  {{ g.exams.length }} Sesi
+                </b>
+              </div>
+
+              <!-- 5. Berapa Jumlah Siswa -->
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-500 font-medium flex items-center gap-2">
+                  <AdminV2Icon name="user" :size="14" class="text-slate-500 shrink-0" />
+                  <span>Jumlah Siswa</span>
+                </span>
+                <b class="text-slate-900 font-black tabular-nums">
+                  {{ g.students }} Siswa
+                </b>
+              </div>
             </div>
           </article>
         </div>
