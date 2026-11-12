@@ -153,64 +153,210 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
     />
 
     <template v-else>
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <!-- Header Halaman: Judul, Deskripsi & Pilihan Periode / Aksi -->
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 class="text-lg font-extrabold text-[#101828]">Ruang Ujian</h2>
-          <p class="mt-0.5 text-xs text-[#667085]">Ruang diisi siswa lintas kelas dengan mata pelajaran yang sama. Satu siswa hanya satu ruang per periode.</p>
+          <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Ruang Ujian</h2>
+          <p class="mt-0.5 text-xs text-slate-500 font-medium max-w-2xl">
+            Ruang diisi siswa lintas kelas dengan mata pelajaran yang sama. Satu siswa hanya satu ruang per periode.
+          </p>
         </div>
-        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div class="flex flex-wrap items-center gap-2.5">
           <label class="sr-only" for="periode-ruang">Periode ujian</label>
-          <select id="periode-ruang" v-model="periode" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm sm:w-64">
-            <option v-for="p in periodeList" :key="p" :value="p">{{ p }}{{ periodeList.slice(0, 4).includes(p) ? '' : ' (arsip)' }}</option>
-          </select>
+          <div class="relative">
+            <select
+              id="periode-ruang"
+              v-model="periode"
+              class="min-h-10 rounded-xl border border-[#E7EBF2] bg-white px-3.5 pr-8 text-xs font-bold text-slate-700 outline-none focus:border-[#1B5FD9] shadow-2xs cursor-pointer"
+            >
+              <option v-for="p in periodeList" :key="p" :value="p">
+                {{ p }}{{ periodeList.slice(0, 4).includes(p) ? '' : ' (arsip)' }}
+              </option>
+            </select>
+          </div>
           <template v-if="!arsip && bolehKelola">
-            <button type="button" class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#101828] px-4 text-xs font-bold text-white hover:bg-[#1E293B]" @click="bukaForm()">
-              <AdminV2Icon name="plus" :size="14" /><span>Buat Ruang</span>
+            <button
+              type="button"
+              class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#101828] hover:bg-black px-4 py-2 text-xs font-bold text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+              @click="bukaForm()"
+            >
+              <AdminV2Icon name="plus" :size="13" />
+              <span>Buat Ruang</span>
             </button>
           </template>
         </div>
       </div>
 
-      <p v-if="arsip" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Periode arsip: ruang, siswa, dan pelanggaran masih dapat dilihat, tetapi tidak dapat diubah.</p>
-
-      <div class="grid grid-cols-3 gap-2 sm:gap-3">
-        <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3 sm:p-4"><b class="block text-xl font-extrabold text-[#101828]">{{ ruang.length }}</b><span class="text-[11px] text-[#667085]">Ruang</span></div>
-        <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3 sm:p-4"><b class="block text-xl font-extrabold text-[#101828]">{{ siswaDiRuang }}</b><span class="text-[11px] text-[#667085]">Siswa di ruang</span></div>
-        <div class="rounded-2xl border bg-white p-3 sm:p-4" :class="siswaBelumRuang && !arsip ? 'border-[#F5D9A6]' : 'border-[#E7EBF2]'"><b class="block text-xl font-extrabold" :class="siswaBelumRuang && !arsip ? 'text-[#AD6504]' : 'text-[#101828]'">{{ siswaBelumRuang }}</b><span class="text-[11px] text-[#667085]">Belum punya ruang</span></div>
+      <div v-if="arsip" class="flex items-center gap-2.5 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-xs text-blue-900 shadow-2xs">
+        <AdminV2Icon name="info" :size="16" class="text-blue-600 shrink-0" />
+        <p class="font-medium">Periode arsip: ruang, siswa, dan pelanggaran masih dapat dilihat, tetapi tidak dapat diubah.</p>
       </div>
 
-      <div v-if="error" class="rounded-xl border border-[#F5C6C0] bg-[#FFFBFA] px-4 py-3 text-xs text-[#B42318]" role="alert">{{ error }}. Pastikan migrasi 0033 sudah dijalankan.</div>
-      <div v-else-if="loading" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Memuat ruang ujian…</div>
+      <!-- Ringkasan Statistik Ruang Ujian -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Metric 1: Total Ruang -->
+        <div class="rounded-2xl border border-[#E7EBF2] bg-white p-4 shadow-[0_1px_3px_rgba(16,24,40,0.04)] flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 text-[#1B5FD9] border border-blue-100/80 flex items-center justify-center shrink-0 shadow-2xs">
+            <AdminV2Icon name="bldg" :size="18" />
+          </div>
+          <div class="min-w-0">
+            <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Total Ruang Ujian</span>
+            <b class="text-xl font-black text-slate-900 tabular-nums">{{ ruang.length }} <span class="text-xs font-semibold text-slate-500">Ruang</span></b>
+          </div>
+        </div>
 
-      <div v-else-if="ruang.length" class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+        <!-- Metric 2: Siswa di Ruang -->
+        <div class="rounded-2xl border border-[#E7EBF2] bg-white p-4 shadow-[0_1px_3px_rgba(16,24,40,0.04)] flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100/80 flex items-center justify-center shrink-0 shadow-2xs">
+            <AdminV2Icon name="users" :size="18" />
+          </div>
+          <div class="min-w-0">
+            <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Siswa Teralokasi</span>
+            <b class="text-xl font-black text-slate-900 tabular-nums">{{ siswaDiRuang }} <span class="text-xs font-semibold text-slate-500">Siswa</span></b>
+          </div>
+        </div>
+
+        <!-- Metric 3: Siswa Belum Punya Ruang -->
+        <div
+          class="rounded-2xl border bg-white p-4 shadow-[0_1px_3px_rgba(16,24,40,0.04)] flex items-center gap-3.5"
+          :class="siswaBelumRuang && !arsip ? 'border-amber-200 bg-amber-50/20' : 'border-[#E7EBF2]'"
+        >
+          <div
+            class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-2xs border"
+            :class="siswaBelumRuang && !arsip ? 'bg-amber-100/70 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200'"
+          >
+            <AdminV2Icon :name="siswaBelumRuang && !arsip ? 'alert' : 'check'" :size="18" />
+          </div>
+          <div class="min-w-0">
+            <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block">Belum Punya Ruang</span>
+            <b
+              class="text-xl font-black tabular-nums"
+              :class="siswaBelumRuang && !arsip ? 'text-amber-800' : 'text-slate-900'"
+            >
+              {{ siswaBelumRuang }} <span class="text-xs font-semibold text-slate-500">Siswa</span>
+            </b>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="error" class="rounded-xl border border-rose-200 bg-rose-50/70 px-4 py-3 text-xs text-rose-700 font-medium" role="alert">{{ error }}. Pastikan migrasi 0033 sudah dijalankan.</div>
+      <div v-else-if="loading" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-slate-500">Memuat ruang ujian…</div>
+
+      <!-- Grid Kartu Ruang Ujian Modern & Terstruktur -->
+      <div v-else-if="ruang.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <article
           v-for="item in ruang"
           :key="item.id"
-          class="flex flex-col justify-between rounded-[18px] border border-[#E7EBF2] bg-white p-5 shadow-xs transition hover:border-[#1B5FD9] hover:shadow-md"
+          class="bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04),0_6px_16px_-6px_rgba(16,24,40,0.06)] hover:shadow-[0_8px_24px_-4px_rgba(27,95,217,0.12)] -translate-y-0 hover:-translate-y-0.5 transition-all duration-200 group flex flex-col justify-between cursor-pointer"
+          @click="bukaRuang(item.id)"
         >
-          <button type="button" class="text-left" @click="bukaRuang(item.id)">
-            <div class="flex items-center justify-between">
-              <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E8F0FE] text-[#1B5FD9]"><AdminV2Icon name="bldg" :size="20" /></span>
-              <span class="rounded-full px-2.5 py-0.5 text-[10px] font-extrabold" :class="item.jumlahSiswa >= item.capacity ? 'bg-[#E7F8F0] text-[#087C52]' : item.jumlahSiswa ? 'bg-[#FEF4E5] text-[#AD6504]' : 'bg-[#EFF2F7] text-[#344054]'">
-                {{ item.jumlahSiswa >= item.capacity ? 'Penuh' : item.jumlahSiswa ? 'Terisi sebagian' : 'Kosong' }}
+          <div>
+            <!-- Top Row: Nama Ruang & Status Badge -->
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-[#1B5FD9] border border-blue-100/80 flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-[#1B5FD9] group-hover:text-white transition-colors">
+                  <AdminV2Icon name="bldg" :size="18" />
+                </div>
+                <h3 class="text-lg font-black text-slate-900 group-hover:text-[#1B5FD9] transition-colors tracking-tight truncate">
+                  {{ item.name }}
+                </h3>
+              </div>
+
+              <!-- Status Badge -->
+              <span
+                class="text-[10.5px] font-black px-2.5 py-1 rounded-full border shadow-2xs shrink-0 flex items-center gap-1.5"
+                :class="item.jumlahSiswa >= item.capacity
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : item.jumlahSiswa > 0
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'bg-slate-100 border-slate-200 text-slate-600'"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full"
+                  :class="item.jumlahSiswa >= item.capacity
+                    ? 'bg-emerald-500'
+                    : item.jumlahSiswa > 0
+                      ? 'bg-blue-600'
+                      : 'bg-slate-400'"
+                />
+                <span>{{ item.jumlahSiswa >= item.capacity ? 'Penuh' : item.jumlahSiswa > 0 ? 'Terisi' : 'Kosong' }}</span>
               </span>
             </div>
-            <h3 class="mt-3.5 text-base font-extrabold text-[#101828]">{{ item.name }}</h3>
-            <p class="mt-0.5 text-xs text-[#667085]">Pengawas: {{ namaGuru(item.supervisorId) || 'belum ditentukan' }}</p>
-            <div class="mt-3 h-2 overflow-hidden rounded-full bg-[#EFF2F7]"><div class="h-full rounded-full bg-[#1B5FD9]" :style="{ width: `${persenIsi(item)}%` }" /></div>
-            <p class="mt-1.5 text-[11px] font-semibold text-[#344054]">{{ item.jumlahSiswa }} / {{ item.capacity }} siswa</p>
-          </button>
-          <div class="mt-4 grid gap-2 border-t border-[#EFF2F7] pt-3" :class="bolehKelola && !arsip ? 'grid-cols-3' : 'grid-cols-1'">
-            <button type="button" class="min-h-11 rounded-xl bg-[#E8F0FE] text-xs font-bold text-[#0A2A5C]" @click="bukaRuang(item.id)">Buka</button>
-            <button v-if="!arsip && bolehKelola" type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054]" @click="bukaForm(item)">Ubah</button>
-            <button v-if="!arsip && bolehKelola" type="button" class="min-h-11 rounded-xl border border-[#F8D3CE] text-xs font-bold text-[#B42318]" @click="hapus(item)">Hapus</button>
+
+            <!-- Pengawas Row -->
+            <div class="flex items-center gap-2 text-xs text-slate-600 mb-3.5">
+              <AdminV2Icon name="user" :size="13" class="text-slate-400 shrink-0" />
+              <span class="text-slate-400 text-[11px]">Pengawas:</span>
+              <b class="font-bold text-slate-800 truncate text-[11.5px]">
+                {{ namaGuru(item.supervisorId) || 'Belum ditentukan' }}
+              </b>
+            </div>
+
+            <!-- Capacity & Progress Tile -->
+            <div class="bg-slate-50/80 rounded-xl p-3 border border-slate-150 space-y-2 group-hover:bg-blue-50/30 group-hover:border-blue-200/60 transition-colors">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-500 font-medium">Keterisian Siswa</span>
+                <span class="font-mono font-bold text-slate-900">
+                  <b class="text-slate-900 font-black text-sm">{{ item.jumlahSiswa }}</b>
+                  <span class="text-slate-400 font-normal"> / {{ item.capacity }} kursi</span>
+                  <span class="text-[10.5px] text-slate-500 font-semibold ml-1">({{ persenIsi(item) }}%)</span>
+                </span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-slate-200/70">
+                <div
+                  class="h-full rounded-full transition-all duration-300"
+                  :class="item.jumlahSiswa >= item.capacity ? 'bg-emerald-500' : item.jumlahSiswa > 0 ? 'bg-[#1B5FD9]' : 'bg-slate-300'"
+                  :style="{ width: `${persenIsi(item)}%` }"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Actions Footer -->
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#1B5FD9] group-hover:text-blue-700 group-hover:translate-x-0.5 transition-transform">
+              <span>Buka Ruang</span>
+              <span>&rarr;</span>
+            </span>
+
+            <div v-if="!arsip && bolehKelola" class="flex items-center gap-1.5">
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg border border-[#E7EBF2] bg-white hover:bg-slate-50 hover:border-slate-300 text-xs font-bold text-slate-700 transition-colors cursor-pointer shadow-2xs active:scale-95"
+                title="Ubah ruang"
+                @click.stop="bukaForm(item)"
+              >
+                Ubah
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-xs font-bold text-rose-700 transition-colors cursor-pointer shadow-2xs active:scale-95"
+                title="Hapus ruang"
+                @click.stop="hapus(item)"
+              >
+                Hapus
+              </button>
+            </div>
           </div>
         </article>
       </div>
 
-      <div v-else class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center">
-        <p class="text-sm font-bold text-[#101828]">Belum ada ruang untuk {{ periode }}</p>
-        <p class="mx-auto mt-1 max-w-md text-xs text-[#667085]">{{ bolehKelola ? "Klik Buat Ruang. Anda dapat membuat satu ruang, atau banyak ruang sekaligus dengan siswa dibagi otomatis." : "Ruang ujian dibuat oleh Superadmin." }}</p>
+      <div v-else class="rounded-2xl border border-[#E7EBF2] bg-white p-10 text-center shadow-xs">
+        <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
+          <AdminV2Icon name="bldg" :size="20" />
+        </div>
+        <p class="text-base font-bold text-slate-900">Belum ada ruang untuk {{ periode }}</p>
+        <p class="mx-auto mt-1 max-w-md text-xs text-slate-500">
+          {{ bolehKelola ? "Klik Buat Ruang. Anda dapat membuat satu ruang, atau banyak ruang sekaligus dengan siswa dibagi otomatis." : "Ruang ujian dibuat oleh Superadmin." }}
+        </p>
+        <button
+          v-if="bolehKelola && !arsip"
+          type="button"
+          class="mt-4 px-5 py-2.5 rounded-xl bg-[#101828] hover:bg-black text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
+          @click="bukaForm()"
+        >
+          + Buat Ruang Ujian
+        </button>
       </div>
     </template>
 
