@@ -1,5 +1,5 @@
 <template>
-  <div :class="{ 'tema-smp': jenjang === 'SMP' }" class="min-h-screen bg-[#F5F8FF] text-[#0F1E38] font-sans antialiased">
+  <div :class="{ 'tema-smp': jenjang === 'SMP' }" class="ortu-tema min-h-screen bg-[#F5F8FF] text-[#0F1E38] font-sans antialiased">
     <p v-if="isDev"class="bg-[#F0B429] px-4 py-1 text-center text-[11px] font-bold text-[#0A2A5C]">Data contoh · mode pengembangan</p>
     <header class="sticky top-0 z-30 bg-merek-900 text-white">
       <div class="mx-auto flex h-16 max-w-md items-center gap-3 px-4">

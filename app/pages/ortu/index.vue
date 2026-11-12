@@ -1,5 +1,5 @@
 <template>
-  <div :class="{ 'tema-smp': jenjang === 'SMP' }" class="relative min-h-screen overflow-hidden bg-[#F5F8FF] font-sans text-[#0F1E38] antialiased">
+  <div :class="{ 'tema-smp': jenjang === 'SMP' }" class="ortu-tema relative flex min-h-screen flex-col overflow-hidden bg-[#F5F8FF] pb-8 font-sans text-[#0F1E38] antialiased">
     <!-- Panel atas navy: tema mengikuti jenjang -->
     <div class="absolute inset-x-0 top-0 h-[380px] overflow-hidden rounded-b-[40px] bg-merek-900">
       <div aria-hidden="true" class="orbit absolute -left-16 -top-64 h-[520px] w-[520px] rounded-full border border-dashed border-white/15" />
@@ -20,7 +20,7 @@
       <p class="rise d3 text-[13px] leading-relaxed text-white/80">{{ namaSekolah }}</p>
     </div>
 
-    <form class="rise d4 absolute inset-x-5 top-[330px] flex flex-col gap-3.5 rounded-[28px] bg-white px-5 pb-5 pt-6 shadow-[0_24px_60px_rgba(10,42,92,.16)]" novalidate @submit.prevent="kirim">
+    <form class="rise d4 relative z-10 mx-5 mt-7 flex flex-col gap-3.5 rounded-[28px] bg-white px-5 pb-5 pt-6 shadow-[0_24px_60px_rgba(10,42,92,.16)]" novalidate @submit.prevent="kirim">
       <div>
         <h2 class="text-lg font-extrabold text-merek-900">Masuk</h2>
         <p class="mt-1 text-[12.5px] text-[#4B5B78]">Gunakan NIS ananda dan kata sandi dari sekolah.</p>
@@ -99,7 +99,7 @@
       </button>
     </form>
 
-    <div id="bantuan" class="rise d6 absolute inset-x-5 bottom-7 flex items-center gap-3 rounded-[20px] border border-[#F6DFA6] bg-[#FDF3DC] p-4">
+    <div id="bantuan" class="rise d6 mx-5 mt-5 flex items-center gap-3 rounded-[20px] border border-[#F6DFA6] bg-[#FDF3DC] p-4">
       <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F0B429] text-merek-900">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
       </div>

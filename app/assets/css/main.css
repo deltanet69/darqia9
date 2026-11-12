@@ -169,3 +169,16 @@
   --m-d2: 20 83 45;
   --m-d3: 22 101 52;
 }
+/* Portal orang tua: warna navy/biru dari artefak desain. Merek-900/600 ikut tema jenjang. */
+.ortu-tema {
+  --m-400: 76 141 255;
+  --m-600: 27 95 217;
+  --m-700: 20 73 159;
+  --m-900: 10 42 92;
+}
+.ortu-tema.tema-smp {
+  --m-400: 74 222 128;
+  --m-600: 22 163 74;
+  --m-700: 21 128 61;
+  --m-900: 11 61 42;
+}
