@@ -37,7 +37,7 @@ const ujianById = computed(() => new Map(props.exams.map(e => [e.id, e])))
 const isPr = (p: PelanggaranRombel) => ujianById.value.get(p.examId)?.jenis === 'pr'
 // Kode perlu diberikan bila siswa masih mengerjakan, pelanggaran belum dibuka, belum ke-3, dan bukan PR di rumah.
 // Satu siswa cukup satu kode: hanya pelanggaran terakhir yang masih menunggu yang ditampilkan kodenya (server membuka semuanya sekaligus).
-const menunggu = (p: PelanggaranRombel) => p.terkunci && p.ke < 3 && !p.selesai && !isPr(p)
+const menunggu = (p: PelanggaranRombel) => p.terkunci && p.ke < 3 && !p.selesai && !p.dipulihkan && !isPr(p)
 const kodeTerbaru = computed(() => {
   const ids = new Set<string>()
   const sudah = new Set<string>()
@@ -49,7 +49,23 @@ const kodeTerbaru = computed(() => {
 })
 const butuhKode = (p: PelanggaranRombel) => kodeTerbaru.value.has(p.id)
 const perluKode = computed(() => (daftar.value ?? []).filter(butuhKode))
-const terkunciTotal = computed(() => (daftar.value ?? []).filter(p => p.ke >= 3).length)
+const terkunciTotal = computed(() => (daftar.value ?? []).filter(p => p.ke >= 3 && !p.dipulihkan).length)
+
+// Pulihkan ujian terkunci total: hanya Superadmin, setelah memeriksa sendiri perangkat siswa (mis. HP force close).
+const memulihkan = ref('')
+const pulihkan = async (p: PelanggaranRombel) => {
+  if (memulihkan.value) return
+  const ok = confirm(`Pulihkan ujian ${p.nama}?\n\nLakukan hanya setelah memeriksa perangkat siswa (mis. HP force close sendiri).\n\n• Jawaban yang sudah diisi tetap ada.\n• Sisa waktu = sisa saat akun terkunci.\n• Hitungan pelanggaran mulai dari 0 lagi.\n\nPastikan aplikasi CBT di HP siswa sudah ditutup, lalu minta siswa membukanya lagi setelah ini.`)
+  if (!ok) return
+  memulihkan.value = p.id
+  try {
+    const sisa = await cbtData.pulihkanUjian(p.assignmentId)
+    emit('toast', `Ujian ${p.nama} dipulihkan. Sisa waktu ${Math.floor(sisa / 60)} menit ${sisa % 60} detik.`)
+    await muat()
+  } catch (e) {
+    emit('toast', e instanceof Error ? e.message : 'Ujian gagal dipulihkan.')
+  } finally { memulihkan.value = '' }
+}
 const siswaMelanggar = computed(() => new Set((daftar.value ?? []).map(p => p.studentId)).size)
 const tampilList = computed(() => tampil.value === 'perlu' ? perluKode.value : (daftar.value ?? []))
 
@@ -141,7 +157,11 @@ const salin = async (p: PelanggaranRombel) => {
                   </div>
                 </template>
                 <span v-else-if="menunggu(p)" class="inline-block rounded-full bg-[#FFFAEB] px-3 py-1 text-[11px] font-bold text-[#B54708]">Ikut terbuka dengan kode terbaru</span>
-                <span v-else-if="p.ke >= 3" class="inline-block rounded-full bg-[#FDECEA] px-3 py-1 text-[11px] font-extrabold text-[#B42318]">Akun terkunci total</span>
+                <span v-else-if="p.dipulihkan" class="inline-block rounded-full bg-[#ECFDF3] px-3 py-1 text-[11px] font-extrabold text-[#067647]">Dipulihkan Superadmin</span>
+                <div v-else-if="p.ke >= 3" class="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <span class="inline-block rounded-full bg-[#FDECEA] px-3 py-1 text-[11px] font-extrabold text-[#B42318]">Akun terkunci total</span>
+                  <button v-if="cbtData.adalahSuperadmin.value" type="button" class="min-h-9 rounded-xl border border-[#E7EBF2] bg-white px-3.5 text-xs font-extrabold text-[#344054] transition hover:border-[#1B5FD9] hover:text-[#1B5FD9] disabled:opacity-60" :disabled="!!memulihkan" @click="pulihkan(p)">{{ memulihkan === p.id ? 'Memulihkan…' : 'Pulihkan ujian' }}</button>
+                </div>
                 <span v-else-if="isPr(p) && p.terkunci && !p.selesai" class="inline-block rounded-full bg-[#EFF2F7] px-3 py-1 text-[11px] font-bold text-[#475467]">PR: kode muncul di layar siswa</span>
                 <span v-else-if="p.terkunci" class="inline-block rounded-full bg-[#EFF2F7] px-3 py-1 text-[11px] font-bold text-[#475467]">Siswa sudah selesai</span>
                 <span v-else class="inline-block rounded-full bg-[#ECFDF3] px-3 py-1 text-[11px] font-extrabold text-[#067647]">Kode sudah dipakai</span>

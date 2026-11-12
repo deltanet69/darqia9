@@ -73,7 +73,7 @@ export interface LoginForm {
 export const useCbtExam = () => {
   const grade = useAdminGrade()
   const siswa = useCbtSiswa()
-  const activeExam = ref<{ id: string; source: 'cbt' | 'ujian_harian'; name: string; code: string; duration: number; studentName: string; classroom: string; subject: string; jenis?: string; startsAt?: string } | null>(null)
+  const activeExam = ref<{ id: string; source: 'cbt' | 'ujian_harian'; name: string; code: string; duration: number; studentName: string; classroom: string; subject: string; jenis?: string; startsAt?: string; pemulihan?: number } | null>(null)
   const appTab = ref<'home' | 'jadwal' | 'rekap' | 'profil'>('home')
   const examQuestions = ref<QuestionItem[]>([])
   const loadingExam = ref(false)
@@ -382,7 +382,9 @@ export const useCbtExam = () => {
   const kunciKey = (): string => {
     const sesi = siswa.state.value.sesi
     const ujian = activeExam.value
-    return sesi && ujian ? `cbt-kunci:${sesi.nis}|${ujian.source}|${ujian.id}` : ''
+    // Setelah dipulihkan superadmin, kunci berganti nama: penanda kunci lama di perangkat tidak mengunci ulang.
+    const pulih = ujian?.pemulihan ? `|p${ujian.pemulihan}` : ''
+    return sesi && ujian ? `cbt-kunci:${sesi.nis}|${ujian.source}|${ujian.id}${pulih}` : ''
   }
   const bacaKunci = (): number => { try { return Number(localStorage.getItem(kunciKey())) || 0 } catch { return 0 } }
   const simpanKunci = (n: number): void => {
@@ -691,6 +693,7 @@ export const useCbtExam = () => {
         flags: [...flags],
         idx: qIdx.value,
         violations: violations.value,
+        pulih: activeExam.value?.pemulihan ?? 0,
         savedAt: Date.now()
       }))
     } catch (e) {}
@@ -711,7 +714,8 @@ export const useCbtExam = () => {
         d.flags.forEach((f: number) => flags.add(f))
       }
       if (typeof d.idx === 'number') qIdx.value = Math.max(0, Math.min(d.idx, totalQuestions.value - 1))
-      if (typeof d.violations === 'number') violations.value = Math.max(violations.value, d.violations)
+      // Hitungan pelanggaran dari sebelum dipulihkan superadmin tidak dipakai lagi; jawabannya tetap dipakai.
+      if (typeof d.violations === 'number' && (d.pulih ?? 0) === (activeExam.value?.pemulihan ?? 0)) violations.value = Math.max(violations.value, d.violations)
       return true
     } catch (e) {
       return false

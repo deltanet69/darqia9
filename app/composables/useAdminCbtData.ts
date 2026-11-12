@@ -24,6 +24,8 @@ export interface PelanggaranRombel {
   terkunci: boolean
   kode: string
   selesai: boolean
+  assignmentId: string
+  dipulihkan: boolean
 }
 
 export interface CbtClass {
@@ -159,7 +161,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         fetchSiswaAktif(),
         client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
         client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
-        client.from(tables.violations).select('assignment_id'),
+        client.from(tables.violations).select('assignment_id').eq('dipulihkan', false),
         client.from('class_schedules').select('class_id, subject_id, teacher_id').eq('active', true)
       ])
 
@@ -322,7 +324,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const assignmentIds = sessions.map((row: any) => row.id)
     const [answers, violations] = assignmentIds.length ? await Promise.all([
       client.from(tables.answers).select('assignment_id, question_id, answer, saved_at').in('assignment_id', assignmentIds),
-      client.from(tables.violations).select('id, assignment_id, violation_type, occurred_at, occurrence, locked, unlock_code').in('assignment_id', assignmentIds)
+      client.from(tables.violations).select('id, assignment_id, violation_type, occurred_at, occurrence, locked, unlock_code').in('assignment_id', assignmentIds).eq('dipulihkan', false)
     ]) : [{ data: [], error: null }, { data: [], error: null }]
     if (answers.error || violations.error) throw new Error((answers.error || violations.error)!.message)
     const sessionByStudent = new Map(sessions.map((row: any) => [row.student_id, row]))
@@ -360,7 +362,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     if (!examIds.length) return []
     const t = tables.assignments
     const { data, error: e1 } = await client.from(tables.violations)
-      .select(`id, violation_type, occurred_at, occurrence, locked, unlock_code, ${t}!inner(exam_id, student_id, status)`)
+      .select(`id, assignment_id, violation_type, occurred_at, occurrence, locked, unlock_code, dipulihkan, ${t}!inner(exam_id, student_id, status)`)
       .in(`${t}.exam_id`, examIds)
       .order('occurred_at', { ascending: false })
     if (e1) throw new Error(e1.message)
@@ -377,9 +379,16 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       return {
         id: v.id, examId: a.exam_id ?? '', studentId: a.student_id ?? '', nama: m?.name ?? '-', nis: m?.nis ?? '',
         jenis: v.violation_type, waktu: v.occurred_at, ke: v.occurrence, terkunci: !!v.locked, kode: v.unlock_code ?? '',
-        selesai: a.status === 'selesai'
+        selesai: a.status === 'selesai', assignmentId: v.assignment_id, dipulihkan: !!v.dipulihkan
       }
     })
+  }
+
+  // Superadmin: buka lagi ujian yang terkunci total (mis. HP force close). Jawaban tetap, sisa waktu = saat terkunci.
+  const pulihkanUjian = async (assignmentId: string): Promise<number> => {
+    const { data, error: e } = await client.rpc('cbt_pulihkan_ujian', { p_source: source, p_assignment_id: assignmentId })
+    if (e) throw new Error(e.message)
+    return (data as { sisaDetik?: number })?.sisaDetik ?? 0
   }
 
   const loadQuestions = (force = false): Promise<void> => {
@@ -772,6 +781,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     loadQuestions,
     loadMonitoring,
     loadPelanggaranRombel,
+    pulihkanUjian,
     load,
     saveBankPackage,
     deleteBankPackage,
