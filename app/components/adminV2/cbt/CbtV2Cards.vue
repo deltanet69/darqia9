@@ -29,6 +29,13 @@ const aktif = computed(() => daftarPeriode.value.find(p => p.periode === periode
 const rilisAktif = computed(() => !!aktif.value?.releasedAt)
 const kelasList = computed(() => [...new Set(siswa.value.map(s => s.classroom))].sort((a, b) => a.localeCompare(b, 'id', { numeric: true })))
 const tampil = computed(() => kelas.value ? siswa.value.filter(s => s.classroom === kelas.value) : siswa.value)
+// Pilihan baris untuk cetak dan ganti token massal; hanya siswa yang sudah punya kartu yang bisa dipilih.
+const dipilih = ref<string[]>([])
+const bisaPilih = computed(() => tampil.value.filter(s => s.token))
+const terpilih = computed(() => bisaPilih.value.filter(s => dipilih.value.includes(s.studentId)))
+const semuaDipilih = computed(() => bisaPilih.value.length > 0 && terpilih.value.length === bisaPilih.value.length)
+const pilihSemua = () => { dipilih.value = semuaDipilih.value ? [] : bisaPilih.value.map(s => s.studentId) }
+watch(kelas, () => { dipilih.value = [] })
 const bisaCetak = (s: SiswaKartu) => s.eligible && !!s.token
 const ringkas = computed(() => ({
   total: siswa.value.length,
@@ -50,6 +57,7 @@ const muatPeriode = async () => {
 const muatSiswa = async () => {
   siswa.value = []
   kelas.value = ''
+  dipilih.value = []
   if (!aktif.value) return
   loading.value = true
   error.value = ''
@@ -100,12 +108,19 @@ const terbitkan = () => {
   }, 'Kartu gagal diterbitkan.')
 }
 
-const regenerasi = (s: SiswaKartu) => {
-  if (!s.cardId || !confirm(`Ganti token ${s.name}? Token lama langsung tidak berlaku dan kartu harus dicetak ulang.`)) return
+const regenerasi = (daftar: SiswaKartu[]) => {
+  const target = daftar.filter(s => s.cardId)
+  if (!target.length) return
+  const siapa = target.length === 1 ? target[0]!.name : `${target.length} siswa terpilih`
+  if (!confirm(`Ganti token ${siapa}? Token lama langsung tidak berlaku dan kartu harus dicetak ulang.`)) return
   return jalankan(async () => {
-    await api.regenerasi(s.cardId!)
-    await muatSiswa()
-    return `Token baru ${s.name} diterbitkan.`
+    let berhasil = 0
+    try {
+      for (const s of target) { await api.regenerasi(s.cardId!); berhasil++ }
+    } finally {
+      await muatSiswa()
+    }
+    return berhasil === 1 ? `Token baru ${target[0]!.name} diterbitkan.` : `Token baru diterbitkan untuk ${berhasil} siswa.`
   }, 'Token gagal diganti.')
 }
 
@@ -176,15 +191,26 @@ const cetak = (daftar: SiswaKartu[], judul: string) => {
           <option v-for="k in kelasList" :key="k" :value="k">{{ k }}</option>
         </select>
         <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] px-4 text-xs font-bold text-[#344054] disabled:opacity-50" :disabled="loading || !tampil.some(bisaCetak)" @click="cetak(tampil, kelas || periode)">{{ kelas ? `Cetak Satu Kelas (${kelas})` : 'Cetak Semua Kartu' }}</button>
+        <label v-if="bisaPilih.length" class="flex min-h-11 items-center gap-2 text-xs font-bold text-[#344054]">
+          <input type="checkbox" class="h-4 w-4" :checked="semuaDipilih" @change="pilihSemua"> Pilih semua
+        </label>
+        <template v-if="terpilih.length">
+          <button type="button" class="min-h-11 rounded-xl bg-[#1B5FD9] px-4 text-xs font-bold text-white" @click="cetak(terpilih, `${terpilih.length} siswa`)">Cetak Terpilih ({{ terpilih.length }})</button>
+          <button v-if="bolehKelola" type="button" class="min-h-11 rounded-xl border border-[#F5C6C0] px-4 text-xs font-bold text-[#B42318] disabled:opacity-50" :disabled="busy" @click="regenerasi(terpilih)">Ganti Token Terpilih ({{ terpilih.length }})</button>
+        </template>
       </div>
 
       <p v-if="loading" class="p-4 text-xs text-[#667085]" role="status">Memuat kartu…</p>
       <div v-else-if="error" class="m-4 rounded-xl border border-[#F5C6C0] bg-[#FDECEA] px-4 py-3 text-xs text-[#8C1D13]" role="alert">{{ error }}</div>
       <ul v-else class="divide-y divide-[#EFF2F7]">
         <li v-for="s in tampil" :key="s.studentId" class="flex flex-col gap-2 px-4 py-3 text-xs sm:flex-row sm:items-center sm:gap-4">
-          <div class="min-w-0 sm:flex-1">
+          <div class="flex min-w-0 items-center gap-3 sm:flex-1">
+            <input v-if="s.token" v-model="dipilih" type="checkbox" :value="s.studentId" class="h-4 w-4 shrink-0" :aria-label="`Pilih ${s.name}`">
+          <span v-else class="hidden h-4 w-4 shrink-0 sm:block" />
+          <div class="min-w-0">
             <b class="block truncate text-sm text-[#101828]">{{ s.name }}</b>
             <span class="text-[#667085]">{{ s.nis || '-' }} · {{ s.classroom }}{{ s.room ? ` · ${s.room}` : '' }}</span>
+          </div>
           </div>
           <div class="sm:w-40">
             <span class="inline-flex items-center gap-1.5 font-semibold" :class="s.eligible ? 'text-[#087C52]' : 'text-[#B42318]'">
@@ -200,7 +226,7 @@ const cetak = (daftar: SiswaKartu[], judul: string) => {
             <template v-if="s.token">
               <button type="button" class="min-h-9 font-bold text-[#344054] hover:underline" @click="salin(s)">Salin</button>
               <button type="button" class="min-h-9 font-bold text-[#1B5FD9] hover:underline disabled:opacity-50" :disabled="!s.eligible" @click="cetak([s], s.name)">Cetak</button>
-              <button v-if="bolehKelola" type="button" class="min-h-9 font-bold text-[#B42318] hover:underline disabled:opacity-50" :disabled="busy" @click="regenerasi(s)">Ganti token</button>
+              <button v-if="bolehKelola" type="button" class="min-h-9 font-bold text-[#B42318] hover:underline disabled:opacity-50" :disabled="busy" @click="regenerasi([s])">Ganti token</button>
             </template>
           </div>
         </li>
