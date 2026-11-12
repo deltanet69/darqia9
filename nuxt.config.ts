@@ -52,7 +52,10 @@ export default defineNuxtConfig({
   // Halaman ujian siswa sepenuhnya digerakkan klien: dilayani sebagai cangkang statis (tanpa render server)
   // agar 1000 siswa membuka /cbt bersamaan tidak membebani CPU VPS. Aset publik juga dikompres saat build.
   routeRules: {
-    '/cbt': { ssr: false }
+    '/cbt': { ssr: false },
+    // Portal orang tua: dirender klien dan tidak boleh diindeks mesin pencari
+    '/ortu': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/ortu/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } }
   },
   nitro: {
     compressPublicAssets: true
