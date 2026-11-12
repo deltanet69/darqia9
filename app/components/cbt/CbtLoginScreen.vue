@@ -1,6 +1,31 @@
 <template>
-  <section v-show="screen === 'login'" class="min-h-screen flex flex-col bg-gradient-to-b from-merek-d1 via-merek-d2 to-[#F1F5F9] text-slate-900 font-sans antialiased">
-    <main class="flex-1 w-full max-w-md mx-auto px-4 pt-10 pb-8 flex flex-col items-center">
+  <section
+    ref="latar"
+    v-show="screen === 'login'"
+    class="relative overflow-hidden min-h-screen flex flex-col bg-merek-d1 text-slate-900 font-sans antialiased"
+    @mousemove="ikuti"
+    @touchstart.passive="ikuti"
+    @touchmove.passive="ikuti"
+  >
+    <!-- Latar: motif bintang delapan + dua cahaya yang bergeser pelan + sorotan yang mengikuti jari/kursor.
+         Hanya transform/opacity (tanpa blur) agar ringan di HP lawas. -->
+    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div class="cahaya cahaya-a" />
+      <div class="cahaya cahaya-b" />
+      <div class="cahaya cahaya-c" />
+      <div class="motif" :style="{ backgroundImage: motif }" />
+      <div class="grain" />
+      <div
+        class="sorot"
+        :style="{
+          transform: `translate3d(${pos.x - 180}px, ${pos.y - 180}px, 0)`,
+          backgroundImage: `${motif}, radial-gradient(closest-side, rgb(var(--m-400) / .32), transparent)`,
+          backgroundPosition: `${180 - pos.x}px ${180 - pos.y}px, 0 0`
+        }"
+      />
+    </div>
+
+    <main class="relative flex-1 w-full max-w-md mx-auto px-4 pt-10 pb-8 flex flex-col items-center">
       <!-- Identitas & Logo Sekolah -->
       <div class="relative">
         <div class="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 p-2.5 flex items-center justify-center shadow-xl shadow-merek-950/40">
@@ -76,7 +101,7 @@
       </div>
     </main>
 
-    <footer class="w-full text-center py-5 px-4 text-[11px] text-slate-500 border-t border-slate-200/60 bg-white/40 font-medium">
+    <footer class="relative w-full text-center py-5 px-4 text-[11px] text-merek-100/80 border-t border-white/10 font-medium">
       Butuh bantuan? Hubungi proktor atau panitia ujian. &copy; 2026 {{ jenjangText }}
     </footer>
   </section>
@@ -103,4 +128,87 @@ const activeGrade = useAdminGrade()
 const sekarang = new Date()
 const mulaiTahun = sekarang.getMonth() >= 6 ? sekarang.getFullYear() : sekarang.getFullYear() - 1
 const tahunAjaran = `${mulaiTahun}/${mulaiTahun + 1}`
+
+// Ubin motif bintang delapan (dua persegi bertumpuk + garis penghubung), garis putih tipis.
+const motif = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="none" stroke="white" stroke-width="1"><path d="M18 18h28v28H18zM32 12.2 51.8 32 32 51.8 12.2 32zM0 32h12.2M51.8 32H64M32 0v12.2M32 51.8V64M0 0l18 18M64 0 46 18M0 64l18-18M64 64 46 46"/></svg>')}")`
+
+// Sorotan mengikuti jari/kursor; posisi diperbarui paling banyak sekali per frame.
+const latar = ref<HTMLElement | null>(null)
+const pos = reactive({ x: 200, y: 160 })
+let antre = false
+const ikuti = (e: MouseEvent | TouchEvent) => {
+  const t = 'touches' in e ? e.touches[0] : e
+  if (!t || !latar.value || antre) return
+  const r = latar.value.getBoundingClientRect()
+  const x = t.clientX - r.left
+  const y = t.clientY - r.top
+  antre = true
+  requestAnimationFrame(() => { pos.x = x; pos.y = y; antre = false })
+}
+onMounted(() => { if (latar.value) pos.x = latar.value.clientWidth / 2 })
 </script>
+
+<style scoped>
+/* Gradasi mesh: tiga gumpalan warna merek di atas dasar gelap, bergeser pelan. */
+.cahaya {
+  position: absolute;
+  width: 680px;
+  height: 680px;
+  border-radius: 9999px;
+  will-change: transform;
+}
+.cahaya-a {
+  top: -260px;
+  left: -260px;
+  background: radial-gradient(closest-side, rgb(var(--m-500) / .7), rgb(var(--m-600) / .25) 55%, transparent);
+  animation: geser-a 16s ease-in-out infinite alternate;
+}
+.cahaya-b {
+  top: 22%;
+  right: -320px;
+  background: radial-gradient(closest-side, rgb(var(--m2-400) / .55), rgb(var(--m2-600) / .2) 55%, transparent);
+  animation: geser-b 20s ease-in-out infinite alternate;
+}
+.cahaya-c {
+  bottom: -300px;
+  left: -120px;
+  width: 760px;
+  height: 760px;
+  background: radial-gradient(closest-side, rgb(var(--m-400) / .5), rgb(var(--m-700) / .25) 55%, transparent);
+  animation: geser-c 24s ease-in-out infinite alternate;
+}
+@keyframes geser-a { to { transform: translate3d(180px, 140px, 0) } }
+@keyframes geser-b { to { transform: translate3d(-200px, 120px, 0) } }
+@keyframes geser-c { to { transform: translate3d(160px, -160px, 0) } }
+
+.motif {
+  position: absolute;
+  inset: 0;
+  opacity: .08;
+  -webkit-mask-image: radial-gradient(120% 90% at 50% 20%, #000 35%, rgba(0, 0, 0, .25));
+  mask-image: radial-gradient(120% 90% at 50% 20%, #000 35%, rgba(0, 0, 0, .25));
+}
+/* Tekstur grain halus ala poster gradasi; ubin statis, sekali gambar. */
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: .14;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.sorot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 360px;
+  height: 360px;
+  opacity: .55;
+  will-change: transform;
+  transition: transform .5s cubic-bezier(.16, 1, .3, 1), background-position .5s cubic-bezier(.16, 1, .3, 1);
+  -webkit-mask-image: radial-gradient(closest-side, #000, transparent);
+  mask-image: radial-gradient(closest-side, #000, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cahaya { animation: none }
+  .sorot { transition: none }
+}
+</style>
