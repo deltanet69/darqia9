@@ -3,8 +3,8 @@
     <!-- Header Sapaan -->
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 pt-1">
       <div>
-        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-blue-700 text-xs font-bold mb-2">
-          <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-merek-50 border border-merek-200/80 text-merek-700 text-xs font-bold mb-2">
+          <svg class="w-3.5 h-3.5 text-merek-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span>{{ hariIni }}</span>
         </div>
         <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Halo, {{ namaDepan }} 👋</h2>
@@ -13,30 +13,30 @@
     </div>
 
     <!-- Kartu Peserta Ujian Modern & Mewah -->
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#08152B] via-[#0E2754] to-[#163673] p-5 sm:p-6 text-white shadow-xl shadow-blue-950/20 border border-white/10">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-merek-d1 via-merek-d2 to-merek-d3 p-5 sm:p-6 text-white shadow-xl shadow-merek-950/20 border border-white/10">
       <!-- Decorative Glow -->
-      <div class="absolute -top-16 -right-16 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-      <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+      <div class="absolute -top-16 -right-16 w-48 h-48 bg-merek-500/20 rounded-full blur-3xl pointer-events-none" />
+      <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-merek2-500/15 rounded-full blur-3xl pointer-events-none" />
 
       <!-- Profile Header -->
       <div class="flex items-start sm:items-center gap-4 mb-5 relative z-10">
-        <div class="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-black text-xl sm:text-2xl flex items-center justify-center shadow-lg shadow-blue-900/40 ring-2 ring-white/20">
+        <div class="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl bg-gradient-to-tr from-merek-600 to-merek2-500 text-white font-black text-xl sm:text-2xl flex items-center justify-center shadow-lg shadow-merek-900/40 ring-2 ring-white/20">
           {{ inisial }}
         </div>
         <div class="min-w-0 flex-1">
-          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-blue-200 border border-white/10 mb-1">
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-merek-200 border border-white/10 mb-1">
             <span>Kartu Peserta Ujian</span>
           </div>
           <h3 class="text-lg sm:text-xl font-black text-white leading-tight break-words tracking-tight">{{ profil.nama }}</h3>
-          <p class="text-xs text-blue-100/90 font-medium mt-0.5">NIS <b class="font-mono text-white font-bold">{{ profil.nis }}</b> &bull; {{ profil.kelas || 'Tanpa kelas' }}</p>
+          <p class="text-xs text-merek-100/90 font-medium mt-0.5">NIS <b class="font-mono text-white font-bold">{{ profil.nis }}</b> &bull; {{ profil.kelas || 'Tanpa kelas' }}</p>
         </div>
       </div>
 
       <!-- Quick Info Grid (Token, Ruang, Jenjang) -->
       <div class="grid grid-cols-3 gap-2.5 pt-4 border-t border-white/10 relative z-10 text-center">
         <!-- Token Ujian -->
-        <div class="bg-white/10 hover:bg-white/15 backdrop-blur-sm rounded-2xl p-2.5 sm:p-3 border border-white/10 transition-all flex flex-col justify-between">
-          <span class="block text-[10px] text-blue-200 uppercase font-bold tracking-wider">Token Ujian</span>
+        <div class="bg-white/10 hover:bg-white/15 rounded-2xl p-2.5 sm:p-3 border border-white/10 transition-all flex flex-col justify-between">
+          <span class="block text-[10px] text-merek-200 uppercase font-bold tracking-wider">Token Ujian</span>
           <div class="my-1 flex items-center justify-center gap-1">
             <span class="text-sky-300 font-mono font-black text-xs sm:text-sm tracking-wider break-all">{{ profil.token }}</span>
           </div>
@@ -50,15 +50,15 @@
         </div>
 
         <!-- Ruang Ujian -->
-        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 sm:p-3 border border-white/10 flex flex-col justify-between">
-          <span class="block text-[10px] text-blue-200 uppercase font-bold tracking-wider">Ruang Ujian</span>
+        <div class="bg-white/10 rounded-2xl p-2.5 sm:p-3 border border-white/10 flex flex-col justify-between">
+          <span class="block text-[10px] text-merek-200 uppercase font-bold tracking-wider">Ruang Ujian</span>
           <b class="text-white font-black text-xs sm:text-sm block my-1 break-words leading-tight">{{ profil.ruang || 'Online' }}</b>
           <span class="text-[10px] font-medium text-slate-300">Sesi Terdaftar</span>
         </div>
 
         <!-- Jenjang -->
-        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 sm:p-3 border border-white/10 flex flex-col justify-between">
-          <span class="block text-[10px] text-blue-200 uppercase font-bold tracking-wider">Jenjang</span>
+        <div class="bg-white/10 rounded-2xl p-2.5 sm:p-3 border border-white/10 flex flex-col justify-between">
+          <span class="block text-[10px] text-merek-200 uppercase font-bold tracking-wider">Jenjang</span>
           <b class="text-white font-black text-xs sm:text-sm block my-1">{{ profil.jenjang }}</b>
           <span class="text-[10px] font-medium text-slate-300">T.A 2026/2027</span>
         </div>
@@ -69,7 +69,7 @@
     <div class="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-sm">
       <div class="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-merek-600"></span>
           <h3 class="text-xs font-black uppercase tracking-wider text-slate-700">Informasi Ujian</h3>
         </div>
         <span
@@ -83,7 +83,7 @@
 
       <dl v-if="utama" class="space-y-3.5 text-sm">
         <div class="flex items-start gap-3">
-          <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+          <div class="w-8 h-8 rounded-xl bg-merek-50 text-merek-600 flex items-center justify-center shrink-0 mt-0.5">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           </div>
           <div class="min-w-0 flex-1">
@@ -93,7 +93,7 @@
         </div>
 
         <div class="flex items-start gap-3">
-          <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+          <div class="w-8 h-8 rounded-xl bg-merek2-50 text-merek2-600 flex items-center justify-center shrink-0 mt-0.5">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           </div>
           <div class="min-w-0 flex-1">
@@ -122,8 +122,8 @@
       </div>
 
       <!-- Banner Autosave Integritas -->
-      <div class="mt-4 p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200/80 text-blue-900 text-xs flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+      <div class="mt-4 p-3.5 rounded-2xl bg-gradient-to-r from-merek-50 to-merek2-50/70 border border-merek-200/80 text-merek-900 text-xs flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-xl bg-merek-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
         </div>
         <span class="leading-relaxed">
@@ -143,11 +143,11 @@
         <li
           v-for="u in akanDatang"
           :key="u.source + u.id"
-          class="border border-slate-200/90 hover:border-blue-300 rounded-2xl p-4 transition-all duration-200 hover:shadow-sm bg-white"
+          class="border border-slate-200/90 hover:border-merek-300 rounded-2xl p-4 transition-all duration-200 hover:shadow-sm bg-white"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <span class="inline-block text-[10.5px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md mb-1">
+              <span class="inline-block text-[10.5px] font-black uppercase tracking-wider text-merek-600 bg-merek-50 px-2 py-0.5 rounded-md mb-1">
                 {{ JENIS_LABEL[u.jenis] }}
               </span>
               <h4 class="text-base font-black text-slate-900 leading-snug break-words">{{ u.mapel || 'Detail dibuka H-2' }}</h4>
@@ -171,7 +171,7 @@
             <button
               v-if="bisaDibuka(keadaan(u))"
               type="button"
-              class="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-md shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              class="w-full py-3 px-4 rounded-xl bg-merek-600 hover:bg-merek-700 text-white font-black text-sm shadow-md shadow-merek-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
               @click="emit('buka', u)"
             >
               <span>{{ keadaan(u) === 'berjalan' ? 'Lanjutkan Pengerjaan' : 'Masuk Sesi Ujian' }}</span>
@@ -182,7 +182,7 @@
                 <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 <span>Sesi dibuka dalam:</span>
               </span>
-              <b class="text-blue-700 font-mono font-bold tabular-nums bg-blue-50 px-2 py-0.5 rounded-md">{{ hitungMundur(u.mulai, now) }}</b>
+              <b class="text-merek-700 font-mono font-bold tabular-nums bg-merek-50 px-2 py-0.5 rounded-md">{{ hitungMundur(u.mulai, now) }}</b>
             </div>
           </div>
         </li>
@@ -200,7 +200,7 @@
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
         <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
-          <div class="w-7 h-7 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+          <div class="w-7 h-7 rounded-xl bg-merek-100 text-merek-700 flex items-center justify-center shrink-0 mt-0.5">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
           <div class="min-w-0">

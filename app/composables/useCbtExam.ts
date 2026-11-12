@@ -376,7 +376,23 @@ export const useCbtExam = () => {
     }
   }
 
+  // Penanda kunci pelanggaran di perangkat, ditulis SEBELUM apa pun dikirim ke server. Muat ulang halaman atau
+  // aplikasi ditutup tidak menghapusnya: popup kode muncul lagi sampai kode buka kunci benar. Hanya dihapus saat kunci
+  // terbuka atau ujian terkumpul. Cadangan bila catatan pelanggaran ke server sempat terputus.
+  const kunciKey = (): string => {
+    const sesi = siswa.state.value.sesi
+    const ujian = activeExam.value
+    return sesi && ujian ? `cbt-kunci:${sesi.nis}|${ujian.source}|${ujian.id}` : ''
+  }
+  const bacaKunci = (): number => { try { return Number(localStorage.getItem(kunciKey())) || 0 } catch { return 0 } }
+  const simpanKunci = (n: number): void => {
+    const k = kunciKey()
+    if (!k) return
+    try { if (n > 0) localStorage.setItem(k, String(n)); else localStorage.removeItem(k) } catch { /* penyimpanan penuh: server tetap jadi acuan */ }
+  }
+
   const bukaKunciBerhasil = (): void => {
+    simpanKunci(0)
     modal.show = false
     modal.pin = ''
     modal.pinError = false
@@ -503,9 +519,16 @@ export const useCbtExam = () => {
       return
     }
     if (info.mulaiPada) {
+      // Pelanggaran yang tercatat di perangkat tetapi belum sampai ke server (halaman dimuat ulang saat pengiriman): dikirim ulang.
+      const lokal = bacaKunci()
+      try {
+        for (let n = info.pelanggaran ?? 0; n < lokal; n++) await $fetch('/api/cbt/pelanggaran', { method: 'POST', body: { ...kunciDasar(), jenis: 'tutup_browser' } })
+      } catch { /* jaringan putus: popup tetap muncul dari catatan perangkat */ }
+      violations.value = Math.max(violations.value, lokal)
       masukUjian(true)
-      // Halaman dimuat ulang saat masih terkunci karena pelanggaran: popup kode muncul lagi tanpa menambah pelanggaran.
-      if (info.menungguKode && violations.value > 0 && violations.value < 3) triggerCheatLock('Ujian dibuka kembali, tetapi kunci pelanggaran belum dibuka', violations.value)
+      // Muat ulang tidak membuka kunci: selama kode belum benar, popup muncul lagi tanpa menambah pelanggaran.
+      if (violations.value >= 3) triggerCheatLock('Batas pelanggaran terlampaui', 3)
+      else if (violations.value > 0 && (info.menungguKode || lokal > 0)) triggerCheatLock('Ujian dibuka kembali, tetapi kunci pelanggaran belum dibuka', violations.value)
       return
     }
     screen.value = 'confirm'
@@ -863,6 +886,7 @@ export const useCbtExam = () => {
     menghitung.value = false
     const kunci = activeExam.value
     try {
+      simpanKunci(0)
       localStorage.removeItem(SAVE_KEY.value)
       if (kunci) localStorage.removeItem(SOAL_KEY(kunci.source, kunci.id))
       sessionStorage.removeItem(AKTIF_KEY)
@@ -896,7 +920,7 @@ export const useCbtExam = () => {
 
   /* Keyboard handler */
   const onKeydown = (e: KeyboardEvent): void => {
-    if (screen.value !== 'exam') return
+    if (screen.value !== 'exam' || modal.show) return
     const tag = (e.target as HTMLElement)?.tagName?.toUpperCase() || ''
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
@@ -936,6 +960,7 @@ export const useCbtExam = () => {
     persist(true)
     // Simulasi (uji coba) tidak dicatat; pelanggaran nyata dicatat di server dan menjadi bagian Rekap Ujian.
     if (jenis && activeExam.value) {
+      simpanKunci(violations.value)
       if (jenis === 'tutup_browser') {
         // Saat halaman ditutup/dimuat ulang, fetch biasa terputus: pakai sendBeacon agar tetap tercatat.
         try { navigator.sendBeacon('/api/cbt/pelanggaran', new Blob([JSON.stringify({ ...kunciDasar(), jenis })], { type: 'application/json' })) } catch { antrePelanggaran.push(jenis) }
@@ -1048,6 +1073,11 @@ export const useCbtExam = () => {
     }
   }
 
+  // iOS Safari tidak selalu memicu beforeunload saat halaman dimuat ulang/ditutup; pagehide selalu terpicu.
+  const onPageHide = (): void => {
+    if (screen.value === 'exam' || screen.value === 'review') triggerCheatLock('Mencoba menutup atau me-reload jendela ujian', undefined, 'tutup_browser')
+  }
+
   const registerListeners = (): void => {
     if (typeof window === 'undefined') return
     document.addEventListener('keydown', onKeydown)
@@ -1055,6 +1085,7 @@ export const useCbtExam = () => {
     window.addEventListener('blur', onWindowBlur)
     window.addEventListener('focus', onWindowFocus)
     window.addEventListener('beforeunload', onBeforeUnload)
+    window.addEventListener('pagehide', onPageHide)
   }
 
   const unregisterListeners = (): void => {
@@ -1064,6 +1095,7 @@ export const useCbtExam = () => {
     window.removeEventListener('blur', onWindowBlur)
     window.removeEventListener('focus', onWindowFocus)
     window.removeEventListener('beforeunload', onBeforeUnload)
+    window.removeEventListener('pagehide', onPageHide)
     stopTimer()
     stopAudio()
     lepasLayar()

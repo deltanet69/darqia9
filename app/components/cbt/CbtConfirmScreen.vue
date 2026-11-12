@@ -1,10 +1,10 @@
 <template>
   <section v-show="screen === 'confirm'" class="min-h-screen pb-16 bg-[#F1F5F9] antialiased">
     <!-- Header Sticky -->
-    <div class="bg-white/95 backdrop-blur-md border-b border-slate-200/90 sticky top-0 z-30 py-3 px-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+    <div class="bg-white/95 border-b border-slate-200/90 sticky top-0 z-30 py-3 px-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
       <div class="max-w-xl mx-auto flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 p-1 flex items-center justify-center shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-merek-50 border border-merek-100 p-1 flex items-center justify-center shrink-0">
             <img :src="grade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo" class="w-full h-full object-contain">
           </div>
           <div class="min-w-0">
@@ -24,9 +24,9 @@
 
     <div class="max-w-xl mx-auto px-4 pt-5 space-y-4">
       <!-- Hero Briefing Card Ujian (Keren, Menarik & Informatif) -->
-      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#08152B] via-[#0E2754] to-[#163673] p-5 sm:p-6 text-white shadow-xl shadow-blue-950/20 border border-white/10">
-        <div class="absolute -top-16 -right-16 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-merek-d1 via-merek-d2 to-merek-d3 p-5 sm:p-6 text-white shadow-xl shadow-merek-950/20 border border-white/10">
+        <div class="absolute -top-16 -right-16 w-48 h-48 bg-merek-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-merek2-500/15 rounded-full blur-3xl pointer-events-none" />
 
         <div class="relative z-10 space-y-3">
           <!-- Top Tag -->
@@ -35,7 +35,7 @@
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span>Sesi Terbuka &bull; Terverifikasi</span>
             </span>
-            <span class="text-xs font-bold text-blue-200 font-mono">{{ token }}</span>
+            <span class="text-xs font-bold text-merek-200 font-mono">{{ token }}</span>
           </div>
 
           <!-- Exam Title -->
@@ -43,23 +43,23 @@
             <h2 class="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight break-words">
               {{ exam?.subject }}
             </h2>
-            <p class="text-xs sm:text-sm text-blue-100/90 font-medium mt-1 break-words">
+            <p class="text-xs sm:text-sm text-merek-100/90 font-medium mt-1 break-words">
               {{ exam?.name }}
             </p>
           </div>
 
           <!-- 3 Quick Specs Pills -->
           <div class="grid grid-cols-3 gap-2 pt-3 border-t border-white/10 text-center">
-            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
-              <span class="block text-[10px] text-blue-200 uppercase font-bold">Durasi</span>
+            <div class="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+              <span class="block text-[10px] text-merek-200 uppercase font-bold">Durasi</span>
               <b class="text-xs sm:text-sm text-white font-black mt-0.5 block">{{ exam?.duration }} Menit</b>
             </div>
-            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
-              <span class="block text-[10px] text-blue-200 uppercase font-bold">Total Soal</span>
+            <div class="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+              <span class="block text-[10px] text-merek-200 uppercase font-bold">Total Soal</span>
               <b class="text-xs sm:text-sm text-white font-black mt-0.5 block">{{ totalQuestions }} Butir</b>
             </div>
-            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-2.5 border border-white/10">
-              <span class="block text-[10px] text-blue-200 uppercase font-bold">Ruang</span>
+            <div class="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+              <span class="block text-[10px] text-merek-200 uppercase font-bold">Ruang</span>
               <b class="text-xs sm:text-sm text-white font-black mt-0.5 block truncate">{{ ruang || 'Online' }}</b>
             </div>
           </div>
@@ -70,11 +70,11 @@
       <div class="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-sm space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-black uppercase tracking-wider text-slate-500">Identitas Peserta Ujian</span>
-          <span class="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">Peserta Sah</span>
+          <span class="text-[11px] font-bold text-merek-700 bg-merek-50 px-2.5 py-0.5 rounded-full border border-merek-200">Peserta Sah</span>
         </div>
 
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-base flex items-center justify-center shrink-0 shadow-xs">
+          <div class="w-12 h-12 rounded-2xl bg-merek-600 text-white font-black text-base flex items-center justify-center shrink-0 shadow-xs">
             {{ exam?.studentName ? exam.studentName.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() : 'PS' }}
           </div>
           <div class="min-w-0 flex-1">
@@ -95,7 +95,7 @@
             v-for="sec in sectionsAda"
             :key="sec.id"
             class="border rounded-2xl overflow-hidden transition-all duration-150"
-            :class="openedAcc === sec.id ? 'border-blue-500 bg-blue-50/20 ring-1 ring-blue-100' : 'border-slate-200/90 bg-white'"
+            :class="openedAcc === sec.id ? 'border-merek-500 bg-merek-50/20 ring-1 ring-merek-100' : 'border-slate-200/90 bg-white'"
           >
             <button
               type="button"
@@ -103,14 +103,14 @@
               @click="$emit('toggle-acc', sec.id)"
             >
               <div class="flex items-center gap-2 min-w-0">
-                <span class="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                <span class="w-2 h-2 rounded-full bg-merek-600 shrink-0" />
                 <span class="text-xs sm:text-sm font-black text-slate-900 truncate">{{ sec.title }}</span>
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full">{{ secRange(sec.id).length }} Soal</span>
                 <svg
                   class="w-4 h-4 text-slate-400 transition-transform duration-200"
-                  :class="{ 'rotate-180 text-blue-600': openedAcc === sec.id }"
+                  :class="{ 'rotate-180 text-merek-600': openedAcc === sec.id }"
                   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
                 ><path d="M6 9l6 6 6-6" /></svg>
               </div>
@@ -125,7 +125,7 @@
         <h3 class="text-xs font-black uppercase tracking-wider text-slate-500">Ketentuan Penting Ujian</h3>
         <ul class="space-y-2 text-xs text-slate-700 leading-relaxed">
           <li class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <svg class="w-4 h-4 text-merek-600 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <span>Waktu berjalan otomatis selama <b>{{ exam?.duration }} menit</b> dan tidak dapat diulang.</span>
           </li>
           <li class="flex items-start gap-2">
@@ -142,12 +142,12 @@
       <!-- Checklist Persetujuan -->
       <label
         class="flex items-start gap-3 p-4 rounded-2xl border-2 bg-white cursor-pointer transition-all duration-150 shadow-2xs"
-        :class="agreeStart ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-100' : 'border-slate-200/90'"
+        :class="agreeStart ? 'border-merek-600 bg-merek-50/40 ring-2 ring-merek-100' : 'border-slate-200/90'"
       >
         <input
           type="checkbox"
           :checked="agreeStart"
-          class="mt-0.5 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+          class="mt-0.5 w-4 h-4 text-merek-600 rounded focus:ring-merek-500 cursor-pointer"
           @change="$emit('update:agreeStart', ($event.target as HTMLInputElement).checked)"
         >
         <span class="text-xs sm:text-sm text-slate-900 leading-relaxed font-bold">
@@ -160,7 +160,7 @@
         <button
           type="button"
           class="w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base text-white transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-          :class="agreeStart ? 'bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30' : 'bg-slate-300 cursor-not-allowed opacity-60'"
+          :class="agreeStart ? 'bg-merek-600 hover:bg-merek-700 shadow-xl shadow-merek-500/30' : 'bg-slate-300 cursor-not-allowed opacity-60'"
           :disabled="!agreeStart"
           @click="$emit('start-exam')"
         >

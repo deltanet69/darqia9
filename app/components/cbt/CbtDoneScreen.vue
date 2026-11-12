@@ -2,9 +2,9 @@
   <section v-show="screen === 'done'" class="min-h-screen py-8 px-4 bg-[#F1F5F9] flex items-start sm:items-center justify-center antialiased">
     <div class="max-w-xl w-full mx-auto space-y-4">
       <!-- Kartu Skor & Nilai Akhir -->
-      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#08152B] via-[#0E2754] to-[#163673] p-6 sm:p-8 text-white shadow-xl shadow-blue-950/20 text-center border border-white/10">
-        <div class="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
-        <div class="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-merek-d1 via-merek-d2 to-merek-d3 p-6 sm:p-8 text-white shadow-xl shadow-merek-950/20 text-center border border-white/10">
+        <div class="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-merek-500/20 blur-3xl pointer-events-none" />
+        <div class="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-merek2-500/15 blur-3xl pointer-events-none" />
 
         <div class="relative z-10">
           <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 shadow-2xs">
@@ -12,11 +12,11 @@
             <span>Jawaban Berhasil Disimpan &amp; Terkirim</span>
           </span>
 
-          <p class="mt-5 text-xs font-black uppercase tracking-wider text-blue-200">Perolehan Nilai Ujian</p>
+          <p class="mt-5 text-xs font-black uppercase tracking-wider text-merek-200">Perolehan Nilai Ujian</p>
           <div class="mt-1 text-6xl sm:text-7xl font-black tabular-nums tracking-tight font-mono text-white">
             {{ hasil ? formatNilai(hasil.nilai) : '-' }}
           </div>
-          <p class="mt-2 text-xs sm:text-sm text-blue-100/90 font-bold">{{ subject }} &bull; {{ examName }}</p>
+          <p class="mt-2 text-xs sm:text-sm text-merek-100/90 font-bold">{{ subject }} &bull; {{ examName }}</p>
 
           <p v-if="hasil && hasil.menunggu" class="mt-3 text-xs text-amber-200 bg-amber-500/20 border border-amber-400/30 rounded-xl py-1.5 px-3 inline-block font-semibold">
             ⏳ {{ hasil.menunggu }} butir soal esai masih menunggu penilaian manual dari guru.
@@ -69,7 +69,7 @@
       <!-- Tombol Kembali ke Beranda -->
       <button
         type="button"
-        class="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-xl shadow-blue-500/25 transition-all cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
+        class="w-full py-4 px-6 rounded-2xl bg-merek-600 hover:bg-merek-700 text-white font-black text-sm shadow-xl shadow-merek-500/25 transition-all cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2"
         @click="$emit('reset-home')"
       >
         <span>Kembali ke Beranda CBT</span>

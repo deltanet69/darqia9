@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-2xl border-2 border-blue-200/90 bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/50 p-4 shadow-sm antialiased text-slate-900">
+  <div class="rounded-2xl border-2 border-merek-200/90 bg-gradient-to-br from-merek-50/80 via-white to-merek2-50/50 p-4 shadow-sm antialiased text-slate-900">
     <!-- State Tanpa Media -->
     <div v-if="!url" class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-2">
       <svg class="w-4 h-4 text-amber-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -9,7 +9,7 @@
     <!-- YouTube Player (Video / Audio YouTube) -->
     <div v-else-if="sumber.jenis === 'youtube'" class="space-y-3">
       <div class="flex items-center justify-between gap-2">
-        <span class="inline-flex items-center gap-1.5 text-xs font-black text-blue-700 uppercase tracking-wider">
+        <span class="inline-flex items-center gap-1.5 text-xs font-black text-merek-700 uppercase tracking-wider">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
           <span>Video Soal Interaktif</span>
         </span>
@@ -27,7 +27,7 @@
         <button v-else type="button" class="group absolute inset-0 w-full h-full cursor-pointer" :aria-label="`Putar ${judul}`" @click="aktif = true">
           <img :src="`https://i.ytimg.com/vi/${sumber.id}/hqdefault.jpg`" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover scale-105 transition-transform duration-500 group-hover:scale-110">
           <span class="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />
-          <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition-transform group-hover:scale-110 group-active:scale-95">
+          <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-merek-600 text-white shadow-xl transition-transform group-hover:scale-110 group-active:scale-95">
             <svg class="w-6 h-6 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20" /></svg>
           </span>
           <span class="absolute bottom-3 left-0 right-0 text-center text-xs font-bold text-white">Ketuk untuk memutar video</span>
@@ -38,7 +38,7 @@
     <!-- Google Drive Preview Video -->
     <div v-else-if="sumber.jenis === 'drive' && (type === 'video' || pakaiPratinjau)" class="space-y-3">
       <div class="flex items-center justify-between gap-2">
-        <span class="inline-flex items-center gap-1.5 text-xs font-black text-blue-700 uppercase tracking-wider">
+        <span class="inline-flex items-center gap-1.5 text-xs font-black text-merek-700 uppercase tracking-wider">
           <span>Pratinjau Media Soal</span>
         </span>
         <span class="text-xs font-bold text-slate-500 truncate max-w-[200px]">{{ judul }}</span>
@@ -51,7 +51,7 @@
     <!-- Video Berkas Langsung (MP4) -->
     <div v-else-if="type === 'video'" class="space-y-3">
       <div class="flex items-center justify-between gap-2">
-        <span class="text-xs font-black text-blue-700 uppercase tracking-wider">Video Soal</span>
+        <span class="text-xs font-black text-merek-700 uppercase tracking-wider">Video Soal</span>
         <span class="text-xs font-bold text-slate-500 truncate max-w-[200px]">{{ judul }}</span>
       </div>
       <div class="overflow-hidden rounded-xl bg-black border border-slate-200">
@@ -76,9 +76,9 @@
       />
 
       <!-- Baris Atas: Label Audio Soal & Judul -->
-      <div class="flex items-center justify-between gap-2 pb-2 border-b border-blue-100">
+      <div class="flex items-center justify-between gap-2 pb-2 border-b border-merek-100">
         <div class="flex items-center gap-2 min-w-0">
-          <div class="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+          <div class="w-6 h-6 rounded-lg bg-merek-600 text-white flex items-center justify-center shrink-0">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
           </div>
           <span class="text-xs font-black text-slate-900 truncate">{{ judul }}</span>
@@ -97,7 +97,7 @@
         <!-- Tombol Play / Pause Besar & Jelas -->
         <button
           type="button"
-          class="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md shadow-blue-500/30 transition-all duration-150 active:scale-95 cursor-pointer shrink-0"
+          class="w-12 h-12 rounded-full bg-merek-600 hover:bg-merek-700 text-white flex items-center justify-center shadow-md shadow-merek-500/30 transition-all duration-150 active:scale-95 cursor-pointer shrink-0"
           :aria-label="main ? 'Jeda audio' : 'Putar audio'"
           @click="putar"
         >
@@ -111,7 +111,7 @@
           <!-- Slider Track Interaktif -->
           <div class="relative h-2.5 rounded-full bg-slate-200/90 overflow-hidden cursor-pointer">
             <div
-              class="absolute inset-y-0 left-0 rounded-full bg-blue-600 transition-all"
+              class="absolute inset-y-0 left-0 rounded-full bg-merek-600 transition-all"
               :style="{ width: `${persen}%` }"
             />
             <input
@@ -161,7 +161,7 @@
         <!-- Tombol Kecepatan -->
         <button
           type="button"
-          class="px-3 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-blue-700 font-black text-[11px] shadow-2xs transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
+          class="px-3 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-merek-700 font-black text-[11px] shadow-2xs transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
           @click="gantiKecepatan"
         >
           <span class="text-slate-500 font-normal">Kecepatan:</span>

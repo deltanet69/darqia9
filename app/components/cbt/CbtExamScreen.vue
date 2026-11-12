@@ -1,7 +1,7 @@
 <template>
   <section v-show="screen === 'exam'" class="min-h-screen pb-28 lg:pb-12 flex flex-col justify-between antialiased">
     <!-- Header Ujian Sticky & Modern -->
-    <div class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+    <div class="sticky top-0 z-40 bg-white/95 border-b border-slate-200/90 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
       <!-- Banner Jika Waktu Ujian Dibekukan -->
       <div v-if="isTimerFrozen" class="bg-amber-100 border-b border-amber-300 text-amber-900 px-4 py-2 text-center text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
         <svg class="w-4 h-4 text-amber-700 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -11,7 +11,7 @@
       <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-3">
         <!-- Informasi Mata Pelajaran -->
         <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 border border-blue-100 p-1 flex items-center justify-center shrink-0 shadow-2xs">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-merek-50 border border-merek-100 p-1 flex items-center justify-center shrink-0 shadow-2xs">
             <img :src="grade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo" class="w-full h-full object-contain">
           </div>
           <div class="min-w-0">
@@ -89,7 +89,7 @@
             :key="s.id"
             type="button"
             class="shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all border cursor-pointer active:scale-95"
-            :class="s.id === curQuestion.sec ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : isSectionDone(s.id) ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'"
+            :class="s.id === curQuestion.sec ? 'bg-merek-600 text-white border-merek-600 shadow-xs' : isSectionDone(s.id) ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'"
             @click="$emit('go-to-section', s.id)"
           >
             <span v-html="s.icon" class="w-3.5 h-3.5 flex items-center justify-center shrink-0"></span>
@@ -114,9 +114,9 @@
           <div class="flex items-center justify-between gap-3 text-xs font-bold text-slate-500 bg-white px-4 py-2.5 rounded-2xl border border-slate-200/80 shadow-2xs">
             <span>Soal <b class="text-slate-900 font-black">{{ qIdx + 1 }}</b> dari <b class="text-slate-900 font-black">{{ totalQuestions }}</b></span>
             <div class="flex-1 max-w-xs h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
-              <div class="h-full bg-blue-600 rounded-full transition-all duration-300" :style="{ width: (answeredCount / totalQuestions * 100) + '%' }"></div>
+              <div class="h-full bg-merek-600 rounded-full transition-all duration-300" :style="{ width: (answeredCount / totalQuestions * 100) + '%' }"></div>
             </div>
-            <span class="tabular-nums font-mono text-blue-700 font-extrabold">{{ answeredCount }} terjawab</span>
+            <span class="tabular-nums font-mono text-merek-700 font-extrabold">{{ answeredCount }} terjawab</span>
           </div>
 
           <!-- Kartu Soal Utama -->
@@ -124,7 +124,7 @@
             <!-- Header Kartu Soal: Nomor, Jenis Soal & Tombol Ragu-ragu -->
             <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-100">
               <div class="flex items-center gap-2.5">
-                <span class="w-8 h-8 rounded-xl bg-blue-600 text-white font-black text-sm flex items-center justify-center shadow-xs">{{ qIdx + 1 }}</span>
+                <span class="w-8 h-8 rounded-xl bg-merek-600 text-white font-black text-sm flex items-center justify-center shadow-xs">{{ qIdx + 1 }}</span>
                 <span class="text-xs font-black px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 uppercase tracking-wider">{{ typeLabel(curQuestion) }}</span>
               </div>
               <button
@@ -184,12 +184,12 @@
                   v-for="(op, oi) in (curQuestion.options || [])"
                   :key="oi"
                   class="w-full p-4 rounded-2xl border-2 text-left flex items-start gap-3.5 transition-all duration-150 group cursor-pointer"
-                  :class="isOptionSelected(qIdx, oi) ? 'border-blue-600 bg-blue-50/70 shadow-sm ring-2 ring-blue-100 text-blue-950 font-medium' : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/80 text-slate-800'"
+                  :class="isOptionSelected(qIdx, oi) ? 'border-merek-600 bg-merek-50/70 shadow-sm ring-2 ring-merek-100 text-merek-950 font-medium' : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/80 text-slate-800'"
                   @click="$emit('select-option', qIdx, oi)"
                 >
                   <span
                     class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors"
-                    :class="isOptionSelected(qIdx, oi) ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 group-hover:bg-slate-200'"
+                    :class="isOptionSelected(qIdx, oi) ? 'bg-merek-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 group-hover:bg-slate-200'"
                   >
                     {{ letters[oi] }}
                   </span>
@@ -215,12 +215,12 @@
                   v-for="(op, oi) in (curQuestion.options || [])"
                   :key="oi"
                   class="w-full p-4 rounded-2xl border-2 text-left flex items-start gap-3.5 transition-all duration-150 group cursor-pointer"
-                  :class="isOptionSelected(qIdx, oi) ? 'border-blue-600 bg-blue-50/70 shadow-sm ring-2 ring-blue-100 text-blue-950 font-medium' : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/80 text-slate-800'"
+                  :class="isOptionSelected(qIdx, oi) ? 'border-merek-600 bg-merek-50/70 shadow-sm ring-2 ring-merek-100 text-merek-950 font-medium' : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/80 text-slate-800'"
                   @click="$emit('select-option', qIdx, oi)"
                 >
                   <span
                     class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors"
-                    :class="isOptionSelected(qIdx, oi) ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 group-hover:bg-slate-200'"
+                    :class="isOptionSelected(qIdx, oi) ? 'bg-merek-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 group-hover:bg-slate-200'"
                   >
                     {{ isOptionSelected(qIdx, oi) ? '✓' : letters[oi] }}
                   </span>
@@ -250,7 +250,7 @@
                   :rows="curQuestion.type === 'essay' ? 6 : 3"
                   :placeholder="curQuestion.placeholder || 'Tulis jawabanmu di sini...'"
                   :dir="curQuestion.isRtl || isArabicText(curQuestion.text) ? 'rtl' : 'ltr'"
-                  class="w-full p-4 text-sm bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900"
+                  class="w-full p-4 text-sm bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-merek-600 focus:ring-4 focus:ring-merek-100 outline-none transition-all text-slate-900"
                 ></textarea>
                 <div class="flex items-center justify-between text-xs text-slate-400 font-semibold px-1">
                   <span><b>{{ countWords(answers[qIdx]) }}</b> kata <template v-if="curQuestion.minWords">&bull; minimal {{ curQuestion.minWords }} kata</template></span>
@@ -273,7 +273,7 @@
                 :key="i"
                 type="button"
                 class="relative h-11 rounded-xl font-bold text-xs flex items-center justify-center transition-all border cursor-pointer active:scale-95"
-                :class="i === qIdx ? 'border-blue-600 bg-blue-600 text-white shadow-md ring-2 ring-blue-200' : isAnswered(i) ? 'border-blue-200 bg-blue-50 text-blue-900' : 'border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50'"
+                :class="i === qIdx ? 'border-merek-600 bg-merek-600 text-white shadow-md ring-2 ring-merek-200' : isAnswered(i) ? 'border-merek-200 bg-merek-50 text-merek-900' : 'border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50'"
                 @click="$emit('go-to', i)"
               >
                 {{ i + 1 }}
@@ -284,7 +284,7 @@
             <!-- Legenda Palet -->
             <div class="space-y-2 pt-4 border-t border-slate-100 text-xs text-slate-600 mb-6">
               <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full bg-blue-600 shrink-0"></span>
+                <span class="w-3 h-3 rounded-full bg-merek-600 shrink-0"></span>
                 <span>Sudah dijawab</span>
               </div>
               <div class="flex items-center gap-2">
@@ -311,7 +311,7 @@
     </div>
 
     <!-- Navigasi Bawah FIXED DI BAWAH LAYAR (Persyaratan User) -->
-    <div class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] py-3 px-4">
+    <div class="fixed bottom-0 inset-x-0 z-40 bg-white/95 border-t border-slate-200/90 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] py-3 px-4">
       <div class="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
         <!-- Tombol Sebelumnya -->
         <button
@@ -338,7 +338,7 @@
         <!-- Tombol Berikutnya / Selesai -->
         <button
           type="button"
-          class="px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+          class="px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm text-white bg-merek-600 hover:bg-merek-700 shadow-md shadow-merek-500/25 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
           @click="$emit('next')"
         >
           <span>{{ qIdx === totalQuestions - 1 ? 'Periksa & Kumpulkan' : 'Berikutnya' }}</span>
@@ -350,7 +350,7 @@
     <!-- Bottom Sheet Drawer untuk Palet Soal di Mobile -->
     <div
       v-if="showMobilePalette"
-      class="fixed inset-0 z-50 flex flex-col justify-end bg-slate-900/60 backdrop-blur-sm lg:hidden transition-all"
+      class="fixed inset-0 z-50 flex flex-col justify-end bg-slate-900/60 lg:hidden transition-all"
       @click.self="$emit('update:showMobilePalette', false)"
     >
       <div class="bg-white rounded-t-3xl p-5 sm:p-6 shadow-2xl max-h-[80vh] overflow-y-auto space-y-4">
@@ -373,7 +373,7 @@
 
         <!-- Legenda Singkat -->
         <div class="flex items-center gap-3 text-[11px] text-slate-600 flex-wrap">
-          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span><span>Dijawab</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-merek-600"></span><span>Dijawab</span></div>
           <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-white border border-slate-300"></span><span>Belum</span></div>
           <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span>Ragu</span></div>
         </div>
@@ -385,7 +385,7 @@
             :key="i"
             type="button"
             class="relative h-11 rounded-xl font-black text-xs flex items-center justify-center border transition-all cursor-pointer active:scale-95"
-            :class="i === qIdx ? 'border-blue-600 bg-blue-600 text-white shadow-sm ring-2 ring-blue-200' : isAnswered(i) ? 'border-blue-200 bg-blue-50 text-blue-900' : 'border-slate-200 bg-white text-slate-600'"
+            :class="i === qIdx ? 'border-merek-600 bg-merek-600 text-white shadow-sm ring-2 ring-merek-200' : isAnswered(i) ? 'border-merek-200 bg-merek-50 text-merek-900' : 'border-slate-200 bg-white text-slate-600'"
             @click="$emit('go-to', i); $emit('update:showMobilePalette', false)"
           >
             {{ i + 1 }}
@@ -397,7 +397,7 @@
         <div class="pt-2">
           <button
             type="button"
-            class="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-500/25 transition-all cursor-pointer active:scale-95"
+            class="w-full py-3.5 px-4 rounded-2xl bg-merek-600 hover:bg-merek-700 text-white font-black text-xs shadow-md shadow-merek-500/25 transition-all cursor-pointer active:scale-95"
             @click="$emit('go-review'); $emit('update:showMobilePalette', false)"
           >
             Periksa &amp; Kumpulkan Jawaban

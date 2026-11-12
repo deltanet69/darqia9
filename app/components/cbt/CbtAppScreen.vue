@@ -1,11 +1,11 @@
 <template>
   <section v-show="screen === 'app'" class="min-h-screen pb-24 bg-[#F1F5F9] antialiased">
     <!-- Header Modern & Bersih (Tanpa Tombol Segarkan) -->
-    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] py-3 px-4">
+    <header class="sticky top-0 z-30 bg-white/95 border-b border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] py-3 px-4">
       <div class="max-w-3xl mx-auto flex items-center justify-between gap-3">
         <!-- Logo & Identitas Portal -->
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 border border-blue-200/60 p-1.5 flex items-center justify-center shrink-0 shadow-2xs">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-merek-50 via-merek2-50 to-merek-100 border border-merek-200/60 p-1.5 flex items-center justify-center shrink-0 shadow-2xs">
             <img :src="activeGrade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo Sekolah" class="w-full h-full object-contain">
           </div>
           <div class="min-w-0">
@@ -23,7 +23,7 @@
         <!-- Pill Status Peserta / Jenjang -->
         <div class="shrink-0 flex items-center gap-2">
           <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-slate-700 text-xs font-bold shadow-2xs">
-            <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-merek-600"></span>
             <span>{{ profil?.kelas || profil?.jenjang || 'Peserta' }}</span>
           </div>
         </div>
@@ -39,7 +39,7 @@
     </main>
 
     <!-- Bottom Navigation Bar: Elegan, Bersih, Standar Mobile App Modern -->
-    <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]" aria-label="Menu navigasi CBT">
+    <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]" aria-label="Menu navigasi CBT">
       <div class="max-w-md mx-auto px-3 py-2 grid grid-cols-4 gap-1">
         <button
           v-for="item in menu"
@@ -52,7 +52,7 @@
           <!-- Icon Container with Subtle Active Pill Background -->
           <div
             class="w-10 h-7 flex items-center justify-center rounded-full transition-all duration-200"
-            :class="tab === item.id ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-400 group-hover:text-slate-600 group-hover:bg-slate-100/60'"
+            :class="tab === item.id ? 'bg-merek-600 text-white shadow-xs' : 'text-slate-400 group-hover:text-slate-600 group-hover:bg-slate-100/60'"
           >
             <svg
               class="w-4 h-4 transition-transform duration-200"
@@ -68,7 +68,7 @@
           <!-- Label Text -->
           <span
             class="text-[11px] leading-tight mt-1 transition-colors tracking-tight"
-            :class="tab === item.id ? 'font-black text-blue-600' : 'font-semibold text-slate-400 group-hover:text-slate-600'"
+            :class="tab === item.id ? 'font-black text-merek-600' : 'font-semibold text-slate-400 group-hover:text-slate-600'"
           >
             {{ item.label }}
           </span>

@@ -1,19 +1,19 @@
 <template>
-  <section v-show="screen === 'login'" class="min-h-screen flex flex-col bg-gradient-to-b from-[#08152B] via-[#0E2754] to-[#F1F5F9] text-slate-900 font-sans antialiased">
+  <section v-show="screen === 'login'" class="min-h-screen flex flex-col bg-gradient-to-b from-merek-d1 via-merek-d2 to-[#F1F5F9] text-slate-900 font-sans antialiased">
     <main class="flex-1 w-full max-w-md mx-auto px-4 pt-10 pb-8 flex flex-col items-center">
       <!-- Identitas & Logo Sekolah -->
       <div class="relative">
-        <div class="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-2.5 flex items-center justify-center shadow-xl shadow-blue-950/40">
+        <div class="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 p-2.5 flex items-center justify-center shadow-xl shadow-merek-950/40">
           <img :src="activeGrade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo Sekolah" class="w-full h-full object-contain">
         </div>
       </div>
-      <p class="mt-3 text-xs font-black text-blue-100 text-center tracking-tight">{{ jenjangText }}</p>
-      <span class="mt-2.5 inline-flex px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/15 text-blue-100 border border-white/20 shadow-2xs">
+      <p class="mt-3 text-xs font-black text-merek-100 text-center tracking-tight">{{ jenjangText }}</p>
+      <span class="mt-2.5 inline-flex px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/15 text-merek-100 border border-white/20 shadow-2xs">
         Tahun Ajaran {{ tahunAjaran }}
       </span>
 
       <h1 class="mt-4 text-3xl font-black text-white tracking-tight text-center">Portal Ujian Online</h1>
-      <p class="mt-2 text-xs sm:text-sm text-blue-100/90 leading-relaxed font-medium text-center max-w-sm">
+      <p class="mt-2 text-xs sm:text-sm text-merek-100/90 leading-relaxed font-medium text-center max-w-sm">
         Masuk menggunakan akun peserta yang telah diverifikasi oleh panitia ujian untuk memulai sesi pengerjaan.
       </p>
 
@@ -28,7 +28,7 @@
               inputmode="numeric"
               autocomplete="username"
               placeholder="Contoh: 1130"
-              class="w-full px-4 py-3 text-sm font-mono font-bold bg-slate-50 border-2 border-slate-200/90 rounded-2xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal"
+              class="w-full px-4 py-3 text-sm font-mono font-bold bg-slate-50 border-2 border-slate-200/90 rounded-2xl focus:bg-white focus:border-merek-600 focus:ring-4 focus:ring-merek-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal"
             >
           </div>
           <div>
@@ -39,14 +39,13 @@
               autocomplete="off"
               autocapitalize="characters"
               placeholder="Contoh: EFXZCHEL"
-              class="w-full px-4 py-3 text-sm font-mono uppercase font-black tracking-wider bg-slate-50 border-2 border-slate-200/90 rounded-2xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal"
+              class="w-full px-4 py-3 text-sm font-mono uppercase font-black tracking-wider bg-slate-50 border-2 border-slate-200/90 rounded-2xl focus:bg-white focus:border-merek-600 focus:ring-4 focus:ring-merek-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal"
             >
           </div>
           <button
             type="submit"
             :disabled="loading"
-            :class="activeGrade === 'SMP' ? 'from-emerald-600 via-emerald-700 to-teal-700 shadow-emerald-500/30' : 'from-blue-600 via-blue-700 to-indigo-700 shadow-blue-500/30'"
-            class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r text-white font-black text-sm shadow-xl transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2"
+            class="from-merek-600 via-merek-700 to-merek2-700 shadow-merek-500/30 w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r text-white font-black text-sm shadow-xl transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer flex items-center justify-center gap-2"
           >
             <span v-if="loading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             <span>{{ loading ? 'Memeriksa Akun Peserta…' : 'Masuk Sesi Ujian' }}</span>
@@ -55,10 +54,10 @@
       </div>
 
       <!-- Card Sistem Integritas Ujian -->
-      <div class="mt-4 w-full bg-gradient-to-br from-[#08152B] via-[#0E2754] to-[#163673] rounded-3xl p-5 text-white shadow-xl shadow-blue-950/20 border border-white/10 space-y-3">
+      <div class="mt-4 w-full bg-gradient-to-br from-merek-d1 via-merek-d2 to-merek-d3 rounded-3xl p-5 text-white shadow-xl shadow-merek-950/20 border border-white/10 space-y-3">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <h2 class="text-xs font-black uppercase tracking-wider text-blue-200">Sistem Integritas Ujian</h2>
+          <h2 class="text-xs font-black uppercase tracking-wider text-merek-200">Sistem Integritas Ujian</h2>
         </div>
         <ul class="space-y-2.5 text-xs text-slate-200 leading-relaxed">
           <li class="flex items-start gap-2">

@@ -15,7 +15,7 @@
         role="tab"
         :aria-selected="aktif === j.id"
         class="py-2.5 px-2 rounded-xl text-xs sm:text-sm font-black transition-all duration-150 text-center cursor-pointer active:scale-95 whitespace-nowrap"
-        :class="aktif === j.id ? 'bg-white text-blue-700 shadow-sm border border-slate-200/90' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'"
+        :class="aktif === j.id ? 'bg-white text-merek-700 shadow-sm border border-slate-200/90' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'"
         @click="aktif = j.id"
       >
         <span>{{ j.label }}</span>
@@ -40,9 +40,9 @@
         class="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-sm"
       >
         <!-- Header Hari -->
-        <div class="px-5 py-3 bg-gradient-to-r from-slate-50 to-blue-50/40 border-b border-slate-200/80 flex items-center justify-between">
+        <div class="px-5 py-3 bg-gradient-to-r from-slate-50 to-merek-50/40 border-b border-slate-200/80 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <svg class="w-4 h-4 text-merek-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             <h3 class="text-xs sm:text-sm font-black text-slate-900 tracking-tight">{{ hari.label }}</h3>
           </div>
           <span class="text-[11px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
@@ -93,7 +93,7 @@
             <div v-if="bisaDibuka(keadaan(u))" class="mt-3.5 pt-3 border-t border-slate-100">
               <button
                 type="button"
-                class="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-md shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                class="w-full py-2.5 px-4 rounded-xl bg-merek-600 hover:bg-merek-700 text-white font-black text-sm shadow-md shadow-merek-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 @click="emit('buka', u)"
               >
                 <span>{{ keadaan(u) === 'berjalan' ? 'Lanjutkan Pengerjaan Ujian' : 'Mulai Masuk Ujian' }}</span>

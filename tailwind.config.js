@@ -16,6 +16,9 @@ export default {
         admin: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
       },
       colors: {
+        // Tema CBT per jenjang (nilai di main.css): merek = biru/hijau, merek2 = indigo/teal
+        merek: { 50: 'rgb(var(--m-50) / <alpha-value>)', 100: 'rgb(var(--m-100) / <alpha-value>)', 200: 'rgb(var(--m-200) / <alpha-value>)', 300: 'rgb(var(--m-300) / <alpha-value>)', 400: 'rgb(var(--m-400) / <alpha-value>)', 500: 'rgb(var(--m-500) / <alpha-value>)', 600: 'rgb(var(--m-600) / <alpha-value>)', 700: 'rgb(var(--m-700) / <alpha-value>)', 800: 'rgb(var(--m-800) / <alpha-value>)', 900: 'rgb(var(--m-900) / <alpha-value>)', 950: 'rgb(var(--m-950) / <alpha-value>)', d1: 'rgb(var(--m-d1) / <alpha-value>)', d2: 'rgb(var(--m-d2) / <alpha-value>)', d3: 'rgb(var(--m-d3) / <alpha-value>)' },
+        merek2: { 50: 'rgb(var(--m2-50) / <alpha-value>)', 100: 'rgb(var(--m2-100) / <alpha-value>)', 200: 'rgb(var(--m2-200) / <alpha-value>)', 300: 'rgb(var(--m2-300) / <alpha-value>)', 400: 'rgb(var(--m2-400) / <alpha-value>)', 500: 'rgb(var(--m2-500) / <alpha-value>)', 600: 'rgb(var(--m2-600) / <alpha-value>)', 700: 'rgb(var(--m2-700) / <alpha-value>)', 800: 'rgb(var(--m2-800) / <alpha-value>)', 900: 'rgb(var(--m2-900) / <alpha-value>)', 950: 'rgb(var(--m2-950) / <alpha-value>)' },
         navy: '#0A2A5C',
         navy2: '#0d3470',
         blue: { DEFAULT: '#1B5FD9', d: '#14499F' },

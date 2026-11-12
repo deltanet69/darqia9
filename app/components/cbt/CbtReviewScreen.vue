@@ -1,16 +1,16 @@
 <template>
   <section v-show="screen === 'review'" class="min-h-screen pb-20 bg-[#F1F5F9] antialiased">
     <!-- Topbar Simple & Modern -->
-    <div class="bg-white/95 backdrop-blur-md border-b border-slate-200/90 sticky top-0 z-30 py-3.5 px-4 sm:px-6 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+    <div class="bg-white/95 border-b border-slate-200/90 sticky top-0 z-30 py-3.5 px-4 sm:px-6 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
       <div class="max-w-5xl mx-auto flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 p-1 flex items-center justify-center shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-merek-50 border border-merek-100 p-1 flex items-center justify-center shrink-0">
             <img :src="activeGrade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo" class="w-full h-full object-contain">
           </div>
           <div class="min-w-0">
             <h1 class="text-sm sm:text-base font-black text-slate-900 leading-tight truncate tracking-tight">Periksa Kembali Jawaban</h1>
             <p class="text-xs font-semibold text-slate-500 truncate flex items-center gap-1.5 mt-0.5">
-              <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg class="w-3.5 h-3.5 text-merek-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span>Sisa Waktu: <b class="font-mono text-slate-800">{{ fmtTime(remainingTime) }}</b></span>
             </p>
           </div>
@@ -28,8 +28,8 @@
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <!-- Kolom Kiri: Kartu Ringkasan Hero + Peringatan Belum Selesai -->
         <div class="lg:col-span-5 space-y-5">
-          <div class="bg-gradient-to-br from-[#08152B] via-[#0E2754] to-[#163673] rounded-3xl p-6 text-white shadow-xl shadow-blue-950/20 border border-white/10 relative overflow-hidden">
-            <div class="absolute -top-12 -right-12 w-36 h-36 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
+          <div class="bg-gradient-to-br from-merek-d1 via-merek-d2 to-merek-d3 rounded-3xl p-6 text-white shadow-xl shadow-merek-950/20 border border-white/10 relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-36 h-36 bg-merek-500/20 rounded-full blur-2xl pointer-events-none" />
 
             <!-- Circular Progress Ring & Info -->
             <div class="flex items-center gap-4 mb-6 relative z-10">
@@ -52,10 +52,10 @@
                 <span class="absolute font-black text-base">{{ Math.round((answeredCount / totalQuestions) * 100) }}%</span>
               </div>
               <div class="min-w-0 flex-1">
-                <span class="text-[10.5px] font-black uppercase tracking-wider text-blue-200 block mb-0.5">Ringkasan Pengerjaan</span>
+                <span class="text-[10.5px] font-black uppercase tracking-wider text-merek-200 block mb-0.5">Ringkasan Pengerjaan</span>
                 <div class="text-lg font-black leading-tight"><b class="text-sky-300">{{ answeredCount }}</b> dari {{ totalQuestions }} Soal</div>
-                <div class="text-xs text-blue-100/80 font-medium flex items-center gap-1.5 mt-1">
-                  <svg class="w-3.5 h-3.5 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div class="text-xs text-merek-100/80 font-medium flex items-center gap-1.5 mt-1">
+                  <svg class="w-3.5 h-3.5 text-merek-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   <span>{{ fmtTime(remainingTime) }} tersisa</span>
                 </div>
               </div>
@@ -95,7 +95,7 @@
             <!-- Sections Breakdown Progress Bars -->
             <div class="mt-4 pt-4 border-t border-white/10 space-y-2.5 text-xs relative z-10">
               <div v-for="s in sections" :key="s.id" class="space-y-1">
-                <div class="flex justify-between text-blue-100/90 font-bold">
+                <div class="flex justify-between text-merek-100/90 font-bold">
                   <span>{{ s.title }}</span>
                   <b class="text-white font-mono">{{ sectionDoneCount(s.id) }}/{{ secRange(s.id).length }}</b>
                 </div>
@@ -122,7 +122,7 @@
             <button
               type="button"
               class="px-3.5 py-2 rounded-xl text-xs font-black transition-all border shrink-0 cursor-pointer active:scale-95"
-              :class="revFilter === 'all' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'"
+              :class="revFilter === 'all' ? 'bg-merek-600 text-white border-merek-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'"
               @click="$emit('update:revFilter', 'all')"
             >
               Semua Soal
@@ -168,7 +168,7 @@
                 v-for="q in filteredQuestions"
                 :key="q.index"
                 type="button"
-                class="w-full p-3.5 rounded-2xl border-2 flex items-center justify-between gap-3 text-left transition-all hover:border-blue-400 group cursor-pointer active:scale-95"
+                class="w-full p-3.5 rounded-2xl border-2 flex items-center justify-between gap-3 text-left transition-all hover:border-merek-400 group cursor-pointer active:scale-95"
                 :class="q.kind === 'un' ? 'border-rose-200 bg-rose-50/40' : q.kind === 'fl' ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200/80 bg-slate-50/50'"
                 @click="$emit('go-to-from-review', q.index)"
               >
@@ -189,19 +189,19 @@
                   >
                     {{ q.pillLabel }}
                   </span>
-                  <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+                  <svg class="w-4 h-4 text-slate-400 group-hover:text-merek-600 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
                 </div>
               </button>
             </div>
           </div>
 
           <!-- Konfirmasi Persetujuan Kumpul -->
-          <label class="flex items-start gap-3 p-4 rounded-2xl border-2 border-slate-200/90 bg-white hover:border-blue-300 cursor-pointer transition-all shadow-2xs">
+          <label class="flex items-start gap-3 p-4 rounded-2xl border-2 border-slate-200/90 bg-white hover:border-merek-300 cursor-pointer transition-all shadow-2xs">
             <input
               type="checkbox"
               :checked="submitAgree"
               @change="$emit('update:submitAgree', ($event.target as HTMLInputElement).checked)"
-              class="mt-0.5 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+              class="mt-0.5 w-4 h-4 text-merek-600 rounded focus:ring-merek-500 cursor-pointer"
             >
             <span class="text-xs sm:text-sm text-slate-800 leading-relaxed font-semibold">
               Saya telah memeriksa seluruh jawaban dan <b>yakin ingin mengumpulkan lembar ujian sekarang</b>.
@@ -213,7 +213,7 @@
             <button
               type="button"
               class="w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 text-white transition-all cursor-pointer active:scale-[0.98]"
-              :class="submitAgree && unansweredCount === 0 ? 'bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30' : 'bg-slate-300 cursor-not-allowed opacity-60'"
+              :class="submitAgree && unansweredCount === 0 ? 'bg-merek-600 hover:bg-merek-700 shadow-xl shadow-merek-500/30' : 'bg-slate-300 cursor-not-allowed opacity-60'"
               :disabled="!submitAgree || unansweredCount > 0"
               @click="$emit('attempt-submit')"
             >

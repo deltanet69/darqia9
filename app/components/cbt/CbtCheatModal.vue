@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div
       v-if="modal.show"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fadeIn"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/95 animate-fadeIn"
       @click.self="$emit('back-click', $event)"
     >
       <div
@@ -90,9 +90,9 @@
         <!-- PIN Input Box for Proctor Unlock (Level 1 & 2 only) -->
         <div v-if="modal.requiresPin && !modal.fatal" class="space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-200">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Kode Buka Kunci</label>
-          <div v-if="modal.kodeTampil" class="rounded-xl bg-white border-2 border-dashed border-blue-300 py-3 text-center">
+          <div v-if="modal.kodeTampil" class="rounded-xl bg-white border-2 border-dashed border-merek-300 py-3 text-center">
             <span class="block text-[11px] text-slate-500">Ketik ulang kode ini untuk melanjutkan</span>
-            <b class="block mt-1 font-mono text-2xl tracking-[0.3em] text-blue-700 select-none">{{ modal.kodeTampil }}</b>
+            <b class="block mt-1 font-mono text-2xl tracking-[0.3em] text-merek-700 select-none">{{ modal.kodeTampil }}</b>
           </div>
 
           <div class="relative">
@@ -103,7 +103,7 @@
               autocomplete="off"
               autocapitalize="characters"
               class="w-full px-4 py-3 text-sm font-mono uppercase bg-white border-2 rounded-xl outline-none transition-all"
-              :class="modal.pinError ? 'border-rose-500 bg-rose-50/50 text-rose-900' : 'border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-100'"
+              :class="modal.pinError ? 'border-rose-500 bg-rose-50/50 text-rose-900' : 'border-slate-300 focus:border-merek-600 focus:ring-4 focus:ring-merek-100'"
               @input="modal.pin = ($event.target as HTMLInputElement).value; modal.pinError = false"
               @keydown.enter.prevent="$emit('ok')"
             />
@@ -135,7 +135,7 @@
             :class="[
               modal.level === 3 || modal.fatal ? 'bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 shadow-rose-600/40 hover:from-rose-700 hover:to-red-900' :
               modal.level === 2 ? 'bg-gradient-to-r from-orange-600 to-red-600 shadow-orange-600/30 hover:from-orange-700 hover:to-red-700' :
-              'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-600/30'
+              'bg-gradient-to-r from-merek-600 to-merek2-600 hover:from-merek-700 hover:to-merek2-700 shadow-merek-600/30'
             ]"
             @click="$emit('ok')"
           >

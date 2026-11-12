@@ -8,7 +8,7 @@
 
     <!-- State Loading -->
     <div v-if="rekap === null" class="bg-white border border-slate-200/90 rounded-3xl p-8 text-center shadow-sm">
-      <div class="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+      <div class="w-8 h-8 border-3 border-merek-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
       <p class="text-xs font-bold text-slate-600">Memuat rekapitulasi nilai…</p>
     </div>
 
@@ -19,7 +19,7 @@
         <div class="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3.5 shadow-2xs text-center flex flex-col justify-center">
           <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Total Diikuti</span>
           <b class="text-xl sm:text-2xl font-black text-slate-900 tabular-nums my-0.5">{{ rekap.length }}</b>
-          <span class="text-[10.5px] font-extrabold text-blue-600">Ujian Tuntas</span>
+          <span class="text-[10.5px] font-extrabold text-merek-600">Ujian Tuntas</span>
         </div>
 
         <!-- Metrik 2: Rata-rata Nilai -->
@@ -60,13 +60,13 @@
           <li
             v-for="r in rekap"
             :key="r.source + r.id"
-            class="bg-white border border-slate-200/90 hover:border-blue-300 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xs transition-all duration-200"
+            class="bg-white border border-slate-200/90 hover:border-merek-300 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xs transition-all duration-200"
           >
             <!-- Baris 1: Kategori, Tanggal & Status Badge -->
             <div class="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                  <span class="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                  <span class="text-[10px] font-black uppercase tracking-wider text-merek-700 bg-merek-50 px-2 py-0.5 rounded-md">
                     {{ JENIS_LABEL[r.jenis] }}
                   </span>
                   <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1">

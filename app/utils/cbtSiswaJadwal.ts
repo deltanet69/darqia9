@@ -54,7 +54,7 @@ export const bisaDibuka = (k: KeadaanUjian) => k === 'dibuka' || k === 'berjalan
 
 export const KEADAAN_INFO: Record<KeadaanUjian, { label: string, kelas: string }> = {
   terkunci: { label: 'Terkunci', kelas: 'bg-slate-100 text-slate-600' },
-  belum: { label: 'Belum dimulai', kelas: 'bg-blue-50 text-blue-700' },
+  belum: { label: 'Belum dimulai', kelas: 'bg-merek-50 text-merek-700' },
   dibuka: { label: 'Dapat dimulai', kelas: 'bg-emerald-100 text-emerald-700' },
   berjalan: { label: 'Sedang dikerjakan', kelas: 'bg-amber-100 text-amber-800' },
   selesai: { label: 'Selesai', kelas: 'bg-emerald-50 text-emerald-700' },

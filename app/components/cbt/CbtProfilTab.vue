@@ -7,21 +7,21 @@
     </div>
 
     <!-- Hero Card Profil Eksekutif Modern -->
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#08152B] via-[#0E2754] to-[#163673] p-5 sm:p-6 text-white shadow-xl shadow-blue-950/20 border border-white/10">
-      <div class="absolute -top-16 -right-16 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-      <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-merek-d1 via-merek-d2 to-merek-d3 p-5 sm:p-6 text-white shadow-xl shadow-merek-950/20 border border-white/10">
+      <div class="absolute -top-16 -right-16 w-48 h-48 bg-merek-500/20 rounded-full blur-3xl pointer-events-none" />
+      <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-merek2-500/15 rounded-full blur-3xl pointer-events-none" />
 
       <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
           <div class="relative">
-            <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-blue-950/40 ring-2 ring-white/20">
+            <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-tr from-merek-600 to-merek2-500 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-merek-950/40 ring-2 ring-white/20">
               {{ inisial }}
             </div>
-            <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#0E2754] shadow-xs" title="Akun Terverifikasi" />
+            <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-merek-d2 shadow-xs" title="Akun Terverifikasi" />
           </div>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 flex-wrap mb-1">
-              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur text-[10px] font-extrabold uppercase tracking-wider text-blue-200 border border-white/10">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] font-extrabold uppercase tracking-wider text-merek-200 border border-white/10">
                 <span>{{ profil.jenjang === 'SMP' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9' }}</span>
               </span>
               <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300">
@@ -30,7 +30,7 @@
               </span>
             </div>
             <h3 class="text-xl sm:text-2xl font-black text-white leading-tight break-words tracking-tight">{{ profil.nama }}</h3>
-            <p class="text-xs text-blue-100/90 font-medium mt-0.5">{{ profil.kelas || 'Tanpa kelas' }} &bull; Angkatan {{ profil.angkatan || '2026' }}</p>
+            <p class="text-xs text-merek-100/90 font-medium mt-0.5">{{ profil.kelas || 'Tanpa kelas' }} &bull; Angkatan {{ profil.angkatan || '2026' }}</p>
           </div>
         </div>
       </div>
@@ -40,7 +40,7 @@
     <div class="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-merek-600"></span>
           <h3 class="text-xs font-black uppercase tracking-wider text-slate-700">Data Akademik Ujian</h3>
         </div>
         <span class="text-xs font-semibold text-slate-400">T.A 2026/2027</span>
@@ -55,7 +55,7 @@
           </div>
           <button
             type="button"
-            class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-blue-600 font-bold text-[11px] transition-colors cursor-pointer shadow-2xs"
+            class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-merek-600 font-bold text-[11px] transition-colors cursor-pointer shadow-2xs"
             @click="salinTeks(profil.nis, 'nis')"
           >
             {{ copiedKey === 'nis' ? '✓ Tersalin' : 'Salin' }}
@@ -71,7 +71,7 @@
           <button
             v-if="profil.nisn"
             type="button"
-            class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-blue-600 font-bold text-[11px] transition-colors cursor-pointer shadow-2xs"
+            class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-merek-600 font-bold text-[11px] transition-colors cursor-pointer shadow-2xs"
             @click="salinTeks(profil.nisn, 'nisn')"
           >
             {{ copiedKey === 'nisn' ? '✓ Tersalin' : 'Salin' }}
@@ -79,14 +79,14 @@
         </div>
 
         <!-- Token Ujian -->
-        <div class="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200/80 flex items-center justify-between gap-3">
+        <div class="p-3.5 rounded-2xl bg-merek-50/60 border border-merek-200/80 flex items-center justify-between gap-3">
           <div>
-            <span class="block text-[10.5px] font-bold uppercase tracking-wider text-blue-700">Token Ujian Aktif</span>
-            <b class="text-base font-mono font-black text-blue-700 mt-0.5 block tracking-wider">{{ profil.token }}</b>
+            <span class="block text-[10.5px] font-bold uppercase tracking-wider text-merek-700">Token Ujian Aktif</span>
+            <b class="text-base font-mono font-black text-merek-700 mt-0.5 block tracking-wider">{{ profil.token }}</b>
           </div>
           <button
             type="button"
-            class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] shadow-sm hover:bg-blue-700 transition-colors cursor-pointer"
+            class="px-2.5 py-1 rounded-lg bg-merek-600 text-white font-bold text-[11px] shadow-sm hover:bg-merek-700 transition-colors cursor-pointer"
             @click="salinTeks(profil.token, 'token')"
           >
             {{ copiedKey === 'token' ? '✓ Tersalin' : 'Salin Token' }}
@@ -107,7 +107,7 @@
     <!-- Biodata Siswa Section -->
     <div class="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
       <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
-        <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-merek2-600"></span>
         <h3 class="text-xs font-black uppercase tracking-wider text-slate-700">Biodata Peserta</h3>
       </div>
 
