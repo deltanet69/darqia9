@@ -33,7 +33,7 @@ const router = useRouter()
 const subjectsStore = useAdminSubjects()
 
 // Reactive Jenjang & Role
-const jenjang = ref<'smp' | 'smk'>('smk')
+const jenjang = useAdminJenjang()
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
 
 const grade = computed<'SMP' | 'SMK'>(() => jenjang.value.toUpperCase() as 'SMP' | 'SMK')

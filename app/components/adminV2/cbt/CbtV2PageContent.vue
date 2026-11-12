@@ -13,6 +13,7 @@ import CbtV2Monitoring from '~/components/adminV2/cbt/CbtV2Monitoring.vue'
 import CbtV2Bank from '~/components/adminV2/cbt/CbtV2Bank.vue'
 import CbtV2Exams from '~/components/adminV2/cbt/CbtV2Exams.vue'
 import CbtV2Rooms from '~/components/adminV2/cbt/CbtV2Rooms.vue'
+import CbtV2Cards from '~/components/adminV2/cbt/CbtV2Cards.vue'
 import CbtV2Results from '~/components/adminV2/cbt/CbtV2Results.vue'
 import CbtV2Management from '~/components/adminV2/cbt/CbtV2Management.vue'
 import CbtV2Drawer from '~/components/adminV2/cbt/CbtV2Drawer.vue'
@@ -55,14 +56,16 @@ useHead({
 })
 
 const queryValue = (value: unknown) => Array.isArray(value) ? value[0] : value
-const initialGrade: GradeType = queryValue(route.query.jenjang) === 'smp' ? 'SMP' : 'SMK'
+const jenjang = useAdminJenjang()
+const queryJenjang = queryValue(route.query.jenjang)
+if (queryJenjang === 'smp' || queryJenjang === 'smk') jenjang.value = queryJenjang
+const initialGrade: GradeType = jenjang.value === 'smp' ? 'SMP' : 'SMK'
 const initialTab = queryValue(route.query.tab)
 const initialActiveTab: CbtTabId = CBT_TABS.some(tab => tab.id === initialTab)
   ? initialTab as CbtTabId
   : 'summary'
 
 // Unified Top Navigation & RBAC State
-const jenjang = ref<'smp' | 'smk'>(initialGrade === 'SMP' ? 'smp' : 'smk')
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
 
 const isMegaOpen = ref(false)
@@ -481,6 +484,14 @@ const handleDocumentClick = (e: MouseEvent) => {
         :grade="grade"
         @toast="triggerToast"
         @detail="roomDetail = $event"
+      />
+
+      <!-- TAB: KARTU UJIAN (hanya CBT PTS/PAS) -->
+      <CbtV2Cards
+        v-else-if="activeTab === 'cards' && !isDailyAssessment"
+        :key="`cards-${grade}`"
+        :grade="grade"
+        @toast="triggerToast"
       />
 
       <!-- TAB 5: STUDENT RESULTS & GRADES TAB -->

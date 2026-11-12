@@ -39,7 +39,8 @@ const academicStartYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullY
 const academicYear = `${academicStartYear}/${academicStartYear + 1}`
 const emptyTabData = (): AgendaTabData => ({ students: [], meetings: [], attendance: [], scores: [] })
 
-const jenjang = ref<'smp' | 'smk'>(route.query.jenjang === 'smp' ? 'smp' : 'smk')
+const jenjang = useAdminJenjang()
+if (route.query.jenjang === 'smp' || route.query.jenjang === 'smk') jenjang.value = route.query.jenjang
 const semester = ref<1 | 2>(1)
 const activeTab = ref<AgendaTab>('pertemuan')
 const scoreMode = ref<AgendaMode>('sementara')

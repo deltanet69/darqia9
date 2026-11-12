@@ -35,7 +35,7 @@ useHead({
 })
 
 /* ================= REACTIVE STATE ================= */
-const jenjang = ref<'smp' | 'smk'>('smk')
+const jenjang = useAdminJenjang()
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
 
 const isMegaOpen = ref(false)

@@ -30,7 +30,7 @@ const router = useRouter()
 const cbtData = useAdminCbtData()
 
 /* ================= REACTIVE STATE ================= */
-const jenjang = ref<'smp' | 'smk'>('smk')
+const jenjang = useAdminJenjang()
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
 
 // Header popovers & mobile navigation

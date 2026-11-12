@@ -49,7 +49,7 @@ const role = computed<'superadmin' | 'admin_tu' | 'guru'>(() => {
   return 'superadmin'
 })
 
-const jenjang = ref<'smp' | 'smk'>('smk')
+const jenjang = useAdminJenjang()
 const isMegaOpen = ref(false)
 const activeMegaGroup = ref<GroupItem | null>(null)
 const isMobileMenuOpen = ref(false)
