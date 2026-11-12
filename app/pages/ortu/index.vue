@@ -124,16 +124,33 @@ const ingatSaya = ref(true)
 const pesan = ref('')
 
 // Masuk belum dihubungkan ke server (tahap backend). Hanya validasi form di sisi klien.
+const sesi = useState<{ nis: string; jenjang: 'SMK' | 'SMP' } | null>('ortu-sesi', () => null)
+
 function kirim() {
   if (!nis.value) {
     pesan.value = 'NIS wajib diisi.'
-  } else if (!/^\d+$/.test(nis.value)) {
-    pesan.value = 'NIS hanya boleh berisi angka.'
-  } else if (!kataSandi.value) {
-    pesan.value = 'Kata sandi wajib diisi.'
-  } else {
-    pesan.value = 'Masuk belum tersambung ke server. Fitur ini menyusul di tahap berikutnya.'
+    return
   }
+  if (!/^\d+$/.test(nis.value)) {
+    pesan.value = 'NIS hanya boleh berisi angka.'
+    return
+  }
+  if (!kataSandi.value) {
+    pesan.value = 'Kata sandi wajib diisi.'
+    return
+  }
+  // Akun contoh hanya ada di mode dev; blok ini hilang dari production build
+  if (import.meta.dev) {
+    if (nis.value === '12011994' && kataSandi.value === 'admin123' && jenjang.value === 'SMK') {
+      sesi.value = { nis: nis.value, jenjang: 'SMK' }
+      navigateTo('/ortu/beranda')
+      return
+    }
+    pesan.value = 'NIS atau kata sandi salah.'
+    return
+  }
+  // Masuk belum dihubungkan ke server (tahap backend)
+  pesan.value = 'Masuk belum tersambung ke server. Fitur ini menyusul di tahap berikutnya.'
 }
 </script>
 
