@@ -6,11 +6,11 @@ import { useKartuUjian, type PeriodeKartu, type SiswaKartu } from '~/composables
 import { periodeOpsi } from '~/composables/ruangUjianCore'
 import { cetakKartu } from '~/utils/cbtKartuCetak'
 
-const props = defineProps<{ grade: GradeType }>()
+const props = withDefaults(defineProps<{ grade: GradeType, source?: 'cbt' | 'ujian_harian' }>(), { source: 'cbt' })
 const emit = defineEmits<{ (e: 'toast', msg: string): void }>()
 
 const api = useKartuUjian()
-const cbtData = useAdminCbtData('cbt')
+const cbtData = useAdminCbtData(props.source)
 const { tahun, muatOpsi } = useTahunAjaran()
 // Kartu hanya dikelola Superadmin; peran lain hanya melihat.
 const bolehKelola = computed(() => cbtData.adalahSuperadmin.value)
@@ -93,8 +93,8 @@ const pilihGrup = (isi: SiswaKartu[]) => {
 
 const pesanGalat = (e: unknown, cadangan: string) => {
   const m = e instanceof Error ? e.message : cadangan
-  return /exam_card|release_exam_cards|card_token_for|regenerate_card_token|classroom/.test(m)
-    ? 'Fitur Kartu Ujian belum aktif di server. Terapkan migrasi 0055_kartu_ujian.sql dan 0056_kartu_ujian_per_kelas.sql di Supabase, lalu muat ulang.'
+  return /exam_card|release_exam_cards|card_token_for|regenerate_card_token|classroom|source/.test(m)
+    ? 'Fitur Kartu Ujian belum aktif di server. Terapkan migrasi 0055, 0056, dan 0057 di Supabase, lalu muat ulang.'
     : m
 }
 
@@ -102,7 +102,7 @@ const muatPeriode = async () => {
   loadingPeriode.value = true
   errorPeriode.value = ''
   try {
-    daftarPeriode.value = (await api.muatPeriode(props.grade)).sort((a, b) => b.startsOn.localeCompare(a.startsOn))
+    daftarPeriode.value = (await api.muatPeriode(props.grade, props.source)).sort((a, b) => b.startsOn.localeCompare(a.startsOn))
     if (!aktif.value) pilihId.value = daftarPeriode.value[0]?.id ?? ''
   } catch (e) {
     errorPeriode.value = pesanGalat(e, 'Periode kartu gagal dimuat.')
@@ -148,7 +148,7 @@ const jalankan = async (tugas: () => Promise<string>, gagal: string) => {
 const bukaFormBaru = () => { formBaru.value = { periode: opsiBaru.value[0] ?? '', startsOn: '', endsOn: '' } }
 const buatPeriode = () => jalankan(async () => {
   const f = formBaru.value!
-  await api.simpanPeriode({ grade: props.grade, ...f })
+  await api.simpanPeriode({ grade: props.grade, source: props.source, ...f })
   formBaru.value = null
   await muatPeriode()
   pilihId.value = daftarPeriode.value.find(p => p.periode === f.periode)?.id ?? pilihId.value
@@ -156,7 +156,7 @@ const buatPeriode = () => jalankan(async () => {
 }, 'Periode gagal dibuat.')
 
 const simpanTanggal = () => jalankan(async () => {
-  await api.simpanPeriode({ id: aktif.value!.id, grade: props.grade, periode: aktif.value!.periode, ...tanggalForm.value })
+  await api.simpanPeriode({ id: aktif.value!.id, grade: props.grade, source: props.source, periode: aktif.value!.periode, ...tanggalForm.value })
   await muatPeriode()
   ubahTanggal.value = false
   return 'Tanggal ujian disimpan.'

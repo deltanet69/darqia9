@@ -1,4 +1,6 @@
-// Akses data Kartu Ujian (migrasi 0055). Aturan kunci token dijaga database; di sini pemanggilan tipis.
+// Akses data Kartu Ujian (migrasi 0055, 0057 untuk LMS). Aturan kunci token dijaga database; di sini pemanggilan tipis.
+export type SumberKartu = 'cbt' | 'ujian_harian'
+
 export interface PeriodeKartu {
   id: string
   grade: 'SMP' | 'SMK'
@@ -6,6 +8,7 @@ export interface PeriodeKartu {
   startsOn: string
   endsOn: string
   releasedAt: string | null
+  source: SumberKartu
 }
 
 export interface SiswaKartu {
@@ -27,18 +30,18 @@ export const useKartuUjian = () => {
   const galat = (error: { message: string } | null) => { if (error) throw new Error(error.message) }
   const wajibSuperadmin = () => { if (!rbac.adalahSuperadmin.value) throw new Error('Hanya Superadmin yang dapat mengelola kartu ujian.') }
 
-  const muatPeriode = async (grade: string): Promise<PeriodeKartu[]> => {
-    const { data, error } = await client.from('exam_card_periods').select('id, grade, periode, starts_on, ends_on, released_at').eq('grade', grade)
+  const muatPeriode = async (grade: string, source: SumberKartu = 'cbt'): Promise<PeriodeKartu[]> => {
+    const { data, error } = await client.from('exam_card_periods').select('id, grade, periode, starts_on, ends_on, released_at, source').eq('grade', grade).eq('source', source)
     galat(error)
     return (data ?? []).map((row: any) => ({
-      id: row.id, grade: row.grade, periode: row.periode, startsOn: row.starts_on, endsOn: row.ends_on, releasedAt: row.released_at
+      id: row.id, grade: row.grade, periode: row.periode, startsOn: row.starts_on, endsOn: row.ends_on, releasedAt: row.released_at, source: row.source
     }))
   }
 
-  const simpanPeriode = async (input: { id?: string, grade: string, periode: string, startsOn: string, endsOn: string }) => {
+  const simpanPeriode = async (input: { id?: string, grade: string, source: SumberKartu, periode: string, startsOn: string, endsOn: string }) => {
     wajibSuperadmin()
     if (!input.startsOn || !input.endsOn || input.endsOn < input.startsOn) throw new Error('Tanggal selesai tidak boleh lebih awal dari tanggal mulai.')
-    const payload = { grade: input.grade, periode: input.periode, starts_on: input.startsOn, ends_on: input.endsOn }
+    const payload = { grade: input.grade, source: input.source, periode: input.periode, starts_on: input.startsOn, ends_on: input.endsOn }
     const { error } = input.id
       ? await client.from('exam_card_periods').update(payload).eq('id', input.id)
       : await client.from('exam_card_periods').insert(payload)
@@ -68,10 +71,14 @@ export const useKartuUjian = () => {
   // Sumber utama = tabel kartu (kartu tidak hilang walau siswa pindah kelas/nonaktif), ditambah siswa aktif yang belum punya kartu.
   // shortcut: satu permintaan 1000 baris per jenjang, cukup untuk sekolah ini; paginasi bila melebihi.
   const muatSiswa = async (periode: PeriodeKartu): Promise<SiswaKartu[]> => {
+    // Ruang hanya ada di CBT PTS/PAS; LMS ujian harian tidak punya ruang.
+    const ruangQuery = periode.source === 'cbt'
+      ? client.from('exam_room_members').select('student_id, exam_rooms!inner(name)').eq('periode', periode.periode).is('deleted_at', null).is('exam_rooms.deleted_at', null).range(0, 999)
+      : Promise.resolve({ data: [], error: null })
     const [kartu, siswa, ruang] = await Promise.all([
       client.from('exam_cards').select('id, student_id, token, class_id, classroom, students(name, nis, exam_eligible, active)').eq('period_id', periode.id).range(0, 999),
       client.from('students').select('id, nis, name, class_id, exam_eligible, classes(name)').eq('grade', periode.grade).eq('active', true).range(0, 999),
-      client.from('exam_room_members').select('student_id, exam_rooms!inner(name)').eq('periode', periode.periode).is('deleted_at', null).is('exam_rooms.deleted_at', null).range(0, 999)
+      ruangQuery
     ])
     galat(kartu.error)
     galat(siswa.error)

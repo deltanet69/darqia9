@@ -33,7 +33,7 @@ const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
   { id: 'monitoring', label: `${props.moduleName} · Monitoring Ujian` },
   { id: 'exams', label: `${props.moduleName} · Daftar Ujian` },
   ...(props.moduleName.includes('LMS') ? [] : [{ id: 'rooms' as CbtTabId, label: `${props.moduleName} · Ruang Ujian` }]),
-  ...(props.moduleName.includes('LMS') ? [] : [{ id: 'cards' as CbtTabId, label: `${props.moduleName} · Kartu Ujian` }]),
+  { id: 'cards', label: `${props.moduleName} · Kartu Ujian` },
   { id: 'results', label: `${props.moduleName} · Nilai Siswa` },
   { id: 'management', label: `${props.moduleName} · Manajemen Ujian` }
 ])

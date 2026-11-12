@@ -486,11 +486,12 @@ const handleDocumentClick = (e: MouseEvent) => {
         @detail="roomDetail = $event"
       />
 
-      <!-- TAB: KARTU UJIAN (hanya CBT PTS/PAS) -->
+      <!-- TAB: KARTU UJIAN (CBT PTS/PAS dan LMS ujian harian, periode dan token terpisah) -->
       <CbtV2Cards
-        v-else-if="activeTab === 'cards' && !isDailyAssessment"
-        :key="`cards-${grade}`"
+        v-else-if="activeTab === 'cards'"
+        :key="`cards-${assessmentSource}-${grade}`"
         :grade="grade"
+        :source="assessmentSource"
         @toast="triggerToast"
       />
 
