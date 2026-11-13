@@ -91,11 +91,32 @@ const pilihGrup = (isi: SiswaKartu[]) => {
   dipilih.value = grupDipilih(isi) ? dipilih.value.filter(id => !ids.includes(id)) : [...new Set([...dipilih.value, ...ids])]
 }
 
+// Listing per kelas: section bisa dibuka-tutup dan dipecah per halaman agar tidak memanjang.
+const PER_HALAMAN = 10
+const terbuka = ref<Record<string, boolean>>({})
+const halaman = ref<Record<string, number>>({})
+// Section terbuka otomatis saat hanya satu kelas tampil, atau saat sedang mencari/memfilter.
+const sedangTerbuka = (nama: string) => !!kelas.value || grup.value.length === 1 || !!cari.value || !!filterStatus.value || !!terbuka.value[nama]
+const togelKelas = (nama: string) => { terbuka.value = { ...terbuka.value, [nama]: !sedangTerbuka(nama) } }
+const jumlahHalaman = (total: number) => Math.max(1, Math.ceil(total / PER_HALAMAN))
+const halamanAktif = (g: { nama: string, isi: SiswaKartu[] }) => Math.min(halaman.value[g.nama] ?? 1, jumlahHalaman(g.isi.length))
+const potongHalaman = (g: { nama: string, isi: SiswaKartu[] }) => g.isi.slice((halamanAktif(g) - 1) * PER_HALAMAN, halamanAktif(g) * PER_HALAMAN)
+const aturHalaman = (g: { nama: string, isi: SiswaKartu[] }, h: number) => { halaman.value = { ...halaman.value, [g.nama]: Math.min(Math.max(1, h), jumlahHalaman(g.isi.length)) } }
+// Status yang butuh tindakan per kelas, tampil di header section walau section tertutup.
+const PERLU_TINDAKAN: StatusKartu[] = ['tertahan', 'susulan', 'menunggu']
+const ringkasKelas = (isi: SiswaKartu[]) => PERLU_TINDAKAN
+  .map(st => ({ st, n: isi.filter(s => statusKartu(s) === st).length }))
+  .filter(x => x.n > 0)
+// Filter berubah = kembali ke halaman pertama di semua kelas.
+watch([kelas, cari, filterStatus], () => { halaman.value = {} })
+
 const pesanGalat = (e: unknown, cadangan: string) => {
-  const m = e instanceof Error ? e.message : cadangan
-  return /exam_card|release_exam_cards|card_token_for|regenerate_card_token|classroom|source/.test(m)
-    ? 'Fitur Kartu Ujian belum aktif di server. Terapkan migrasi 0055, 0056, dan 0057 di Supabase, lalu muat ulang.'
-    : m
+  const m = (e as { message?: string } | null)?.message || ''
+  // Hanya error "objek belum ada" yang berarti migrasi belum diterapkan; error lain (RLS, constraint) ditampilkan apa adanya.
+  if (/does not exist|could not find|schema cache/i.test(m) && /exam_card|card_token|source|classroom/.test(m)) {
+    return 'Fitur Kartu Ujian belum aktif di server. Terapkan migrasi 0055, 0056, dan 0057 di Supabase, lalu muat ulang.'
+  }
+  return m && m !== cadangan ? `${cadangan} ${m}` : cadangan
 }
 
 const muatPeriode = async () => {
@@ -374,20 +395,36 @@ const cetak = (daftar: SiswaKartu[], judul: string) => {
         <div class="hidden grid-cols-[1.25rem_2rem_minmax(0,1fr)_7rem_9rem_10rem_6.5rem_11rem] gap-3 border-b border-[#EFF2F7] bg-[#FAFBFC] px-4 py-2 text-[10px] font-extrabold uppercase tracking-wider text-[#667085] lg:grid">
           <span /><span>No</span><span>Siswa</span><span>Ruang</span><span>Administrasi</span><span>Status kartu</span><span>Token</span><span class="text-right">Aksi</span>
         </div>
-        <section v-for="g in grup" :key="g.nama" :aria-label="`Kelas ${g.nama}`">
-          <div class="flex items-center gap-3 border-b border-[#EFF2F7] bg-[#F5F7FA] px-4 py-1.5">
+        <section v-for="g in grup" :key="g.nama" :aria-label="`Kelas ${g.nama}`" class="border-b border-[#EFF2F7] last:border-b-0">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 bg-[#F5F7FA] px-4 py-2">
             <input v-if="idKartu(g.isi).length" type="checkbox" class="h-4 w-4" :checked="grupDipilih(g.isi)" :aria-label="`Pilih semua kartu kelas ${g.nama}`" @change="pilihGrup(g.isi)">
             <span v-else class="w-4" />
             <h4 class="text-xs font-extrabold text-[#101828]">Kelas {{ g.nama }}</h4>
-            <span class="text-[11px] text-[#667085]">{{ g.isi.filter(s => s.token).length }}/{{ g.isi.length }} kartu</span>
-            <button v-if="!kelas" type="button" class="ml-auto min-h-8 text-[11px] font-bold text-[#1B5FD9] hover:underline disabled:opacity-50" :disabled="!g.isi.some(bisaCetak)" @click="cetak(g.isi, g.nama)">Cetak kelas</button>
+            <span class="text-[11px] text-[#667085] tabular-nums">{{ g.isi.filter(s => s.token).length }}/{{ g.isi.length }} kartu</span>
+            <span
+              v-for="x in ringkasKelas(g.isi)"
+              :key="x.st"
+              class="rounded-md px-1.5 py-0.5 text-[10.5px] font-bold tabular-nums"
+              :class="STATUS[x.st].kelas"
+            >{{ x.n }} {{ STATUS[x.st].label.toLowerCase() }}</span>
+            <div class="ml-auto flex items-center gap-3">
+              <button v-if="!kelas" type="button" class="min-h-8 text-[11px] font-bold text-[#1B5FD9] hover:underline disabled:opacity-50" :disabled="!g.isi.some(bisaCetak)" @click="cetak(g.isi, g.nama)">Cetak kelas</button>
+              <button
+                v-if="!kelas && !cari && !filterStatus && grup.length > 1"
+                type="button"
+                class="min-h-8 rounded-md border border-[#E7EBF2] bg-white px-2.5 text-[11px] font-bold text-[#344054]"
+                :aria-expanded="sedangTerbuka(g.nama)"
+                @click="togelKelas(g.nama)"
+              >{{ sedangTerbuka(g.nama) ? 'Tutup' : 'Buka' }}</button>
+            </div>
           </div>
+          <template v-if="sedangTerbuka(g.nama)">
           <ul class="divide-y divide-[#EFF2F7]">
-            <li v-for="(s, i) in g.isi" :key="s.studentId" class="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 gap-y-1 px-4 py-2.5 text-xs lg:grid-cols-[1.25rem_2rem_minmax(0,1fr)_7rem_9rem_10rem_6.5rem_11rem] lg:items-center">
+            <li v-for="(s, i) in potongHalaman(g)" :key="s.studentId" class="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 gap-y-1 px-4 py-2.5 text-xs lg:grid-cols-[1.25rem_2rem_minmax(0,1fr)_7rem_9rem_10rem_6.5rem_11rem] lg:items-center">
               <span class="row-span-6 pt-0.5 lg:row-span-1 lg:pt-0">
                 <input v-if="s.cardId" v-model="dipilih" type="checkbox" :value="s.cardId" class="h-4 w-4" :aria-label="`Pilih ${s.name}`">
               </span>
-              <span class="hidden text-[#667085] tabular-nums lg:block">{{ i + 1 }}</span>
+              <span class="hidden text-[#667085] tabular-nums lg:block">{{ (halamanAktif(g) - 1) * PER_HALAMAN + i + 1 }}</span>
               <div class="min-w-0">
                 <b class="block truncate text-[13px] text-[#101828]">{{ s.name }}</b>
                 <span class="text-[#667085] tabular-nums">NIS {{ s.nis || '-' }}</span>
@@ -413,6 +450,15 @@ const cetak = (daftar: SiswaKartu[], judul: string) => {
               </div>
             </li>
           </ul>
+          <nav v-if="jumlahHalaman(g.isi.length) > 1" class="flex flex-wrap items-center justify-between gap-2 border-t border-[#EFF2F7] px-4 py-2.5 text-xs" :aria-label="`Halaman kartu kelas ${g.nama}`">
+            <span class="text-[#667085] tabular-nums">{{ (halamanAktif(g) - 1) * PER_HALAMAN + 1 }}–{{ Math.min(halamanAktif(g) * PER_HALAMAN, g.isi.length) }} dari {{ g.isi.length }} siswa</span>
+            <div class="flex items-center gap-2">
+              <button type="button" class="min-h-8 rounded-md border border-[#E7EBF2] px-2.5 font-bold text-[#344054] disabled:opacity-40" :disabled="halamanAktif(g) <= 1" @click="aturHalaman(g, halamanAktif(g) - 1)">Sebelumnya</button>
+              <span class="font-semibold text-[#344054] tabular-nums">{{ halamanAktif(g) }} / {{ jumlahHalaman(g.isi.length) }}</span>
+              <button type="button" class="min-h-8 rounded-md border border-[#E7EBF2] px-2.5 font-bold text-[#344054] disabled:opacity-40" :disabled="halamanAktif(g) >= jumlahHalaman(g.isi.length)" @click="aturHalaman(g, halamanAktif(g) + 1)">Berikutnya</button>
+            </div>
+          </nav>
+          </template>
         </section>
       </template>
     </div>
