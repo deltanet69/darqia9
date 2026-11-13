@@ -37,6 +37,7 @@ const ABSENSI_GURU_TABS: { id: TampilanAbsensi, label: string, icon: string }[] 
   { id: 'kehadiran', label: 'Rekap Kehadiran', icon: 'users' },
   { id: 'rekap', label: 'Rekap Mengajar', icon: 'cal' }
 ]
+const tabTerlihat = useRbac().jagaSubmenu('Absensi Guru', ABSENSI_GURU_TABS, tampilanAbsensi)
 
 const jenjang = ref<'smp' | 'smk'>(activeGrade.value.toLowerCase() as 'smp' | 'smk')
 const role = ref<'superadmin' | 'admin_tu' | 'guru'>('superadmin')
@@ -538,7 +539,7 @@ onMounted(() => {
           aria-label="Navigasi Absensi Guru"
         >
           <button
-            v-for="tab in ABSENSI_GURU_TABS"
+            v-for="tab in tabTerlihat"
             :key="tab.id"
             type="button"
             role="tab"

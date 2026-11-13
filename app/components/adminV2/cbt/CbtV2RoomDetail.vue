@@ -92,8 +92,8 @@ const guruGrade = computed(() => cbtData.teachers.value.filter(item => item.grad
 // Punishment (kode pembuka & buka kunci) hanya untuk pengawas ruang ini atau Superadmin; DB juga menegakkannya.
 const bolehPunishment = computed(() => rbac.adalahSuperadmin.value
   || (!!rbac.state.value.subjekSaya && rbac.state.value.subjekSaya === props.room.supervisorId))
-// Kelola ruang (tambah/keluarkan siswa, pengawas, tugaskan ujian) hanya Superadmin; guru dan wali kelas hanya memantau.
-const bolehKelola = computed(() => rbac.adalahSuperadmin.value)
+// Kelola isi ruang (tambah/keluarkan siswa, pengawas, tugaskan ujian) = izin Ubah sub-modul Ruang Ujian (RBAC).
+const bolehKelola = computed(() => rbac.bolehAksi('Manajemen CBT', 'rooms', 'ubah', rbac.adalahSuperadmin.value))
 const ubahPengawas = async (supervisorId: string) => {
   try {
     await api.simpanRuang({

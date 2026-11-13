@@ -56,7 +56,7 @@ export interface SaringTiket {
 
 // Kategori modul = daftar modul aplikasi yang sama dengan matriks RBAC
 // (sumber tunggal di rbacCore), ditambah kendala teknis & lainnya.
-export const TIKET_KATEGORI_MODUL: string[] = RBAC_MODUL
+export const TIKET_KATEGORI_MODUL: string[] = RBAC_MODUL.filter(m => m !== 'Tiketing')
 export const TIKET_KATEGORI_LAIN: string[] = ['Login', 'Jaringan / Network', 'Integrasi Data', 'Lainnya']
 export const TIKET_SEMUA_KATEGORI: string[] = [...TIKET_KATEGORI_MODUL, ...TIKET_KATEGORI_LAIN]
 

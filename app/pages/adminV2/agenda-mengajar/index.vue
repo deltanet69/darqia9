@@ -100,6 +100,7 @@ const tabs: Array<{ id: AgendaTab; label: string; icon: string }> = [
   { id: 'ujian', label: 'PTS & PAS', icon: 'chart' },
   { id: 'rekap', label: 'Rekap', icon: 'book' }
 ]
+const tabTerlihat = useRbac().jagaSubmenu('Agenda Mengajar', tabs, activeTab)
 function romawi(n: number) {
   let hasil = ''
   for (const [nilai, huruf] of [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']] as const) {
@@ -450,7 +451,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.fo
           <div><dt class="font-semibold text-[#93B4F5]">Semester</dt><dd class="mt-0.5 font-extrabold">{{ currentBook.semester }} &middot; {{ currentBook.tahun_ajaran }}</dd></div>
         </dl>
       </section>
-      <nav class="agenda-tabs" role="tablist" aria-label="Navigasi Agenda Mengajar"><button v-for="tab in tabs" :key="tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id" :class="{ active: activeTab === tab.id }" @click="setTab(tab.id)"><AdminV2Icon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span></button></nav>
+      <nav class="agenda-tabs" role="tablist" aria-label="Navigasi Agenda Mengajar"><button v-for="tab in tabTerlihat" :key="tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id" :class="{ active: activeTab === tab.id }" @click="setTab(tab.id)"><AdminV2Icon :name="tab.icon" :size="16" /><span>{{ tab.label }}</span></button></nav>
       <AgendaMengajarFilter
         v-if="tampilan !== 'buku'"
         :jenjang="jenjang"

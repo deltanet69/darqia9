@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRbac } from '~/composables/useRbac'
+import RbacIzinModul from './RbacIzinModul.vue'
 import {
-  RBAC_AKSI, RBAC_MODUL, hitungIzin, izinKosong, kolomPenuh, penugasanDari, terapkanCentang,
-  type AksiRbac, type IzinPeran, type JenjangRbac
+  RBAC_DAUN, hitungIzinRinci, izinKosong, penugasanDari,
+  type CakupanPeran, type IzinPeran, type JenjangRbac
 } from '~/composables/rbacCore'
 
 const rbac = useRbac()
@@ -18,10 +19,12 @@ const kabar = (teks: string, galat = false) => { pesan.value = teks; pesanGalat.
 const aktifId = ref('')
 const peranAktif = computed(() => state.value.peran.find(r => r.id === aktifId.value) || null)
 const draf = ref<IzinPeran>(izinKosong())
+const drafCakupan = ref<CakupanPeran>({})
 
 const muatDraf = () => {
   const tersimpan = peranAktif.value ? state.value.izin[peranAktif.value.id] : null
   draf.value = JSON.parse(JSON.stringify(tersimpan || izinKosong()))
+  drafCakupan.value = { ...((peranAktif.value ? state.value.cakupan[peranAktif.value.id] : null) || {}) }
 }
 const pilihAwal = () => {
   const awal = state.value.peran.find(r => r.kunci === 'operator') || state.value.peran[0]
@@ -34,25 +37,25 @@ onMounted(() => { if (state.value.termuat && !aktifId.value) pilihAwal() })
 watch(aktifId, () => { muatDraf(); modeForm.value = null; konfirmasiHapus.value = false })
 
 // Draf yang belum diedit ikut data terbaru dari database (muat awal / admin lain mengubah izin).
-const izinTersimpanJson = () => JSON.stringify((peranAktif.value ? state.value.izin[peranAktif.value.id] : null) || izinKosong())
-watch(izinTersimpanJson, (baru, lama) => { if (JSON.stringify(draf.value) === lama) muatDraf() })
+// Hanya baris yang dicentang di layar (sub-modul / modul tanpa sub-menu); baris modul utama dihitung saat simpan.
+const jsonDaun = (izin: IzinPeran | null | undefined) => JSON.stringify(RBAC_DAUN.map(k => izin?.[k] || null))
+const jsonCakupan = (c: CakupanPeran | null | undefined) => JSON.stringify(Object.entries(c || {}).filter(([, v]) => v === 'sendiri').sort())
+const tersimpanJson = () => peranAktif.value
+  ? jsonDaun(state.value.izin[peranAktif.value.id]) + jsonCakupan(state.value.cakupan[peranAktif.value.id])
+  : ''
+const drafJson = () => jsonDaun(draf.value) + jsonCakupan(drafCakupan.value)
+watch(tersimpanJson, (baru, lama) => { if (drafJson() === lama) muatDraf() })
 
-const jumlahDraf = computed(() => hitungIzin(draf.value))
-const kotor = computed(() => peranAktif.value
-  ? JSON.stringify(draf.value) !== JSON.stringify(state.value.izin[peranAktif.value.id] || izinKosong())
-  : false)
+const jumlahDraf = computed(() => hitungIzinRinci(draf.value))
+const kotor = computed(() => !!peranAktif.value && drafJson() !== tersimpanJson())
 
-const centang = (modul: string, aksi: AksiRbac, nilai: boolean) => {
-  draf.value = terapkanCentang(draf.value, modul, aksi, nilai)
-}
-const centangKolom = (aksi: AksiRbac, nilai: boolean) => {
-  let hasil = draf.value
-  for (const modul of RBAC_MODUL) hasil = terapkanCentang(hasil, modul, aksi, nilai)
-  draf.value = hasil
-}
 const simpanIzin = async () => {
   if (!peranAktif.value) return
-  const galat = await rbac.simpanIzin(peranAktif.value.id, draf.value)
+  if (Object.values(drafCakupan.value).includes('sendiri') && !state.value.cakupanSiap) {
+    kabar('Cakupan data belum bisa disimpan: jalankan migrasi 0063_rbac_submodul_cakupan.sql di Supabase SQL Editor dulu.', true)
+    return
+  }
+  const galat = await rbac.simpanIzin(peranAktif.value.id, draf.value, drafCakupan.value)
   kabar(galat || `Izin ${peranAktif.value.nama} tersimpan.`, !!galat)
 }
 const batalkanIzin = () => { muatDraf(); kabar('Perubahan izin dibatalkan.') }
@@ -218,7 +221,7 @@ const terkunci = computed(() => !!peranAktif.value?.terkunci)
         <select id="rbac-peran" v-model="aktifId" class="min-w-0 flex-1 sm:max-w-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2.5 text-[12.5px] text-slate-600 outline-none focus:border-blue-600">
           <option v-for="r in state.peran" :key="r.id" :value="r.id">{{ r.nama }}{{ r.terkunci ? ' — Terkunci' : '' }}</option>
         </select>
-        <span class="inline-block text-[11px] font-semibold rounded px-2 py-1 bg-slate-100 text-slate-600">{{ jumlahDraf }} dari {{ RBAC_MODUL.length * 4 }} izin aktif</span>
+        <span class="inline-block text-[11px] font-semibold rounded px-2 py-1 bg-slate-100 text-slate-600">{{ jumlahDraf }} dari {{ RBAC_DAUN.length * 4 }} izin aktif</span>
         <span class="ml-auto flex items-center gap-3">
           <button :disabled="!bolehKelola" class="bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium rounded-xl px-4 py-2.5 transition disabled:opacity-50" @click="bukaBaru">+ Peran Baru</button>
           <span v-if="!terkunci" class="flex items-center gap-3">
@@ -261,42 +264,12 @@ const terkunci = computed(() => !!peranAktif.value?.terkunci)
       </div>
     </div>
 
-    <div class="mt-4 bg-white border border-slate-300 rounded-xl overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-2.5 bg-slate-100 border-b border-slate-300">
-        <p class="text-[10.5px] font-semibold tracking-wider text-slate-500 uppercase">Izin per modul</p>
-        <p class="text-[11px] font-medium text-slate-500">{{ jumlahDraf }} izin aktif</p>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[560px] text-[13px]">
-          <thead>
-            <tr class="border-b border-slate-200 text-left">
-              <th class="px-4 py-2.5 text-[10.5px] font-semibold tracking-wider text-slate-500 uppercase">Modul</th>
-              <th v-for="a in RBAC_AKSI" :key="a.kunci" class="w-20 px-2 py-2.5 text-center text-[10.5px] font-semibold tracking-wider text-slate-500 uppercase">{{ a.label }}</th>
-            </tr>
-            <tr class="border-b border-slate-200 text-[12px] text-slate-500">
-              <td class="px-4 py-2">Centang semua kolom</td>
-              <td v-for="a in RBAC_AKSI" :key="a.kunci" class="px-2 py-2 text-center">
-                <input type="checkbox" :checked="kolomPenuh(draf, a.kunci)" :disabled="terkunci || !bolehKelola" class="h-4 w-4 accent-blue-600" @change="centangKolom(a.kunci, ($event.target as HTMLInputElement).checked)">
-              </td>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-200">
-            <tr v-for="modul in RBAC_MODUL" :key="modul" class="hover:bg-slate-50 transition">
-              <td class="px-4 py-3 font-medium text-slate-700">{{ modul }}</td>
-              <td v-for="a in RBAC_AKSI" :key="a.kunci" class="px-2 py-3 text-center">
-                <input type="checkbox" :checked="draf[modul]?.[a.kunci]" :disabled="terkunci || !bolehKelola" class="h-4 w-4 accent-blue-600" @change="centang(modul, a.kunci, ($event.target as HTMLInputElement).checked)">
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="border-t border-slate-200 px-4 py-3 text-[12px] text-slate-400">Aturan: Buat / Ubah / Hapus otomatis menyalakan Lihat. Mematikan Lihat membersihkan seluruh baris modul itu. Izin inilah yang menegakkan akses menu, halaman, dan tombol di AdminV2.</p>
-    </div>
+    <RbacIzinModul v-model:izin="draf" v-model:cakupan="drafCakupan" :nonaktif="terkunci || !bolehKelola" />
 
     <div class="mt-3 bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-wrap gap-x-6 gap-y-1.5 text-[12px] text-slate-500">
       <span><span class="font-medium text-slate-700">Penugasan & peran:</span> langsung tersimpan saat ditambahkan</span>
       <span><span class="font-medium text-slate-700">Matriks izin:</span> tersimpan lewat tombol Simpan Izin</span>
-      <span><span class="font-medium text-slate-700">Penegakan:</span> menu disaring, rute modul dijaga, sesuai peran + jenjang pengguna</span>
+      <span><span class="font-medium text-slate-700">Penegakan:</span> menu, rute, dan sub-menu disaring sesuai peran + jenjang pengguna</span>
     </div>
 
     <div class="fixed inset-x-0 bottom-0 bg-white border-t border-slate-200 z-30">

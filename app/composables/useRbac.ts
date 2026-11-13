@@ -10,12 +10,12 @@
 //   penegakan belum aktif untuknya (masa peralihan sampai akun ditugaskan).
 
 import { useState } from 'nuxt/app'
-import { computed } from 'vue'
+import { computed, watchEffect, type Ref } from 'vue'
 import { useAdminGrade } from './useAdminGrade'
 import {
-  RBAC_MODUL, RBAC_SEED_IZIN, RBAC_SEED_PERAN, bisaAkses, dalamCakupan, izinKosong,
-  modulDariJudul, penugasanDari,
-  type AksiRbac, type IzinPeran, type JenjangRbac, type PenugasanRbac, type PeranRbac
+  RBAC_BATAS_BAWAAN, RBAC_KUNCI, RBAC_SEED_IZIN, RBAC_SEED_PERAN, agregatModul, bisaAkses, dalamCakupan, izinKosong,
+  kunciSub, lengkapiSub, modulDariJudul, penugasanDari,
+  type AksiRbac, type CakupanPeran, type CakupanRbac, type IzinPeran, type JenjangRbac, type PenugasanRbac, type PeranRbac
 } from './rbacCore'
 
 export * from './rbacCore'
@@ -25,6 +25,9 @@ export interface KandidatRbac { subjekId: string; nama: string; keterangan: stri
 interface RbacState {
   peran: PeranRbac[]
   izin: Record<string, IzinPeran>
+  cakupan: Record<string, CakupanPeran>
+  // Kolom rbac_permissions.cakupan ada (migrasi 0063 sudah dijalankan).
+  cakupanSiap: boolean
   penugasan: PenugasanRbac[]
   kandidat: KandidatRbac[]
   kandidatAkunTermuat: boolean
@@ -41,6 +44,8 @@ const seedState = (): RbacState => {
   return {
     peran: JSON.parse(JSON.stringify(RBAC_SEED_PERAN)),
     izin,
+    cakupan: {},
+    cakupanSiap: false,
     penugasan: [],
     kandidat: [],
     kandidatAkunTermuat: false,
@@ -85,7 +90,8 @@ export const useRbac = () => {
     try {
       const [{ data: peranRows, error }, { data: izinRows }, { data: tugasRows }] = await Promise.all([
         client.from('rbac_roles').select('id, kunci, nama, deskripsi, terkunci, urutan').order('urutan'),
-        client.from('rbac_permissions').select('peran_id, modul, lihat, buat, ubah, hapus'),
+        // '*': kolom cakupan (0063) mungkin belum ada; memilihnya secara eksplisit akan menggagalkan seluruh query.
+        client.from('rbac_permissions').select('*'),
         client.from('rbac_assignments').select('subjek_id, nama, peran_id, jenjang')
       ])
       if (error || !peranRows) return false
@@ -95,14 +101,29 @@ export const useRbac = () => {
         terkunci: !!r.terkunci, urutan: r.urutan ?? 99
       }))
       const izin: Record<string, IzinPeran> = {}
-      for (const peran of state.value.peran) izin[peran.id] = izinKosong()
+      const cakupan: Record<string, CakupanPeran> = {}
+      const adaBaris = new Set<string>()
+      for (const peran of state.value.peran) { izin[peran.id] = izinKosong(); cakupan[peran.id] = {} }
       for (const row of izinRows || []) {
-        if (!izin[row.peran_id]) izin[row.peran_id] = izinKosong()
+        if (!izin[row.peran_id]) { izin[row.peran_id] = izinKosong(); cakupan[row.peran_id] = {} }
         if (izin[row.peran_id][row.modul]) {
           izin[row.peran_id][row.modul] = { lihat: !!row.lihat, buat: !!row.buat, ubah: !!row.ubah, hapus: !!row.hapus }
+          adaBaris.add(`${row.peran_id}|${row.modul}`)
+          if (row.cakupan === 'sendiri') cakupan[row.peran_id]![row.modul] = 'sendiri'
         }
       }
+      // Sub-modul tanpa baris tersimpan mewarisi modul utamanya, jadi data lama tetap berlaku apa adanya.
+      for (const id of Object.keys(izin)) {
+        const ada = (k: string) => adaBaris.has(`${id}|${k}`)
+        lengkapiSub(izin[id]!, ada)
+        if (state.value.peran.find(r => r.id === id)?.terkunci) continue
+        // Baris yang belum pernah disimpan mengikuti perilaku sebelum update RBAC.
+        for (const [k, aksi] of RBAC_BATAS_BAWAAN) if (!ada(k)) for (const x of aksi) izin[id]![k]![x] = false
+        if (!ada('Tiketing')) izin[id]!['Tiketing'] = { lihat: true, buat: true, ubah: false, hapus: false }
+      }
       state.value.izin = izin
+      state.value.cakupan = cakupan
+      state.value.cakupanSiap = !!izinRows?.length && 'cakupan' in izinRows[0]
       state.value.penugasan = (tugasRows || []).map((t: any) => ({
         subjekId: t.subjek_id, nama: t.nama, peranId: t.peran_id,
         jenjang: (t.jenjang || ['SMK', 'SMP']) as JenjangRbac[]
@@ -173,6 +194,7 @@ export const useRbac = () => {
     }
     state.value.peran = [...state.value.peran, peran]
     state.value.izin = { ...state.value.izin, [id]: izinKosong() }
+    state.value.cakupan = { ...state.value.cakupan, [id]: {} }
     useLogAktivitas().catat('Hak Akses (RBAC)', 'buat peran', `Peran baru: ${nama}`)
     return null
   }
@@ -211,21 +233,24 @@ export const useRbac = () => {
   }
 
   // ===== Izin =====
-  const simpanIzin = async (peranId: string, izinBaru: IzinPeran): Promise<string | null> => {
+  const simpanIzin = async (peranId: string, izinMasuk: IzinPeran, cakupanBaru: CakupanPeran = state.value.cakupan[peranId] || {}): Promise<string | null> => {
     const peran = state.value.peran.find(r => r.id === peranId)
     if (!peran || peran.terkunci) return 'Peran terkunci tidak bisa diubah.'
+    const izinBaru = agregatModul(JSON.parse(JSON.stringify(izinMasuk)))
     if (state.value.tabelSiap) {
-      const rows = RBAC_MODUL.map(modul => ({
+      const rows = RBAC_KUNCI.map(modul => ({
         peran_id: peranId, modul,
         lihat: !!izinBaru[modul]?.lihat, buat: !!izinBaru[modul]?.buat,
-        ubah: !!izinBaru[modul]?.ubah, hapus: !!izinBaru[modul]?.hapus
+        ubah: !!izinBaru[modul]?.ubah, hapus: !!izinBaru[modul]?.hapus,
+        ...(state.value.cakupanSiap ? { cakupan: cakupanBaru[modul] === 'sendiri' ? 'sendiri' : 'semua' } : {})
       }))
       const { data, error } = await useSupabaseClient().from('rbac_permissions').upsert(rows, { onConflict: 'peran_id,modul' }).select('modul')
       if (error) return error.message
       // Penolakan senyap oleh kebijakan database tidak melempar galat; pastikan semua baris benar-benar tersimpan.
       if ((data?.length ?? 0) !== rows.length) return 'Izin tidak tersimpan penuh (ditolak database). Muat ulang halaman, lalu coba lagi.'
     }
-    state.value.izin = { ...state.value.izin, [peranId]: JSON.parse(JSON.stringify(izinBaru)) }
+    state.value.izin = { ...state.value.izin, [peranId]: izinBaru }
+    state.value.cakupan = { ...state.value.cakupan, [peranId]: { ...cakupanBaru } }
     useLogAktivitas().catat('Hak Akses (RBAC)', 'ubah izin', `Matriks izin diperbarui untuk peran ${peran.nama}`)
     return null
   }
@@ -290,15 +315,40 @@ export const useRbac = () => {
     if (jenjang?.length && !jenjang.includes(grade.value as JenjangRbac)) grade.value = jenjang[0]
   }
 
+  // Izin satu sub-modul (tab/sub-menu). Lihat: sama dengan bisaSaya (belum ditugaskan = boleh, seperti sebelumnya).
+  const bisaSub = (modul: string, sub: string, aksi: AksiRbac): boolean => bisaSaya(kunciSub(modul, sub), aksi)
+  // Aksi Buat/Ubah/Hapus di modul yang sudah ditegakkan: pengguna yang belum ditugaskan peran tetap memakai
+  // aturan lama modul itu (lama), supaya penegakan baru tidak membuka atau menutup akses tanpa penugasan.
+  const bolehAksi = (modul: string, sub: string, aksi: AksiRbac, lama: boolean): boolean =>
+    adalahSuperadmin.value || (penegakanAktif.value ? bisaSub(modul, sub, aksi) : lama)
+  // Cakupan data peran saya pada modul: Superadmin dan pengguna belum ditugaskan = semua data.
+  const cakupanSaya = (modul: string): CakupanRbac => {
+    if (adalahSuperadmin.value || !peranSaya.value) return 'semua'
+    return state.value.cakupan[peranSaya.value.id]?.[modul] === 'sendiri' ? 'sendiri' : 'semua'
+  }
+
+  // Tab/sub-menu yang boleh dilihat, sekaligus menjaga tab aktif selalu salah satu yang boleh
+  // (mis. tab bawaan atau ?tab= di URL yang tidak diizinkan dipindah ke tab pertama yang boleh).
+  const jagaSubmenu = <T extends { id: string }>(modul: string, daftar: T[] | Ref<T[]>, aktif: Ref<T['id']>) => {
+    const terlihat = computed(() => (Array.isArray(daftar) ? daftar : daftar.value).filter(t => bisaSub(modul, t.id, 'lihat')))
+    watchEffect(() => {
+      const pertama = terlihat.value[0]
+      if (pertama && !terlihat.value.some(t => t.id === aktif.value)) aktif.value = pertama.id
+    })
+    return terlihat
+  }
+
   const bolehJudulMenu = (judul: string): boolean => {
     const modul = modulDariJudul(judul)
     if (modul === null) return true
+    // Menu Pembayaran = halaman sub-modul Keuangan Sekolah.
+    if (judul.toLowerCase().trim() === 'pembayaran') return bisaSub(modul, 'pembayaran', 'lihat')
     return bisaSaya(modul, 'lihat')
   }
 
   return {
     state, muat,
     tambahPeran, ubahPeran, hapusPeran, simpanIzin, tugaskan, lepaskan,
-    penugasanSaya, peranSaya, penegakanAktif, bisaSaya, bolehJudulMenu, bisaGantiJenjang, adalahSuperadmin, namaAkun
+    penugasanSaya, peranSaya, penegakanAktif, bisaSaya, bisaSub, bolehAksi, cakupanSaya, jagaSubmenu, bolehJudulMenu, bisaGantiJenjang, adalahSuperadmin, namaAkun
   }
 }

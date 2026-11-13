@@ -9,11 +9,14 @@ import { cetakKartu } from '~/utils/cbtKartuCetak'
 const props = withDefaults(defineProps<{ grade: GradeType, source?: 'cbt' | 'ujian_harian' }>(), { source: 'cbt' })
 const emit = defineEmits<{ (e: 'toast', msg: string): void }>()
 
-const api = useKartuUjian()
+const api = useKartuUjian(props.source)
 const cbtData = useAdminCbtData(props.source)
 const { tahun, muatOpsi } = useTahunAjaran()
 // Kartu hanya dikelola Superadmin; peran lain hanya melihat.
-const bolehKelola = computed(() => cbtData.adalahSuperadmin.value)
+// RBAC sub-modul Kartu Ujian: Buat = periode baru; Ubah = tanggal, rilis, eligible, token; Hapus = periode/kartu.
+const bolehKelola = computed(() => api.bolehKartu('ubah'))
+const bolehBuat = computed(() => api.bolehKartu('buat'))
+const bolehHapus = computed(() => api.bolehKartu('hapus'))
 
 const daftarPeriode = ref<PeriodeKartu[]>([])
 const pilihId = ref('')
@@ -294,7 +297,7 @@ const exportExcel = async () => {
           </button>
           <span v-if="!daftarPeriode.length && !errorPeriode" class="text-xs text-[#667085]">Belum ada periode untuk jenjang ini.</span>
         </template>
-        <button v-if="bolehKelola && !formBaru && opsiBaru.length" type="button" class="ml-auto min-h-9 rounded-lg bg-[#101828] px-3 text-xs font-bold text-white" @click="bukaFormBaru">Buat Periode</button>
+        <button v-if="bolehBuat && !formBaru && opsiBaru.length" type="button" class="ml-auto min-h-9 rounded-lg bg-[#101828] px-3 text-xs font-bold text-white" @click="bukaFormBaru">Buat Periode</button>
       </div>
 
       <div v-if="formBaru" class="mt-3 flex flex-wrap items-end gap-2 border-t border-[#EFF2F7] pt-3">
@@ -346,7 +349,7 @@ const exportExcel = async () => {
           <template v-else>
             <button type="button" class="min-h-9 rounded-lg border border-[#E7EBF2] px-3 text-xs font-bold text-[#344054]" @click="ubahTanggal = true">Ubah tanggal</button>
             <button type="button" class="min-h-9 rounded-lg bg-[#1B5FD9] px-3 text-xs font-bold text-white disabled:opacity-50" :disabled="busy" @click="terbitkan">{{ busy ? 'Memproses…' : rilisAktif ? 'Terbitkan Susulan' : 'Rilis Kartu' }}</button>
-            <button type="button" class="min-h-9 rounded-lg px-2 text-xs font-bold text-[#B42318] hover:underline disabled:opacity-50" :disabled="busy" @click="hapusPeriode">Hapus periode</button>
+            <button v-if="bolehHapus" type="button" class="min-h-9 rounded-lg px-2 text-xs font-bold text-[#B42318] hover:underline disabled:opacity-50" :disabled="busy" @click="hapusPeriode">Hapus periode</button>
           </template>
         </div>
       </div>
@@ -395,7 +398,7 @@ const exportExcel = async () => {
               <button type="button" class="min-h-9 rounded-lg bg-[#1B5FD9] px-3 text-xs font-bold text-white" @click="cetak(terpilih, `${terpilih.length} siswa`)">Cetak</button>
               <template v-if="bolehKelola">
                 <button type="button" class="min-h-9 rounded-lg border border-[#E7EBF2] px-3 text-xs font-bold text-[#344054] disabled:opacity-50" :disabled="busy" @click="regenerasi(terpilih)">Ganti Token</button>
-                <button type="button" class="min-h-9 rounded-lg border border-[#F5C6C0] px-3 text-xs font-bold text-[#B42318] disabled:opacity-50" :disabled="busy" @click="hapusKartu(terpilih)">Hapus Kartu</button>
+                <button v-if="bolehHapus" type="button" class="min-h-9 rounded-lg border border-[#F5C6C0] px-3 text-xs font-bold text-[#B42318] disabled:opacity-50" :disabled="busy" @click="hapusKartu(terpilih)">Hapus Kartu</button>
               </template>
               <button type="button" class="min-h-9 px-1 text-xs font-bold text-[#475467] hover:underline" @click="dipilih = []">Batal</button>
             </template>

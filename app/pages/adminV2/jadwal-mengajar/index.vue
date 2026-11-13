@@ -49,6 +49,8 @@ const jenjang = computed<Jenjang>({
 })
 const role = ref<RoleKey>('operator')
 const activeSubmenu = ref<'grade' | 'saya'>('grade')
+const subTerlihat = useRbac().jagaSubmenu('Jadwal Mengajar', [{ id: 'grade' as const }, { id: 'saya' as const }], activeSubmenu)
+const bolehSub = (id: string) => subTerlihat.value.some(t => t.id === id)
 
 // Navigasi & Popover Shell
 const isMegaOpen = ref(false)
@@ -375,6 +377,7 @@ onUnmounted(() => {
         role="tablist"
       >
         <button
+          v-if="bolehSub('grade')"
           type="button"
           class="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all"
           :class="activeSubmenu === 'grade' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#475467] hover:text-[#101828]'"
@@ -385,6 +388,7 @@ onUnmounted(() => {
         </button>
 
         <button
+          v-if="bolehSub('saya')"
           type="button"
           class="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all"
           :class="activeSubmenu === 'saya' ? 'bg-white text-[#101828] shadow-xs' : 'text-[#475467] hover:text-[#101828]'"

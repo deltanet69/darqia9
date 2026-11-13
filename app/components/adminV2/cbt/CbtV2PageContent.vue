@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, watchEffect } from 'vue'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -81,6 +81,15 @@ const isProfileOpen = ref(false)
 const cbtData = useAdminCbtData(assessmentSource.value)
 const grade = ref<GradeType>(initialGrade)
 const activeTab = ref<CbtTabId>(initialActiveTab)
+// RBAC sub-menu: tab yang tidak diizinkan (mis. dibuka lewat ?tab= di URL) dipindah ke sub-menu pertama yang boleh.
+const rbac = useRbac()
+const tabBoleh = (tab: CbtTabId) => tab !== (isDailyAssessment.value ? 'rooms' : 'seb')
+  && rbac.bisaSub(isDailyAssessment.value ? 'LMS' : 'Manajemen CBT', tab, 'lihat')
+watchEffect(() => {
+  if (tabBoleh(activeTab.value)) return
+  const pertama = CBT_TABS.find(item => tabBoleh(item.id))
+  if (pertama) activeTab.value = pertama.id
+})
 const bankEntry = ref(0)
 // Nama ruang yang sedang dibuka (null = tampil daftar ruang). Saat ada, sub menu CBT disembunyikan.
 const roomDetail = ref<string | null>(null)
@@ -92,7 +101,8 @@ const bankRef = ref<{ kembali: () => void } | null>(null)
 const bankDetail = ref(false)
 watch(activeTab, () => { bankDetail.value = false })
 const inDetail = computed(() => inRoomDetail.value || inExamDetail.value || bankDetail.value)
-const exams = computed(() => cbtData.exams.value)
+// Cakupan RBAC 'sendiri': hanya ujian kelas+mapel yang diampu (Ringkasan, Monitoring, Daftar Ujian).
+const exams = computed(() => cbtData.exams.value.filter(e => cbtData.dalamCakupanSaya(e.classId, e.subjectId)))
 const students = ref<StudentScore[]>([...INITIAL_STUDENTS])
 
 // Drawer State
@@ -253,6 +263,7 @@ const liveExamCount = computed(() => {
 
 // Tab navigation handler
 const switchTab = (tab: CbtTabId) => {
+  if (!tabBoleh(tab)) return
   if (tab === 'bank') bankEntry.value++
   activeTab.value = tab
   syncRoute()

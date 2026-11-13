@@ -31,7 +31,12 @@ const periodeList = computed(() => periodeOpsi(tahun.value, riwayat.value))
 // Empat opsi pertama = tahun ajaran aktif; sisanya arsip (hanya dilihat, tidak diubah).
 const arsip = computed(() => !periodeList.value.slice(0, 4).includes(periode.value))
 // Buat/ubah/hapus ruang hanya Superadmin; guru dan wali kelas hanya melihat dan memantau.
-const bolehKelola = computed(() => cbtData.adalahSuperadmin.value)
+// RBAC sub-modul Ruang Ujian (akun belum ditugaskan: aturan lama — hanya Superadmin).
+const bolehRuang = (aksi: 'buat' | 'ubah' | 'hapus') => useRbac().bolehAksi('Manajemen CBT', 'rooms', aksi, cbtData.adalahSuperadmin.value)
+const bolehBuat = computed(() => bolehRuang('buat'))
+const bolehUbah = computed(() => bolehRuang('ubah'))
+const bolehHapus = computed(() => bolehRuang('hapus'))
+const bolehKelola = computed(() => bolehBuat.value || bolehUbah.value || bolehHapus.value)
 const selected = computed(() => ruang.value.find(item => item.id === selectedId.value) ?? null)
 // Beri tahu halaman induk (untuk menyembunyikan sub menu CBT dan mengisi breadcrumb).
 watch(selected, item => emit('detail', item?.name ?? null), { immediate: true })
@@ -174,7 +179,7 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
               </option>
             </select>
           </div>
-          <template v-if="!arsip && bolehKelola">
+          <template v-if="!arsip && bolehBuat">
             <button
               type="button"
               class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#101828] hover:bg-black px-4 py-2 text-xs font-bold text-white shadow-sm transition-all active:scale-95 cursor-pointer"
@@ -320,7 +325,7 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
             </span>
 
             <div v-if="!arsip && bolehKelola" class="flex items-center gap-1.5">
-              <button
+              <button v-if="bolehUbah"
                 type="button"
                 class="px-2.5 py-1 rounded-lg border border-[#E7EBF2] bg-white hover:bg-slate-50 hover:border-slate-300 text-xs font-bold text-slate-700 transition-colors cursor-pointer shadow-2xs active:scale-95"
                 title="Ubah ruang"
@@ -328,7 +333,7 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
               >
                 Ubah
               </button>
-              <button
+              <button v-if="bolehHapus"
                 type="button"
                 class="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-xs font-bold text-rose-700 transition-colors cursor-pointer shadow-2xs active:scale-95"
                 title="Hapus ruang"
@@ -347,10 +352,10 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
         </div>
         <p class="text-base font-bold text-slate-900">Belum ada ruang untuk {{ periode }}</p>
         <p class="mx-auto mt-1 max-w-md text-xs text-slate-500">
-          {{ bolehKelola ? "Klik Buat Ruang. Anda dapat membuat satu ruang, atau banyak ruang sekaligus dengan siswa dibagi otomatis." : "Ruang ujian dibuat oleh Superadmin." }}
+          {{ bolehBuat ? "Klik Buat Ruang. Anda dapat membuat satu ruang, atau banyak ruang sekaligus dengan siswa dibagi otomatis." : "Ruang ujian dibuat oleh Superadmin." }}
         </p>
         <button
-          v-if="bolehKelola && !arsip"
+          v-if="bolehBuat && !arsip"
           type="button"
           class="mt-4 px-5 py-2.5 rounded-xl bg-[#101828] hover:bg-black text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
           @click="bukaForm()"

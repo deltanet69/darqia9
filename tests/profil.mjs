@@ -124,9 +124,9 @@ cek('daftarAplikasi hanya memuat modul dengan izin Lihat, persis checklist RBAC'
   assert.equal(daftar.find(a => a.modul === 'Dashboard').hak, 'Lihat')
 })
 
-cek('daftarAplikasi peran terkunci (Superadmin) = 23 modul semua Penuh', () => {
+cek('daftarAplikasi peran terkunci (Superadmin) = 24 modul semua Penuh', () => {
   const daftar = daftarAplikasi({ terkunci: true, izin: null })
-  assert.equal(daftar.length, 23)
+  assert.equal(daftar.length, 24)
   assert.ok(daftar.every(a => a.hak === 'Penuh'))
 })
 

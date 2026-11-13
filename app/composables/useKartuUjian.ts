@@ -24,11 +24,14 @@ export interface SiswaKartu {
   token?: string
 }
 
-export const useKartuUjian = () => {
+export const useKartuUjian = (sumber: SumberKartu = 'cbt') => {
   const client = useSupabaseClient()
   const rbac = useRbac()
   const galat = (error: { message: string } | null) => { if (error) throw new Error(error.message) }
-  const wajibSuperadmin = () => { if (!rbac.adalahSuperadmin.value) throw new Error('Hanya Superadmin yang dapat mengelola kartu ujian.') }
+  // RBAC sub-modul Kartu Ujian CBT/LMS (akun belum ditugaskan: aturan lama — hanya Superadmin).
+  const bolehKartu = (aksi: 'buat' | 'ubah' | 'hapus') =>
+    rbac.bolehAksi(sumber === 'ujian_harian' ? 'LMS' : 'Manajemen CBT', 'cards', aksi, rbac.adalahSuperadmin.value)
+  const wajib = (aksi: 'buat' | 'ubah' | 'hapus') => { if (!bolehKartu(aksi)) throw new Error(`Peran Anda tidak memiliki izin ${aksi} di Kartu Ujian.`) }
 
   const muatPeriode = async (grade: string, source: SumberKartu = 'cbt'): Promise<PeriodeKartu[]> => {
     const { data, error } = await client.from('exam_card_periods').select('id, grade, periode, starts_on, ends_on, released_at, source').eq('grade', grade).eq('source', source)
@@ -39,7 +42,7 @@ export const useKartuUjian = () => {
   }
 
   const simpanPeriode = async (input: { id?: string, grade: string, source: SumberKartu, periode: string, startsOn: string, endsOn: string }) => {
-    wajibSuperadmin()
+    wajib(input.id ? 'ubah' : 'buat')
     if (!input.startsOn || !input.endsOn || input.endsOn < input.startsOn) throw new Error('Tanggal selesai tidak boleh lebih awal dari tanggal mulai.')
     const payload = { grade: input.grade, source: input.source, periode: input.periode, starts_on: input.startsOn, ends_on: input.endsOn }
     const { error } = input.id
@@ -49,20 +52,20 @@ export const useKartuUjian = () => {
   }
 
   const hapusPeriode = async (id: string) => {
-    wajibSuperadmin()
+    wajib('hapus')
     const { error } = await client.from('exam_card_periods').delete().eq('id', id)
     galat(error)
   }
 
   const rilis = async (periodeId: string): Promise<number> => {
-    wajibSuperadmin()
+    wajib('ubah')
     const { data, error } = await client.rpc('release_exam_cards', { target_period: periodeId })
     galat(error)
     return typeof data === 'number' ? data : 0
   }
 
   const regenerasi = async (cardId: string): Promise<string> => {
-    wajibSuperadmin()
+    wajib('ubah')
     const { data, error } = await client.rpc('regenerate_card_token', { target_card: cardId })
     galat(error)
     return typeof data === 'string' ? data : ''
@@ -105,16 +108,17 @@ export const useKartuUjian = () => {
   }
 
   const hapusKartu = async (cardIds: string[]) => {
-    wajibSuperadmin()
+    wajib('hapus')
     const { error } = await client.from('exam_cards').delete().in('id', cardIds)
     galat(error)
   }
 
   const setEligible = async (studentId: string, eligible: boolean) => {
-    wajibSuperadmin()
+    wajib('ubah')
     const { error } = await client.from('students').update({ exam_eligible: eligible }).eq('id', studentId)
     galat(error)
   }
 
-  return { muatPeriode, simpanPeriode, hapusPeriode, rilis, regenerasi, muatSiswa, hapusKartu, setEligible }
+  return {
+    bolehKartu, muatPeriode, simpanPeriode, hapusPeriode, rilis, regenerasi, muatSiswa, hapusKartu, setEligible }
 }

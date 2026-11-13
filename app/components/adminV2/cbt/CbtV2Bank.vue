@@ -332,6 +332,9 @@ const deleteQuestion = async (qId: string) => {
   }
 }
 
+// RBAC sub-modul Bank Soal (akun belum ditugaskan: aturan lama — terbuka, dibatasi kelas/mapel oleh bolehKelolaBank).
+const bolehBuatBank = computed(() => cbtData.bolehAksi('bank', 'buat', true))
+const bolehHapusBank = computed(() => cbtData.bolehAksi('bank', 'hapus', true))
 const deletePackage = async (pkgId: string) => {
   if (confirm('Hapus seluruh paket bank soal ini?')) {
     try {
@@ -486,8 +489,8 @@ const confirmImport = async () => {
         </div>
         <div class="flex flex-wrap items-center gap-2">
         <button v-if="hasSavedDraft" type="button" class="min-h-11 rounded-xl border px-3 text-xs font-bold text-[#344054]" @click="restoreFormDraft">Lanjutkan draf</button>
-        <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-3 text-xs font-bold text-[#344054]" @click="isImportModalOpen = true">Impor Word / Excel</button>
-        <button
+        <button v-if="bolehBuatBank" type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-3 text-xs font-bold text-[#344054]" @click="isImportModalOpen = true">Impor Word / Excel</button>
+        <button v-if="bolehBuatBank"
           type="button"
           class="px-4 py-2.5 rounded-full bg-[#101828] hover:bg-[#1E293B] text-white text-xs font-semibold transition shadow-sm inline-flex items-center gap-1.5"
           @click="startCreatePackage(selectedClass)"
@@ -555,7 +558,7 @@ const confirmImport = async () => {
             >
               Lihat
             </button>
-            <button type="button" class="min-h-11 rounded-xl border border-[#F8D3CE] px-3 text-xs font-bold text-[#B42318]" @click="deletePackage(p.id)">Hapus</button>
+            <button v-if="bolehHapusBank" type="button" class="min-h-11 rounded-xl border border-[#F8D3CE] px-3 text-xs font-bold text-[#B42318]" @click="deletePackage(p.id)">Hapus</button>
           </div>
         </article>
       </div>
@@ -608,7 +611,7 @@ const confirmImport = async () => {
                     >
                       Ubah
                     </button>
-                    <button type="button" class="min-h-11 px-3 text-xs font-bold text-[#B42318]" @click="deletePackage(p.id)">Hapus</button>
+                    <button v-if="bolehHapusBank" type="button" class="min-h-11 px-3 text-xs font-bold text-[#B42318]" @click="deletePackage(p.id)">Hapus</button>
                     <button
                       type="button"
                       class="px-3 py-1.5 text-xs font-bold text-[#1B5FD9] hover:underline inline-flex items-center gap-1"
@@ -679,7 +682,7 @@ const confirmImport = async () => {
           >
             <span>Edit Paket Lengkap</span>
           </button>
-          <button
+          <button v-if="bolehHapusBank"
             type="button"
             class="px-3.5 py-2 rounded-full border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-semibold transition"
             @click="deletePackage(selectedPackage.id)"

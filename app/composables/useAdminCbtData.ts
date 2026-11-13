@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import type { BankPackage, BankQuestionItem, ExamItem, GradeType, LiveStudent } from '~/components/adminV2/cbt/cbtV2Data'
+import type { AksiRbac } from './rbacCore'
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
 const questionRequests = new Map<AssessmentSource, Promise<void>>()
@@ -448,20 +449,34 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   // atau mapel terjadwal di kelas yang ia walikan. Tanpa subjectId = cek tingkat kelas.
   const adalahSuperadmin = rbac.adalahSuperadmin
   // CBT PTS/PAS: ujian dan token peserta hanya dikelola Superadmin (guru/wali kelas hanya bank soal + pemantauan). Ujian harian (LMS) tidak dibatasi.
-  const bolehKelolaUjian = () => source === 'ujian_harian' || adalahSuperadmin.value
-  const wajibKelolaUjian = () => { if (!bolehKelolaUjian()) throw new Error('Hanya Superadmin yang dapat mengelola ujian dan token peserta.') }
-  // shortcut (keputusan owner): selama admin masih melengkapi Jadwal Pelajaran, semua guru boleh mengelola bank soal
-  // seluruh kelas & mapel jenjangnya; penyusun tetap tercatat atas nama akun guru (lihat saveBankPackage).
-  // Ubah ke false untuk kembali membatasi guru ke kelas+mapel yang ia ampu.
-  const BANK_TERBUKA_SEMUA_GURU = true
-  const bolehKelolaBank = (classId?: string | null, subjectId?: string | null) => {
-    if (adalahSuperadmin.value || BANK_TERBUKA_SEMUA_GURU) return true
+  // RBAC per sub-modul (rbacupdate.md): peran yang ditugaskan mengikuti matriks RBAC; akun yang belum
+  // ditugaskan tetap memakai aturan lama (argumen `lama`).
+  const modulRbac = source === 'ujian_harian' ? 'LMS' : 'Manajemen CBT'
+  const bolehAksi = (sub: string, aksi: AksiRbac, lama: boolean) => rbac.bolehAksi(modulRbac, sub, aksi, lama)
+  const bolehKelolaUjian = (aksi: AksiRbac = 'ubah') => bolehAksi('exams', aksi, source === 'ujian_harian' || adalahSuperadmin.value)
+  const wajibKelolaUjian = (aksi: AksiRbac) => {
+    if (!bolehKelolaUjian(aksi)) throw new Error(`Peran Anda tidak memiliki izin ${aksi} di Daftar Ujian ${modulRbac}.`)
+  }
+  // Cakupan 'sendiri': hanya kelas+mapel yang diampu menurut jadwal, atau mapel terjadwal di kelas yang ia walikan.
+  const cakupanSendiri = computed(() => rbac.cakupanSaya(modulRbac) === 'sendiri')
+  const ajarSaya = (classId?: string | null, subjectId?: string | null) => {
     const saya = rbac.state.value.subjekSaya
     if (!saya || !classId) return false
     const wali = classes.value.some(item => item.id === classId && item.homeroomTeacherId && String(item.homeroomTeacherId) === saya)
     return classSubjects.value.some(item => item.class_id === classId
       && (!subjectId || item.subject_id === subjectId)
       && (wali || (item.teacher_id && String(item.teacher_id) === saya)))
+  }
+  const dalamCakupanSaya = (classId?: string | null, subjectId?: string | null) => !cakupanSendiri.value || ajarSaya(classId, subjectId)
+  // shortcut (keputusan owner): selama admin masih melengkapi Jadwal Pelajaran, semua guru boleh mengelola bank soal
+  // seluruh kelas & mapel jenjangnya; penyusun tetap tercatat atas nama akun guru (lihat saveBankPackage).
+  // Ubah ke false untuk kembali membatasi guru ke kelas+mapel yang ia ampu.
+  const BANK_TERBUKA_SEMUA_GURU = true
+  // Cakupan RBAC 'sendiri' mengalahkan shortcut di atas untuk peran tersebut.
+  const bolehKelolaBank = (classId?: string | null, subjectId?: string | null) => {
+    if (adalahSuperadmin.value) return true
+    if (BANK_TERBUKA_SEMUA_GURU && !cakupanSendiri.value) return true
+    return ajarSaya(classId, subjectId)
   }
   // Guru penyusun bawaan = akun yang login. Superadmin tanpa data guru dicatat sebagai "Superadmin"
   // (agar bisa menyusun bank soal atas namanya sendiri); akun lain tanpa data guru dikosongkan.
@@ -472,6 +487,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const subjectItem = subjects.value.find(item => item.id === pkg.subjectId || (item.grade === pkg.grade && item.name === pkg.subject))
     if (!classItem || !subjectItem) throw new Error('Kelas atau mata pelajaran tidak lagi tersedia.')
     const bankLama = bankPackages.value.find(item => item.id === pkg.id)
+    if (!bolehAksi('bank', bankLama ? 'ubah' : 'buat', true)) throw new Error(`Peran Anda tidak memiliki izin ${bankLama ? 'ubah' : 'buat'} di Bank Soal ${modulRbac}.`)
     if (!bolehKelolaBank(classItem.id, subjectItem.id) || (bankLama && !bolehKelolaBank(bankLama.classId, bankLama.subjectId))) {
       throw new Error('Anda hanya dapat mengelola bank soal pada kelas dan mata pelajaran yang Anda ampu.')
     }
@@ -560,6 +576,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const deleteBankPackage = async (id: string, grade?: GradeType) => {
     const bank = bankPackages.value.find(item => item.id === id)
     if (!bank || (grade && bank.grade !== grade)) throw new Error('Bank soal tidak tersedia pada jenjang yang dipilih.')
+    if (!bolehAksi('bank', 'hapus', true)) throw new Error(`Peran Anda tidak memiliki izin hapus di Bank Soal ${modulRbac}.`)
     if (!bolehKelolaBank(bank.classId, bank.subjectId)) throw new Error('Anda hanya dapat menghapus bank soal pada kelas dan mata pelajaran yang Anda ampu.')
     const { error: deleteError } = await client.from(tables.banks).delete().eq('id', id).eq('grade', grade ?? bank.grade).select('id').single()
     if (deleteError) throw new Error(deleteError.message)
@@ -567,7 +584,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   }
 
   const saveExam = async (input: CbtExamInput) => {
-    wajibKelolaUjian()
+    wajibKelolaUjian(input.id ? 'ubah' : 'buat')
+    if (!dalamCakupanSaya(input.classId, input.subjectId)) throw new Error('Cakupan peran Anda hanya kelas dan mata pelajaran yang Anda ampu.')
     const classItem = classes.value.find(item => item.id === input.classId)
     const subjectItem = subjects.value.find(item => item.id === input.subjectId)
     const bank = bankPackages.value.find(item => item.id === input.questionBankId)
@@ -637,7 +655,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   }
 
   const deleteExam = async (id: string) => {
-    wajibKelolaUjian()
+    wajibKelolaUjian('hapus')
     const { error: deleteError } = await client.from(tables.exams).delete().eq('id', id)
     if (deleteError) throw deleteError
     await load(true)
@@ -691,6 +709,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     adalahSuperadmin,
     bolehKelolaBank,
     bolehKelolaUjian,
+    bolehAksi,
+    dalamCakupanSaya,
     namaPenyusunSaya,
     classes,
     subjects,

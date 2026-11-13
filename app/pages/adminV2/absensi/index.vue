@@ -152,6 +152,7 @@ const ABSENSI_TABS: AbsensiTabItem[] = [
 ]
 
 const activeSubmenu = ref<AbsensiSubmenuId>('overview')
+const tabTerlihat = useRbac().jagaSubmenu('Absensi Siswa', ABSENSI_TABS, activeSubmenu)
 
 // Computed Rombel Breakdown & Recent RFID Taps
 const rombelList = computed(() => computeRombelPresensi(currentRecords.value, jenjang.value))
@@ -410,7 +411,7 @@ onMounted(() => {
           aria-label="Navigasi Absensi Siswa"
         >
           <button
-            v-for="tab in ABSENSI_TABS"
+            v-for="tab in tabTerlihat"
             :key="tab.id"
             type="button"
             role="tab"

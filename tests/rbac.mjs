@@ -3,29 +3,30 @@ import assert from 'node:assert'
 import {
   RBAC_MODUL, RBAC_SEED_IZIN, RBAC_SEED_PERAN, hitungIzin, izinKosong,
   terapkanCentang, kolomPenuh, penugasanDari, dalamCakupan, bisaAkses,
-  modulDariJudul, modulDariPath
+  modulDariJudul, modulDariPath, subDariPath, lengkapiSub, agregatModul, kunciSub,
+  RBAC_SUBMODUL, RBAC_KUNCI, RBAC_DAUN
 } from '../app/composables/rbacCore.ts'
 
 let lulus = 0
 const cek = (nama, fn) => { fn(); lulus++; console.log('ok -', nama) }
 
-cek('23 modul, 9 peran bawaan, superadmin terkunci', () => {
-  assert.equal(RBAC_MODUL.length, 23)
+cek('24 modul (termasuk Tiketing), 9 peran bawaan, superadmin terkunci', () => {
+  assert.equal(RBAC_MODUL.length, 24)
   assert.equal(RBAC_SEED_PERAN.length, 9)
   assert.equal(RBAC_SEED_PERAN[0].kunci, 'superadmin')
   assert.equal(RBAC_SEED_PERAN[0].terkunci, true)
 })
 
-cek('jumlah izin bawaan sesuai preview v6 yang disetujui', () => {
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.superadmin), 92)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.ketua_yayasan), 21)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.kepala_sekolah), 28)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.wakil_kepala_sekolah), 22)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.operator), 73)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.staff_adm), 30)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.wali_kelas), 10)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.guru_pengajar), 25)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.staff_sekolah), 13)
+cek('jumlah izin bawaan = preview v6 + Tiketing (lihat & buat) untuk tiap peran', () => {
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.superadmin), 96)
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.ketua_yayasan), 23)
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.kepala_sekolah), 30)
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.wakil_kepala_sekolah), 24)
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.operator), 75)
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.staff_adm), 32)
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.wali_kelas), 12)
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.guru_pengajar), 27)
+  assert.equal(hitungIzin(RBAC_SEED_IZIN.staff_sekolah), 15)
 })
 
 cek('centang ubah otomatis menyalakan lihat', () => {
@@ -89,6 +90,49 @@ cek('pemetaan path ke modul (absensi-guru bukan absensi siswa)', () => {
   assert.equal(modulDariPath('/adminv2/rbac'), 'Hak Akses (RBAC)')
   assert.equal(modulDariPath('/adminv2/profil'), null)
   assert.equal(modulDariPath('/adminv2'), 'Dashboard')
+})
+
+
+cek('sub-modul tanpa baris tersimpan mewarisi modul utama', () => {
+  const izin = izinKosong()
+  izin['Absensi Siswa'] = { lihat: true, buat: false, ubah: true, hapus: false }
+  lengkapiSub(izin, k => k === 'Absensi Siswa/monitoring')
+  assert.deepEqual(izin['Absensi Siswa/overview'], { lihat: true, buat: false, ubah: true, hapus: false })
+  assert.deepEqual(izin['Absensi Siswa/monitoring'], { lihat: false, buat: false, ubah: false, hapus: false })
+})
+
+cek('baris modul utama = gabungan (OR) sub-modulnya', () => {
+  const izin = terapkanCentang(izinKosong(), kunciSub('Manajemen CBT', 'bank'), 'buat', true)
+  agregatModul(izin)
+  assert.deepEqual(izin['Manajemen CBT'], { lihat: true, buat: true, ubah: false, hapus: false })
+  assert.deepEqual(izin['LMS'], { lihat: false, buat: false, ubah: false, hapus: false })
+})
+
+cek('seed guru: kelola ruang/kartu/ujian CBT tetap hanya Superadmin, bank soal tetap boleh', () => {
+  const g = RBAC_SEED_IZIN.guru_pengajar
+  assert.equal(g['Manajemen CBT/rooms'].lihat, true)
+  assert.equal(g['Manajemen CBT/rooms'].buat, false)
+  assert.equal(g['Manajemen CBT/exams'].ubah, false)
+  assert.equal(g['Manajemen CBT/bank'].buat, true)
+  assert.equal(g['Manajemen CBT/bank'].hapus, true)
+  assert.equal(g['LMS/cards'].ubah, false)
+  assert.equal(g['LMS/exams'].buat, true)
+  assert.equal(RBAC_SEED_IZIN.superadmin['Manajemen CBT/rooms'].hapus, true)
+})
+
+cek('kunci izin = modul + semua sub-modul; daun tanpa modul yang punya sub', () => {
+  const jumlahSub = Object.values(RBAC_SUBMODUL).reduce((n, a) => n + a.length, 0)
+  assert.equal(RBAC_KUNCI.length, 24 + jumlahSub)
+  assert.ok(!RBAC_DAUN.includes('Manajemen CBT'))
+  assert.ok(RBAC_DAUN.includes('Dashboard') && RBAC_DAUN.includes('LMS/seb'))
+})
+
+cek('halaman Pembayaran = sub-modul Keuangan; Tiketing masuk RBAC', () => {
+  assert.equal(modulDariPath('/adminV2/keuangan/pembayaran'), 'Keuangan Sekolah')
+  assert.equal(subDariPath('/adminV2/keuangan/pembayaran'), 'pembayaran')
+  assert.equal(subDariPath('/adminV2/keuangan'), null)
+  assert.equal(modulDariPath('/adminV2/tiketing'), 'Tiketing')
+  assert.equal(modulDariJudul('Tiketing'), 'Tiketing')
 })
 
 console.log(`\n${lulus} tes lulus`)

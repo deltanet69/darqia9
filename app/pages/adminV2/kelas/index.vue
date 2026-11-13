@@ -58,6 +58,8 @@ const triggerToast = (msg: string) => {
 // Submenu Navigation (2 Tabs Identik Versi Awal)
 export type SubmenuKey = 'overview' | 'daftar'
 const activeSubmenu = ref<SubmenuKey>('overview')
+const submenuTerlihat = useRbac().jagaSubmenu('Manajemen Kelas', [{ id: 'overview' as const }, { id: 'daftar' as const }], activeSubmenu)
+const bolehSubmenu = (id: SubmenuKey) => submenuTerlihat.value.some(t => t.id === id)
 
 // Semua rombel aktif ditampilkan, termasuk yang belum punya siswa, agar rombel baru bisa dibuka dan diisi siswa.
 // Kehadiran & rata-rata nilai 0 = belum tersambung ke modul Absensi/Penilaian (tidak diisi angka rekaan).
@@ -300,6 +302,7 @@ const handleSelectModule = (title: string) => {
           >
             <button
               type="button"
+              v-if="bolehSubmenu('overview')"
               role="tab"
               :aria-selected="activeSubmenu === 'overview'"
               @click="activeSubmenu = 'overview'"
@@ -314,6 +317,7 @@ const handleSelectModule = (title: string) => {
 
             <button
               type="button"
+              v-if="bolehSubmenu('daftar')"
               role="tab"
               :aria-selected="activeSubmenu === 'daftar'"
               @click="activeSubmenu = 'daftar'"

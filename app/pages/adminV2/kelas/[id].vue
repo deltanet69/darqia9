@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
@@ -181,6 +181,9 @@ const submenus = computed(() => [
   { id: 'nilai' as const, label: 'Penilaian Siswa', icon: 'doc' },
   { id: 'ujian' as const, label: 'Jadwal Ujian', icon: 'monitor' }
 ])
+const rbacKelas = useRbac()
+const submenuTerlihat = computed(() => submenus.value.filter(s => s.id === 'overview' || rbacKelas.bisaSub('Manajemen Kelas', s.id, 'lihat')))
+watchEffect(() => { if (!submenuTerlihat.value.some(s => s.id === activeSubmenu.value)) activeSubmenu.value = 'overview' })
 
 // Modal: Tambah siswa (tanpa rombel / dari rombel lain) ke rombel ini
 const isAddStudentModalOpen = ref(false)
@@ -424,7 +427,7 @@ onMounted(async () => {
           role="tablist"
         >
           <button
-            v-for="sub in submenus"
+            v-for="sub in submenuTerlihat"
             :key="sub.id"
             type="button"
             role="tab"

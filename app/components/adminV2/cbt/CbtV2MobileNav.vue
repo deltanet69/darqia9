@@ -27,7 +27,10 @@ const navButtons: Array<{ id: CbtTabId; label: string; icon: string }> = [
   { id: 'results', label: 'Nilai', icon: 'users' }
 ]
 
-const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
+// Sub-menu yang tidak diizinkan RBAC untuk peran pengguna disembunyikan.
+const rbac = useRbac()
+const boleh = (id: CbtTabId) => rbac.bisaSub(props.moduleName.includes('LMS') ? 'LMS' : 'Manajemen CBT', id, 'lihat')
+const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => ([
   { id: 'summary', label: `${props.moduleName} · Ringkasan` },
   { id: 'bank', label: props.moduleName.includes('LMS') ? 'Bank Soal LMS (ujian harian)' : 'Bank Soal CBT (PTS/PAS)' },
   { id: 'monitoring', label: `${props.moduleName} · Monitoring Ujian` },
@@ -38,7 +41,7 @@ const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
   { id: 'cards', label: `${props.moduleName} · Kartu Ujian` },
   { id: 'results', label: `${props.moduleName} · Nilai Siswa` },
   { id: 'management', label: `${props.moduleName} · Manajemen Ujian` }
-])
+] as Array<{ id: CbtTabId; label: string }>).filter(item => boleh(item.id)))
 </script>
 
 <template>
@@ -49,6 +52,7 @@ const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
       aria-label="Navigasi mobile"
     >
       <button
+        v-if="boleh('summary')"
         type="button"
         class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl transition touch-manipulation"
         :class="activeTab === 'summary' ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"
@@ -59,6 +63,7 @@ const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
       </button>
 
       <button
+        v-if="boleh('exams')"
         type="button"
         class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl transition touch-manipulation"
         :class="activeTab === 'exams' ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"
@@ -78,6 +83,7 @@ const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
       </button>
 
       <button
+        v-if="boleh('monitoring')"
         type="button"
         class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl transition touch-manipulation"
         :class="activeTab === 'monitoring' ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"
@@ -88,6 +94,7 @@ const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
       </button>
 
       <button
+        v-if="boleh('results')"
         type="button"
         class="flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-1 text-[10px] font-bold p-1 rounded-xl transition touch-manipulation"
         :class="activeTab === 'results' ? (grade === 'SMP' ? 'text-[#16A34A]' : 'text-[#1B5FD9]') : 'text-[#667085]'"

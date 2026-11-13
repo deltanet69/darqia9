@@ -16,6 +16,8 @@ const store = useJadwalPelajaran()
 const bolehKelola = useRbac().adalahSuperadmin
 
 const mode = ref<'kelas' | 'guru'>('kelas')
+const modeTerlihat = useRbac().jagaSubmenu('Jadwal Pelajaran', [{ id: 'kelas' as const }, { id: 'guru' as const }], mode)
+const bolehMode = (id: string) => modeTerlihat.value.some(t => t.id === id)
 const tahunDipilih = ref('')
 const kelasDipilih = ref('')
 const formTerbuka = ref(false)
@@ -211,8 +213,8 @@ onUnmounted(() => { if (jamTimer) clearInterval(jamTimer) })
         <p class="text-[13px] text-slate-500 mt-0.5">Susun jadwal per kelas mengikuti jenjang pada switcher global. Sistem menjaga guru, kelas, dan ruangan tidak bentrok satu sama lain.</p>
       </div>
       <div class="ml-auto inline-flex bg-white border border-slate-200 rounded-xl p-1" role="tablist" aria-label="Mode">
-        <button type="button" class="px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition" :class="mode === 'kelas' ? 'bg-blue-950 text-white' : 'text-slate-600 hover:bg-slate-50'" @click="mode = 'kelas'">Per Kelas</button>
-        <button type="button" class="px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition" :class="mode === 'guru' ? 'bg-blue-950 text-white' : 'text-slate-600 hover:bg-slate-50'" @click="mode = 'guru'">Per Guru</button>
+        <button v-if="bolehMode('kelas')" type="button" class="px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition" :class="mode === 'kelas' ? 'bg-blue-950 text-white' : 'text-slate-600 hover:bg-slate-50'" @click="mode = 'kelas'">Per Kelas</button>
+        <button v-if="bolehMode('guru')" type="button" class="px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition" :class="mode === 'guru' ? 'bg-blue-950 text-white' : 'text-slate-600 hover:bg-slate-50'" @click="mode = 'guru'">Per Guru</button>
       </div>
     </div>
 

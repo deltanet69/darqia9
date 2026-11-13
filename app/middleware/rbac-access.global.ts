@@ -3,7 +3,7 @@
 // Penegakan aktif hanya untuk pengguna yang sudah ditugaskan sebuah peran;
 // kegagalan apa pun di jalur ini tidak pernah mengunci pengguna (fail-open),
 // penegakan kerasnya berada di RLS database (fungsi public.rbac_can).
-import { modulDariPath } from '~/composables/rbacCore'
+import { modulDariPath, subDariPath } from '~/composables/rbacCore'
 import { useRbac } from '~/composables/useRbac'
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -19,7 +19,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const rbac = useRbac()
     await rbac.muat()
     if (!rbac.penegakanAktif.value) return
-    if (!rbac.bisaSaya(modul, 'lihat')) {
+    const sub = subDariPath(path)
+    if (!rbac.bisaSaya(modul, 'lihat') || (sub && !rbac.bisaSub(modul, sub, 'lihat'))) {
       return navigateTo('/adminV2', { replace: true })
     }
   } catch {

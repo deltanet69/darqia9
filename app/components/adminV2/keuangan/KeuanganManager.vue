@@ -72,6 +72,7 @@ const kelasList = computed(() => [...new Set(baris.value.map(s => s.kelas))].sor
 const hasilCepat = computed(() => {
   const q = cariCepat.value.trim().toLowerCase()
   if (q.length < 2) return []
+const tabTerlihat = useRbac().jagaSubmenu('Keuangan Sekolah', TABS, tab)
   return baris.value.filter(s => s.nis.includes(q) || s.nama.toLowerCase().includes(q)).slice(0, 6)
 })
 
@@ -161,7 +162,7 @@ defineExpose({ judulHalaman })
           aria-label="Navigasi Keuangan Sekolah"
         >
           <button
-            v-for="t in TABS"
+            v-for="t in tabTerlihat"
             :key="t.id"
             type="button"
             role="tab"

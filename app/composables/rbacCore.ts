@@ -4,6 +4,10 @@
 // 1) Satu pengguna hanya memegang SATU peran — penugasan baru memindahkan peran lama.
 // 2) Izin matriks ditegakkan: lihat/buat/ubah/hapus per modul sesuai peran.
 // 3) Penugasan membawa cakupan jenjang (SMP/SMK, boleh keduanya).
+// Update RBAC (13 Nov 2026, docs/Admin Portal/RBAC & Manajemen User/rbacupdate.md):
+// 4) Izin per sub-modul (tab/sub-menu) disimpan sebagai baris 'Modul/sub' di rbac_permissions.
+//    Baris modul utama = gabungan (OR) sub-modulnya, jadi penjaga rute, menu, dan rbac_can() lama tetap berlaku.
+// 5) Cakupan data per modul: 'semua' atau 'sendiri' (kelas/mapel yang diampu) — hanya modul di RBAC_MODUL_CAKUPAN.
 
 export type AksiRbac = 'lihat' | 'buat' | 'ubah' | 'hapus'
 export type JenjangRbac = 'SMP' | 'SMK'
@@ -17,8 +21,67 @@ export const RBAC_MODUL: string[] = [
   'Master Mapel', 'Raport Siswa', 'Data Guru & Staff', 'Absensi Guru', 'Jadwal Mengajar',
   'Agenda Mengajar', 'Modul Pembelajaran', 'Keuangan Sekolah', 'Tabungan Siswa',
   'Manajemen CBT', 'LMS', 'Konten Website', 'SPMB', 'Perpustakaan Digital',
-  'Manajemen User', 'Hak Akses (RBAC)', 'Log Aktivitas', 'Pengaturan'
+  'Manajemen User', 'Hak Akses (RBAC)', 'Log Aktivitas', 'Pengaturan', 'Tiketing'
 ]
+
+export interface SubModulRbac { kunci: string; label: string }
+
+// Sub-menu (tab) tiap modul AdminV2. Modul tanpa daftar di sini tidak punya sub-menu.
+export const RBAC_SUBMODUL: Record<string, SubModulRbac[]> = {
+  'Absensi Siswa': [
+    { kunci: 'overview', label: 'Ringkasan' }, { kunci: 'monitoring', label: 'Monitoring RFID' },
+    { kunci: 'rombel', label: 'Rekap per Kelas' }, { kunci: 'detail', label: 'Log Presensi Siswa' }
+  ],
+  'Manajemen Kelas': [
+    { kunci: 'overview', label: 'Overview & Kapasitas' }, { kunci: 'daftar', label: 'Daftar Rombel Kelas' },
+    { kunci: 'siswa', label: 'Detail Kelas · Data Siswa' }, { kunci: 'absensi', label: 'Detail Kelas · Absensi' },
+    { kunci: 'jadwal', label: 'Detail Kelas · Jadwal Pelajaran' }, { kunci: 'nilai', label: 'Detail Kelas · Penilaian Siswa' },
+    { kunci: 'ujian', label: 'Detail Kelas · Jadwal Ujian' }
+  ],
+  'Jadwal Pelajaran': [{ kunci: 'kelas', label: 'Per Kelas' }, { kunci: 'guru', label: 'Per Guru' }],
+  'Absensi Guru': [
+    { kunci: 'presensi', label: 'Presensi Harian' }, { kunci: 'kehadiran', label: 'Rekap Kehadiran' },
+    { kunci: 'rekap', label: 'Rekap Mengajar' }
+  ],
+  'Jadwal Mengajar': [{ kunci: 'grade', label: 'Jadwal Mengajar Jenjang' }, { kunci: 'saya', label: 'Jadwal Saya' }],
+  'Agenda Mengajar': [
+    { kunci: 'pertemuan', label: 'Pertemuan' }, { kunci: 'tugas', label: 'Nilai Tugas' },
+    { kunci: 'ujian', label: 'PTS & PAS' }, { kunci: 'rekap', label: 'Rekap' }
+  ],
+  'Keuangan Sekolah': [
+    { kunci: 'overview', label: 'Overview' }, { kunci: 'data', label: 'Data Keuangan' },
+    { kunci: 'kode', label: 'Kode Keuangan' }, { kunci: 'cutoff', label: 'Cut-off Harian' },
+    { kunci: 'riwayat', label: 'Riwayat Pembayaran' }, { kunci: 'pembayaran', label: 'Input Pembayaran' }
+  ],
+  'Manajemen CBT': [
+    { kunci: 'summary', label: 'Ringkasan' }, { kunci: 'monitoring', label: 'Monitoring Ujian' },
+    { kunci: 'bank', label: 'Bank Soal' }, { kunci: 'exams', label: 'Daftar Ujian' },
+    { kunci: 'rooms', label: 'Ruang Ujian' }, { kunci: 'cards', label: 'Kartu Ujian' },
+    { kunci: 'results', label: 'Nilai Siswa' }, { kunci: 'management', label: 'Manajemen Ujian' }
+  ],
+  'LMS': [
+    { kunci: 'summary', label: 'Ringkasan' }, { kunci: 'monitoring', label: 'Monitoring Ujian' },
+    { kunci: 'bank', label: 'Bank Soal' }, { kunci: 'exams', label: 'Daftar Ujian' },
+    { kunci: 'seb', label: 'Kode SEB' }, { kunci: 'cards', label: 'Kartu Ujian' },
+    { kunci: 'results', label: 'Nilai Siswa' }, { kunci: 'management', label: 'Manajemen Ujian' }
+  ],
+  'Konten Website': [
+    { kunci: 'berita', label: 'Berita & Artikel' }, { kunci: 'kategori', label: 'Kategori' },
+    { kunci: 'banner', label: 'Popup Banner' }, { kunci: 'informasi', label: 'Berita & Informasi' }
+  ]
+}
+
+export const kunciSub = (modul: string, sub: string) => `${modul}/${sub}`
+
+// Semua baris izin: modul utama + tiap sub-modulnya.
+export const RBAC_KUNCI: string[] = RBAC_MODUL.flatMap(m => [m, ...(RBAC_SUBMODUL[m] || []).map(s => kunciSub(m, s.kunci))])
+// Baris yang dicentang di halaman RBAC: sub-modul, atau modul itu sendiri bila tanpa sub-menu.
+export const RBAC_DAUN: string[] = RBAC_MODUL.flatMap(m => RBAC_SUBMODUL[m]?.length ? RBAC_SUBMODUL[m].map(s => kunciSub(m, s.kunci)) : [m])
+
+export type CakupanRbac = 'semua' | 'sendiri'
+export type CakupanPeran = Record<string, CakupanRbac>
+// Modul yang cakupan datanya sudah ditegakkan di aplikasi ('sendiri' = kelas/mapel yang diampu menurut jadwal & wali kelas).
+export const RBAC_MODUL_CAKUPAN: string[] = ['Manajemen CBT', 'LMS']
 
 export const RBAC_AKSI: Array<{ kunci: AksiRbac; label: string }> = [
   { kunci: 'lihat', label: 'Lihat' },
@@ -31,7 +94,42 @@ const AKSI_SEMUA: AksiRbac[] = ['lihat', 'buat', 'ubah', 'hapus']
 
 export function izinKosong(): IzinPeran {
   const izin: IzinPeran = {}
-  for (const modul of RBAC_MODUL) izin[modul] = { lihat: false, buat: false, ubah: false, hapus: false }
+  for (const kunci of RBAC_KUNCI) izin[kunci] = { lihat: false, buat: false, ubah: false, hapus: false }
+  return izin
+}
+
+// Sub-modul yang belum punya baris tersimpan mewarisi izin modul utamanya (data sebelum update ini).
+export function lengkapiSub(izin: IzinPeran, adaBaris: (kunci: string) => boolean = () => false): IzinPeran {
+  for (const modul of RBAC_MODUL) {
+    for (const s of RBAC_SUBMODUL[modul] || []) {
+      const k = kunciSub(modul, s.kunci)
+      if (!adaBaris(k)) izin[k] = { ...(izin[modul] || { lihat: false, buat: false, ubah: false, hapus: false }) }
+    }
+  }
+  return izin
+}
+
+// Baris modul utama = OR dari sub-modulnya (dipakai menu, penjaga rute, dan rbac_can di database).
+export function agregatModul(izin: IzinPeran): IzinPeran {
+  for (const modul of RBAC_MODUL) {
+    const subs = RBAC_SUBMODUL[modul]
+    if (!subs?.length) continue
+    izin[modul] = { lihat: false, buat: false, ubah: false, hapus: false }
+    for (const aksi of AKSI_SEMUA) izin[modul][aksi] = subs.some(s => !!izin[kunciSub(modul, s.kunci)]?.[aksi])
+  }
+  return izin
+}
+
+// Batas bawaan = perilaku aplikasi sebelum update ini: kelola ujian CBT, ruang ujian, dan kartu ujian (CBT & LMS) hanya
+// Superadmin. Peran terkunci (Superadmin) tidak terkena batas ini.
+export const RBAC_BATAS_BAWAAN: Array<[string, AksiRbac[]]> = [
+  ['Manajemen CBT/exams', ['buat', 'ubah', 'hapus']],
+  ['Manajemen CBT/rooms', ['buat', 'ubah', 'hapus']],
+  ['Manajemen CBT/cards', ['buat', 'ubah', 'hapus']],
+  ['LMS/cards', ['buat', 'ubah', 'hapus']]
+]
+export function batasiBawaan(izin: IzinPeran): IzinPeran {
+  for (const [kunci, aksi] of RBAC_BATAS_BAWAAN) for (const a of aksi) if (izin[kunci]) izin[kunci][a] = false
   return izin
 }
 
@@ -48,8 +146,9 @@ function P(spec: Partial<Record<'R' | 'C' | 'U' | 'D', number[]>>): IzinPeran {
   for (const modul of RBAC_MODUL) {
     if (izin[modul].buat || izin[modul].ubah || izin[modul].hapus) izin[modul].lihat = true
   }
-  return izin
+  return lengkapiSub(izin)
 }
+const terbatas = (izin: IzinPeran) => agregatModul(batasiBawaan(izin))
 
 const SEMUA = RBAC_MODUL.map((_, i) => i)
 
@@ -67,15 +166,23 @@ export const RBAC_SEED_PERAN: PeranRbac[] = [
 
 // Izin bawaan per kunci peran — sama persis dengan preview RBAC v6 yang disetujui user.
 export const RBAC_SEED_IZIN: Record<string, IzinPeran> = {
+  // Tiketing (indeks 23): semua peran boleh melihat dan membuat tiket, sama seperti sebelum modul ini masuk RBAC.
   superadmin: P({ R: SEMUA, C: SEMUA, U: SEMUA, D: SEMUA }),
-  ketua_yayasan: P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21] }),
-  kepala_sekolah: P({ R: SEMUA, U: [4, 10, 11, 16, 17] }),
-  wakil_kepala_sekolah: P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 21], U: [4, 9, 10, 11] }),
-  operator: P({ R: SEMUA, C: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], U: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], D: [1, 2, 3, 4, 7, 8, 9, 13, 14, 15, 16, 17] }),
-  staff_adm: P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17], C: [1, 2, 3, 8, 13, 17], U: [1, 2, 3, 6, 8, 17], D: [1, 17] }),
-  wali_kelas: P({ R: [0, 1, 2, 4, 6, 10, 11, 13, 15], U: [2] }),
-  guru_pengajar: P({ R: [0, 1, 4, 5, 6, 8, 9, 10, 11, 14, 15, 18], C: [10, 11, 14, 15], U: [6, 10, 11, 14, 15], D: [10, 11, 14, 15] }),
-  staff_sekolah: P({ R: [0, 1, 4, 7, 8, 11, 16, 17, 18], C: [16, 18], U: [16, 18] })
+  ketua_yayasan: terbatas(P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23], C: [23] })),
+  kepala_sekolah: terbatas(P({ R: SEMUA, U: [4, 10, 11, 16, 17], C: [23] })),
+  wakil_kepala_sekolah: terbatas(P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 21, 23], U: [4, 9, 10, 11], C: [23] })),
+  operator: terbatas(P({ R: SEMUA, C: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 23], U: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], D: [1, 2, 3, 4, 7, 8, 9, 13, 14, 15, 16, 17] })),
+  staff_adm: terbatas(P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 23], C: [1, 2, 3, 8, 13, 17, 23], U: [1, 2, 3, 6, 8, 17], D: [1, 17] })),
+  wali_kelas: terbatas(P({ R: [0, 1, 2, 4, 6, 10, 11, 13, 15, 23], U: [2], C: [23] })),
+  guru_pengajar: terbatas(P({ R: [0, 1, 4, 5, 6, 8, 9, 10, 11, 14, 15, 18, 23], C: [10, 11, 14, 15, 23], U: [6, 10, 11, 14, 15], D: [10, 11, 14, 15] })),
+  staff_sekolah: terbatas(P({ R: [0, 1, 4, 7, 8, 11, 16, 17, 18, 23], C: [16, 18, 23], U: [16, 18] }))
+}
+
+// Jumlah centang di halaman RBAC (sub-modul + modul tanpa sub-menu).
+export function hitungIzinRinci(izin: IzinPeran): number {
+  let total = 0
+  for (const k of RBAC_DAUN) for (const aksi of AKSI_SEMUA) if (izin[k]?.[aksi]) total++
+  return total
 }
 
 export function hitungIzin(izin: IzinPeran): number {
@@ -142,6 +249,7 @@ const JUDUL_KE_MODUL: Record<string, string | null> = {
   'hak akses (rbac)': 'Hak Akses (RBAC)',
   'log aktivitas': 'Log Aktivitas',
   'pengaturan': 'Pengaturan',
+  'tiketing': 'Tiketing',
   'profil saya': null
 }
 
@@ -172,6 +280,7 @@ const PATH_KE_MODUL: Array<[string, string | null]> = [
   ['/adminv2/users', 'Manajemen User'],
   ['/adminv2/rbac', 'Hak Akses (RBAC)'],
   ['/adminv2/log-aktivitas', 'Log Aktivitas'],
+  ['/adminv2/tiketing', 'Tiketing'],
   ['/adminv2/profil', null],
   ['/adminv2/profile', null]
 ]
@@ -182,5 +291,12 @@ export function modulDariPath(path: string): string | null {
     if (p === awalan || p.startsWith(awalan + '/') || p.startsWith(awalan + '?')) return modul
   }
   if (p === '/adminv2' || p === '/adminv2/') return 'Dashboard'
+  return null
+}
+
+// Sub-modul yang punya halaman sendiri (bukan tab). null = halaman modul utama.
+export function subDariPath(path: string): string | null {
+  const p = path.toLowerCase()
+  if (p === '/adminv2/keuangan/pembayaran' || p.startsWith('/adminv2/keuangan/pembayaran/')) return 'pembayaran'
   return null
 }

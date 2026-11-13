@@ -8,6 +8,15 @@
         "value": "inter",
         "createdAt": "2026-11-10T22:36:45.715Z",
         "reason": "Brand lock AGENTS.md bagian 4: Font wajib Inter"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "app/components/adminV2/sistem/RbacIzinModul.vue"
+        ],
+        "createdAt": "2026-11-13T12:14:06.689Z",
+        "reason": "Claude triage: ternary class, abu-abu hanya di cabang bg-white, putih di cabang bg-blue-600"
       }
     ]
   }

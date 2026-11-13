@@ -17,7 +17,10 @@ const props = defineProps<Props>()
 const cbtData = useAdminCbtData(props.source ?? 'cbt')
 // CBT PTS/PAS: buat/ubah/hapus ujian dan token peserta hanya Superadmin; guru dan wali kelas hanya melihat.
 // Ujian harian (LMS) memakai komponen ini juga dan tidak ikut dibatasi.
-const bolehKelola = computed(() => props.source === 'ujian_harian' || cbtData.adalahSuperadmin.value)
+// RBAC sub-modul Daftar Ujian (akun belum ditugaskan: aturan lama — LMS bebas, CBT hanya Superadmin).
+const bolehKelola = computed(() => cbtData.bolehKelolaUjian('ubah'))
+const bolehBuat = computed(() => cbtData.bolehKelolaUjian('buat'))
+const bolehHapus = computed(() => cbtData.bolehKelolaUjian('hapus'))
 
 const emit = defineEmits<{
   (e: 'switch-tab', tab: CbtTabId): void
@@ -447,7 +450,7 @@ const removeSchedule = async (exam: ExamItem) => {
           </button>
 
           <button
-            v-if="bolehKelola"
+            v-if="bolehBuat"
             type="button"
             class="px-5 py-2.5 rounded-xl bg-[#101828] hover:bg-black text-white text-xs font-bold transition-all shadow-sm inline-flex items-center gap-2 cursor-pointer active:scale-95"
             @click="openCreateSchedule(rombelDetail?.classroom)"
@@ -645,7 +648,7 @@ const removeSchedule = async (exam: ExamItem) => {
             Tidak ada rombel ujian yang sesuai dengan filter atau kata kunci pencarian.
           </p>
           <button
-            v-if="bolehKelola"
+            v-if="bolehBuat"
             type="button"
             class="px-5 py-2.5 rounded-xl bg-[#101828] hover:bg-black text-white text-xs font-bold transition-all cursor-pointer"
             @click="openCreateSchedule()"
@@ -723,7 +726,7 @@ const removeSchedule = async (exam: ExamItem) => {
                   Ubah
                 </button>
                 <button
-                  v-if="bolehKelola"
+                  v-if="bolehHapus"
                   type="button"
                   class="text-xs font-bold text-rose-600 hover:text-rose-800 hover:underline px-1 cursor-pointer"
                   @click="removeSchedule(e)"
