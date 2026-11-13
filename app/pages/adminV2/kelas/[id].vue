@@ -16,6 +16,7 @@ import KelasDetailJadwal from '~/components/adminV2/kelas/detail/KelasDetailJadw
 import KelasDetailNilai from '~/components/adminV2/kelas/detail/KelasDetailNilai.vue'
 import KelasDetailUjian from '~/components/adminV2/kelas/detail/KelasDetailUjian.vue'
 import KelasV2MoveStudentModal from '~/components/adminV2/kelas/KelasV2MoveStudentModal.vue'
+import KelasDetailTambahSiswaModal from '~/components/adminV2/kelas/KelasDetailTambahSiswaModal.vue'
 import KelasDetailImportModal from '~/components/adminV2/kelas/detail/KelasDetailImportModal.vue'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
@@ -180,6 +181,19 @@ const submenus = computed(() => [
   { id: 'nilai' as const, label: 'Penilaian Siswa', icon: 'doc' },
   { id: 'ujian' as const, label: 'Jadwal Ujian', icon: 'monitor' }
 ])
+
+// Modal: Tambah siswa (tanpa rombel / dari rombel lain) ke rombel ini
+const isAddStudentModalOpen = ref(false)
+const handleAddStudents = async (studentIds: string[]) => {
+  isAddStudentModalOpen.value = false
+  const { error } = await supabase.from('students').update({ class_id: currentClass.value.id }).in('id', studentIds)
+  if (error) {
+    triggerToast('Siswa gagal ditambahkan: ' + error.message)
+    return
+  }
+  await Promise.all([cbtData.load(true), loadRoster(currentClass.value.id, currentClass.value.name)])
+  triggerToast(`${studentIds.length} siswa ditambahkan ke rombel ${currentClass.value.name}.`)
+}
 
 // Modal 1: Move Student
 const isMoveStudentModalOpen = ref(false)
@@ -454,7 +468,7 @@ onMounted(async () => {
           :jenjang="jenjang"
           @move-student="handleOpenMoveStudent"
           @delete-student="handleDeleteStudent"
-          @add-student="triggerToast('Formulir penambahan siswa baru siap.')"
+          @add-student="isAddStudentModalOpen = true"
         />
 
         <KelasDetailAbsensi
@@ -499,6 +513,16 @@ onMounted(async () => {
       :jenjang="jenjang"
       @close="isMoveStudentModalOpen = false"
       @move="handleConfirmMoveStudent"
+    />
+
+    <KelasDetailTambahSiswaModal
+      :open="isAddStudentModalOpen"
+      :class-id="currentClass.id"
+      :class-name="currentClass.name"
+      :grade="currentClass.level"
+      :jenjang="jenjang"
+      @close="isAddStudentModalOpen = false"
+      @add="handleAddStudents"
     />
 
     <!-- MODAL 3: IMPOR NILAI EXCEL -->

@@ -612,11 +612,12 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       question_ids: input.questionIds
     })
     if (saveError) throw new Error(saveError.message)
-    // Token peserta diterbitkan otomatis untuk siswa yang eligible. Kegagalan di
-    // sini (misalnya migrasi 0017 belum diterapkan) tidak membatalkan penyimpanan
-    // ujian; token tetap dapat diterbitkan dari panel Token Peserta.
+    // Penugasan + token peserta dibuat otomatis untuk siswa kelas ini. Tanpa penugasan, ujian tidak tampil di
+    // aplikasi siswa, jadi kegagalannya wajib dilaporkan (ujian tetap tersimpan; bisa diulang dari panel Token Peserta).
+    let tokenError: string | null = null
     if (typeof savedExamId === 'string' && savedExamId) {
-      try { await client.rpc('issue_exam_tokens', { target_exam_id: savedExamId, source }) } catch { /* diabaikan */ }
+      const { error: issueError } = await client.rpc('issue_exam_tokens', { target_exam_id: savedExamId, source })
+      if (issueError) tokenError = issueError.message
       const { error: esaiError } = await client.from(tables.exams).update({ acak_esai: input.acakEsai !== false }).eq('id', savedExamId)
       if (esaiError) {
         await load(true)
@@ -632,6 +633,10 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
           throw new Error(`Ujian tersimpan, tetapi jenis ujian belum tersimpan. Jalankan migrasi ${source === 'cbt' ? '0047_cbt_siswa_app' : '0049_ujian_harian_pr_kode_buka'}.sql di Supabase SQL Editor.`)
         }
       }
+    }
+    if (tokenError) {
+      await load(true)
+      throw new Error(`Ujian tersimpan, tetapi peserta belum ditugaskan sehingga ujian belum tampil di aplikasi siswa (${tokenError}). Buka Token Peserta lalu terbitkan token.`)
     }
     await load(true)
     return token

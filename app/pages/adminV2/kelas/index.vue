@@ -59,12 +59,12 @@ const triggerToast = (msg: string) => {
 export type SubmenuKey = 'overview' | 'daftar'
 const activeSubmenu = ref<SubmenuKey>('overview')
 
-// Rombel berasal dari data master siswa: hanya kelas yang punya siswa aktif yang ditampilkan.
+// Semua rombel aktif ditampilkan, termasuk yang belum punya siswa, agar rombel baru bisa dibuka dan diisi siswa.
 // Kehadiran & rata-rata nilai 0 = belum tersambung ke modul Absensi/Penilaian (tidak diisi angka rekaan).
 const rawClasses = computed<ClassRombel[]>(() => {
   const currentGrade = jenjang.value.toUpperCase()
   return cbtData.classes.value
-    .filter(item => item.grade === currentGrade && item.studentCount > 0)
+    .filter(item => item.grade === currentGrade)
     .map(item => ({
       id: item.id,
       name: item.name,
