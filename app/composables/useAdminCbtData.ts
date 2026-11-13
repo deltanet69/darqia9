@@ -58,19 +58,6 @@ export interface CbtSubject {
   kkm: number
 }
 
-export interface ExamParticipant {
-  studentId: string
-  name: string
-  nis: string
-  classroom: string
-  eligible: boolean
-  assignmentId?: string
-  assignmentStatus?: string
-  room?: string
-  token?: string
-  tokenIssuedAt?: string
-}
-
 export interface CbtExamInput {
   id?: string
   name: string
@@ -643,7 +630,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
     if (tokenError) {
       await load(true)
-      throw new Error(`Ujian tersimpan, tetapi peserta belum ditugaskan sehingga ujian belum tampil di aplikasi siswa (${tokenError}). Buka Token Peserta lalu terbitkan token.`)
+      throw new Error(`Ujian tersimpan, tetapi peserta belum ditugaskan sehingga ujian belum tampil di aplikasi siswa (${tokenError}). Klik Ubah pada ujian ini lalu simpan lagi untuk menugaskan peserta.`)
     }
     await load(true)
     return token
@@ -654,82 +641,6 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const { error: deleteError } = await client.from(tables.exams).delete().eq('id', id)
     if (deleteError) throw deleteError
     await load(true)
-  }
-
-  const loadExamParticipants = async (examId: string): Promise<ExamParticipant[]> => {
-    const exam = exams.value.find(item => item.id === examId)
-    if (!exam?.classId) throw new Error('Ujian tidak ditemukan.')
-    const [studentResult, assignmentResult] = await Promise.all([
-      client.from('students').select('id, nis, name, exam_eligible').eq('class_id', exam.classId).eq('active', true).order('name'),
-      client.from(tables.assignments).select('id, student_id, status, access_token, token_issued_at').eq('exam_id', examId)
-    ])
-    if (studentResult.error) throw new Error(studentResult.error.message)
-    if (assignmentResult.error) throw new Error(assignmentResult.error.message)
-    const byStudent = new Map((assignmentResult.data ?? []).map((row: any) => [row.student_id, row]))
-    // Ruang ujian siswa (Ruang Ujian hanya ada untuk CBT PTS/PAS). Bila siswa punya ruang di beberapa periode,
-    // ruang yang ditautkan ke ujian ini didahulukan, lalu yang terbaru. Gagal dimuat = kolom ruang kosong, token tetap tampil.
-    const roomByStudent = new Map<string, string>()
-    const studentIds = (studentResult.data ?? []).map((row: any) => row.id)
-    if (source === 'cbt' && studentIds.length) {
-      const [memberResult, linkResult] = await Promise.all([
-        client.from('exam_room_members').select('student_id, room_id, created_at, exam_rooms!inner(name)').in('student_id', studentIds).is('deleted_at', null).is('exam_rooms.deleted_at', null),
-        client.from('exam_room_exams').select('room_id').eq('exam_id', examId)
-      ])
-      if (!memberResult.error) {
-        const linked = new Set((linkResult.data ?? []).map((row: any) => row.room_id))
-        const best = new Map<string, any>()
-        for (const row of memberResult.data ?? []) {
-          const now: any = row
-          const old = best.get(now.student_id)
-          const better = !old
-            || (linked.has(now.room_id) && !linked.has(old.room_id))
-            || (linked.has(now.room_id) === linked.has(old.room_id) && now.created_at > old.created_at)
-          if (better) best.set(now.student_id, now)
-        }
-        for (const [studentId, row] of best) roomByStudent.set(studentId, row.exam_rooms?.name ?? '')
-      }
-    }
-    return (studentResult.data ?? []).map((row: any) => {
-      const assignment: any = byStudent.get(row.id)
-      return {
-        room: roomByStudent.get(row.id) || undefined,
-        studentId: row.id,
-        name: row.name,
-        nis: row.nis || '',
-        classroom: exam.classroom,
-        eligible: row.exam_eligible !== false,
-        assignmentId: assignment?.id,
-        assignmentStatus: assignment?.status,
-        token: assignment?.access_token || undefined,
-        tokenIssuedAt: assignment?.token_issued_at || undefined
-      } as ExamParticipant
-    })
-  }
-
-  const issueExamTokens = async (examId: string) => {
-    wajibKelolaUjian()
-    const { data, error: rpcError } = await client.rpc('issue_exam_tokens', { target_exam_id: examId, source })
-    if (rpcError) throw new Error(rpcError.message)
-    return typeof data === 'number' ? data : 0
-  }
-
-  const issueStudentToken = async (examId: string, studentId: string) => {
-    wajibKelolaUjian()
-    const { data, error: rpcError } = await client.rpc('issue_student_token', { target_exam_id: examId, target_student_id: studentId, source })
-    if (rpcError) throw new Error(rpcError.message)
-    return typeof data === 'string' ? data : ''
-  }
-
-  const regenerateStudentToken = async (assignmentId: string) => {
-    wajibKelolaUjian()
-    const { data, error: rpcError } = await client.rpc('regenerate_exam_token', { target_assignment_id: assignmentId, source })
-    if (rpcError) throw new Error(rpcError.message)
-    return typeof data === 'string' ? data : ''
-  }
-
-  const setStudentExamEligible = async (studentId: string, eligible: boolean) => {
-    const { error: updateError } = await client.from('students').update({ exam_eligible: eligible }).eq('id', studentId)
-    if (updateError) throw new Error(updateError.message)
   }
 
   const saveClass = async (input: { id?: string; name: string; grade: GradeType; major: string; room: string; homeroomTeacherId: string }) => {
@@ -799,11 +710,6 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     deleteBankPackage,
     saveExam,
     deleteExam,
-    loadExamParticipants,
-    issueExamTokens,
-    issueStudentToken,
-    regenerateStudentToken,
-    setStudentExamEligible,
     saveClass,
     archiveClass,
     gradeClasses,

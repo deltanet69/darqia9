@@ -113,6 +113,8 @@ const syncRoute = (gantiJenjang = false) => router.push({
     jenjang: jenjang.value,
     // Ruang yang terbuka hanya berlaku di tab Ruang Ujian.
     ruang: activeTab.value === 'rooms' ? route.query.ruang : undefined,
+    // Saringan rombel dari Token Peserta hanya berlaku di tab Kartu Ujian.
+    kelas: activeTab.value === 'cards' ? route.query.kelas : undefined,
     // Rombel/token/filter hanya berlaku di Daftar Ujian; id rombel milik satu jenjang.
     rombel: activeTab.value === 'exams' && !gantiJenjang ? route.query.rombel : undefined,
     token: activeTab.value === 'exams' && !gantiJenjang ? route.query.token : undefined,

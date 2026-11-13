@@ -23,7 +23,9 @@ const loading = ref(false)
 const busy = ref(false)
 const errorPeriode = ref('')
 const error = ref('')
-const kelas = ref('')
+// Dibuka dari tombol Token Peserta di Daftar Ujian: langsung tersaring ke rombel itu (?kelas=).
+const route = useRoute()
+const kelas = ref(typeof route.query.kelas === 'string' ? route.query.kelas : '')
 const tanggalForm = ref({ startsOn: '', endsOn: '' })
 const ubahTanggal = ref(false)
 const formBaru = ref<{ periode: string, startsOn: string, endsOn: string } | null>(null)
@@ -255,6 +257,20 @@ const cetak = (daftar: SiswaKartu[], judul: string) => {
   const galat = cetakKartu({ kartu, grade: props.grade, jenis: aktif.value!.periode.split(' ').slice(0, 2).join(' '), judul })
   if (galat) emit('toast', galat)
 }
+
+// Ekspor daftar yang sedang tampil (mengikuti filter kelas, status, dan pencarian).
+const exportExcel = async () => {
+  const XLSX = await import('xlsx')
+  const baris = [
+    ['Nama', 'NIS', 'Kelas', 'Ruang Ujian', 'Administrasi', 'Status Kartu', 'Token'],
+    ...tampil.value.map(s => [s.name, s.nis, s.classroom, s.room, s.eligible ? 'Eligible' : 'Belum beres', STATUS[statusKartu(s)].label, s.token ?? ''])
+  ]
+  const buku = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(buku, XLSX.utils.aoa_to_sheet(baris), 'Kartu Ujian')
+  const nama = `${aktif.value?.periode ?? 'kartu'} ${kelas.value || props.grade}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  XLSX.writeFile(buku, `kartu-ujian-${nama}.xlsx`)
+  emit('toast', 'Daftar kartu diekspor ke Excel.')
+}
 </script>
 
 <template>
@@ -383,7 +399,10 @@ const cetak = (daftar: SiswaKartu[], judul: string) => {
               </template>
               <button type="button" class="min-h-9 px-1 text-xs font-bold text-[#475467] hover:underline" @click="dipilih = []">Batal</button>
             </template>
-            <button v-else type="button" class="min-h-9 rounded-lg border border-[#E7EBF2] px-3 text-xs font-bold text-[#344054] disabled:opacity-50" :disabled="!tampil.some(bisaCetak)" @click="cetak(tampil, kelas || aktif.periode)">{{ kelas ? `Cetak kelas ${kelas}` : 'Cetak semua' }}</button>
+            <template v-else>
+              <button type="button" class="min-h-9 rounded-lg border border-[#E7EBF2] px-3 text-xs font-bold text-[#344054] disabled:opacity-50" :disabled="!tampil.length" @click="exportExcel">Export Excel</button>
+              <button type="button" class="min-h-9 rounded-lg border border-[#E7EBF2] px-3 text-xs font-bold text-[#344054] disabled:opacity-50" :disabled="!tampil.some(bisaCetak)" @click="cetak(tampil, kelas || aktif.periode)">{{ kelas ? `Cetak kelas ${kelas}` : 'Cetak semua' }}</button>
+            </template>
           </div>
         </div>
       </div>

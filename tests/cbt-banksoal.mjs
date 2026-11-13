@@ -576,16 +576,17 @@ for (const needle of ['access_token', 'exam_eligible', 'issue_exam_tokens', 'iss
 assert.ok(migration17.includes('a.access_token = upper($2)'), 'Login siswa mencocokkan token pribadi pada assignment')
 assert.ok(!migration17.includes('where code ='), 'Kode bersama ujian tidak lagi menjadi kredensial masuk')
 const examsSource = fs.readFileSync(path.join(root, 'app/components/adminV2/cbt/CbtV2Exams.vue'), 'utf8')
-assert.ok(examsSource.includes('CbtV2ExamTokens') && examsSource.includes('Token Peserta'), 'Daftar Ujian membuka panel Token Peserta per ujian')
-const tokensSource = fs.readFileSync(path.join(root, 'app/components/adminV2/cbt/CbtV2ExamTokens.vue'), 'utf8')
-for (const needle of ['loadExamParticipants', 'issueExamTokens', 'regenerateStudentToken', 'setStudentExamEligible', 'Export Excel', 'Cetak Kartu Ujian'])
-  assert.ok(tokensSource.includes(needle), `Panel token memuat ${needle}`)
+// Token Peserta tidak lagi lewat popup: membuka tab Kartu Ujian tersaring ke rombel (pilih & cetak per siswa).
+assert.ok(examsSource.includes('Token Peserta') && examsSource.includes("tab: 'cards'") && !examsSource.includes('CbtV2ExamTokens'), 'Token Peserta membuka tab Kartu Ujian, bukan popup')
+const kartuSource = fs.readFileSync(path.join(root, 'app/components/adminV2/cbt/CbtV2Cards.vue'), 'utf8')
+for (const needle of ['route.query.kelas', 'Export Excel', 'dipilih'])
+  assert.ok(kartuSource.includes(needle), `Kartu Ujian memuat ${needle}`)
 
 // Guru/wali kelas (bukan Superadmin): CBT PTS/PAS menolak kelola ujian dan token; ujian harian (LMS) tidak dibatasi.
 globalThis.useRbac = () => ({ adalahSuperadmin: ref(false), state: ref({ subjekSaya: null, namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji') })
 const guru = useAdminCbtData('cbt')
 assert.equal(guru.bolehKelolaUjian(), false)
-for (const aksi of [() => guru.saveExam({}), () => guru.deleteExam('x'), () => guru.issueExamTokens('x'), () => guru.issueStudentToken('x', 'y'), () => guru.regenerateStudentToken('x')])
+for (const aksi of [() => guru.saveExam({}), () => guru.deleteExam('x')])
   await assert.rejects(aksi, /Hanya Superadmin/)
 assert.equal(useAdminCbtData('ujian_harian').bolehKelolaUjian(), true)
 

@@ -2,7 +2,6 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import AdminV2Icon from '../AdminV2Icon.vue'
-import CbtV2ExamTokens from './CbtV2ExamTokens.vue'
 import CbtV2ExamDetail from './CbtV2ExamDetail.vue'
 import CbtV2RombelViolations from './CbtV2RombelViolations.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
@@ -183,15 +182,16 @@ const kolomJadwal = computed(() => rombelDetail.value
   ? 'md:grid-cols-[130px_minmax(0,1fr)_minmax(0,190px)_80px_120px_170px]'
   : 'md:grid-cols-[110px_64px_minmax(0,1fr)_minmax(0,170px)_72px_120px_170px]')
 
-// Modal token terbuka selama ?token=1 ada di URL; satu token berlaku untuk seluruh mapel rombel, jadi ujian mana pun cukup sebagai acuan.
 // Panel Pelanggaran Siswa (?pelanggaran=1) mencakup seluruh mapel rombel yang sedang dibuka.
 const ujianRombel = computed(() => currentExams.value.filter(x => x.classId === rombelAktif.value))
 // Badge = jumlah siswa unik yang melanggar di rombel ini (bukan jumlah kejadian), lintas mapel.
 const jumlahPelanggaranRombel = computed(() => new Set(ujianRombel.value.flatMap(e => e.violatorIds ?? [])).size)
 
-const tokenExam = computed(() => kueri('token') && rombelDetail.value
-  ? currentExams.value.filter(x => x.classId === rombelAktif.value).sort(urutWaktu)[0] ?? null
-  : null)
+// Token peserta = token Kartu Ujian: dikelola di tab Kartu Ujian (pilih per siswa, cetak per siswa/terpilih), tersaring ke rombel ini.
+const bukaTokenPeserta = () => {
+  if (!rombelDetail.value) return
+  void router.push({ query: { ...route.query, tab: 'cards', kelas: rombelDetail.value.classroom, rombel: undefined, token: undefined } })
+}
 
 const availablePackages = computed(() =>
   gradePackages.value.filter(pkg => !newExam.value.classId || pkg.classId === newExam.value.classId)
@@ -423,7 +423,7 @@ const removeSchedule = async (exam: ExamItem) => {
             v-if="rombelDetail && bolehKelola"
             type="button"
             class="px-4 py-2.5 rounded-xl bg-white border border-[#E7EBF2] hover:border-blue-400 hover:bg-blue-50/50 text-[#1B5FD9] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
-            @click="ubahKueri({ token: '1' })"
+            @click="bukaTokenPeserta"
           >
             <AdminV2Icon name="key" :size="13" />
             <span>Token Peserta</span>
@@ -937,13 +937,6 @@ const removeSchedule = async (exam: ExamItem) => {
       :exams="ujianRombel"
       :source="source ?? 'cbt'"
       @close="ubahKueri({ pelanggaran: undefined })"
-      @toast="emit('toast', $event)"
-    />
-    <CbtV2ExamTokens
-      v-if="tokenExam"
-      :exam="tokenExam"
-      :source="source"
-      @close="ubahKueri({ token: undefined })"
       @toast="emit('toast', $event)"
     />
   </div>
