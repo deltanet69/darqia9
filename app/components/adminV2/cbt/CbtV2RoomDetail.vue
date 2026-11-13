@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
+import CbtV2SebQuit from './CbtV2SebQuit.vue'
 import type { GradeType } from './cbtV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 import {
@@ -334,6 +335,8 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
 
       <!-- OVERVIEW -->
       <div v-if="sub === 'overview'" class="space-y-4">
+        <CbtV2SebQuit v-if="bolehPunishment" :target-id="room.id" @toast="emit('toast', $event)" />
+
         <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#101828]">{{ ringkas.siswa }}</b><span class="text-[11px] text-[#667085]">Siswa</span></div>
           <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#1B5FD9]">{{ ringkas.mengerjakan }}</b><span class="text-[11px] text-[#667085]">Mengerjakan</span></div>

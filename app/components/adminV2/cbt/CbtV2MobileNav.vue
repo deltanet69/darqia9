@@ -32,7 +32,9 @@ const menuModules = computed<Array<{ id: CbtTabId; label: string }>>(() => [
   { id: 'bank', label: props.moduleName.includes('LMS') ? 'Bank Soal LMS (ujian harian)' : 'Bank Soal CBT (PTS/PAS)' },
   { id: 'monitoring', label: `${props.moduleName} · Monitoring Ujian` },
   { id: 'exams', label: `${props.moduleName} · Daftar Ujian` },
-  ...(props.moduleName.includes('LMS') ? [] : [{ id: 'rooms' as CbtTabId, label: `${props.moduleName} · Ruang Ujian` }]),
+  props.moduleName.includes('LMS')
+    ? { id: 'seb' as CbtTabId, label: `${props.moduleName} · Kode SEB` }
+    : { id: 'rooms' as CbtTabId, label: `${props.moduleName} · Ruang Ujian` },
   { id: 'cards', label: `${props.moduleName} · Kartu Ujian` },
   { id: 'results', label: `${props.moduleName} · Nilai Siswa` },
   { id: 'management', label: `${props.moduleName} · Manajemen Ujian` }

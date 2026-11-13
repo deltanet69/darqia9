@@ -1,5 +1,5 @@
 export type GradeType = 'SMK' | 'SMP'
-export type CbtTabId = 'summary' | 'monitoring' | 'bank' | 'exams' | 'rooms' | 'cards' | 'results' | 'management'
+export type CbtTabId = 'summary' | 'monitoring' | 'bank' | 'exams' | 'rooms' | 'seb' | 'cards' | 'results' | 'management'
 
 export interface CbtTabDef {
   id: CbtTabId
@@ -14,6 +14,7 @@ export const CBT_TABS: CbtTabDef[] = [
   { id: 'bank', label: 'Bank Soal', icon: 'book' },
   { id: 'exams', label: 'Daftar Ujian', icon: 'cal' },
   { id: 'rooms', label: 'Ruang Ujian', icon: 'bldg' },
+  { id: 'seb', label: 'Kode SEB', icon: 'shield' },
   { id: 'cards', label: 'Kartu Ujian', icon: 'doc' },
   { id: 'results', label: 'Nilai Siswa', icon: 'users' },
   { id: 'management', label: 'Manajemen Ujian', icon: 'gear' }

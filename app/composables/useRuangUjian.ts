@@ -12,6 +12,14 @@ export interface RuangUjian {
   jumlahSiswa: number
 }
 
+export type JenisSeb = 'ruang' | 'kelas'
+
+export interface KodeQuitSeb {
+  kode: string | null
+  diubahPada: string
+  diubahOleh: string
+}
+
 export interface AnggotaRuang {
   studentId: string
   nama: string
@@ -181,6 +189,22 @@ export const useRuangUjian = () => {
     galat(error)
   }
 
+  // Kode quit SEB iOS per ruang CBT (migrasi 0061) atau per kelas LMS (0062). Hak akses & log dijaga fungsi database.
+  const kodeQuitSeb = async (jenis: JenisSeb, id: string, tampil = false) => {
+    const { data, error } = jenis === 'kelas'
+      ? await client.rpc('seb_kode_quit_kelas', { p_class: id, p_tampil: tampil })
+      : await client.rpc('seb_kode_quit', { p_room: id, p_tampil: tampil })
+    galat(error)
+    return data as KodeQuitSeb
+  }
+  const generateKodeQuitSeb = async (jenis: JenisSeb, id: string) => {
+    const { data, error } = jenis === 'kelas'
+      ? await client.rpc('seb_generate_kode_quit_kelas', { p_class: id })
+      : await client.rpc('seb_generate_kode_quit', { p_room: id })
+    galat(error)
+    return data as KodeQuitSeb
+  }
+
   const lepasUjian = async (examIds: string[], roomId: string) => {
     wajibSuperadmin()
     const { error } = await client.from('exam_room_exams').delete().eq('room_id', roomId).in('exam_id', examIds)
@@ -190,6 +214,6 @@ export const useRuangUjian = () => {
   return {
     muatPeriodeRiwayat, muatRuang, simpanRuang, hapusRuang, generateRuang, isiAcak, tambahAnggota,
     keluarkanAnggota, muatAnggota, muatSiswaBebas, muatProgres, muatAlert, bukaKunci,
-    muatTautanUjian, tautkanUjian, lepasUjian
+    muatTautanUjian, tautkanUjian, lepasUjian, kodeQuitSeb, generateKodeQuitSeb
   }
 }
