@@ -45,6 +45,8 @@ export interface ExamItem {
   violatorIds?: string[] // siswa unik yang pernah melanggar di ujian ini
   supervisor: string
   supervisorId?: string
+  acakPg?: boolean
+  acakSingkat?: boolean
   acakEsai?: boolean
   jenis?: 'akhir' | 'tengah_semester' | 'harian' | 'pr'
 }

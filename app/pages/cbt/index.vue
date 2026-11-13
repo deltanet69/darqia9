@@ -142,6 +142,23 @@
       </div>
     </div>
 
+    <!-- LAYAR PENUH WAJIB: muncul saat ujian berjalan di luar layar penuh (setelah muat ulang atau keluar layar penuh) -->
+    <div
+      v-if="cbt.perluLayarPenuh.value"
+      class="fixed inset-0 z-[150] flex items-center justify-center bg-merek-d1/95 p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="judul-layar-penuh"
+    >
+      <div class="w-full max-w-xs rounded-3xl bg-white p-6 text-center shadow-2xl">
+        <p id="judul-layar-penuh" class="text-base font-black text-slate-900">Ujian harus dalam layar penuh</p>
+        <p class="mt-1 text-xs text-slate-500">Layar penuh menyembunyikan bilah status selama ujian. Timer tetap berjalan dan jawabanmu aman.</p>
+        <button type="button" class="mt-4 min-h-12 w-full rounded-2xl bg-merek-600 text-sm font-bold text-white active:scale-95" @click="cbt.masukLayarPenuh">
+          Lanjutkan Ujian
+        </button>
+      </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div
       v-if="cbt.toastMsg.value !== ''"

@@ -166,8 +166,9 @@ export const useCbtExam = () => {
   const letters: string[] = ['A', 'B', 'C', 'D', 'E', 'F']
   const totalQuestions = computed<number>(() => questions.value.length)
   const DURATION = computed(() => (activeExam.value?.duration ?? 90) * 60)
-  const SAVE_KEY = computed(() => `cbt_darqia_${grade.value}_${activeExam.value?.id}_${siswa.state.value.sesi?.nis ?? loginForm.nis}_v3`)
-  const SOAL_KEY = (source: string, id: string) => `cbt_soal_${source}_${id}_v1`
+  // v4: jawaban di perangkat disimpan per ID soal (bukan nomor urut), jadi tetap benar walau urutan soal berubah.
+  const SAVE_KEY = computed(() => `cbt_darqia_${grade.value}_${activeExam.value?.id}_${siswa.state.value.sesi?.nis ?? loginForm.nis}_v4`)
+  const SOAL_KEY = (source: string, id: string) => `cbt_soal_${source}_${id}_v2`
   const AKTIF_KEY = 'cbt_aktif_v1'
 
   /* ---------- STATE ---------- */
@@ -414,8 +415,11 @@ export const useCbtExam = () => {
       // Ujian diawasi: kode diberikan guru/pengawas dan dicek di server.
       modal.memeriksa = true
       try {
-        const hasil = await $fetch<{ ok: boolean }>('/api/cbt/buka-kunci', { method: 'POST', body: { ...kunciDasar(), kode } })
-        if (hasil?.ok) bukaKunciBerhasil(); else modal.pinError = true
+        const hasil = await $fetch<{ ok: boolean; terkunci?: boolean }>('/api/cbt/buka-kunci', { method: 'POST', body: { ...kunciDasar(), kode } })
+        if (hasil?.ok) bukaKunciBerhasil()
+        // Server sudah mengunci total (pelanggaran ke-3 tercatat): kode 1/2 tidak berlaku lagi, jangan tampil sebagai "kode salah".
+        else if (hasil?.terkunci) triggerCheatLock('Batas pelanggaran terlampaui', 3)
+        else modal.pinError = true
       } catch (e: any) {
         triggerToast(pesanGalat(e, 'Kode belum bisa diperiksa. Coba lagi.'), 3500)
       } finally { modal.memeriksa = false }
@@ -458,8 +462,12 @@ export const useCbtExam = () => {
   }
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-  const bacaSoalCache = (source: string, id: string): any[] | null => {
-    try { const d = JSON.parse(localStorage.getItem(SOAL_KEY(source, id)) || 'null'); return Array.isArray(d) && d.length ? d : null } catch { return null }
+  // Soal tersimpan beserta versinya; server mengirim ulang soal bila guru sudah mengubahnya.
+  const bacaSoalCache = (source: string, id: string): { versi: string; soal: any[] } | null => {
+    try {
+      const d = JSON.parse(localStorage.getItem(SOAL_KEY(source, id)) || 'null')
+      return d && typeof d.versi === 'string' && Array.isArray(d.soal) && d.soal.length ? d : null
+    } catch { return null }
   }
   const kunciDasar = (): { nis: string; token: string; grade: string; source: string; examId: string } => {
     const sesi = siswa.state.value.sesi
@@ -481,13 +489,16 @@ export const useCbtExam = () => {
     if (!lanjut && !cache && ref.mulai && siswa.sekarang() - new Date(ref.mulai).getTime() < 60_000) await sleep(Math.random() * 2500)
     const hasil = await $fetch<any>('/api/cbt/siapkan', {
       method: 'POST',
-      body: { nis: sesi.nis, token: sesi.token, grade: sesi.grade, source: ref.source, examId: ref.id, tanpaSoal: !!cache }
+      body: { nis: sesi.nis, token: sesi.token, grade: sesi.grade, source: ref.source, examId: ref.id, tanpaSoal: !!cache, versi: cache?.versi }
     })
-    const soalMentah = hasil.questions || cache
+    const soalMentah = hasil.questions || cache?.soal
     if (!soalMentah?.length) throw new Error('Ujian belum memiliki soal. Hubungi pengawas.')
-    if (hasil.questions) { try { localStorage.setItem(SOAL_KEY(ref.source, ref.id), JSON.stringify(hasil.questions)) } catch { /* penyimpanan penuh: soal tetap dari server */ } }
+    if (hasil.questions && hasil.versiSoal) { try { localStorage.setItem(SOAL_KEY(ref.source, ref.id), JSON.stringify({ versi: hasil.versiSoal, soal: hasil.questions })) } catch { /* penyimpanan penuh: soal tetap dari server */ } }
 
-    const { questions: _soal, jawaban, ...info } = hasil
+    const { questions: _soal, jawaban, versiSoal: _versi, acak: acakGuru, ...info } = hasil
+    // Hanya jenis soal yang dipilih guru yang diacak; Interaktif selalu sesuai urutan guru (media bisa merujuk urutan).
+    const acak = acakGuru ?? { pg: true, singkat: true, esai: info.acakEsai !== false }
+    const bagianTetap = ['interaktif', ...(acak.pg ? [] : ['pg']), ...(acak.singkat ? [] : ['singkat']), ...(acak.esai ? [] : ['essay'])]
     activeExam.value = info
     // Urutan soal dan pilihan jawaban diacak berbeda untuk tiap siswa. Garam acak dibuat sekali per siswa per ujian
     // dan disimpan di perangkat, jadi urutan tidak bisa ditebak dari NIS dan tidak berubah saat halaman dimuat ulang.
@@ -497,7 +508,7 @@ export const useCbtExam = () => {
       garam = localStorage.getItem(kunciGaram) || Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('')
       localStorage.setItem(kunciGaram, garam)
     } catch { /* penyimpanan tidak tersedia: acak tetap per siswa, hanya tidak bergaram */ }
-    examQuestions.value = acakPerSiswa(mapExamQuestions(soalMentah), `${sesi.nis}|${ref.source}|${ref.id}|${garam}`, sections.map(s => s.id), info.acakEsai === false ? ['essay'] : [])
+    examQuestions.value = acakPerSiswa(mapExamQuestions(soalMentah), `${sesi.nis}|${ref.source}|${ref.id}|${garam}`, sections.map(s => s.id), bagianTetap)
     Object.keys(answers).forEach(key => delete answers[Number(key)])
     flags.clear()
     terkirim.clear()
@@ -580,7 +591,8 @@ export const useCbtExam = () => {
       okText: 'Mulai sekarang',
       cancelText: 'Batal',
       btnClass: 'btn-primary',
-      onOk: () => { void beginExam() }
+      // Layar penuh harus diminta langsung dari ketukan siswa (sebelum menunggu server).
+      onOk: () => { void masukLayarPenuh(); void beginExam() }
     })
   }
 
@@ -687,11 +699,12 @@ export const useCbtExam = () => {
 
   const persist = (silent = false): void => {
     try {
+      const jawaban: Record<string, unknown> = {}
+      questions.value.forEach((q, i) => { if (q.id && adaJawaban(i)) jawaban[q.id] = answers[i] })
       localStorage.setItem(SAVE_KEY.value, JSON.stringify({
-        nis: loginForm.nis,
-        answers,
-        flags: [...flags],
-        idx: qIdx.value,
+        jawaban,
+        ragu: questions.value.filter((q, i) => q.id && flags.has(i)).map(q => q.id),
+        posisi: questions.value[qIdx.value]?.id ?? '',
         violations: violations.value,
         pulih: activeExam.value?.pemulihan ?? 0,
         savedAt: Date.now()
@@ -708,12 +721,17 @@ export const useCbtExam = () => {
       if (!raw) return false
       const d = JSON.parse(raw)
       if (!d || typeof d !== 'object') return false
-      if (d.answers) Object.assign(answers, d.answers)
-      if (Array.isArray(d.flags)) {
-        flags.clear()
-        d.flags.forEach((f: number) => flags.add(f))
+      const indeks = new Map(questions.value.map((q, i) => [q.id, i]))
+      for (const [qid, a] of Object.entries<unknown>(d.jawaban ?? {})) {
+        const i = indeks.get(qid)
+        if (i !== undefined) answers[i] = a
       }
-      if (typeof d.idx === 'number') qIdx.value = Math.max(0, Math.min(d.idx, totalQuestions.value - 1))
+      if (Array.isArray(d.ragu)) {
+        flags.clear()
+        d.ragu.forEach((qid: string) => { const i = indeks.get(qid); if (i !== undefined) flags.add(i) })
+      }
+      const posisi = indeks.get(d.posisi)
+      if (posisi !== undefined) qIdx.value = posisi
       // Hitungan pelanggaran dari sebelum dipulihkan superadmin tidak dipakai lagi; jawabannya tetap dipakai.
       if (typeof d.violations === 'number' && (d.pulih ?? 0) === (activeExam.value?.pemulihan ?? 0)) violations.value = Math.max(violations.value, d.violations)
       return true
@@ -897,6 +915,7 @@ export const useCbtExam = () => {
     } catch (e) {}
     siswa.kadaluwarsa()
     lepasLayar()
+    keluarLayarPenuh()
 
     const d = new Date()
     doneTime.value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} WIB`
@@ -965,10 +984,8 @@ export const useCbtExam = () => {
     // Simulasi (uji coba) tidak dicatat; pelanggaran nyata dicatat di server dan menjadi bagian Rekap Ujian.
     if (jenis && activeExam.value) {
       simpanKunci(violations.value)
-      if (jenis === 'tutup_browser') {
-        // Saat halaman ditutup/dimuat ulang, fetch biasa terputus: pakai sendBeacon agar tetap tercatat.
-        try { navigator.sendBeacon('/api/cbt/pelanggaran', new Blob([JSON.stringify({ ...kunciDasar(), jenis })], { type: 'application/json' })) } catch { antrePelanggaran.push(jenis) }
-      } else { antrePelanggaran.push(jenis); void sinkronServer() }
+      antrePelanggaran.push(jenis)
+      void sinkronServer()
     }
 
     const defaultReason = 'Meninggalkan layar ujian (terdeteksi perpindahan tab, alt+tab, atau aplikasi lain)'
@@ -1027,22 +1044,85 @@ export const useCbtExam = () => {
   // Layar HP tetap menyala selama ujian (Screen Wake Lock: Chrome Android, Safari iOS 16.4+, juga saat dipasang
   // sebagai aplikasi/PWA). Layar yang mati sendiri terbaca seperti pindah tab, jadi dicegah dari awal.
   // Wake lock lepas otomatis saat halaman tersembunyi, maka diminta ulang setiap halaman tampil lagi.
+  // Dengan wake lock aktif, layar hanya mati karena tombol power = pelanggaran. Bila sistem mencabut wake lock saat
+  // halaman tampil (mode hemat baterai), layar bisa tidur sendiri: layar mati berikutnya tidak dihitung.
   let kunciLayar: { release: () => Promise<void> } | null = null
+  let layarBisaTidur = false
   const nyalakanLayar = async (): Promise<void> => {
     try {
       if (kunciLayar || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return
-      kunciLayar = await (navigator as any).wakeLock.request('screen')
-      ;(kunciLayar as any).addEventListener?.('release', () => { kunciLayar = null })
+      const kunci = await (navigator as any).wakeLock.request('screen')
+      kunciLayar = kunci
+      layarBisaTidur = false
+      kunci.addEventListener?.('release', () => {
+        if (kunciLayar !== kunci) return // dilepas sendiri (ujian selesai)
+        kunciLayar = null
+        if (document.visibilityState === 'visible') { layarBisaTidur = true; void nyalakanLayar() }
+      })
     } catch { kunciLayar = null /* tidak didukung / ditolak perangkat: ujian tetap jalan */ }
   }
   const lepasLayar = (): void => {
-    try { void kunciLayar?.release() } catch { /* abaikan */ }
+    const kunci = kunciLayar
     kunciLayar = null
+    try { void kunci?.release() } catch { /* abaikan */ }
+  }
+
+  // Muat ulang/menutup halaman bukan pelanggaran: jawaban & posisi pelanggaran dipulihkan saat halaman dibuka lagi.
+  // Halaman yang sedang dibongkar juga memicu "tersembunyi"; itu diabaikan selama 5 detik setelah beforeunload/pagehide.
+  let keluarPada = 0
+  const sedangKeluar = (): boolean => Date.now() - keluarPada < 5000
+
+  // Layar penuh selama ujian (Android & laptop): bilah status & navigasi tersembunyi. iPhone Safari tidak mendukung
+  // layar penuh untuk halaman web, jadi di iPhone ujian tetap berjalan tanpa layar penuh.
+  const elemenLayarPenuh = (): Element | null => document.fullscreenElement || (document as any).webkitFullscreenElement || null
+  const layarPenuhDidukung = ref(false)
+  const sedangLayarPenuh = ref(false)
+  const masukLayarPenuh = async (): Promise<void> => {
+    if (!layarPenuhDidukung.value || elemenLayarPenuh()) return
+    const el: any = document.documentElement
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' })
+      else el.webkitRequestFullscreen?.()
+    } catch { /* ditolak perangkat: layar "Lanjutkan Ujian" tetap muncul untuk dicoba lagi */ }
+  }
+  const keluarLayarPenuh = (): void => {
+    try { if (elemenLayarPenuh()) void (document.exitFullscreen ? document.exitFullscreen() : (document as any).webkitExitFullscreen?.()) } catch { /* abaikan */ }
+  }
+  const onFullscreenChange = (): void => { sedangLayarPenuh.value = !!elemenLayarPenuh() }
+  // Keluar layar penuh (tombol kembali, gestur) bukan pelanggaran: ujian ditutup sampai siswa masuk layar penuh lagi.
+  const perluLayarPenuh = computed(() => layarPenuhDidukung.value && !sedangLayarPenuh.value && !modal.show && (screen.value === 'exam' || screen.value === 'review'))
+
+  // Pemutar media (iframe YouTube/Drive, video/audio, layar penuh video) memegang fokus: bukan meninggalkan ujian.
+  const fokusDiMedia = (): boolean => {
+    const tag = document.activeElement?.tagName
+    if (tag === 'IFRAME' || tag === 'VIDEO' || tag === 'AUDIO') return true
+    const penuh = elemenLayarPenuh()
+    if (penuh && penuh !== document.documentElement) return true // layar penuh milik video, bukan layar penuh ujian
+    return Array.from(document.querySelectorAll('video')).some(v => (v as any).webkitDisplayingFullscreen)
+  }
+  // HP/tablet: menarik bilah notifikasi atau notifikasi WA/SMS yang muncul hanya membuat halaman kehilangan fokus sesaat
+  // tanpa tersembunyi. Toleransinya 10 detik; lebih lama = memakai aplikasi mengambang (pelanggaran).
+  const perangkatSentuh = (): boolean => { try { return window.matchMedia('(pointer: coarse)').matches } catch { return false } }
+
+  // Layar terpisah / jendela mengambang di HP: jendela ujian mengecil jauh dari ukuran layar. Keyboard tidak dihitung
+  // (kolom isian sedang aktif). Ukuran layar disesuaikan dengan orientasi (iOS tidak menukar lebar/tinggi saat diputar).
+  const onResize = (): void => {
+    if ((screen.value !== 'exam' && screen.value !== 'review') || !perangkatSentuh() || modal.show) return
+    const aktif = document.activeElement as HTMLElement | null
+    if (aktif && (aktif.tagName === 'INPUT' || aktif.tagName === 'TEXTAREA' || aktif.isContentEditable)) return
+    const [a, b] = [window.screen.width, window.screen.height]
+    const mendatar = window.innerWidth > window.innerHeight
+    const lebarLayar = mendatar ? Math.max(a, b) : Math.min(a, b)
+    const tinggiLayar = mendatar ? Math.min(a, b) : Math.max(a, b)
+    if (window.innerWidth < lebarLayar * 0.9 || window.innerHeight < tinggiLayar * 0.6) {
+      triggerCheatLock('Membuka layar terpisah atau aplikasi mengambang', undefined, 'alt_tab')
+    }
   }
 
   const onVisibilityChange = (): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
       if (document.visibilityState === 'hidden') {
+        if (sedangKeluar() || layarBisaTidur) return
         // Pindah aplikasi memicu blur lalu halaman tersembunyi: cukup dihitung sekali.
         if (tundaBlur) { clearTimeout(tundaBlur); tundaBlur = null }
         triggerCheatLock('Berpindah tab atau meminimalkan jendela ujian', undefined, 'pindah_tab')
@@ -1061,45 +1141,60 @@ export const useCbtExam = () => {
     if (tundaBlur) clearTimeout(tundaBlur)
     tundaBlur = setTimeout(() => {
       tundaBlur = null
-      if (document.hasFocus() || document.activeElement?.tagName === 'IFRAME') return
+      if (document.hasFocus() || fokusDiMedia() || sedangKeluar()) return
+      // Kejadian yang sama sudah dihitung (mis. layar terpisah terdeteksi lewat ukuran jendela): jangan dihitung dua kali.
+      if (Date.now() - lastViolationTimestamp < 10_000) return
       if (screen.value === 'exam' || screen.value === 'review') {
         triggerCheatLock('Kehilangan fokus jendela ujian (membuka aplikasi lain / Alt+Tab)', undefined, 'alt_tab')
       }
-    }, 2000)
+    }, perangkatSentuh() ? 10_000 : 2000)
   }
   const onWindowFocus = (): void => { if (tundaBlur) { clearTimeout(tundaBlur); tundaBlur = null } }
 
+  // Peringatan bawaan peramban tetap muncul saat menutup/memuat ulang, tetapi tidak dihitung pelanggaran.
   const onBeforeUnload = (e: BeforeUnloadEvent): void => {
     if (screen.value === 'exam' || screen.value === 'review') {
+      keluarPada = Date.now()
       e.preventDefault()
-      e.returnValue = 'Dilarang meninggalkan atau menutup halaman ujian! Tindakan ini akan mengunci akun ujian Anda.'
-      triggerCheatLock('Mencoba menutup atau me-reload jendela ujian', undefined, 'tutup_browser')
+      e.returnValue = 'Yakin meninggalkan halaman ujian? Jawabanmu tetap tersimpan.'
     }
   }
 
-  // iOS Safari tidak selalu memicu beforeunload saat halaman dimuat ulang/ditutup; pagehide selalu terpicu.
+  // iOS Safari tidak selalu memicu beforeunload; pagehide selalu terpicu. Simpan jawaban terakhir ke perangkat.
   const onPageHide = (): void => {
-    if (screen.value === 'exam' || screen.value === 'review') triggerCheatLock('Mencoba menutup atau me-reload jendela ujian', undefined, 'tutup_browser')
+    if (screen.value === 'exam' || screen.value === 'review') { keluarPada = Date.now(); persist(true) }
   }
+  // Batal keluar / kembali dari cache halaman: deteksi pindah tab aktif lagi.
+  const onPageShow = (): void => { keluarPada = 0 }
 
   const registerListeners = (): void => {
     if (typeof window === 'undefined') return
     document.addEventListener('keydown', onKeydown)
     document.addEventListener('visibilitychange', onVisibilityChange)
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+    layarPenuhDidukung.value = !!(document.fullscreenEnabled || (document as any).webkitFullscreenEnabled)
+    onFullscreenChange()
     window.addEventListener('blur', onWindowBlur)
     window.addEventListener('focus', onWindowFocus)
     window.addEventListener('beforeunload', onBeforeUnload)
     window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('pageshow', onPageShow)
+    window.addEventListener('resize', onResize)
   }
 
   const unregisterListeners = (): void => {
     if (typeof window === 'undefined') return
     document.removeEventListener('keydown', onKeydown)
     document.removeEventListener('visibilitychange', onVisibilityChange)
+    document.removeEventListener('fullscreenchange', onFullscreenChange)
+    document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
     window.removeEventListener('blur', onWindowBlur)
     window.removeEventListener('focus', onWindowFocus)
     window.removeEventListener('beforeunload', onBeforeUnload)
     window.removeEventListener('pagehide', onPageHide)
+    window.removeEventListener('pageshow', onPageShow)
+    window.removeEventListener('resize', onResize)
     stopTimer()
     stopAudio()
     lepasLayar()
@@ -1210,6 +1305,8 @@ export const useCbtExam = () => {
     setShowMobilePalette,
     goToExamScreen,
     simulateViolation,
+    perluLayarPenuh,
+    masukLayarPenuh,
     registerListeners,
     unregisterListeners
   }

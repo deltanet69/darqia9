@@ -2,6 +2,7 @@
 // service role di sini (bukan dari peramban), sehingga pembatas percobaan salah tidak bisa dilewati.
 import { serverSupabaseServiceRole } from '#supabase/server'
 import type { H3Event } from 'h3'
+import { createHash } from 'node:crypto'
 import { buatPembatas } from './pembatas'
 
 const PESAN_KREDENSIAL = 'NIS atau token tidak cocok.'
@@ -19,6 +20,7 @@ export interface BodySiswa {
   jenis?: string
   kode?: string
   tanpaSoal?: boolean
+  versi?: string
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -43,6 +45,7 @@ export async function bacaBodySiswa(event: H3Event, perluUjian = false): Promise
   if (typeof b?.jenis === 'string') hasil.jenis = b.jenis.slice(0, 20)
   if (typeof b?.kode === 'string') hasil.kode = b.kode.trim().slice(0, 12)
   if (b?.tanpaSoal === true) hasil.tanpaSoal = true
+  if (typeof b?.versi === 'string') hasil.versi = b.versi.slice(0, 32)
   return hasil
 }
 
@@ -96,17 +99,29 @@ export const argumenUjian = (b: BodySiswa) => ({ ...argumenSiswa(b), p_source: b
 const TTL_SOAL = 120_000
 const soalCache = new Map<string, { at: number, data?: unknown, janji?: Promise<unknown> }>()
 
-// Opsi "acak soal Esai" per ujian. Kolom belum ada (migrasi 0050 belum dijalankan) atau gagal dibaca = tetap diacak.
-const esaiCache = new Map<string, { at: number, nilai: boolean }>()
-export async function acakEsai(event: H3Event, source: string, examId: string): Promise<boolean> {
+// Jenis soal yang diacak per ujian (PG / Singkat / Esai). Interaktif tidak pernah diacak.
+// Kolom belum ada (migrasi 0060 belum dijalankan) = PG & Singkat diacak, Esai mengikuti acak_esai (0050).
+export interface AcakSoal { pg: boolean, singkat: boolean, esai: boolean }
+const acakCache = new Map<string, { at: number, nilai: AcakSoal }>()
+export async function acakSoal(event: H3Event, source: string, examId: string): Promise<AcakSoal> {
   const kunci = `${source}:${examId}`
-  const ada = esaiCache.get(kunci)
+  const ada = acakCache.get(kunci)
   if (ada && Date.now() - ada.at < TTL_SOAL) return ada.nilai
-  const { data, error } = await klienService(event).from(source === 'cbt' ? 'exams' : 'ujian_harian').select('acak_esai').eq('id', examId).maybeSingle()
-  const nilai = error ? true : data?.acak_esai !== false
-  esaiCache.set(kunci, { at: Date.now(), nilai })
-  if (esaiCache.size > 60) esaiCache.delete(esaiCache.keys().next().value as string)
+  const tabel = klienService(event).from(source === 'cbt' ? 'exams' : 'ujian_harian')
+  let { data, error } = await tabel.select('acak_pg, acak_singkat, acak_esai').eq('id', examId).maybeSingle() as { data: any, error: any }
+  if (error) ({ data, error } = await klienService(event).from(source === 'cbt' ? 'exams' : 'ujian_harian').select('acak_esai').eq('id', examId).maybeSingle() as { data: any, error: any })
+  const nilai: AcakSoal = { pg: data?.acak_pg !== false, singkat: data?.acak_singkat !== false, esai: error ? true : data?.acak_esai !== false }
+  acakCache.set(kunci, { at: Date.now(), nilai })
+  if (acakCache.size > 60) acakCache.delete(acakCache.keys().next().value as string)
   return nilai
+}
+
+// Sidik isi soal: perangkat yang menyimpan soal versi lama (guru mengubah soal setelah siswa membuka ujian) mendapat soal baru.
+const versiCache = new WeakMap<object, string>()
+export const versiSoal = (soal: unknown[]): string => {
+  let v = versiCache.get(soal)
+  if (!v) { v = createHash('sha1').update(JSON.stringify(soal)).digest('hex').slice(0, 16); versiCache.set(soal, v) }
+  return v
 }
 
 export async function soalUjian(event: H3Event, source: string, examId: string): Promise<unknown[]> {

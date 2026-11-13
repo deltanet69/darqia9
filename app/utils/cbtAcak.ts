@@ -1,6 +1,7 @@
 // Pengacakan soal per siswa: urutan soal dan urutan pilihan jawaban berbeda untuk tiap siswa,
 // tetapi tetap sama setiap kali siswa yang sama memuat ulang ujiannya (acak deterministik dari kunci: NIS + ujian + garam acak).
 // Bagian soal tetap berurutan (PG, Singkat, Essay, Interaktif); pengacakan terjadi di dalam tiap bagian.
+// Bagian tetap (tidak dipilih guru untuk diacak, dan selalu Interaktif): urutan soal DAN pilihan jawabannya tidak diubah.
 
 export interface SoalAcak {
   sec: string
@@ -40,9 +41,10 @@ export function acakPerSiswa<T extends SoalAcak>(soal: T[], kunci: string, urutB
   const hasil: T[] = []
   for (const sec of bagian) {
     const isi = soal.filter(item => item.sec === sec)
-    for (const q of bagianTetap.includes(sec) ? isi : kocok(isi, rnd)) {
+    const tetap = bagianTetap.includes(sec)
+    for (const q of tetap ? isi : kocok(isi, rnd)) {
       const pilihan = q.options
-      if (pilihan && pilihan.length > 1) {
+      if (!tetap && pilihan && pilihan.length > 1) {
         const urut = kocok(pilihan.map((_, i) => i), rnd)
         hasil.push({ ...q, options: urut.map(i => pilihan[i]!), optionOrder: urut })
       } else hasil.push(q)

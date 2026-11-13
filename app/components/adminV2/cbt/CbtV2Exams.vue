@@ -75,6 +75,8 @@ const emptyExam = () => ({
   duration: 90,
   token: '',
   supervisorId: '',
+  acakPg: true,
+  acakSingkat: true,
   acakEsai: true,
   jenis: 'akhir' as 'akhir' | 'tengah_semester' | 'harian' | 'pr'
 })
@@ -310,6 +312,8 @@ const openEditSchedule = (exam: ExamItem) => {
     duration: exam.duration,
     token: exam.token,
     supervisorId: exam.supervisorId ?? '',
+    acakPg: exam.acakPg !== false,
+    acakSingkat: exam.acakSingkat !== false,
     acakEsai: exam.acakEsai !== false,
     jenis: exam.jenis ?? (props.source === 'ujian_harian' ? 'harian' : 'akhir')
   }
@@ -894,10 +898,16 @@ const removeSchedule = async (exam: ExamItem) => {
                 </div>
               </template>
             </fieldset>
-              <label class="flex items-start gap-2.5 p-3 rounded-xl border border-[#E7EBF2] cursor-pointer">
-                <input v-model="newExam.acakEsai" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#1B5FD9]">
-                <span><b class="block text-[#344054]">Acak urutan soal Esai</b><span class="text-[#667085]">Aktif: tiap siswa mendapat urutan Esai berbeda. Nonaktif: urutan Esai sesuai susunan guru.</span></span>
-              </label>
+              <fieldset class="p-3 rounded-xl border border-[#E7EBF2]">
+                <legend class="px-1 font-bold text-[#344054]">Acak urutan soal</legend>
+                <p class="text-[#667085]">Hanya jenis yang dicentang yang diacak per siswa (urutan soal dan pilihan jawabannya). Jenis lain mengikuti susunan guru.</p>
+                <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                  <label class="inline-flex min-h-11 items-center gap-2 cursor-pointer"><input v-model="newExam.acakPg" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]"><span class="font-semibold text-[#344054]">Pilihan Ganda</span></label>
+                  <label class="inline-flex min-h-11 items-center gap-2 cursor-pointer"><input v-model="newExam.acakSingkat" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]"><span class="font-semibold text-[#344054]">Jawaban Singkat</span></label>
+                  <label class="inline-flex min-h-11 items-center gap-2 cursor-pointer"><input v-model="newExam.acakEsai" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]"><span class="font-semibold text-[#344054]">Esai</span></label>
+                </div>
+                <p class="mt-1 text-[#667085]">Soal Interaktif (audio/video) selalu tampil sesuai urutan guru.</p>
+              </fieldset>
               <div class="rounded-xl bg-[#101828] text-[#C9D6F2] p-4 space-y-1.5">
                 <p class="font-extrabold text-white">Ringkasan Ujian</p>
                 <div class="flex justify-between gap-3"><span>Nama</span><b class="text-white text-right">{{ newExam.name || '-' }}</b></div>

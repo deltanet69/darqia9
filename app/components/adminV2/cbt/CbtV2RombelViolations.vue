@@ -37,7 +37,9 @@ const ujianById = computed(() => new Map(props.exams.map(e => [e.id, e])))
 const isPr = (p: PelanggaranRombel) => ujianById.value.get(p.examId)?.jenis === 'pr'
 // Kode perlu diberikan bila siswa masih mengerjakan, pelanggaran belum dibuka, belum ke-3, dan bukan PR di rumah.
 // Satu siswa cukup satu kode: hanya pelanggaran terakhir yang masih menunggu yang ditampilkan kodenya (server membuka semuanya sekaligus).
-const menunggu = (p: PelanggaranRombel) => p.terkunci && p.ke < 3 && !p.selesai && !p.dipulihkan && !isPr(p)
+// Siswa yang sudah terkunci total (pelanggaran ke-3) tidak bisa memakai kode 1/2 lagi; yang tersisa hanya Pulihkan ujian.
+const kunciTotal = computed(() => new Set((daftar.value ?? []).filter(p => p.ke >= 3 && !p.dipulihkan).map(p => p.assignmentId)))
+const menunggu = (p: PelanggaranRombel) => p.terkunci && p.ke < 3 && !p.selesai && !p.dipulihkan && !isPr(p) && !kunciTotal.value.has(p.assignmentId)
 const kodeTerbaru = computed(() => {
   const ids = new Set<string>()
   const sudah = new Set<string>()
@@ -55,7 +57,7 @@ const terkunciTotal = computed(() => (daftar.value ?? []).filter(p => p.ke >= 3 
 const memulihkan = ref('')
 const pulihkan = async (p: PelanggaranRombel) => {
   if (memulihkan.value) return
-  const ok = confirm(`Pulihkan ujian ${p.nama}?\n\nLakukan hanya setelah memeriksa perangkat siswa (mis. HP force close sendiri).\n\n• Jawaban yang sudah diisi tetap ada.\n• Sisa waktu = sisa saat akun terkunci.\n• Hitungan pelanggaran mulai dari 0 lagi.\n\nPastikan aplikasi CBT di HP siswa sudah ditutup, lalu minta siswa membukanya lagi setelah ini.`)
+  const ok = confirm(`Pulihkan ujian ${p.nama}?\n\nLakukan hanya setelah memeriksa perangkat siswa (mis. HP force close sendiri).\n\n• Jawaban yang sudah diisi tetap ada.\n• Sisa waktu = sisa saat akun terkunci.\n• Siswa melanjutkan di peringatan ke-2: satu pelanggaran lagi langsung mengunci total.\n\nPastikan aplikasi CBT di HP siswa sudah ditutup, lalu minta siswa membukanya lagi setelah ini.`)
   if (!ok) return
   memulihkan.value = p.id
   try {
