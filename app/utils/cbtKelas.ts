@@ -10,6 +10,19 @@ export const kunciKelas = (nama: string): string => {
   return arab.replace(/[^A-Z0-9]/g, '')
 }
 
+// Isian KELAS boleh berisi banyak kelas dipisah koma, titik koma, garis miring, atau baris baru (cth: "7.2, 8.1, 7.3").
+// Hasil: kelas resmi tanpa duplikat (urutan sesuai isian) dan isian yang tidak ditemukan.
+export const cocokDaftarKelas = (isian: string, daftar: string[]): { cocok: string[]; hilang: string[] } => {
+  const cocok: string[] = []
+  const hilang: string[] = []
+  for (const bagian of String(isian ?? '').split(/[,;/\n]+/).map(item => item.trim()).filter(Boolean)) {
+    const nama = cocokKelas(bagian, daftar)
+    if (!nama) hilang.push(bagian)
+    else if (!cocok.includes(nama)) cocok.push(nama)
+  }
+  return { cocok, hilang }
+}
+
 // Nama kelas resmi (persis seperti di Manajemen Kelas) untuk isian template, atau null bila tidak ada/ambigu.
 export const cocokKelas = (isian: string, daftar: string[]): string | null => {
   const persis = daftar.find(nama => nama === isian)

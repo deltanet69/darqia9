@@ -1,19 +1,30 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
-  useModulPembelajaran, isiBawaan, totalJpLangkah, totalBobot, bolehSunting,
+  useModulPembelajaran, isiBawaan, totalJpLangkah, totalBobot, bolehSunting, isiDariAi,
   DIMENSI_PROFIL_LULUSAN,
   type IsiModul, type ModulPembelajaran, type PeranModul
 } from '~/composables/useModulPembelajaran'
 
 const props = defineProps<{ id?: string; jenjang: 'SMP' | 'SMK'; role: PeranModul }>()
 const store = useModulPembelajaran()
-const { guruDaftar, penulisAktifId, pesan } = store
+const { guruDaftar, mapelDaftar, penulisAktifId, pesan } = store
+const rbac = useRbac()
 
 const SATUAN: Record<string, string> = { SMP: 'SMP IT Bina Cendekia Assalam', SMK: 'SMK IT Attaqwa 9' }
 const sibuk = ref(false)
-const ditolak = ref(false)
+const ditolak = ref('')
 const catatan = ref('')
+const penyusunAwal = ref('')
+const aiSibuk = ref(false)
+const aiDipakai = ref(false)
+const aiGalat = ref('')
+// Mapel modul lama yang tidak ada di master tetap ditampilkan agar tidak hilang saat disunting.
+const opsiMapel = computed(() => draf.mapel && !mapelDaftar.value.includes(draf.mapel) ? [draf.mapel, ...mapelDaftar.value] : mapelDaftar.value)
+// Guru yang mengajar lintas jenjang bisa tidak ada di daftar guru jenjang ini: tetap tampilkan dirinya sebagai opsi.
+const opsiGuru = computed(() => penulisAktifId.value && !guruDaftar.value.some(g => g.id === penulisAktifId.value)
+  ? [{ id: penulisAktifId.value, name: rbac.namaAkun.value || 'Saya' }, ...guruDaftar.value]
+  : guruDaftar.value)
 
 const draf = reactive({
   nomor: '' as string, judul: '', jenis: 'projek' as 'projek' | 'mapel',
@@ -32,7 +43,7 @@ const pemantikTeks = computed({
 })
 const totalJp = computed(() => totalJpLangkah(draf.isi))
 const totalPersen = computed(() => totalBobot(draf.isi))
-const namaPenyusun = computed(() => guruDaftar.value.find(g => g.id === draf.authorTeacherId)?.name || '')
+const namaPenyusun = computed(() => opsiGuru.value.find(g => g.id === draf.authorTeacherId)?.name || penyusunAwal.value)
 
 const alihkanDimensi = (d: string) => {
   const i = draf.isi.dimensi.indexOf(d)
@@ -44,8 +55,8 @@ onMounted(async () => {
   await store.muat(props.jenjang)
   if (props.id) {
     const m = await store.ambil(props.id)
-    if (!m) { ditolak.value = true; return }
-    if (!bolehSunting(m, props.role, penulisAktifId.value)) { ditolak.value = true; return }
+    if (!m || !bolehSunting(m, props.role, penulisAktifId.value)) { ditolak.value = 'Hanya penulis modul (atau superadmin) yang dapat menyunting modul ini.'; return }
+    penyusunAwal.value = m.penyusun
     draf.nomor = m.nomor ? String(m.nomor) : ''
     draf.judul = m.judul; draf.jenis = m.jenis
     draf.authorTeacherId = m.authorTeacherId || ''
@@ -55,6 +66,10 @@ onMounted(async () => {
     draf.durasiMinggu = m.durasiMinggu ? String(m.durasiMinggu) : ''
     draf.isi = JSON.parse(JSON.stringify(m.isi))
   } else {
+    if (props.role !== 'superadmin' && (!penulisAktifId.value || !rbac.bisaSaya('Modul Pembelajaran', 'buat'))) {
+      ditolak.value = 'Akun ini belum tertaut data guru atau tidak memiliki izin membuat modul. Hubungi admin.'
+      return
+    }
     draf.authorTeacherId = penulisAktifId.value
     draf.fase = props.jenjang === 'SMP' ? 'Fase D' : 'Fase E'
   }
@@ -77,8 +92,32 @@ const bangunModul = (status: ModulPembelajaran['status']): ModulPembelajaran => 
   createdAt: null, updatedAt: null, deletedAt: null
 })
 
+const isiTerisi = () => !!(draf.isi.cp.trim() || draf.isi.tujuan.length || draf.isi.langkah.some(l => l.guru.trim() || l.siswa.trim()))
+const buatDenganAi = async () => {
+  aiGalat.value = ''
+  if (!draf.mapel || !draf.judul.trim()) { aiGalat.value = 'Pilih mata pelajaran dan isi judul modul terlebih dahulu.'; return }
+  if (isiTerisi() && !window.confirm('Isi seksi B–H yang sudah ditulis akan diganti dengan rekomendasi AI. Lanjutkan?')) return
+  aiSibuk.value = true
+  try {
+    const hasil = await $fetch<{ isi: unknown }>('/api/modul/ai', {
+      method: 'POST',
+      body: {
+        jenjang: props.jenjang, jenis: draf.jenis, mapel: draf.mapel, fase: draf.fase, kelas: draf.kelas,
+        judul: draf.judul, alokasiJp: Number(draf.alokasiJp) || 0, jumlahPertemuan: Number(draf.jumlahPertemuan) || 0
+      }
+    })
+    draf.isi = isiDariAi(hasil.isi)
+    aiDipakai.value = true
+  } catch (e: any) {
+    aiGalat.value = e?.data?.statusMessage || e?.statusMessage || 'Rekomendasi AI gagal dibuat. Coba lagi.'
+  } finally {
+    aiSibuk.value = false
+  }
+}
+
 const simpan = async (kumpulkan: boolean) => {
   if (!draf.judul.trim()) { catatan.value = 'Judul / nama projek wajib diisi dulu.'; return }
+  if (!draf.mapel) { catatan.value = 'Mata pelajaran wajib dipilih.'; return }
   if (!draf.authorTeacherId) { catatan.value = 'Penyusun wajib dipilih.'; return }
   sibuk.value = true
   const hasil = await store.simpan(bangunModul(kumpulkan ? 'menunggu' : 'draf'))
@@ -93,8 +132,8 @@ const simpan = async (kumpulkan: boolean) => {
     <NuxtLink to="/adminV2/modul-ajar" class="text-[12.5px] font-medium text-blue-700">← Kembali ke daftar modul</NuxtLink>
 
     <div v-if="ditolak" class="mt-4 bg-white border border-slate-200 rounded-2xl px-5 py-10 text-center">
-      <div class="text-[14px] font-medium text-slate-700">Modul tidak bisa disunting</div>
-      <p class="text-[12.5px] text-slate-400 mt-1">Hanya penulis modul (atau superadmin) yang dapat menyunting modul ini.</p>
+      <div class="text-[14px] font-medium text-slate-700">{{ id ? 'Modul tidak bisa disunting' : 'Tidak bisa membuat modul' }}</div>
+      <p class="text-[12.5px] text-slate-400 mt-1">{{ ditolak }}</p>
     </div>
 
     <template v-else>
@@ -103,8 +142,19 @@ const simpan = async (kumpulkan: boolean) => {
           <h1 class="text-[22px] leading-7 font-semibold text-blue-950">{{ id ? 'Sunting Modul' : 'Buat Modul' }}</h1>
           <p class="text-[13px] text-slate-500 mt-0.5">Isi per seksi mengikuti urutan dokumen A–H. Simpan sebagai draf, lalu kumpulkan untuk persetujuan admin.</p>
         </div>
-        <span class="ml-auto text-[11px] bg-slate-100 text-slate-500 rounded-full px-2.5 py-1.5 font-medium">Status: Draf</span>
+        <div class="ml-auto flex flex-wrap items-center gap-2">
+          <span class="text-[11px] bg-slate-100 text-slate-600 rounded-full px-2.5 py-1.5 font-medium">Status: Draf</span>
+          <button type="button" :disabled="aiSibuk" class="text-[12.5px] font-medium text-blue-700 border border-blue-200 bg-white hover:bg-blue-50 rounded-xl px-3.5 py-2 transition disabled:opacity-50" @click="buatDenganAi">
+            {{ aiSibuk ? 'Menyusun rekomendasi…' : 'Buat dengan AI Assistant' }}
+          </button>
+        </div>
       </div>
+
+      <p v-if="aiGalat" class="mt-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-[13px]" role="alert">{{ aiGalat }}</p>
+      <p v-if="aiDipakai" class="mt-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-[13px]" role="alert">
+        <span class="font-semibold">Harap review hasil generate modul pembelajaran sebelum digunakan.</span>
+        Isi seksi B–H dibuat oleh AI Assistant berdasarkan identitas modul; periksa kesesuaian CP, langkah kegiatan, dan asesmen.
+      </p>
 
       <div class="mt-4 space-y-3">
         <div class="bg-white border border-slate-200 rounded-2xl p-5">
@@ -112,9 +162,9 @@ const simpan = async (kumpulkan: boolean) => {
           <div class="mt-3.5 grid grid-cols-2 gap-3">
             <div>
               <label class="text-[12px] font-medium text-slate-600">Nama Penyusun</label>
-              <select v-model="draf.authorTeacherId" :disabled="role !== 'superadmin' && !!id" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-[13.5px] bg-white disabled:opacity-60">
+              <select v-model="draf.authorTeacherId" :disabled="role !== 'superadmin'" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-[13.5px] bg-white disabled:opacity-60">
                 <option value="">— pilih guru —</option>
-                <option v-for="g in guruDaftar" :key="g.id" :value="g.id">{{ g.name }}</option>
+                <option v-for="g in opsiGuru" :key="g.id" :value="g.id">{{ g.name }}</option>
               </select>
             </div>
             <div><label class="text-[12px] font-medium text-slate-600">Satuan Pendidikan</label><input type="text" :value="SATUAN[jenjang]" disabled class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-[13.5px] bg-slate-50 text-slate-500"></div>
@@ -122,7 +172,14 @@ const simpan = async (kumpulkan: boolean) => {
               <label class="text-[12px] font-medium text-slate-600">Jenis Modul</label>
               <select v-model="draf.jenis" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-[13.5px] bg-white"><option value="projek">Projek kokurikuler (lintas mapel)</option><option value="mapel">Modul ajar mata pelajaran</option></select>
             </div>
-            <div><label class="text-[12px] font-medium text-slate-600">Mata Pelajaran / Konsentrasi</label><input v-model="draf.mapel" type="text" placeholder="cth. Projek IPAS / Teknik Komputer Jaringan" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-[13.5px]"></div>
+            <div>
+              <label class="text-[12px] font-medium text-slate-600">Mata Pelajaran / Konsentrasi</label>
+              <select v-model="draf.mapel" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-[13.5px] bg-white">
+                <option value="">— pilih mata pelajaran —</option>
+                <option v-for="m in opsiMapel" :key="m" :value="m">{{ m }}</option>
+              </select>
+              <p v-if="!mapelDaftar.length" class="mt-1 text-[11.5px] text-amber-700">Belum ada mata pelajaran aktif jenjang {{ jenjang }} di Data Master Mapel.</p>
+            </div>
             <div>
               <label class="text-[12px] font-medium text-slate-600">Fase</label>
               <select v-model="draf.fase" class="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-[13.5px] bg-white">

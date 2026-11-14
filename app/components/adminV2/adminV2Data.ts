@@ -1,22 +1,5 @@
 export interface SchoolData {
   label: string
-  heroValue: string
-  heroSub: string
-  guru: string
-  rombel: string
-  siswaHadir: string
-  siswaTotal: string
-  siswaPct: string
-  siswaBar: number
-  guruHadir: string
-  guruTotal: string
-  guruPct: string
-  guruBar: number
-  exams: {
-    harian: Array<[string, string, string, string, string, string]>
-    uts: Array<[string, string, string, string, string, string]>
-    uas: Array<[string, string, string, string, string, string]>
-  }
 }
 
 export interface GroupItem {
@@ -26,71 +9,10 @@ export interface GroupItem {
   items: Array<[string, string, string]>
 }
 
-export interface ActivityRow {
-  id: string
-  name: string
-  icon: string
-  amount: string
-  statusType: 'ok' | 'wait' | 'proc'
-  statusLabel: string
-  date: string
-}
-
+// Nama sekolah per jenjang (angka dashboard kini dari database, lihat useDashboard).
 export const SCHOOL_DATA: Record<'smp' | 'smk', SchoolData> = {
-  smp: {
-    label: 'SMP IT Bina Cendekia Assalam',
-    heroValue: '842',
-    heroSub: 'SMP IT BCA &middot; TA 2026/2027',
-    guru: '64',
-    rombel: '24',
-    siswaHadir: '798',
-    siswaTotal: '/842',
-    siswaPct: '94,8%',
-    siswaBar: 94.8,
-    guruHadir: '60',
-    guruTotal: '/64',
-    guruPct: '93,8%',
-    guruBar: 93.8,
-    exams: {
-      harian: [
-        ['16', 'Okt', 'UH Matematika', 'Kelas VII Aâ€“C Â· 08:00', 'Terjadwal', 'on'],
-        ['17', 'Okt', 'UH IPA Terpadu', 'Kelas VIII Aâ€“B Â· 10:00', 'Terjadwal', 'on']
-      ],
-      uts: [
-        ['20', 'Okt', 'UTS Ganjil 2026', '20â€“25 Okt Â· 8 mapel Â· 842 peserta', 'Persiapan', 'wait']
-      ],
-      uas: [
-        ['8', 'Des', 'UAS Ganjil 2026', '8â€“13 Des Â· 9 mapel Â· 842 peserta', 'Draft', 'off']
-      ]
-    }
-  },
-  smk: {
-    label: 'SMK IT Attaqwa 9',
-    heroValue: '1.247',
-    heroSub: 'SMK IT Attaqwa 9 &middot; TA 2026/2027',
-    guru: '86',
-    rombel: '36',
-    siswaHadir: '1.180',
-    siswaTotal: '/1.247',
-    siswaPct: '94,6%',
-    siswaBar: 94.6,
-    guruHadir: '81',
-    guruTotal: '/86',
-    guruPct: '94,2%',
-    guruBar: 94.2,
-    exams: {
-      harian: [
-        ['16', 'Okt', 'UH Matematika', 'XII TKJ 1â€“3 Â· 08:00', 'Terjadwal', 'on'],
-        ['17', 'Okt', 'UH Produktif TKJ', 'XI TKJ 2 Â· 10:00', 'Terjadwal', 'on']
-      ],
-      uts: [
-        ['20', 'Okt', 'UTS Ganjil 2026', '20â€“25 Okt Â· 8 mapel Â· 1.247 peserta', 'Persiapan', 'wait']
-      ],
-      uas: [
-        ['8', 'Des', 'UAS Ganjil 2026', '8â€“13 Des Â· 9 mapel Â· 1.247 peserta', 'Draft', 'off']
-      ]
-    }
-  }
+  smp: { label: 'SMP IT Bina Cendekia Assalam' },
+  smk: { label: 'SMK IT Attaqwa 9' }
 }
 
 export const GROUPS: GroupItem[] = [
@@ -159,20 +81,6 @@ export const GROUPS: GroupItem[] = [
       ['Profil saya', 'Akun admin', 'i-users']
     ]
   }
-]
-
-export const ANNOUNCEMENTS: Array<[string, string, string, string]> = [
-  ['i-cal', 'Gladi bersih CBT kelas XII', 'Lab 1â€“4 Â· 20 Okt 2026, 07:00', '2 h'],
-  ['i-doc', 'Batas input nilai UTS', 'Maksimal 28 Okt 2026 via modul Akademik', '5 h'],
-  ['i-users', 'Rapat komite sekolah', 'Aula utama Â· 30 Okt 2026, 09:00', '1 mg']
-]
-
-export const ACTIVITIES: ActivityRow[] = [
-  { id: 'INV_00241', name: 'Pembayaran SPP', icon: 'i-wallet', amount: 'Rp 350.000', statusType: 'ok', statusLabel: 'Lunas', date: '14 Okt 2026 08:15' },
-  { id: 'INV_00240', name: 'Pendaftaran PPDB', icon: 'i-plus', amount: 'Rp 150.000', statusType: 'ok', statusLabel: 'Lunas', date: '13 Okt 2026 14:40' },
-  { id: 'INV_00239', name: 'Pengajuan Dana Kegiatan', icon: 'i-doc', amount: 'Rp 2.500.000', statusType: 'wait', statusLabel: 'Menunggu', date: '13 Okt 2026 11:02' },
-  { id: 'INV_00238', name: 'Gaji Guru Honorer', icon: 'i-users', amount: 'Rp 4.800.000', statusType: 'proc', statusLabel: 'Diproses', date: '12 Okt 2026 16:20' },
-  { id: 'INV_00237', name: 'Pembelian ATK', icon: 'i-layers', amount: 'Rp 1.150.000', statusType: 'ok', statusLabel: 'Lunas', date: '10 Okt 2026 09:45' }
 ]
 
 export const ADMIN_DESTINATIONS: Record<string, string> = {

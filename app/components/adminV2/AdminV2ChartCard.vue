@@ -64,7 +64,7 @@ const formatVal = (val: number) => {
       <div class="flex items-start justify-between gap-2">
         <div>
           <h3 class="text-[15px] font-extrabold text-[#101828]">Rekap Kehadiran Siswa</h3>
-          <p class="text-[11.5px] text-[#667085] mt-0.5">Persentase kehadiran per periode</p>
+          <p class="text-[11.5px] text-[#667085] mt-0.5">Persentase kehadiran per periode · data contoh sampai absensi RFID berjalan</p>
         </div>
         <span class="inline-flex items-center gap-1 text-[11.5px] font-bold py-0.5 px-2 rounded-full text-[#12B76A] bg-[#E7F8F0]">
           <AdminV2Icon name="check" :size="12" />

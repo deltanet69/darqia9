@@ -133,18 +133,22 @@ const importError = ref('')
 const isImporting = ref(false)
 const importFileName = ref('')
 // Paket tujuan otomatis: bank soal dengan kelas + mata pelajaran yang sama (soal ditambahkan, bukan ditolak).
-const importTargetPkg = computed(() => importPreview.value
-  ? currentGradePackages.value.find(pkg => pkg.classroom === importPreview.value!.classroom && pkg.subject === importPreview.value!.subject) ?? null
-  : null)
+const importTargetFor = (classroom: string) => importPreview.value
+  ? currentGradePackages.value.find(pkg => pkg.classroom === classroom && pkg.subject === importPreview.value!.subject) ?? null
+  : null
 const normalizeQuestionText = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim()
-// Soal impor yang teksnya sama dengan soal yang sudah ada di paket tujuan. Pilihan: lewati (bawaan) atau perbarui soal lama.
+// Soal impor yang teksnya sama dengan soal yang sudah ada di paket tujuan (per kelas). Pilihan: lewati (bawaan) atau perbarui soal lama.
+// Kunci pilihan = "kelas|id soal impor" karena soal yang sama bisa duplikat di beberapa kelas.
 const importDuplicates = computed(() => {
-  const target = importTargetPkg.value
-  if (!target || !importPreview.value) return []
-  const existing = new Map(target.questions.map(q => [normalizeQuestionText(q.text), q]))
-  return importPreview.value.package.questions.flatMap(imported => {
-    const old = existing.get(normalizeQuestionText(imported.text))
-    return old ? [{ imported, old }] : []
+  if (!importPreview.value) return []
+  return importPreview.value.classrooms.flatMap(classroom => {
+    const target = importTargetFor(classroom)
+    if (!target) return []
+    const existing = new Map(target.questions.map(q => [normalizeQuestionText(q.text), q]))
+    return importPreview.value!.package.questions.flatMap(imported => {
+      const old = existing.get(normalizeQuestionText(imported.text))
+      return old ? [{ classroom, imported, old, key: `${classroom}|${imported.id}` }] : []
+    })
   })
 })
 const duplicateUpdate = ref<Record<string, boolean>>({})
@@ -411,37 +415,54 @@ const confirmImport = async () => {
   if (!importPreview.value || isImporting.value) return
   isImporting.value = true
   try {
-    if (!subjectsForClass(importPreview.value.classroom).includes(importPreview.value.subject)) throw new Error('Mata pelajaran impor tidak sesuai dengan jadwal kelas.')
-    const target = importTargetPkg.value
-    if (target) {
-      const duplicateByImported = new Map(importDuplicates.value.map(item => [item.imported.id, item]))
-      const replaced = new Map<string, BankQuestionItem>()
-      const added: BankQuestionItem[] = []
-      for (const question of importPreview.value.package.questions) {
-        const duplicate = duplicateByImported.get(question.id)
-        if (!duplicate) added.push(question)
-        else if (duplicateUpdate.value[question.id]) replaced.set(duplicate.old.id, { ...question, id: duplicate.old.id })
+    const preview = importPreview.value
+    for (const classroom of preview.classrooms) {
+      if (!subjectsForClass(classroom).includes(preview.subject)) throw new Error(`Mata pelajaran impor tidak sesuai dengan jadwal kelas ${classroom}.`)
+    }
+    // Satu paket per kelas. Soal diklon per kelas karena saveBankPackage mengisi id baru pada objek soalnya.
+    const gagal: string[] = []
+    const ringkas: string[] = []
+    let savedFirst = ''
+    for (const [index, classroom] of preview.classrooms.entries()) {
+      try {
+        const target = importTargetFor(classroom)
+        let updated: BankPackage
+        if (target) {
+          const duplicateByImported = new Map(importDuplicates.value.filter(item => item.classroom === classroom).map(item => [item.imported.id, item]))
+          const replaced = new Map<string, BankQuestionItem>()
+          const added: BankQuestionItem[] = []
+          for (const question of preview.package.questions) {
+            const duplicate = duplicateByImported.get(question.id)
+            if (!duplicate) added.push({ ...question })
+            else if (duplicateUpdate.value[duplicate.key]) replaced.set(duplicate.old.id, { ...question, id: duplicate.old.id })
+          }
+          const merged = [...target.questions.map(q => replaced.get(q.id) ?? q), ...added]
+          if (merged.length > 100) throw new Error(`paket sudah berisi ${target.questions.length} soal; tambahan ${added.length} soal melebihi batas 100 soal per paket.`)
+          updated = { ...target, hasInteractive: merged.some(q => q.type === 'Interaktif'), questions: merged.map((q, i) => ({ ...q, number: i + 1 })) }
+          ringkas.push(`${classroom}: ${added.length} ditambahkan, ${replaced.size} diperbarui`)
+        } else {
+          // Penyusun dari berkas hanya dipakai Superadmin; guru selalu atas nama akunnya (dipaksa juga di saveBankPackage).
+          updated = { ...preview.package, id: `${preview.package.id}-${index}`, code: `${preview.package.code}-${index + 1}`, classroom, questions: preview.package.questions.map(q => ({ ...q })) }
+          ringkas.push(`${classroom}: paket baru`)
+        }
+        const savedId = await cbtData.saveBankPackage(updated, props.grade)
+        savedFirst ||= savedId
+      } catch (error) {
+        gagal.push(`${classroom}: ${error instanceof Error ? error.message : 'gagal disimpan.'}`)
+        ringkas.pop()
       }
-      const merged = [...target.questions.map(q => replaced.get(q.id) ?? q), ...added]
-      if (merged.length > 100) throw new Error(`Paket sudah berisi ${target.questions.length} soal; tambahan ${added.length} soal melebihi batas 100 soal per paket.`)
-      const updated: BankPackage = { ...target, hasInteractive: merged.some(q => q.type === 'Interaktif'), questions: merged.map((q, i) => ({ ...q, number: i + 1 })) }
-      const savedId = await cbtData.saveBankPackage(updated, props.grade)
-      selectedPkgId.value = savedId
-      selectedClass.value = target.classroom
+    }
+    if (savedFirst) {
+      selectedPkgId.value = savedFirst
+      selectedClass.value = preview.classrooms.find(classroom => !gagal.some(item => item.startsWith(`${classroom}:`))) ?? preview.classroom
       activeFormat.value = 'all'
-      bankMode.value = 'detail'
-      const skipped = importDuplicates.value.length - replaced.size
-      emit('toast', `${added.length} soal ditambahkan, ${replaced.size} soal diperbarui${skipped ? `, ${skipped} soal duplikat dilewati` : ''}. Total sekarang ${merged.length} soal.`)
-      closeImport()
+      bankMode.value = preview.classrooms.length === 1 ? 'detail' : 'subjects'
+      emit('toast', `${preview.questionCount} butir soal masuk ke Bank Soal (${ringkas.join('; ')}).`)
+    }
+    if (gagal.length) {
+      importError.value = `Gagal disimpan - ${gagal.join(' | ')}`
       return
     }
-    // Penyusun dari berkas hanya dipakai Superadmin; guru selalu atas nama akunnya (dipaksa juga di saveBankPackage).
-    const savedId = await cbtData.saveBankPackage(importPreview.value.package, props.grade)
-    selectedPkgId.value = savedId
-    selectedClass.value = importPreview.value.classroom
-    activeFormat.value = 'all'
-    bankMode.value = 'detail'
-    emit('toast', `${importPreview.value.questionCount} butir soal berhasil masuk ke Bank Soal.`)
     closeImport()
   } catch (error) {
     importError.value = error instanceof Error ? error.message : 'Bank soal gagal disimpan.'
@@ -823,7 +844,7 @@ const confirmImport = async () => {
 
             <div class="rounded-xl border border-[#E7EBF2] bg-[#FAFBFC] p-3">
               <p class="font-semibold text-[#344054]">Template sesuai jenjang aktif: {{ props.grade }}</p>
-              <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">PG SMP berisi 4 pilihan A-D. PG SMK berisi 5 pilihan A-E. Template juga memuat Esai serta soal Interaktif (Video YouTube dan Audio). Rumus ditulis di antara tanda $ ... $ atau $$ ... $$. Bila bank soal untuk kelas dan mata pelajaran yang sama sudah ada, soal ditambahkan ke bank soal tersebut.</p>
+              <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">PG SMP berisi 4 pilihan A-D. PG SMK berisi 5 pilihan A-E. Template juga memuat Esai serta soal Interaktif (Video YouTube dan Audio). Rumus ditulis di antara tanda $ ... $ atau $$ ... $$. Kolom KELAS boleh diisi lebih dari satu kelas, dipisah koma (contoh: 7.2, 8.1, 7.3); satu bank soal dibuat untuk tiap kelas. Bila bank soal untuk kelas dan mata pelajaran yang sama sudah ada, soal ditambahkan ke bank soal tersebut.</p>
               <button type="button" class="mt-2 min-h-10 rounded-lg bg-white px-3 font-semibold text-[#1B5FD9] ring-1 ring-[#B9D1F9] hover:bg-[#E8F0FE]" @click="downloadWordTemplate(props.grade)">
                 Unduh Template Word {{ props.grade }}
               </button>
@@ -847,20 +868,23 @@ const confirmImport = async () => {
               <p class="font-semibold">Data terdeteksi. Periksa sebelum disimpan.</p>
               <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
                 <div><dt class="text-[#667085]">Jenjang</dt><dd class="font-semibold">{{ importPreview.package.grade }}</dd></div>
-                <div><dt class="text-[#667085]">Kelas</dt><dd class="font-semibold">{{ importPreview.classroom }}</dd></div>
+                <div><dt class="text-[#667085]">Kelas</dt><dd class="font-semibold">{{ importPreview.classrooms.join(', ') }}</dd></div>
                 <div><dt class="text-[#667085]">Mata pelajaran</dt><dd class="font-semibold">{{ importPreview.subject }}</dd></div>
                 <div><dt class="text-[#667085]">Butir soal</dt><dd class="font-semibold">{{ importPreview.questionCount }} butir</dd></div>
               </dl>
               <p class="mt-3 border-t border-[#D6E4FA] pt-2.5 text-[11px] font-semibold">
-                {{ importTargetPkg ? `Bank soal ${importPreview.subject} - ${importPreview.classroom} sudah ada (${importTargetPkg.questions.length} soal). Soal dari file ditambahkan ke bank soal tersebut. Maksimum 100 soal per paket.` : 'Bank soal belum ada. Paket baru akan dibuat.' }}
+                <template v-for="classroom in importPreview.classrooms" :key="classroom">
+                  <span class="block">{{ importTargetFor(classroom) ? `${classroom}: bank soal ${importPreview.subject} sudah ada (${importTargetFor(classroom)!.questions.length} soal), soal dari file ditambahkan. Maksimum 100 soal per paket.` : `${classroom}: bank soal belum ada, paket baru akan dibuat.` }}</span>
+                </template>
               </p>
               <div v-if="importDuplicates.length" class="mt-3 rounded-lg border border-[#F5D08A] bg-[#FFF8E6] p-2.5" role="alert">
                 <p class="font-semibold text-[#7A4A03]">{{ importDuplicates.length }} soal terindikasi duplikat dengan soal yang sudah ada. Soal duplikat dilewati kecuali Anda memilih memperbaruinya.</p>
                 <ul class="mt-1.5 space-y-1.5">
-                  <li v-for="item in importDuplicates" :key="item.imported.id" class="rounded-md bg-white p-2 text-[11px] text-[#344054]">
+                  <li v-for="item in importDuplicates" :key="item.key" class="rounded-md bg-white p-2 text-[11px] text-[#344054]">
                     <span class="block truncate font-semibold">{{ item.imported.text }}</span>
+                    <span v-if="importPreview.classrooms.length > 1" class="block text-[#667085]">Kelas {{ item.classroom }}</span>
                     <label class="mt-1 flex min-h-8 cursor-pointer items-center gap-2 font-bold text-[#7A4A03]">
-                      <input v-model="duplicateUpdate[item.imported.id]" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]">
+                      <input v-model="duplicateUpdate[item.key]" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]">
                       Perbarui soal lama dengan versi baru dari file
                     </label>
                   </li>

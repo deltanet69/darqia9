@@ -13,8 +13,8 @@ import { useState } from 'nuxt/app'
 import { computed, watchEffect, type Ref } from 'vue'
 import { useAdminGrade } from './useAdminGrade'
 import {
-  RBAC_BATAS_BAWAAN, RBAC_KUNCI, RBAC_SEED_IZIN, RBAC_SEED_PERAN, agregatModul, bisaAkses, dalamCakupan, izinKosong,
-  kunciSub, lengkapiSub, modulDariJudul, penugasanDari,
+  RBAC_BATAS_BAWAAN, RBAC_KUNCI, RBAC_SEED_IZIN, RBAC_SEED_PERAN, agregatModul, bisaAkses, izinKosong,
+  kunciSub, lengkapiSub, modulDariJudul, penugasanDari, jenjangAkun, lintasJenjang,
   type AksiRbac, type CakupanPeran, type CakupanRbac, type IzinPeran, type JenjangRbac, type PenugasanRbac, type PeranRbac
 } from './rbacCore'
 
@@ -36,6 +36,9 @@ interface RbacState {
   dimuatPada: number
   subjekSaya: string | null
   namaSaya: string | null
+  // Jenjang tempat akun guru mengajar (jadwal aktif) atau menjadi wali kelas; menentukan switcher jenjang.
+  jadwalJenjang: JenjangRbac[]
+  jenjangGuru: JenjangRbac | null
 }
 
 const seedState = (): RbacState => {
@@ -53,7 +56,9 @@ const seedState = (): RbacState => {
     termuat: false,
     dimuatPada: 0,
     subjekSaya: null,
-    namaSaya: null
+    namaSaya: null,
+    jadwalJenjang: [],
+    jenjangGuru: null
   }
 }
 
@@ -180,7 +185,29 @@ export const useRbac = () => {
       state.value.subjekSaya = saya.subjekId
       state.value.namaSaya = saya.nama
     }
+    await muatJenjangGuru()
     selarasJenjang()
+  }
+
+  // Jenjang dari jadwal pelajaran aktif + rombel yang diwalikan akun ini (hanya bila akun tertaut data guru).
+  const muatJenjangGuru = async () => {
+    const id = state.value.subjekSaya
+    if (!id || !tertautGuru.value) { state.value.jadwalJenjang = []; state.value.jenjangGuru = null; return }
+    try {
+      const client = useSupabaseClient()
+      const [jadwal, wali, guru] = await Promise.all([
+        client.from('class_schedules').select('classes!inner(grade, active)').eq('teacher_id', id).eq('active', true).eq('classes.active', true),
+        client.from('classes').select('grade').eq('homeroom_teacher_id', id).eq('active', true),
+        client.from('teachers').select('grade').eq('id', id).maybeSingle()
+      ])
+      const grade = new Set<string>([
+        ...((jadwal.data ?? []) as any[]).map(r => r.classes?.grade),
+        ...((wali.data ?? []) as any[]).map(r => r.grade)
+      ])
+      state.value.jadwalJenjang = (['SMP', 'SMK'] as const).filter(g => grade.has(g))
+      const gj = (guru.data as any)?.grade
+      state.value.jenjangGuru = gj === 'SMP' || gj === 'SMK' ? gj : null
+    } catch { state.value.jadwalJenjang = [] /* tabel belum ada: pakai jenjang penugasan */ }
   }
 
   // ===== Peran (CRUD) =====
@@ -283,15 +310,32 @@ export const useRbac = () => {
   }
 
   // ===== Penegakan untuk pengguna yang sedang login =====
-  const penugasanSaya = computed(() => state.value.subjekSaya ? penugasanDari(state.value.penugasan, state.value.subjekSaya) : null)
+  const authUser = useSupabaseUser()
+  const emailUtama = computed(() => String(authUser.value?.email || '').toLowerCase() === 'betadev94@gmail.com')
+  const penugasanNyata = computed(() => state.value.subjekSaya ? penugasanDari(state.value.penugasan, state.value.subjekSaya) : null)
+  const peranNyata = computed(() => penugasanNyata.value ? state.value.peran.find(r => r.id === penugasanNyata.value!.peranId) || null : null)
+  // Superadmin = peran berkunci 'superadmin' atau akun Superadmin Utama (sama dengan gerbang server).
+  const adalahSuperadmin = computed(() => peranNyata.value?.kunci === 'superadmin' || emailUtama.value)
+
+  // Akun yang tertaut data guru (subjek = id guru, bukan id akun).
+  const tertautGuru = computed(() => {
+    const uid = (authUser.value as any)?.id ?? (authUser.value as any)?.sub
+    return !!state.value.subjekSaya && !!uid && state.value.subjekSaya !== uid
+  })
+  // Akun guru yang belum diberi peran RBAC diperlakukan sebagai Guru Pengajar (keputusan owner, 13 Nov 2026).
+  const peranGuruBawaan = computed(() => state.value.peran.find(r => r.kunci === 'guru_pengajar') || null)
+  const guruTanpaPeran = computed(() => !penugasanNyata.value && !adalahSuperadmin.value && tertautGuru.value && !!peranGuruBawaan.value)
+  const penugasanSaya = computed<PenugasanRbac | null>(() => penugasanNyata.value
+    ?? (guruTanpaPeran.value
+      ? { subjekId: state.value.subjekSaya!, nama: state.value.namaSaya || 'Guru', peranId: peranGuruBawaan.value!.id, jenjang: ['SMK', 'SMP'] }
+      : null))
   const peranSaya = computed(() => penugasanSaya.value ? state.value.peran.find(r => r.id === penugasanSaya.value!.peranId) || null : null)
-  // Penegakan aktif hanya bila pengguna memang sudah ditugaskan sebuah peran.
+  // Penegakan aktif hanya bila pengguna memang sudah ditugaskan sebuah peran (atau guru tanpa peran).
   const penegakanAktif = computed(() => !!penugasanSaya.value)
 
-  // Superadmin = peran berkunci 'superadmin' atau akun Superadmin Utama (sama dengan gerbang server).
-  const authUser = useSupabaseUser()
-  const adalahSuperadmin = computed(() =>
-    peranSaya.value?.kunci === 'superadmin' || String(authUser.value?.email || '').toLowerCase() === 'betadev94@gmail.com')
+  // Akun guru yang melihat data pribadinya saja (dashboard guru, daftar rombel yang diajar): Guru Pengajar / Wali Kelas.
+  // Superadmin tidak pernah dibatasi.
+  const modeGuru = computed(() => !adalahSuperadmin.value && ['guru_pengajar', 'wali_kelas'].includes(peranSaya.value?.kunci ?? ''))
 
   // Nama akun untuk ditampilkan/dicatat: nama guru bila tertaut, selain itu nama di metadata akun; kosong bila hanya ada email.
   const namaAkun = computed(() => {
@@ -301,18 +345,26 @@ export const useRbac = () => {
     return String(meta?.name || meta?.full_name || '').trim()
   })
 
+  // Jenjang yang boleh dipakai akun ini: penugasan RBAC, dipersempit ke jenjang jadwalnya kecuali Superadmin
+  // dan peran lintas jenjang (lihat jenjangAkun di rbacCore).
+  const jenjangDiizinkan = computed<JenjangRbac[]>(() => {
+    const dasar = penugasanSaya.value?.jenjang ?? ['SMK', 'SMP']
+    if (!penegakanAktif.value) return dasar
+    return jenjangAkun(dasar, adalahSuperadmin.value || lintasJenjang(peranSaya.value), state.value.jadwalJenjang ?? [], state.value.jenjangGuru ?? null)
+  })
+
   const bisaSaya = (modul: string, aksi: AksiRbac): boolean => {
     if (!penegakanAktif.value) return true
-    if (!dalamCakupan(penugasanSaya.value, grade.value as JenjangRbac)) return false
+    if (!jenjangDiizinkan.value.includes(grade.value as JenjangRbac)) return false
     return bisaAkses(peranSaya.value, peranSaya.value ? state.value.izin[peranSaya.value.id] : null, modul, aksi)
   }
 
   // Pengguna yang hanya ditugaskan ke satu jenjang tidak boleh berada di jenjang lain:
   // pengalih jenjang disembunyikan dan jenjang aktif dipaksa ke jenjang yang diizinkan.
-  const bisaGantiJenjang = computed(() => !penegakanAktif.value || (penugasanSaya.value?.jenjang.length ?? 0) > 1)
+  const bisaGantiJenjang = computed(() => jenjangDiizinkan.value.length > 1)
   const selarasJenjang = () => {
-    const jenjang = penugasanSaya.value?.jenjang
-    if (jenjang?.length && !jenjang.includes(grade.value as JenjangRbac)) grade.value = jenjang[0]
+    const jenjang = jenjangDiizinkan.value
+    if (jenjang.length && !jenjang.includes(grade.value as JenjangRbac)) grade.value = jenjang[0]!
   }
 
   // Izin satu sub-modul (tab/sub-menu). Lihat: sama dengan bisaSaya (belum ditugaskan = boleh, seperti sebelumnya).
@@ -349,6 +401,6 @@ export const useRbac = () => {
   return {
     state, muat,
     tambahPeran, ubahPeran, hapusPeran, simpanIzin, tugaskan, lepaskan,
-    penugasanSaya, peranSaya, penegakanAktif, bisaSaya, bisaSub, bolehAksi, cakupanSaya, jagaSubmenu, bolehJudulMenu, bisaGantiJenjang, adalahSuperadmin, namaAkun
+    penugasanSaya, peranSaya, penegakanAktif, bisaSaya, bisaSub, bolehAksi, cakupanSaya, jagaSubmenu, modeGuru, tertautGuru, bolehJudulMenu, bisaGantiJenjang, adalahSuperadmin, namaAkun
   }
 }

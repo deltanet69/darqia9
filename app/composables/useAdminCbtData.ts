@@ -133,26 +133,46 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
     return { data: rows, error: null }
   }
-  const load = async (force = false) => {
-    if (loading.value || (loaded.value && !force)) return
-    loading.value = true
-    error.value = null
+  const BANK_KOLOM = 'id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id'
+  const petaBank = (row: any, classById: Map<string, CbtClass>, subjectById: Map<string, CbtSubject>, questions: BankQuestionItem[]): BankPackage => ({
+    id: row.id,
+    code: row.code,
+    classId: row.class_id,
+    subjectId: row.subject_id,
+    classroom: classById.get(row.class_id)?.name ?? row.classroom,
+    subject: subjectById.get(row.subject_id)?.name ?? row.subject,
+    grade: row.grade,
+    difficulty: row.difficulty,
+    teacherName: row.teacher_name,
+    updatedAt: formatDate(row.updated_at),
+    hasInteractive: row.has_interactive,
+    questions
+  })
+  const memuatRingan = useState(`${stateKey}-data-loading-ringan`, () => false)
+  // ringan = segarkan hanya yang berubah cepat (ujian, penugasan, pelanggaran); data master (kelas, mapel, siswa, guru,
+  // bank, jadwal, pilihan soal ujian) dipakai dari state. Dipakai tab Monitoring yang menyegarkan tiap 15 detik.
+  const load = async (force = false, ringan = false) => {
+    if (loading.value || (ringan && memuatRingan.value) || (loaded.value && !force)) return
+    ringan = ringan && loaded.value
+    if (ringan) memuatRingan.value = true
+    else { loading.value = true; error.value = null }
+    const lewati = Promise.resolve({ data: null, error: null }) as Promise<any>
 
     try {
       // Kolom jenis (0047) / tipe (0049) belum ada sebelum migrasi dijalankan; ulangi tanpa kolom itu.
       const kolomUjianDasar = 'id, name, class_id, subject_id, question_bank_id, grade, starts_at, duration_minutes, status, code, supervisor_id'
       const ambilUjian = (kolom: string) => client.from(tables.exams).select(kolom).order('starts_at', { ascending: false })
       const [classResult, subjectResult, bankResult, examAwal, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult] = await Promise.all([
-        client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
-        client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
-        client.from(tables.banks).select('id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id').order('updated_at', { ascending: false }),
+        ringan ? lewati : client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
+        ringan ? lewati : client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
+        ringan ? lewati : client.from(tables.banks).select(BANK_KOLOM).order('updated_at', { ascending: false }),
         ambilUjian(`${kolomUjianDasar}, ${source === 'cbt' ? 'jenis' : 'tipe'}, acak_esai, acak_pg, acak_singkat`),
         client.from(tables.assignments).select('id, exam_id, student_id, status'),
-        fetchSiswaAktif(),
-        client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
-        client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
+        ringan ? lewati : fetchSiswaAktif(),
+        ringan ? lewati : client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
+        ringan ? lewati : client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
         client.from(tables.violations).select('assignment_id').eq('dipulihkan', false),
-        client.from('class_schedules').select('class_id, subject_id, teacher_id').eq('active', true)
+        ringan ? lewati : client.from('class_schedules').select('class_id, subject_id, teacher_id').eq('active', true)
       ])
 
       const examResult = examAwal.error && /jenis|tipe|acak_/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
@@ -161,10 +181,10 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       if (firstError) throw firstError
 
       const classRows = classResult.data ?? []
-      classSubjects.value = scheduleResult.data ?? []
+      if (!ringan) classSubjects.value = scheduleResult.data ?? []
       const subjectRows = subjectResult.data ?? []
       const teacherRows = teacherResult.data ?? []
-      const teacherById = new Map(teacherRows.map((row: any) => [row.id, row]))
+      const teacherById = new Map((ringan ? teachers.value : teacherRows).map((row: any) => [row.id, row]))
       const studentCounts = new Map<string, number>()
       const boysCounts = new Map<string, number>()
       for (const student of studentResult.data ?? []) {
@@ -173,6 +193,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         if (student.gender === 'L') boysCounts.set(student.class_id, (boysCounts.get(student.class_id) ?? 0) + 1)
       }
 
+      if (!ringan) {
       classes.value = classRows.map((row: any) => ({
         id: row.id,
         name: row.name,
@@ -201,24 +222,16 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         kkm: row.kkm
       }))
 
+      const existingQuestionsByBank = new Map(bankPackages.value.map(item => [item.id, item.questions]))
+      const kelasBaru = new Map(classes.value.map(item => [item.id, item]))
+      const mapelBaru = new Map(subjects.value.map(item => [item.id, item]))
+      bankPackages.value = (bankResult.data ?? []).map((row: any) => petaBank(row, kelasBaru, mapelBaru, existingQuestionsByBank.get(row.id) ?? []))
+      }
+
       const classById = new Map(classes.value.map(item => [item.id, item]))
       const subjectById = new Map(subjects.value.map(item => [item.id, item]))
-      const existingQuestionsByBank = new Map(bankPackages.value.map(item => [item.id, item.questions]))
-
-      bankPackages.value = (bankResult.data ?? []).map((row: any) => ({
-        id: row.id,
-        code: row.code,
-        classId: row.class_id,
-        subjectId: row.subject_id,
-        classroom: classById.get(row.class_id)?.name ?? row.classroom,
-        subject: subjectById.get(row.subject_id)?.name ?? row.subject,
-        grade: row.grade,
-        difficulty: row.difficulty,
-        teacherName: row.teacher_name,
-        updatedAt: formatDate(row.updated_at),
-        hasInteractive: row.has_interactive,
-        questions: existingQuestionsByBank.get(row.id) ?? []
-      }))
+      // Mode ringan tidak mengambil pilihan soal ujian; pakai yang sudah ada (ujian yang baru muncul = semua soal sampai muat penuh).
+      const pilihanLama = new Map(exams.value.map(item => [item.id, item.questionIds]))
 
       const assignments = new Map<string, { total: number; doing: number; collected: number }>()
       for (const row of assignmentResult.data ?? []) {
@@ -252,9 +265,11 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             classId: row.class_id,
             subjectId: row.subject_id,
             questionBankId: row.question_bank_id,
-            questionIds: selectionResult.data?.some((item: any) => item.exam_id === row.id)
-              ? selectionResult.data.filter((item: any) => item.exam_id === row.id).map((item: any) => item.question_id)
-              : null,
+            questionIds: ringan
+              ? pilihanLama.get(row.id) ?? null
+              : selectionResult.data?.some((item: any) => item.exam_id === row.id)
+                ? selectionResult.data.filter((item: any) => item.exam_id === row.id).map((item: any) => item.question_id)
+                : null,
             subject: subjectItem?.name ?? '',
             classroom: classItem?.name ?? '',
             grade: row.grade,
@@ -283,14 +298,18 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
 
       loaded.value = true
     } catch (loadError: any) {
-      error.value = loadError?.message ?? 'Data CBT gagal dimuat.'
-      classes.value = []
-      subjects.value = []
-      teachers.value = []
-      bankPackages.value = []
-      exams.value = []
+      // Segarkan ringan yang gagal (sinyal putus sesaat) tidak boleh mengosongkan data yang sudah tampil.
+      if (!ringan) {
+        error.value = loadError?.message ?? 'Data CBT gagal dimuat.'
+        classes.value = []
+        subjects.value = []
+        teachers.value = []
+        bankPackages.value = []
+        exams.value = []
+      }
     } finally {
-      loading.value = false
+      if (ringan) memuatRingan.value = false
+      else loading.value = false
     }
   }
 
@@ -566,9 +585,15 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
     const bankId = hasil.data
     // Bank soal sudah tersimpan; gagal memuat ulang daftar tidak boleh membuatnya tampak gagal.
+    // Cukup ambil satu baris bank ini; soalnya sudah ada di pkg (tidak perlu memuat ulang seluruh bank & soal).
     try {
-      await load(true)
-      await loadQuestions(true)
+      const { data: row, error: bankError } = await client.from(tables.banks).select(BANK_KOLOM).eq('id', bankId).single()
+      if (bankError) throw bankError
+      const tersimpan = petaBank(row, new Map(classes.value.map(item => [item.id, item])), new Map(subjects.value.map(item => [item.id, item])),
+        pkg.questions.map((question, index) => ({ ...question, number: index + 1 })))
+      bankPackages.value = bankPackages.value.some(item => item.id === bankId)
+        ? bankPackages.value.map(item => item.id === bankId ? tersimpan : item)
+        : [tersimpan, ...bankPackages.value]
     } catch { /* daftar disegarkan saat halaman dibuka ulang */ }
     return bankId
   }
@@ -711,6 +736,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     bolehKelolaUjian,
     bolehAksi,
     dalamCakupanSaya,
+    ajarSaya,
     namaPenyusunSaya,
     classes,
     subjects,

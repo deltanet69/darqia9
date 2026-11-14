@@ -154,7 +154,7 @@ watch([activeTab, () => cbtData.loading.value], ([tab, isLoading]) => {
   }
 })
 watch(activeTab, tab => {
-  if (tab === 'monitoring') void cbtData.load(true)
+  if (tab === 'monitoring') void cbtData.load(true, true)
 })
 
 const triggerToast = (msg: string) => {
@@ -323,7 +323,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 onMounted(() => {
   void cbtData.load()
   monitoringRefresh = setInterval(() => {
-    if (activeTab.value === 'monitoring') void cbtData.load(true)
+    if (activeTab.value === 'monitoring' && !document.hidden) void cbtData.load(true, true)
   }, 15_000)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('click', handleDocumentClick)

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import {
   isiBawaan, totalJpLangkah, totalBobot, petaPertemuan, saringDaftarModul,
-  bolehSunting, bolehSetujui, bolehArsip, ringkasTanggal, modulDariBaris, barisDariModul
+  bolehSunting, bolehSetujui, bolehArsip, ringkasTanggal, modulDariBaris, barisDariModul, isiDariAi, TAHAP_PJBL
 } from '../app/composables/useModulPembelajaran.ts'
 
 let lolos = 0
@@ -90,6 +90,21 @@ cek('pemetaan baris <-> modul: bolak-balik konsisten & isi dilengkapi bawaan', (
   const minim = modulDariBaris({ id: 'y', jenjang: 'SMK', judul: 'Minim', penyusun: 'A', isi: {} })
   assert.equal(minim.isi.model, 'Project-Based Learning (PjBL)')
   assert.equal(minim.status, 'draf')
+})
+
+cek('isiDariAi: hasil AI dirapikan (dimensi resmi maks 3, 6 tahap PjBL, kolom hilang = bawaan)', () => {
+  const isi = isiDariAi({
+    cp: 'CP', dimensi: ['Kolaborasi', 'Ngarang', 'Kreativitas', 'Komunikasi', 'Kemandirian'],
+    tujuan: ['T1', 5, ''], langkah: [{ tahap: 'salah', guru: 'g', siswa: 's', jp: '2.6' }], bobot: 'bukan array'
+  })
+  assert.deepEqual(isi.dimensi, ['Kolaborasi', 'Kreativitas', 'Komunikasi'])
+  assert.deepEqual(isi.tujuan, ['T1'])
+  assert.deepEqual(isi.langkah.map(l => l.tahap), TAHAP_PJBL)
+  assert.equal(isi.langkah[0].jp, 3)
+  assert.equal(isi.langkah[5].guru, '')
+  assert.equal(isi.bobot.length, 3)
+  assert.equal(isi.cpReferensi, 'Kepkabskap 032/H/KR/2024')
+  assert.equal(isiDariAi(null).cp, '')
 })
 
 console.log(`\n${lolos} kelompok tes lolos`)

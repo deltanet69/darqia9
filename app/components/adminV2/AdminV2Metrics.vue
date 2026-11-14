@@ -13,10 +13,13 @@ interface Props {
   guruPct: string
   guruBar: number
   jenjang?: 'smp' | 'smk'
+  // Ubin hanya tampil bila datanya ada (mis. kehadiran baru ada setelah presensi RFID tercatat hari ini).
+  tampil?: { siswaHadir: boolean, rombel: boolean, guru: boolean, guruHadir: boolean }
 }
 
 withDefaults(defineProps<Props>(), {
-  jenjang: 'smk'
+  jenjang: 'smk',
+  tampil: () => ({ siswaHadir: true, rombel: true, guru: true, guruHadir: true })
 })
 </script>
 
@@ -24,6 +27,7 @@ withDefaults(defineProps<Props>(), {
   <div class="grid grid-cols-2 gap-3.5 h-full">
     <!-- Metric 1: Kehadiran Siswa (Hot Highlight Card) -->
     <section
+      v-if="tampil.siswaHadir"
       class="border rounded-[18px] p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.1)] flex flex-col justify-between text-white transition-colors"
       :class="jenjang === 'smp'
         ? 'bg-gradient-to-br from-[#22C55E] to-[#14532D] border-transparent'
@@ -55,7 +59,7 @@ withDefaults(defineProps<Props>(), {
     </section>
 
     <!-- Metric 2: Jumlah Kelas / Rombel -->
-    <section class="bg-white border border-[#E7EBF2] rounded-[18px] p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.1)] flex flex-col justify-between">
+    <section v-if="tampil.rombel" class="bg-white border border-[#E7EBF2] rounded-[18px] p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.1)] flex flex-col justify-between">
       <div>
         <div class="flex items-start justify-between gap-1.5">
           <span class="text-xs font-semibold text-[#667085] leading-snug">Jumlah Kelas / Rombel</span>
@@ -69,16 +73,12 @@ withDefaults(defineProps<Props>(), {
       </div>
 
       <div>
-        <span class="inline-flex items-center gap-1 text-[11.5px] font-bold py-0.5 px-2 rounded-full text-[#12B76A] bg-[#E7F8F0]">
-          <AdminV2Icon name="check" :size="12" />
-          <span>2</span>
-          <small class="font-medium text-[#667085]">kelas baru</small>
-        </span>
+        <span class="text-[11.5px] font-medium text-[#667085]">rombel aktif</span>
       </div>
     </section>
 
     <!-- Metric 3: Jumlah Guru & Staff -->
-    <section class="bg-white border border-[#E7EBF2] rounded-[18px] p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.1)] flex flex-col justify-between">
+    <section v-if="tampil.guru" class="bg-white border border-[#E7EBF2] rounded-[18px] p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.1)] flex flex-col justify-between">
       <div>
         <div class="flex items-start justify-between gap-1.5">
           <span class="text-xs font-semibold text-[#667085] leading-snug">Jumlah Guru &amp; Staff</span>
@@ -92,16 +92,12 @@ withDefaults(defineProps<Props>(), {
       </div>
 
       <div>
-        <span class="inline-flex items-center gap-1 text-[11.5px] font-bold py-0.5 px-2 rounded-full text-[#12B76A] bg-[#E7F8F0]">
-          <AdminV2Icon name="check" :size="12" />
-          <span>4</span>
-          <small class="font-medium text-[#667085]">baru</small>
-        </span>
+        <span class="text-[11.5px] font-medium text-[#667085]">guru &amp; staff aktif</span>
       </div>
     </section>
 
     <!-- Metric 4: Kehadiran Guru & Staff -->
-    <section class="bg-white border border-[#E7EBF2] rounded-[18px] p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.1)] flex flex-col justify-between">
+    <section v-if="tampil.guruHadir" class="bg-white border border-[#E7EBF2] rounded-[18px] p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.1)] flex flex-col justify-between">
       <div>
         <div class="flex items-start justify-between gap-1.5">
           <span class="text-xs font-semibold text-[#667085] leading-snug">Kehadiran Guru &amp; Staff</span>

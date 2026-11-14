@@ -39,6 +39,9 @@ const lessonKey = (l: LessonItem): string => {
   return `${l.level}|${l.kelas}|${l.di}|${l.si}`
 }
 
+// Lewat jendela ±10 menit = tidak hadir; hanya Superadmin yang masih bisa mencatat sesi (dijaga juga di database, 0065).
+const adalahSuperadmin = useRbac().adalahSuperadmin
+
 const getMulaiState = (l: LessonItem): 'done' | 'live' | 'other' | 'early' | 'window' | 'late' => {
   const k = lessonKey(l)
   if (props.sessions[k]) {
@@ -200,7 +203,18 @@ const schoolName = computed(() => {
                 </button>
               </template>
 
-              <span v-if="getMulaiState(activeHeroLesson) === 'window'" class="text-[10.5px] font-semibold text-[#B9CCF5]">
+              <button
+                v-if="getMulaiState(activeHeroLesson) === 'late' && adalahSuperadmin"
+                type="button"
+                class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-4 text-xs font-bold text-[#0B1F3A] shadow-md"
+                @click="emit('mulai', lessonKey(activeHeroLesson))"
+              >
+                <span>Catat Mulai (Superadmin)</span>
+              </button>
+              <span v-if="getMulaiState(activeHeroLesson) === 'late'" class="text-[10.5px] font-semibold text-[#FECACA]">
+                Lewat 10 menit dari jam mulai — tercatat tidak hadir{{ adalahSuperadmin ? '' : '. Hubungi Superadmin.' }}
+              </span>
+              <span v-else-if="getMulaiState(activeHeroLesson) === 'window'" class="text-[10.5px] font-semibold text-[#B9CCF5]">
                 Jendela mulai aktif s.d. {{ fmtMin(slotMin(activeHeroLesson.si)[0] + 10) }}
               </span>
               <span v-else-if="getMulaiState(activeHeroLesson) === 'early'" class="text-[10.5px] font-semibold text-[#B9CCF5]">
@@ -382,6 +396,16 @@ const schoolName = computed(() => {
                   <span class="h-1.5 w-1.5 rounded-full bg-[#047857]" />
                   <span>Selesai</span>
                 </span>
+
+                <template v-else-if="getMulaiState(l) === 'late'">
+                  <span class="inline-flex items-center gap-1.5 rounded-full bg-[#FEF3F2] px-3 py-1 text-xs font-bold text-[#B42318]">Tidak hadir</span>
+                  <button
+                    v-if="adalahSuperadmin"
+                    type="button"
+                    class="inline-flex min-h-9 items-center rounded-xl border border-[#CBD5E1] bg-white px-3.5 text-xs font-bold text-[#344054] hover:bg-[#F8FAFD]"
+                    @click="emit('mulai', lessonKey(l))"
+                  >Catat Mulai (Superadmin)</button>
+                </template>
 
                 <span
                   v-else

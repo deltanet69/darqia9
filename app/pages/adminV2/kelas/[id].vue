@@ -42,7 +42,11 @@ const classIdParam = computed(() => {
   return decodeURIComponent(String(route.params.id || ''))
 })
 
-const availableClasses = computed<ClassRombel[]>(() => cbtData.classes.value.map(item => {
+// Akun guru hanya bisa membuka rombel yang ia ajar (jadwal pelajaran) atau walikan; rombel lain = tidak ditemukan.
+const rbacDetail = useRbac()
+const kelasDiampu = (item: { id: string, homeroomTeacherId?: string | null }) => !rbacDetail.modeGuru.value
+  || (!!item.homeroomTeacherId && String(item.homeroomTeacherId) === rbacDetail.state.value.subjekSaya) || cbtData.ajarSaya(item.id)
+const availableClasses = computed<ClassRombel[]>(() => cbtData.classes.value.filter(kelasDiampu).map(item => {
   return {
     id: item.id,
     name: item.name,

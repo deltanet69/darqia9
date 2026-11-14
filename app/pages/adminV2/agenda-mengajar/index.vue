@@ -213,7 +213,8 @@ const loadContext = async () => {
     return
   }
   try {
-    const result = await agenda.loadBooks(academicYear, semester.value, jenjang.value.toUpperCase() as 'SMP' | 'SMK')
+    // Guru: semua buku dari jadwal yang di-assign kepadanya di jenjang mana pun (tidak tergantung pilihan jenjang di header).
+    const result = await agenda.loadBooks(academicYear, semester.value, guruSayaId.value ? null : jenjang.value.toUpperCase() as 'SMP' | 'SMK')
     bukuSemua.value = result
     const tujuan = kueriTerpakai ? null : books.value.find(book => book.kelas_id === kueri('kelas') && book.mapel_id === kueri('mapel') && (!kueri('guru') || book.guru_id === kueri('guru')))
     kueriTerpakai = true
@@ -420,7 +421,16 @@ watch([jenjang, semester], loadContext)
 watch(jenjang, () => { if (tampilan.value === 'rekap') void muatRekap() })
 watch([selectedBookId, activeTab], loadCurrentTab)
 watch(selectedBookId, () => { jumlahPertemuan.value = 20; jumlahTugas.value = 5; selectedMeeting.value = 1; selectedTask.value = 1 })
-onMounted(async () => { await loadProfileRole(); await loadContext() })
+onMounted(async () => {
+  await loadProfileRole()
+  await loadContext()
+  // Superadmin yang tidak tertaut data guru tidak punya buku pribadi: buka buku dari tautan Jadwal Mengajar
+  // (?kelas&mapel&guru) bila ada, selain itu langsung ke Rekap Semua Guru (bukan "Agenda Saya" yang pasti kosong).
+  if (!adalahSuperadmin.value || guruSayaId.value) return
+  const tujuan = bukuSemua.value.find(book => book.kelas_id === kueri('kelas') && book.mapel_id === kueri('mapel') && (!kueri('guru') || book.guru_id === kueri('guru')))
+  if (tujuan) bukaBukuGuru(tujuan.buku_id)
+  else setTampilan('rekap')
+})
 onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.forEach(timer => clearTimeout(timer)) })
 </script>
 
@@ -436,7 +446,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.fo
         <div><span class="grade-badge" :class="jenjang">{{ jenjang.toUpperCase() }}</span><h1 class="mt-1.5 text-2xl font-extrabold tracking-tight sm:text-3xl">Agenda Mengajar</h1><p class="mt-1 text-xs font-medium text-[#667085]">Jurnal pertemuan, daftar hadir &amp; penilaian F.32 &bull; {{ jenjang === 'smp' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9' }} &bull; Tahun Ajaran {{ academicYear }}</p></div>
         <div class="hidden items-center gap-2 sm:flex"><span class="date-pill">{{ formattedToday }}</span><span class="version-pill">Agenda F.32</span></div>
       </header>
-      <nav v-if="adalahSuperadmin" class="agenda-tabs" role="tablist" aria-label="Tampilan agenda"><button type="button" role="tab" :aria-selected="tampilan === 'saya'" :class="{ active: tampilan === 'saya' }" @click="setTampilan('saya')"><span>Agenda Saya</span></button><button type="button" role="tab" :aria-selected="tampilan !== 'saya'" :class="{ active: tampilan !== 'saya' }" @click="setTampilan('rekap')"><span>Rekap Semua Guru</span></button></nav>
+      <nav v-if="adalahSuperadmin" class="agenda-tabs" role="tablist" aria-label="Tampilan agenda"><button v-if="guruSayaId" type="button" role="tab" :aria-selected="tampilan === 'saya'" :class="{ active: tampilan === 'saya' }" @click="setTampilan('saya')"><span>Agenda Saya</span></button><button type="button" role="tab" :aria-selected="tampilan !== 'saya'" :class="{ active: tampilan !== 'saya' }" @click="setTampilan('rekap')"><span>Rekap Semua Guru</span></button></nav>
       <AgendaMengajarRekap v-if="tampilan === 'rekap'" :rows="rekapTampil" :loading="rekapMemuat" :error="rekapError" @open="bukaBukuGuru" @reload="muatRekap" />
       <template v-else>
       <section v-if="tampilan === 'buku' && currentBook" class="rounded-2xl bg-[#0F2042] p-4 text-white sm:p-5">
@@ -472,7 +482,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.fo
       <section v-if="isSemesterLocked" class="state-card warning" role="alert"><AdminV2Icon name="lock" :size="24" /><div><h2>Semester 2 belum dimulai</h2><p>Semester 2 tahun ajaran {{ academicYear }} belum dimulai. Pilih Semester 1 untuk membuka buku agenda.</p></div></section>
       <section v-else-if="loadingContext || loadingTab" class="state-card" aria-live="polite"><div class="loading-bars" aria-hidden="true"><i /><i /><i /></div><div><h2>Memuat buku agenda</h2><p>Data kelas, jurnal, dan nilai sedang disiapkan.</p></div></section>
       <section v-else-if="contextError || tabError" class="state-card error" role="alert"><AdminV2Icon name="alert" :size="24" /><div><h2>Data agenda belum dapat dibuka</h2><p>{{ contextError || tabError }}</p><button type="button" @click="contextError ? loadContext() : loadCurrentTab()">Coba lagi</button></div></section>
-      <section v-else-if="!currentBook" class="state-card"><AdminV2Icon name="book" :size="24" /><div><h2>Tidak ada buku agenda</h2><p>Tidak ada penugasan kelas dan mata pelajaran dalam lingkup akun ini.</p></div></section>
+      <section v-else-if="!currentBook" class="state-card"><AdminV2Icon name="book" :size="24" /><div><h2>Tidak ada buku agenda</h2><p>{{ tampilan === 'saya' && !guruSayaId ? 'Akun ini belum tertaut ke data guru, jadi belum punya buku agenda pribadi. Minta Superadmin menautkan akun Anda di Data Guru & Staff.' : 'Tidak ada penugasan kelas dan mata pelajaran dalam lingkup akun ini.' }}</p></div></section>
       <section v-else-if="!students.length" class="state-card"><AdminV2Icon name="users" :size="24" /><div><h2>Kelas ini belum memiliki siswa aktif</h2><p>Daftar siswa kelas {{ currentBook.kelas_nama }} diambil dari Data Induk Siswa. Pastikan siswa sudah ditempatkan di kelas ini dan berstatus aktif.</p></div></section>
       <fieldset v-else class="baca-saja m-0 min-w-0 space-y-4 border-0 p-0" :disabled="bacaSaja">
         <template v-if="activeTab === 'pertemuan'">

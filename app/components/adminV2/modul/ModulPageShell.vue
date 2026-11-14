@@ -14,7 +14,11 @@ useHead({ title: `${props.judul || 'Modul Pembelajaran'} | Admin Portal` })
 
 const grade = useAdminGrade()
 const jenjang = computed<'smp' | 'smk'>({ get: () => grade.value.toLowerCase() as 'smp' | 'smk', set: value => { grade.value = value.toUpperCase() as 'SMP' | 'SMK' } })
-const role = ref<PeranModul>('superadmin')
+// Peran modul dari RBAC: Superadmin = CRUD penuh; peran non-guru yang boleh mengubah modul = penyetuju; guru = sunting modul sendiri.
+const rbac = useRbac()
+const role = computed<PeranModul>(() => rbac.adalahSuperadmin.value
+  ? 'superadmin'
+  : !rbac.modeGuru.value && rbac.bisaSaya('Modul Pembelajaran', 'ubah') && rbac.penegakanAktif.value ? 'admin_tu' : 'guru')
 const isMegaOpen = ref(false)
 const activeMegaGroup = ref<GroupItem | null>(null)
 const isMobileMenuOpen = ref(false)
@@ -40,14 +44,14 @@ const crumbs = computed(() => {
 <template>
   <div class="min-h-screen bg-[#F3F5F9] text-[#101828] font-sans antialiased pb-24 lg:pb-8">
     <div class="sticky top-0 z-50">
-      <AdminV2Header :jenjang="jenjang" :role="role" :groups="GROUPS" current-route="kepegawaian" :active-group-id="activeMegaGroup?.id" :is-mega-open="isMegaOpen" @update:jenjang="jenjang = $event" @toggle-mega="group => { activeMegaGroup = group; isMegaOpen = !isMegaOpen }" @open-mobile-menu="isMobileMenuOpen = true" @toggle-search="toggleSearch" @toggle-notif="toggleNotif" @toggle-profile="toggleProfile" />
+      <AdminV2Header :jenjang="jenjang" role="superadmin":groups="GROUPS" current-route="kepegawaian" :active-group-id="activeMegaGroup?.id" :is-mega-open="isMegaOpen" @update:jenjang="jenjang = $event" @toggle-mega="group => { activeMegaGroup = group; isMegaOpen = !isMegaOpen }" @open-mobile-menu="isMobileMenuOpen = true" @toggle-search="toggleSearch" @toggle-notif="toggleNotif" @toggle-profile="toggleProfile" />
       <AdminV2Breadcrumb :items="crumbs" :badge="jenjang === 'smp' ? 'SMP IT BCA' : 'SMK IT Attaqwa 9'" :jenjang="jenjang" />
       <AdminV2MegaPanel :open="isMegaOpen" :group="activeMegaGroup" :jenjang="jenjang" @close="isMegaOpen = false" @select-item="selectModule" />
     </div>
     <main class="mx-auto w-full max-w-[1100px] px-4 py-5 sm:px-6 lg:px-8">
       <slot :jenjang="grade" :role="role" />
     </main>
-    <AdminV2MobileMenu :open="isMobileMenuOpen" :role="role" :groups="GROUPS" :jenjang="jenjang" @close="isMobileMenuOpen = false" @select-item="selectModule" />
-    <AdminV2Popovers :is-notif-open="isNotifOpen" :is-profile-open="isProfileOpen" :is-search-open="isSearchOpen" :role="role" :jenjang="jenjang" @close-all="tutupPopovers" @item-click="tutupPopovers" />
+    <AdminV2MobileMenu :open="isMobileMenuOpen" role="superadmin":groups="GROUPS" :jenjang="jenjang" @close="isMobileMenuOpen = false" @select-item="selectModule" />
+    <AdminV2Popovers :is-notif-open="isNotifOpen" :is-profile-open="isProfileOpen" :is-search-open="isSearchOpen" role="superadmin":jenjang="jenjang" @close-all="tutupPopovers" @item-click="tutupPopovers" />
   </div>
 </template>

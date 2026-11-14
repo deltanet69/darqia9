@@ -15,10 +15,12 @@ interface ActivityRow {
 interface Props {
   rows: ActivityRow[]
   jenjang?: 'smp' | 'smk'
+  judul?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  jenjang: 'smk'
+  jenjang: 'smk',
+  judul: 'Aktivitas Terbaru'
 })
 
 const emit = defineEmits<{
@@ -80,7 +82,7 @@ const downloadCSV = () => {
   <section class="w-full bg-white border border-[#E7EBF2] rounded-[18px] p-[18px] shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.1)] flex flex-col">
     <!-- Header with Search & Buttons -->
     <div class="flex items-center gap-2.5 mb-3.5 flex-wrap">
-      <h3 class="text-[15px] font-extrabold text-[#101828] mr-auto">Aktivitas Terbaru</h3>
+      <h3 class="text-[15px] font-extrabold text-[#101828] mr-auto">{{ judul }}</h3>
 
       <!-- Search Box -->
       <label class="flex items-center gap-2 border border-[#E7EBF2] rounded-full py-1.5 px-3.5 text-xs text-[#98A2B3] focus-within:border-[#101828] transition min-w-0 flex-1 sm:flex-initial sm:w-60">
@@ -197,7 +199,7 @@ const downloadCSV = () => {
           </tr>
           <tr v-if="filteredRows.length === 0">
             <td colspan="7" class="py-8 text-center text-xs text-[#667085]">
-              Tidak ada aktivitas yang sesuai dengan "{{ searchQuery }}"
+              {{ searchQuery ? `Tidak ada aktivitas yang sesuai dengan "${searchQuery}"` : 'Belum ada transaksi tercatat.' }}
             </td>
           </tr>
         </tbody>

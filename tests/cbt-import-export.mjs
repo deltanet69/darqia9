@@ -1,7 +1,7 @@
 // Tes ekspor/impor bank soal (Excel, CSV, Word) — jalankan: node tests/cbt-import-export.mjs
 import assert from 'node:assert/strict'
 import { buildBankExcel, readExcelBankTemplate } from '../app/utils/cbtExcelBank.ts'
-import { cocokKelas } from '../app/utils/cbtKelas.ts'
+import { cocokKelas, cocokDaftarKelas } from '../app/utils/cbtKelas.ts'
 import { buildBankCsv } from '../app/utils/cbtCsvBank.ts'
 import { decodeXml, fields, linesFromXml } from '../app/utils/cbtWordBank.ts'
 
@@ -125,6 +125,13 @@ await cek('Word: kolom satu baris tidak menyerap teks lain; penanda --- dan bann
   assert.equal(tanpaPemisah.RUBRIK, 'Skor')
 })
 
+
+await cek('KELAS template boleh berisi banyak kelas dipisah koma', () => {
+  const daftar = ['7.2', '7.3', '8.1', '8.2']
+  assert.deepEqual(cocokDaftarKelas('7.2, 8.1, 7.3', daftar), { cocok: ['7.2', '8.1', '7.3'], hilang: [] })
+  assert.deepEqual(cocokDaftarKelas('VII.2; 7.2\n9.9', daftar), { cocok: ['7.2'], hilang: ['9.9'] })
+  assert.deepEqual(cocokDaftarKelas('', daftar), { cocok: [], hilang: [] })
+})
 
 await cek('KELAS template dicocokkan toleran terhadap penulisan (8.4 = VIII.4, spasi tak terlihat, huruf kecil)', () => {
   const daftar = ['7.1', '8.4', 'VIII.A', 'X RPL 1', 'XI AKL']

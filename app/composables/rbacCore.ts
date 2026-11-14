@@ -165,18 +165,75 @@ export const RBAC_SEED_PERAN: PeranRbac[] = [
 ]
 
 // Izin bawaan per kunci peran — sama persis dengan preview RBAC v6 yang disetujui user.
+// Z: izin dari daftar 'Modul[/sub]:AKSI' (L = lihat, C = buat, U = ubah, D = hapus).
+// 'Modul' tanpa '/sub' berlaku untuk semua sub-menunya. Baris modul utama dihitung ulang (agregatModul).
+function Z(...baris: string[]): IzinPeran {
+  const izin = izinKosong()
+  const peta: Record<string, AksiRbac> = { L: 'lihat', C: 'buat', U: 'ubah', D: 'hapus' }
+  for (const b of baris) {
+    const [kunci, aksi] = b.split(':') as [string, string]
+    const subs = !kunci.includes('/') && RBAC_SUBMODUL[kunci]?.length ? RBAC_SUBMODUL[kunci].map(x => kunciSub(kunci, x.kunci)) : [kunci]
+    for (const k of subs) {
+      if (!izin[k]) throw new Error(`Kunci RBAC tidak dikenal: ${k}`)
+      for (const c of aksi) izin[k]![peta[c]!] = true
+      if (/[CUD]/.test(aksi)) izin[k]!.lihat = true
+    }
+  }
+  return agregatModul(izin)
+}
+
+const AKADEMIK = ['Data Siswa', 'Absensi Siswa', 'Manajemen Kelas', 'Jadwal Pelajaran', 'Master Mapel', 'Raport Siswa']
+const semuaLihat = () => RBAC_MODUL.map(m => `${m}:L`)
+
+// Hak Guru Pengajar (brief aksesaplikasi.md, 13 Nov 2026). Pembatasan "hanya milik sendiri / yang diawasi"
+// adalah cakupan data yang ditegakkan per modul secara bertahap. Kartu ujian sementara hanya Lihat sampai
+// cakupan "ruang yang diawasi" ditegakkan, supaya guru tidak bisa mengganti token siswa ruang lain.
+const GURU = [
+  'Dashboard:L',
+  'Absensi Siswa/overview:L', 'Manajemen Kelas:L', 'Jadwal Pelajaran:L', 'Master Mapel:L',
+  'Absensi Guru:L', 'Jadwal Mengajar/grade:L', 'Jadwal Mengajar/saya:LU', 'Agenda Mengajar:LCUD', 'Modul Pembelajaran:LCUD',
+  'Manajemen CBT/summary:L', 'Manajemen CBT/monitoring:L', 'Manajemen CBT/bank:LCUD', 'Manajemen CBT/exams:L',
+  'Manajemen CBT/rooms:L', 'Manajemen CBT/cards:L',
+  'LMS/summary:L', 'LMS/monitoring:L', 'LMS/bank:LCUD', 'LMS/exams:LCUD', 'LMS/seb:L', 'LMS/cards:L',
+  'Tiketing:LC'
+]
+// Operator: kepegawaian sama seperti Guru Pengajar.
+const KEPEGAWAIAN_GURU = ['Absensi Guru:L', 'Jadwal Mengajar/grade:L', 'Jadwal Mengajar/saya:LU', 'Agenda Mengajar:LCUD', 'Modul Pembelajaran:LCUD']
+
+// Izin bawaan per kunci peran. Peran di brief aksesaplikasi.md mengikuti brief; Staff Sekolah (tidak ada di brief) tetap.
 export const RBAC_SEED_IZIN: Record<string, IzinPeran> = {
-  // Tiketing (indeks 23): semua peran boleh melihat dan membuat tiket, sama seperti sebelum modul ini masuk RBAC.
   superadmin: P({ R: SEMUA, C: SEMUA, U: SEMUA, D: SEMUA }),
-  ketua_yayasan: terbatas(P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23], C: [23] })),
-  kepala_sekolah: terbatas(P({ R: SEMUA, U: [4, 10, 11, 16, 17], C: [23] })),
-  wakil_kepala_sekolah: terbatas(P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 21, 23], U: [4, 9, 10, 11], C: [23] })),
-  operator: terbatas(P({ R: SEMUA, C: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 23], U: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], D: [1, 2, 3, 4, 7, 8, 9, 13, 14, 15, 16, 17] })),
-  staff_adm: terbatas(P({ R: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 23], C: [1, 2, 3, 8, 13, 17, 23], U: [1, 2, 3, 6, 8, 17], D: [1, 17] })),
-  wali_kelas: terbatas(P({ R: [0, 1, 2, 4, 6, 10, 11, 13, 15, 23], U: [2], C: [23] })),
-  guru_pengajar: terbatas(P({ R: [0, 1, 4, 5, 6, 8, 9, 10, 11, 14, 15, 18, 23], C: [10, 11, 14, 15, 23], U: [6, 10, 11, 14, 15], D: [10, 11, 14, 15] })),
+  // Yayasan, Kepsek, Wakasek: baca seluruh data (jadwal mengajar pribadi diatur lewat centang RBAC bila mengajar).
+  ketua_yayasan: Z(...semuaLihat(), 'Tiketing:LC'),
+  kepala_sekolah: Z(...semuaLihat(), 'Tiketing:LC'),
+  wakil_kepala_sekolah: Z(...semuaLihat(), 'Tiketing:LC'),
+  operator: Z('Dashboard:L', ...[...AKADEMIK, 'Manajemen CBT', 'LMS', 'Konten Website', 'SPMB', 'Perpustakaan Digital'].map(m => `${m}:LCUD`),
+    ...KEPEGAWAIAN_GURU, 'Tiketing:LC'),
+  staff_adm: Z('Dashboard:L', ...[...AKADEMIK, 'Keuangan Sekolah', 'Tabungan Siswa'].map(m => `${m}:LCUD`), 'Tiketing:LC'),
+  // Wali Kelas = Guru Pengajar + kelola kelasnya, raport kelasnya, dan presensi siswa kelasnya secara rinci.
+  wali_kelas: Z(...GURU, 'Manajemen Kelas:LU', 'Raport Siswa:LCUD', 'Absensi Siswa:L'),
+  guru_pengajar: Z(...GURU),
   staff_sekolah: terbatas(P({ R: [0, 1, 4, 7, 8, 11, 16, 17, 18, 23], C: [16, 18, 23], U: [16, 18] }))
 }
+
+// Peran yang izin bawaannya diterapkan ulang oleh migrasi 0064 (sesuai brief aksesaplikasi.md).
+// Peran pimpinan/pengelola selalu boleh berpindah jenjang sesuai penugasannya, walau tidak berjadwal (keputusan owner, 14 Nov 2026; Staff Adm termasuk).
+export const PERAN_LINTAS_JENJANG = ['superadmin', 'ketua_yayasan', 'kepala_sekolah', 'wakil_kepala_sekolah', 'operator', 'staff_adm']
+export const lintasJenjang = (peran: Pick<PeranRbac, 'kunci'> | null | undefined): boolean =>
+  !!peran && PERAN_LINTAS_JENJANG.includes(peran.kunci)
+
+// Jenjang akun: peran lain hanya boleh di jenjang tempat ia berjadwal (jadwal pelajaran/rombel yang diwalikan);
+// pengalih jenjang muncul hanya bila berjadwal di SMP dan SMK. Tanpa jadwal = satu jenjang (jenjang data guru).
+export function jenjangAkun(dasar: JenjangRbac[], lintas: boolean, jadwal: JenjangRbac[], jenjangGuru: JenjangRbac | null): JenjangRbac[] {
+  if (lintas || !dasar.length) return dasar
+  if (jadwal.length) {
+    const irisan = dasar.filter(j => jadwal.includes(j))
+    return irisan.length ? irisan : [...jadwal]
+  }
+  return [jenjangGuru && dasar.includes(jenjangGuru) ? jenjangGuru : dasar[0]!]
+}
+
+export const RBAC_PERAN_BRIEF = ['ketua_yayasan', 'kepala_sekolah', 'wakil_kepala_sekolah', 'operator', 'staff_adm', 'wali_kelas', 'guru_pengajar']
 
 // Jumlah centang di halaman RBAC (sub-modul + modul tanpa sub-menu).
 export function hitungIzinRinci(izin: IzinPeran): number {

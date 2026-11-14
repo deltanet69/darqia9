@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import AdminV2Icon from './AdminV2Icon.vue'
+import AdminV2Kosong from './AdminV2Kosong.vue'
 
 interface Props {
   announcements: Array<[string, string, string, string]>
   jenjang?: 'smp' | 'smk'
+  // Menu kelola pengumuman belum ada (brief): tombol "Semua" disembunyikan sampai menunya dibuat.
+  tampilSemua?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
-  jenjang: 'smk'
+  jenjang: 'smk',
+  tampilSemua: false
 })
 
 const emit = defineEmits<{
@@ -22,6 +26,7 @@ const emit = defineEmits<{
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-[15px] font-extrabold text-[#101828]">Pengumuman</h3>
         <button
+          v-if="tampilSemua"
           type="button"
           class="text-xs font-bold transition flex items-center gap-1 p-0"
           :class="jenjang === 'smp' ? 'text-[#16A34A] hover:text-[#14532D]' : 'text-[#1B5FD9] hover:text-[#0A2A5C]'"
@@ -32,7 +37,8 @@ const emit = defineEmits<{
         </button>
       </div>
 
-      <div class="flex flex-col divide-y divide-[#EFF2F7]">
+      <AdminV2Kosong v-if="!announcements.length" :jenjang="jenjang" lead="kotak" judul="Belum ada pengumuman" keterangan="Informasi terbaru dari sekolah untuk guru dan staf akan tampil di sini." />
+      <div v-else class="flex flex-col divide-y divide-[#EFF2F7]">
         <div
           v-for="([icon, title, desc, time], idx) in announcements"
           :key="idx"

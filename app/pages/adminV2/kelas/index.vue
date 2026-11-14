@@ -63,10 +63,14 @@ const bolehSubmenu = (id: SubmenuKey) => submenuTerlihat.value.some(t => t.id ==
 
 // Semua rombel aktif ditampilkan, termasuk yang belum punya siswa, agar rombel baru bisa dibuka dan diisi siswa.
 // Kehadiran & rata-rata nilai 0 = belum tersambung ke modul Absensi/Penilaian (tidak diisi angka rekaan).
+// Akun guru hanya melihat rombel yang ia ajar (jadwal pelajaran) atau walikan.
+const rbacKelas = useRbac()
+const kelasDiampu = (item: { id: string, homeroomTeacherId?: string | null }) => !rbacKelas.modeGuru.value
+  || (!!item.homeroomTeacherId && String(item.homeroomTeacherId) === rbacKelas.state.value.subjekSaya) || cbtData.ajarSaya(item.id)
 const rawClasses = computed<ClassRombel[]>(() => {
   const currentGrade = jenjang.value.toUpperCase()
   return cbtData.classes.value
-    .filter(item => item.grade === currentGrade)
+    .filter(item => item.grade === currentGrade && kelasDiampu(item))
     .map(item => ({
       id: item.id,
       name: item.name,

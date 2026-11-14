@@ -155,7 +155,8 @@ export const useAgendaMengajar = () => {
     return user.value.id
   }
 
-  const loadBooks = async (academicYear: string, semester: 1 | 2, grade: 'SMP' | 'SMK') => {
+  // grade null = semua jenjang (buku pribadi guru yang mengajar di SMP dan SMK).
+  const loadBooks = async (academicYear: string, semester: 1 | 2, grade: 'SMP' | 'SMK' | null) => {
     const { data, error } = await client.rpc('agenda_context', {
       target_tahun_ajaran: academicYear,
       target_semester: semester,

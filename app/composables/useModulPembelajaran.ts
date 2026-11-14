@@ -193,7 +193,23 @@ export const modulDariBaris = (b: Record<string, any>): ModulPembelajaran => {
   }
 }
 
-export const barisDariModul = (m: ModulPembelajaran): Record<string, any> => ({
+// Hasil AI dirapikan ke bentuk IsiModul: kolom yang hilang/salah tipe diisi bawaan, dimensi hanya dari daftar resmi (maks 3),
+// dan langkah selalu 6 tahap PjBL berurutan.
+export const isiDariAi = (mentah: unknown): IsiModul => {
+  const isi = modulDariBaris({ isi: mentah && typeof mentah === 'object' ? mentah : {} }).isi
+  const teks = (v: unknown) => typeof v === 'string' ? v : ''
+  isi.dimensi = isi.dimensi.filter(d => DIMENSI_PROFIL_LULUSAN.includes(d)).slice(0, 3)
+  isi.tujuan = isi.tujuan.map(teks).filter(Boolean)
+  isi.pertanyaanPemantik = isi.pertanyaanPemantik.map(teks).filter(Boolean)
+  isi.langkah = TAHAP_PJBL.map((tahap, i) => {
+    const l: any = isi.langkah[i] || {}
+    return { tahap, guru: teks(l.guru), siswa: teks(l.siswa), jp: Math.max(0, Math.round(Number(l.jp) || 0)) }
+  })
+  isi.cpReferensi = isiBawaan().cpReferensi
+  return isi
+}
+
+export const barisDariModul =(m: ModulPembelajaran): Record<string, any> => ({
   jenjang: m.jenjang, jenis: m.jenis, nomor: m.nomor, judul: m.judul, penyusun: m.penyusun,
   author_teacher_id: m.authorTeacherId, satuan: m.satuan, mapel: m.mapel, fase: m.fase, kelas: m.kelas,
   alokasi_jp: m.alokasiJp, jumlah_pertemuan: m.jumlahPertemuan, durasi_minggu: m.durasiMinggu,
@@ -243,9 +259,12 @@ export const buatHtmlCetak = (m: ModulPembelajaran): string => {
 
 export const useModulPembelajaran = () => {
   const client = useSupabaseClient()
+  const rbac = useRbac()
   const daftar = useState<ModulPembelajaran[]>('modul-daftar', () => [])
   const arsip = useState<ModulPembelajaran[]>('modul-arsip', () => [])
   const guruDaftar = useState<Array<{ id: string; name: string; grade: string }>>('modul-guru', () => [])
+  const mapelDaftar = useState<string[]>('modul-mapel', () => [])
+  // Id guru akun yang login (kosong bila akun belum tertaut data guru). Menentukan modul mana yang boleh disunting.
   const penulisAktifId = useState<string>('modul-penulis-aktif', () => '')
   const memuat = useState<boolean>('modul-memuat', () => false)
   const tabelSiap = useState<boolean>('modul-tabel-siap', () => true)
@@ -254,14 +273,17 @@ export const useModulPembelajaran = () => {
   const muat = async (jenjang: 'SMP' | 'SMK') => {
     memuat.value = true
     try {
-      const [modulRes, guruRes] = await Promise.all([
+      const [modulRes, guruRes, mapelRes] = await Promise.all([
         client.from('learning_modules').select('*').eq('jenjang', jenjang).is('deleted_at', null).order('created_at', { ascending: false }),
-        client.from('teachers').select('id, name, grade').eq('active', true).eq('grade', jenjang).order('name')
+        client.from('teachers').select('id, name, grade').eq('active', true).eq('grade', jenjang).order('name'),
+        client.from('subjects').select('name').eq('grade', jenjang).eq('active', true).order('name'),
+        rbac.muat()
       ])
       if (modulRes.error) throw modulRes.error
       daftar.value = (modulRes.data || []).map(modulDariBaris)
       guruDaftar.value = (guruRes.data || []) as Array<{ id: string; name: string; grade: string }>
-      if (!penulisAktifId.value && guruDaftar.value.length) penulisAktifId.value = guruDaftar.value[0].id
+      mapelDaftar.value = [...new Set(((mapelRes.data || []) as Array<{ name: string }>).map(m => m.name))]
+      penulisAktifId.value = rbac.tertautGuru.value ? rbac.state.value.subjekSaya || '' : ''
       tabelSiap.value = true
     } catch (e) {
       tabelSiap.value = false
@@ -313,5 +335,5 @@ export const useModulPembelajaran = () => {
   const pulihkan = async (m: ModulPembelajaran) => { const ok = await ubahSebagian(m.id, { deleted_at: null }); if (ok) useLogAktivitas().catat('Modul Pembelajaran', 'pulihkan modul', `Modul dipulihkan: ${m.judul}`); return ok }
   const aturTahap = async (m: ModulPembelajaran, tahap: number) => ubahSebagian(m.id, { tahap_berjalan: tahap })
 
-  return { daftar, arsip, guruDaftar, penulisAktifId, memuat, tabelSiap, pesan, muat, muatArsip, ambil, simpan, kumpulkan, setujui, kembalikan, arsipkan, pulihkan, aturTahap }
+  return { daftar, arsip, guruDaftar, mapelDaftar, penulisAktifId, memuat, tabelSiap, pesan, muat, muatArsip, ambil, simpan, kumpulkan, setujui, kembalikan, arsipkan, pulihkan, aturTahap }
 }

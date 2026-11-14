@@ -16,7 +16,8 @@ const catatan = ref('')
 
 const peta = computed(() => modul.value ? petaPertemuan(modul.value.isi, modul.value.jumlahPertemuan || 1) : [])
 const sayaPenulis = computed(() => !!modul.value && bolehSunting(modul.value, props.role, penulisAktifId.value))
-const namaSaya = computed(() => guruDaftar.value.find(g => g.id === penulisAktifId.value)?.name || 'Admin Darqia')
+const rbac = useRbac()
+const namaSaya = computed(() => guruDaftar.value.find(g => g.id === penulisAktifId.value)?.name || rbac.namaAkun.value || 'Admin Darqia')
 
 const segarkan = async () => { modul.value = await store.ambil(props.id) }
 onMounted(async () => { await store.muat(props.jenjang); await segarkan() })

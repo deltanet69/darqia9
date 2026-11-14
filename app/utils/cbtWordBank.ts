@@ -1,5 +1,5 @@
 import type { BankPackage, BankQuestionItem, GradeType } from '~/components/adminV2/cbt/cbtV2Data'
-import { cocokKelas } from './cbtKelas.ts'
+import { cocokDaftarKelas } from './cbtKelas.ts'
 
 type ImportType = BankQuestionItem['type']
 
@@ -11,6 +11,8 @@ export interface WordBankIssue {
 export interface WordBankPreview {
   package: BankPackage
   classroom: string
+  // Semua kelas tujuan (classroom = kelas pertama); satu paket disimpan per kelas.
+  classrooms: string[]
   subject: string
   questionCount: number
   totalCount: number
@@ -211,8 +213,9 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
   if (!['SMP', 'SMK'].includes(grade)) throw new Error('Metadata JENJANG harus SMP atau SMK.')
   if (grade !== currentGrade) throw new Error(`Template ini untuk ${grade}, sedangkan Bank Soal aktif adalah ${currentGrade}.`)
   // Nama kelas dicocokkan toleran (cth: 8.4 = VIII.4) lalu dipakai sesuai tulisan di Manajemen Kelas.
-  const classroom = cocokKelas(kelasIsian, classes)
-  if (!classroom) throw new Error(`KELAS "${kelasIsian}" pada template tidak ditemukan di Manajemen Kelas. Tulis persis seperti di daftar kelas.`)
+  const { cocok: classrooms, hilang } = cocokDaftarKelas(kelasIsian, classes)
+  if (hilang.length || !classrooms.length) throw new Error(`KELAS "${hilang[0] ?? kelasIsian}" pada template tidak ditemukan di Manajemen Kelas. Tulis persis seperti di daftar kelas.`)
+  const classroom = classrooms[0]!
   if (!subjects.includes(subject)) throw new Error('MATA_PELAJARAN pada template tidak ditemukan pada jenjang ini.')
   if (!teacherName) throw new Error('PENYUSUN pada template wajib diisi.')
 
@@ -277,6 +280,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
   if (!questions.length) throw new Error(`Tidak ada butir soal yang valid dalam dokumen.${issues[0] ? ` ${issues[0].message}` : ''}`)
   return {
     classroom,
+    classrooms,
     subject,
     questionCount: questions.length,
     totalCount: blocks.length,

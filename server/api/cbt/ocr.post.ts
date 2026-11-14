@@ -1,49 +1,15 @@
 import { parseOcrExtraction, ocrTextsAgree, ocrTextsAgreeLoose, rapikanRumusTerpisah } from '../../utils/cbtOcr'
 import { validateLatexExpressions } from '../../../app/utils/cbtFormula'
 import { wajibStaf } from '../../utils/wajibStaf'
+import { kumpulkanStream } from '../../utils/aiStream'
 
 const requestWindows = new Map<string, { count: number; startedAt: number }>()
 const MAX_IMAGE_BYTES = 700 * 1024
 const MAX_REQUESTS_PER_MINUTE = 12
 
-// Gateway penyedia memotong respons biasa yang lebih dari ~30 detik (HTTP 504), padahal model penalaran yang membaca teks Arab
-// berharakat bisa lebih lama. Karena itu permintaan memakai stream: gateway mengirim keep-alive sehingga koneksi tetap hidup.
-// Isi jawaban dikumpulkan dari potongan delta.content (reasoning_content diabaikan). Berhenti paksa bila lewat batas waktu total.
-const kumpulkanStream = async (stream: any, batasMs = 110_000): Promise<string> => {
-  const reader = stream.getReader()
-  const dekoder = new TextDecoder()
-  let sisa = ''
-  let isi = ''
-  let habisWaktu = false
-  const timer = setTimeout(() => { habisWaktu = true; void reader.cancel().catch(() => {}) }, batasMs)
-  const prosesBaris = (baris: string) => {
-    if (!baris.startsWith('data:')) return
-    const data = baris.slice(5).trim()
-    if (!data || data === '[DONE]') return
-    let potongan: any
-    try { potongan = JSON.parse(data) } catch { return }
-    if (potongan?.error) throw createError({ statusCode: 502, statusMessage: 'Layanan OCR melaporkan galat saat membaca gambar. Coba lagi.' })
-    const delta = potongan?.choices?.[0]?.delta?.content ?? potongan?.choices?.[0]?.message?.content
-    if (typeof delta === 'string') isi += delta
-  }
-  try {
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      sisa += dekoder.decode(value, { stream: true })
-      let akhir = sisa.indexOf('\n')
-      while (akhir >= 0) {
-        prosesBaris(sisa.slice(0, akhir).replace(/\r$/, ''))
-        sisa = sisa.slice(akhir + 1)
-        akhir = sisa.indexOf('\n')
-      }
-    }
-    prosesBaris(sisa.replace(/\r$/, ''))
-  } finally {
-    clearTimeout(timer)
-  }
-  if (habisWaktu) throw createError({ statusCode: 504, statusMessage: 'Layanan OCR terlalu lama membaca gambar. Coba gambar yang lebih kecil atau potong bagian yang perlu dibaca.' })
-  return isi
+const PESAN_STREAM = {
+  galat: 'Layanan OCR melaporkan galat saat membaca gambar. Coba lagi.',
+  habisWaktu: 'Layanan OCR terlalu lama membaca gambar. Coba gambar yang lebih kecil atau potong bagian yang perlu dibaca.'
 }
 
 const getRequestIp = (event: Parameters<typeof getRequestIP>[0]) => getRequestIP(event, { xForwardedFor: true }) || 'unknown'
@@ -158,7 +124,7 @@ export default defineEventHandler(async (event) => {
     }
     throw createError({ statusCode: 502, statusMessage: 'Layanan OCR gagal mengekstrak gambar. Coba gunakan gambar yang lebih jelas.' })
   }).then(async (hasil: any) => typeof hasil?.getReader === 'function'
-    ? { choices: [{ message: { content: await kumpulkanStream(hasil) } }] }
+    ? { choices: [{ message: { content: await kumpulkanStream(hasil, PESAN_STREAM) } }] }
     : hasil)
 
   const parseSafely = (response: any) => {

@@ -7,7 +7,10 @@ import {
 
 const props = defineProps<{ jenjang: 'SMP' | 'SMK'; role: PeranModul }>()
 const store = useModulPembelajaran()
-const { daftar, arsip, guruDaftar, penulisAktifId, memuat, tabelSiap, pesan } = store
+const { daftar, arsip, penulisAktifId, memuat, tabelSiap, pesan } = store
+const rbac = useRbac()
+// Superadmin selalu boleh; selain itu perlu izin buat dan akun yang tertaut data guru (penyusun = guru).
+const bolehBuat = computed(() => props.role === 'superadmin' || (!!penulisAktifId.value && rbac.bisaSaya('Modul Pembelajaran', 'buat')))
 
 const kata = ref('')
 const fStatus = ref('')
@@ -41,17 +44,11 @@ const labelJenis = (j: string) => j === 'projek' ? 'Projek kokurikuler lintas ma
         <h1 class="text-[22px] leading-7 font-semibold text-blue-950">Modul Pembelajaran</h1>
         <p class="text-[13px] text-slate-500 mt-0.5">Dokumen modul ajar &amp; projek — disusun guru, dikumpulkan, disetujui admin, lalu dipakai di kelas.</p>
       </div>
-      <NuxtLink to="/adminV2/modul-ajar/baru" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium rounded-xl px-4 py-2.5 transition">+ Buat Modul</NuxtLink>
+      <NuxtLink v-if="bolehBuat" to="/adminV2/modul-ajar/baru" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium rounded-xl px-4 py-2.5 transition">+ Buat Modul</NuxtLink>
     </div>
 
     <div class="mt-4 flex flex-wrap items-center gap-2 text-[12.5px] text-slate-500">
       <span>Menampilkan modul jenjang <span class="font-medium text-slate-700">{{ jenjang }}</span> — pilihan jenjang mengikuti pengalih global di bilah atas.</span>
-      <span class="ml-auto flex items-center gap-2">
-        <label for="penulis-aktif" class="text-slate-400">Saya sebagai penulis:</label>
-        <select id="penulis-aktif" v-model="penulisAktifId" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-[12.5px] text-slate-600">
-          <option v-for="g in guruDaftar" :key="g.id" :value="g.id">{{ g.name }}</option>
-        </select>
-      </span>
     </div>
 
     <div v-if="!tabelSiap" class="mt-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-[13px]">

@@ -4,7 +4,7 @@ import {
   RBAC_MODUL, RBAC_SEED_IZIN, RBAC_SEED_PERAN, hitungIzin, izinKosong,
   terapkanCentang, kolomPenuh, penugasanDari, dalamCakupan, bisaAkses,
   modulDariJudul, modulDariPath, subDariPath, lengkapiSub, agregatModul, kunciSub,
-  RBAC_SUBMODUL, RBAC_KUNCI, RBAC_DAUN
+  RBAC_SUBMODUL, RBAC_KUNCI, RBAC_DAUN, jenjangAkun, lintasJenjang
 } from '../app/composables/rbacCore.ts'
 
 let lulus = 0
@@ -17,16 +17,37 @@ cek('24 modul (termasuk Tiketing), 9 peran bawaan, superadmin terkunci', () => {
   assert.equal(RBAC_SEED_PERAN[0].terkunci, true)
 })
 
-cek('jumlah izin bawaan = preview v6 + Tiketing (lihat & buat) untuk tiap peran', () => {
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.superadmin), 96)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.ketua_yayasan), 23)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.kepala_sekolah), 30)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.wakil_kepala_sekolah), 24)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.operator), 75)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.staff_adm), 32)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.wali_kelas), 12)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.guru_pengajar), 27)
-  assert.equal(hitungIzin(RBAC_SEED_IZIN.staff_sekolah), 15)
+cek('izin bawaan sesuai brief aksesaplikasi.md', () => {
+  const I = RBAC_SEED_IZIN
+  assert.equal(hitungIzin(I.superadmin), 96)
+  // Yayasan/Kepsek/Wakasek: baca seluruh modul, tanpa ubah (kecuali buat tiket)
+  for (const p of ['ketua_yayasan', 'kepala_sekolah', 'wakil_kepala_sekolah']) {
+    assert.ok(RBAC_MODUL.every(m => I[p][m].lihat), p)
+    assert.ok(RBAC_MODUL.every(m => !I[p][m].ubah && !I[p][m].hapus), p)
+  }
+  // Operator: CRUD Akademik, CBT, LMS, Konten, SPMB, Perpus; tanpa Keuangan & menu Sistem
+  for (const m of ['Data Siswa', 'Raport Siswa', 'Manajemen CBT', 'LMS', 'Konten Website', 'SPMB', 'Perpustakaan Digital']) assert.equal(I.operator[m].hapus, true, m)
+  assert.equal(I.operator['Manajemen CBT/rooms'].buat, true)
+  for (const m of ['Keuangan Sekolah', 'Manajemen User', 'Hak Akses (RBAC)']) assert.equal(I.operator[m].lihat, false, m)
+  assert.equal(I.operator['Agenda Mengajar'].buat, true)
+  // Staff Adm: CRUD Akademik & Keuangan, tanpa CBT
+  assert.equal(I.staff_adm['Keuangan Sekolah/pembayaran'].buat, true)
+  assert.equal(I.staff_adm['Tabungan Siswa'].hapus, true)
+  assert.equal(I.staff_adm['Manajemen CBT'].lihat, false)
+  // Guru: absensi siswa hanya ringkasan, jadwal & mapel read-only, tanpa Data Siswa / Raport / Keuangan
+  const g = I.guru_pengajar
+  assert.equal(g['Absensi Siswa/overview'].lihat, true)
+  assert.equal(g['Absensi Siswa/detail'].lihat, false)
+  assert.equal(g['Jadwal Pelajaran/kelas'].ubah, false)
+  assert.equal(g['Master Mapel'].ubah, false)
+  for (const m of ['Data Siswa', 'Raport Siswa', 'Keuangan Sekolah', 'Data Guru & Staff']) assert.equal(g[m].lihat, false, m)
+  assert.equal(g['Tiketing'].buat, true)
+  // Wali kelas = guru + kelola kelas, raport, presensi siswa rinci
+  const w = I.wali_kelas
+  assert.equal(w['Manajemen Kelas/daftar'].ubah, true)
+  assert.equal(w['Raport Siswa'].buat, true)
+  assert.equal(w['Absensi Siswa/detail'].lihat, true)
+  assert.equal(w['LMS/exams'].buat, true)
 })
 
 cek('centang ubah otomatis menyalakan lihat', () => {
@@ -44,7 +65,8 @@ cek('mematikan lihat membersihkan seluruh baris modul', () => {
 cek('kolomPenuh hanya untuk superadmin', () => {
   assert.equal(kolomPenuh(RBAC_SEED_IZIN.superadmin, 'hapus'), true)
   assert.equal(kolomPenuh(RBAC_SEED_IZIN.operator, 'hapus'), false)
-  assert.equal(kolomPenuh(RBAC_SEED_IZIN.operator, 'lihat'), true)
+  assert.equal(kolomPenuh(RBAC_SEED_IZIN.ketua_yayasan, 'lihat'), true)
+  assert.equal(kolomPenuh(RBAC_SEED_IZIN.operator, 'lihat'), false)
 })
 
 cek('satu pengguna satu peran: penugasan ditemukan unik per subjek', () => {
@@ -108,7 +130,7 @@ cek('baris modul utama = gabungan (OR) sub-modulnya', () => {
   assert.deepEqual(izin['LMS'], { lihat: false, buat: false, ubah: false, hapus: false })
 })
 
-cek('seed guru: kelola ruang/kartu/ujian CBT tetap hanya Superadmin, bank soal tetap boleh', () => {
+cek('seed guru (brief): CBT lihat ujian/ruang/kartu, bank soal CRUD, LMS buat ujian harian', () => {
   const g = RBAC_SEED_IZIN.guru_pengajar
   assert.equal(g['Manajemen CBT/rooms'].lihat, true)
   assert.equal(g['Manajemen CBT/rooms'].buat, false)
@@ -133,6 +155,20 @@ cek('halaman Pembayaran = sub-modul Keuangan; Tiketing masuk RBAC', () => {
   assert.equal(subDariPath('/adminV2/keuangan'), null)
   assert.equal(modulDariPath('/adminV2/tiketing'), 'Tiketing')
   assert.equal(modulDariJudul('Tiketing'), 'Tiketing')
+})
+
+cek('switcher jenjang: hanya bila berjadwal di SMP & SMK, kecuali peran lintas jenjang', () => {
+  const dua = ['SMK', 'SMP']
+  assert.deepEqual(jenjangAkun(dua, false, ['SMP', 'SMK'], 'SMK'), ['SMK', 'SMP'])
+  assert.deepEqual(jenjangAkun(dua, false, ['SMP'], 'SMK'), ['SMP'])
+  assert.deepEqual(jenjangAkun(dua, false, [], 'SMP'), ['SMP'])
+  assert.deepEqual(jenjangAkun(dua, false, [], null), ['SMK'])
+  assert.deepEqual(jenjangAkun(['SMK'], false, ['SMP'], 'SMK'), ['SMP'])
+  assert.deepEqual(jenjangAkun(dua, true, [], 'SMK'), ['SMK', 'SMP'])
+  assert.deepEqual(jenjangAkun(['SMK'], true, [], null), ['SMK'])
+  for (const kunci of ['superadmin', 'ketua_yayasan', 'kepala_sekolah', 'wakil_kepala_sekolah', 'operator', 'staff_adm']) assert.ok(lintasJenjang({ kunci }))
+  assert.ok(!lintasJenjang({ kunci: 'guru_pengajar' }))
+  assert.ok(!lintasJenjang({ kunci: 'khusus_bdbceee5' }))
 })
 
 console.log(`\n${lulus} tes lulus`)
