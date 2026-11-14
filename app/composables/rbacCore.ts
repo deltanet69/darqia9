@@ -222,15 +222,12 @@ export const PERAN_LINTAS_JENJANG = ['superadmin', 'ketua_yayasan', 'kepala_seko
 export const lintasJenjang = (peran: Pick<PeranRbac, 'kunci'> | null | undefined): boolean =>
   !!peran && PERAN_LINTAS_JENJANG.includes(peran.kunci)
 
-// Jenjang akun: peran lain hanya boleh di jenjang tempat ia berjadwal (jadwal pelajaran/rombel yang diwalikan);
-// pengalih jenjang muncul hanya bila berjadwal di SMP dan SMK. Tanpa jadwal = satu jenjang (jenjang data guru).
-export function jenjangAkun(dasar: JenjangRbac[], lintas: boolean, jadwal: JenjangRbac[], jenjangGuru: JenjangRbac | null): JenjangRbac[] {
-  if (lintas || !dasar.length) return dasar
-  if (jadwal.length) {
-    const irisan = dasar.filter(j => jadwal.includes(j))
-    return irisan.length ? irisan : [...jadwal]
-  }
-  return [jenjangGuru && dasar.includes(jenjangGuru) ? jenjangGuru : dasar[0]!]
+// Jenjang akun: pengalih jenjang muncul bila penugasan RBAC dicentang SMK + SMP, atau berjadwal/wali kelas
+// di kedua jenjang (apa pun perannya). Satu jenjang: peran non-lintas ikut jenjang jadwalnya.
+export function jenjangAkun(dasar: JenjangRbac[], lintas: boolean, jadwal: JenjangRbac[]): JenjangRbac[] {
+  if (dasar.length > 1 || jadwal.length > 1) return ['SMK', 'SMP']
+  if (!lintas && jadwal.length) return [...jadwal]
+  return dasar
 }
 
 export const RBAC_PERAN_BRIEF = ['ketua_yayasan', 'kepala_sekolah', 'wakil_kepala_sekolah', 'operator', 'staff_adm', 'wali_kelas', 'guru_pengajar']

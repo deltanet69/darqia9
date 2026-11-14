@@ -157,15 +157,16 @@ cek('halaman Pembayaran = sub-modul Keuangan; Tiketing masuk RBAC', () => {
   assert.equal(modulDariJudul('Tiketing'), 'Tiketing')
 })
 
-cek('switcher jenjang: hanya bila berjadwal di SMP & SMK, kecuali peran lintas jenjang', () => {
+cek('switcher jenjang: penugasan SMK + SMP, atau berjadwal di SMP & SMK', () => {
   const dua = ['SMK', 'SMP']
-  assert.deepEqual(jenjangAkun(dua, false, ['SMP', 'SMK'], 'SMK'), ['SMK', 'SMP'])
-  assert.deepEqual(jenjangAkun(dua, false, ['SMP'], 'SMK'), ['SMP'])
-  assert.deepEqual(jenjangAkun(dua, false, [], 'SMP'), ['SMP'])
-  assert.deepEqual(jenjangAkun(dua, false, [], null), ['SMK'])
-  assert.deepEqual(jenjangAkun(['SMK'], false, ['SMP'], 'SMK'), ['SMP'])
-  assert.deepEqual(jenjangAkun(dua, true, [], 'SMK'), ['SMK', 'SMP'])
-  assert.deepEqual(jenjangAkun(['SMK'], true, [], null), ['SMK'])
+  assert.deepEqual(jenjangAkun(dua, false, []), dua)
+  assert.deepEqual(jenjangAkun(dua, false, ['SMP']), dua)
+  assert.deepEqual(jenjangAkun(dua, true, []), dua)
+  assert.deepEqual(jenjangAkun(['SMK'], false, ['SMP', 'SMK']), dua)
+  assert.deepEqual(jenjangAkun(['SMP'], true, ['SMP', 'SMK']), dua)
+  assert.deepEqual(jenjangAkun(['SMK'], false, ['SMP']), ['SMP'])
+  assert.deepEqual(jenjangAkun(['SMK'], false, []), ['SMK'])
+  assert.deepEqual(jenjangAkun(['SMK'], true, ['SMP']), ['SMK'])
   for (const kunci of ['superadmin', 'ketua_yayasan', 'kepala_sekolah', 'wakil_kepala_sekolah', 'operator', 'staff_adm']) assert.ok(lintasJenjang({ kunci }))
   assert.ok(!lintasJenjang({ kunci: 'guru_pengajar' }))
   assert.ok(!lintasJenjang({ kunci: 'khusus_bdbceee5' }))

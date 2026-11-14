@@ -327,7 +327,7 @@ export const useRbac = () => {
   const guruTanpaPeran = computed(() => !penugasanNyata.value && !adalahSuperadmin.value && tertautGuru.value && !!peranGuruBawaan.value)
   const penugasanSaya = computed<PenugasanRbac | null>(() => penugasanNyata.value
     ?? (guruTanpaPeran.value
-      ? { subjekId: state.value.subjekSaya!, nama: state.value.namaSaya || 'Guru', peranId: peranGuruBawaan.value!.id, jenjang: ['SMK', 'SMP'] }
+      ? { subjekId: state.value.subjekSaya!, nama: state.value.namaSaya || 'Guru', peranId: peranGuruBawaan.value!.id, jenjang: [state.value.jenjangGuru ?? 'SMK'] }
       : null))
   const peranSaya = computed(() => penugasanSaya.value ? state.value.peran.find(r => r.id === penugasanSaya.value!.peranId) || null : null)
   // Penegakan aktif hanya bila pengguna memang sudah ditugaskan sebuah peran (atau guru tanpa peran).
@@ -345,12 +345,11 @@ export const useRbac = () => {
     return String(meta?.name || meta?.full_name || '').trim()
   })
 
-  // Jenjang yang boleh dipakai akun ini: penugasan RBAC, dipersempit ke jenjang jadwalnya kecuali Superadmin
-  // dan peran lintas jenjang (lihat jenjangAkun di rbacCore).
+  // Jenjang yang boleh dipakai akun ini: penugasan RBAC + jenjang jadwalnya (lihat jenjangAkun di rbacCore).
   const jenjangDiizinkan = computed<JenjangRbac[]>(() => {
     const dasar = penugasanSaya.value?.jenjang ?? ['SMK', 'SMP']
     if (!penegakanAktif.value) return dasar
-    return jenjangAkun(dasar, adalahSuperadmin.value || lintasJenjang(peranSaya.value), state.value.jadwalJenjang ?? [], state.value.jenjangGuru ?? null)
+    return jenjangAkun(dasar, adalahSuperadmin.value || lintasJenjang(peranSaya.value), state.value.jadwalJenjang ?? [])
   })
 
   const bisaSaya = (modul: string, aksi: AksiRbac): boolean => {
