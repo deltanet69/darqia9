@@ -1,6 +1,7 @@
 // Uji pengacakan soal per jenis (issue 13 Nov): jalankan dengan  node tests/cbt-acak.mjs
 import assert from 'node:assert'
 import { acakPerSiswa } from '../app/utils/cbtAcak.ts'
+import { pilihUnitAcak } from '../app/utils/cbtCerita.ts'
 const soal = [
   ...Array.from({ length: 6 }, (_, i) => ({ id: `pg${i}`, sec: 'pg', options: ['a', 'b', 'c', 'd'] })),
   ...Array.from({ length: 3 }, (_, i) => ({ id: `es${i}`, sec: 'essay' })),
@@ -42,4 +43,16 @@ assert.ok(['1', '2', '3', '4', '5', '6', '7', '8'].some(n => acakPerSiswa(cerita
 assert.deepEqual(acakPerSiswa(cerita, '1|c', urut, ['pg']).map(q => q.id), ['u1', 'c1', 'c2', 'c3', 'u2', 'u3'])
 // Pilihan ujian lama yang hanya memuat sebagian cerita: tetap jalan
 assert.equal(acakPerSiswa(cerita.filter(q => q.id !== 'c2'), '1|c', urut).length, 5)
+// Wizard ujian "pilih N soal acak": cerita tidak pernah terpotong, total tidak lewat N.
+const bankSoal = cerita.map(({ id, storyGroup }) => ({ id, storyGroup }))
+for (let benih = 1; benih < 20; benih++) {
+  let x = benih
+  const rnd = () => ((x = (x * 9301 + 49297) % 233280) / 233280)
+  const pick = pilihUnitAcak(bankSoal, 4, rnd)
+  assert.ok(pick.length <= 4)
+  const c = pick.filter(id => id.startsWith('c'))
+  assert.ok(c.length === 0 || c.length === 3, 'cerita tidak terpotong')
+  assert.deepEqual(pick, bankSoal.map(q => q.id).filter(id => pick.includes(id)), 'urut sesuai bank')
+}
+assert.equal(pilihUnitAcak(bankSoal, 99, Math.random).length, 6)
 console.log('OK: pengacakan per jenis soal benar')

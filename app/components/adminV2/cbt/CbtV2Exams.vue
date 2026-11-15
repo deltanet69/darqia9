@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
+import { kelompokCerita, pilihUnitAcak } from '~/utils/cbtCerita'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2ExamDetail from './CbtV2ExamDetail.vue'
 import CbtV2RombelViolations from './CbtV2RombelViolations.vue'
@@ -232,18 +233,25 @@ const loadSelection = async (ids?: string[] | null) => {
   }
 }
 
+// Soal cerita dipilih, dilepas, dan dipindah sebagai satu unit bersama semua sub-soalnya.
+const unitDari = (id: string) => {
+  const grup = bankQuestions.value.find(q => q.id === id)?.storyGroup
+  return grup ? bankQuestions.value.filter(q => q.storyGroup === grup).map(q => q.id) : [id]
+}
 const toggleQuestion = (id: string) => {
+  const unit = unitDari(id)
   selectedQuestionIds.value = selectedQuestionIds.value.includes(id)
-    ? selectedQuestionIds.value.filter(item => item !== id)
-    : [...selectedQuestionIds.value, id]
+    ? selectedQuestionIds.value.filter(item => !unit.includes(item))
+    : [...selectedQuestionIds.value, ...unit.filter(item => !selectedQuestionIds.value.includes(item))]
 }
 
 const moveQuestion = (index: number, offset: number) => {
-  const next = [...selectedQuestionIds.value]
-  const target = index + offset
-  if (target < 0 || target >= next.length) return
-  ;[next[index], next[target]] = [next[target]!, next[index]!]
-  selectedQuestionIds.value = next
+  const unit = kelompokCerita(selectedQuestionIds.value.map(id => ({ id, storyGroup: bankQuestions.value.find(q => q.id === id)?.storyGroup })))
+  const asal = unit.findIndex(u => u.some(q => q.id === selectedQuestionIds.value[index]))
+  const target = asal + Math.sign(offset)
+  if (asal < 0 || target < 0 || target >= unit.length) return
+  ;[unit[asal], unit[target]] = [unit[target]!, unit[asal]!]
+  selectedQuestionIds.value = unit.flat().map(q => q.id)
 }
 
 watch(() => newExam.value.questionBankId, () => {
@@ -256,14 +264,8 @@ const rollRandom = () => {
   if (!ids.length) return
   const n = Math.max(1, Math.min(Math.floor(Number(acakCount.value)) || 1, ids.length))
   acakCount.value = n
-  const shuffled = [...ids]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!]
-  }
-  const order = new Map(bankQuestions.value.map(q => [q.id, q.number]))
-  const picked = shuffled.slice(0, n).sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0))
-  selectedQuestionIds.value = picked
+  // Cerita tidak dipotong: jumlah terpilih bisa sedikit di bawah n (ditampilkan dari selectedQuestionIds).
+  selectedQuestionIds.value = pilihUnitAcak([...bankQuestions.value].sort((a, b) => a.number - b.number), n, Math.random)
   acakRolled.value = true
 }
 
@@ -843,7 +845,7 @@ const removeSchedule = async (exam: ExamItem) => {
                 <label for="exam-bank" class="block font-bold text-[#344054] mb-1">{{ source === 'ujian_harian' ? 'Bank Soal LMS (ujian harian)' : 'Bank Soal CBT (PTS/PAS)' }}</label>
                 <select id="exam-bank" v-model="newExam.questionBankId" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9]">
                   <option value="" disabled>Pilih bank soal</option>
-                  <option v-for="pkg in availablePackages.filter(p => p.subjectId === newExam.subjectId)" :key="pkg.id" :value="pkg.id">{{ pkg.subject }} &middot; {{ pkg.code }}</option>
+                  <option v-for="pkg in availablePackages.filter(p => p.subjectId === newExam.subjectId)" :key="pkg.id" :value="pkg.id">{{ pkg.name }}{{ pkg.description ? ` · ${pkg.description}` : '' }} ({{ pkg.questions.length }} soal)</option>
                 </select>
               </div>
               <div class="flex rounded-xl bg-[#EEF1F6] p-1 gap-1">
@@ -865,6 +867,7 @@ const removeSchedule = async (exam: ExamItem) => {
                   <span v-for="q in orderedQuestions" :key="q.id" class="px-2 py-1 rounded-lg bg-[#E8F0FE] text-[#0A2A5C] font-bold">Soal {{ q.number }}</span>
                 </div>
                 <p class="text-[#667085]">Hasil acakan tersimpan untuk ujian ini dan terkunci setelah disimpan. Masih bisa diacak ulang sebelum itu.</p>
+                <p v-if="bankQuestions.some(q => q.storyGroup)" class="text-[#667085]">Soal cerita selalu ikut utuh bersama semua pertanyaannya, jadi jumlahnya bisa sedikit di bawah angka yang diminta.</p>
               </div>
               <fieldset v-if="soalMode === 'manual'" class="min-w-0 space-y-2 rounded-xl border border-[#E7EBF2] p-3">
               <legend class="px-1 font-bold text-[#344054]">Pemilihan soal</legend>
