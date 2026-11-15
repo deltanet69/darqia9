@@ -3,8 +3,11 @@
 // Bagian soal tetap berurutan (PG, Singkat, Essay, Interaktif); pengacakan terjadi di dalam tiap bagian.
 // Bagian tetap (tidak dipilih guru untuk diacak, dan selalu Interaktif): urutan soal DAN pilihan jawabannya tidak diubah.
 
+import { kelompokCerita } from './cbtCerita.ts'
+
 export interface SoalAcak {
   sec: string
+  storyGroup?: string
   options?: string[]
   // posisi tampil -> indeks pilihan asli. Jawaban selalu disimpan dengan indeks asli agar penilaian server tetap benar.
   optionOrder?: number[]
@@ -42,7 +45,9 @@ export function acakPerSiswa<T extends SoalAcak>(soal: T[], kunci: string, urutB
   for (const sec of bagian) {
     const isi = soal.filter(item => item.sec === sec)
     const tetap = bagianTetap.includes(sec)
-    for (const q of tetap ? isi : kocok(isi, rnd)) {
+    // Yang dikocok unit (soal biasa / satu cerita utuh), jadi sub-soal cerita tidak pernah terpisah dari ceritanya.
+    const unit = kelompokCerita(isi)
+    for (const q of (tetap ? unit : kocok(unit, rnd)).flat()) {
       const pilihan = q.options
       if (!tetap && pilihan && pilihan.length > 1) {
         const urut = kocok(pilihan.map((_, i) => i), rnd)

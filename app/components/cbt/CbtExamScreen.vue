@@ -139,9 +139,9 @@
               </button>
             </div>
 
-            <!-- Cerita bersama untuk soal esai bertipe soal cerita -->
+            <!-- Teks cerita bersama untuk soal cerita (PG / Esai) -->
             <div
-              v-if="curQuestion.type === 'essay' && curQuestion.storyText"
+              v-if="curQuestion.storyText"
               class="cbt-question-text p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm text-slate-800 leading-relaxed overflow-x-auto"
               :dir="isArabicText(curQuestion.storyText) ? 'rtl' : 'ltr'"
               :class="isArabicText(curQuestion.storyText) ? 'text-right font-serif text-lg leading-loose' : ''"
