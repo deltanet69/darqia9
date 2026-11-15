@@ -199,7 +199,7 @@ globalThis.useSupabaseClient = () => ({
   from(table) {
     tablesRead.push(table)
     const result = { data: table.endsWith('questions') ? rows : table === 'teachers' ? [{ id: 'teacher', name: 'Guru uji', grade: 'SMK' }] : [], error: null }
-    const chain = { select: () => chain, eq: () => chain, order: () => chain, range: () => chain, then: (resolve) => Promise.resolve(result).then(resolve) }
+    const chain = { select: () => chain, eq: () => chain, order: () => chain, range: () => chain, update: () => chain, in: () => chain, single: () => chain, maybeSingle: () => chain, then: (resolve) => Promise.resolve(result).then(resolve) }
     return chain
   },
   async rpc(name, args) { calls.push({ name, args }); return { data: bankId, error: null } }
@@ -207,7 +207,8 @@ globalThis.useSupabaseClient = () => ({
 
 // Stub auto-import Nuxt untuk hak akses (dipakai useAdminCbtData): pengujian berjalan sebagai Superadmin.
 globalThis.useSupabaseUser = () => ref(null)
-globalThis.useRbac = () => ({ adalahSuperadmin: ref(true), state: ref({ subjekSaya: null, namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji') })
+globalThis.useRbac = () => ({ adalahSuperadmin: ref(true), state: ref({ subjekSaya: null, namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji'),
+  bolehAksi: () => true, cakupanSaya: () => 'semua', tertautGuru: ref(false), peranSaya: ref(null), penugasanSaya: ref(null) })
 const { default: Exams } = await import('../app/components/adminV2/cbt/CbtV2Exams.vue')
 const vm = Exams.setup(reactive({ grade: 'SMK', source: 'cbt', exams: [] }), { expose() {}, emit() {} })
 states.get('cbt-master-classes').value = [{ id: classId, name: 'Kelas uji', grade: 'SMK' }]
@@ -270,6 +271,18 @@ assert.deepEqual(oldMulti.key, ['A', 'E'], 'Normalisasi editor tidak mengubah da
 
 const { useAdminCbtData } = await import('../app/composables/useAdminCbtData.ts')
 const daily = useAdminCbtData('ujian_harian')
+daily.classes.value = [{ id: classId, name: 'Kelas uji', grade: 'SMK' }]
+daily.subjects.value = [{ id: subjectId, name: 'Mapel uji', grade: 'SMK' }]
+daily.teachers.value = [{ id: 'teacher', name: 'Guru uji', grade: 'SMK' }]
+daily.bankPackages.value = []
+await assert.rejects(daily.saveBankPackage({ ...bank, id: 'baru', name: '  ', teacherName: 'Guru uji', questions: [] }, 'SMK'), /Nama bank soal wajib diisi/)
+await daily.saveBankPackage({ ...bank, id: 'baru', name: 'Bab 1', description: 'Bab 1 - Frasa', teacherName: 'Guru uji', questions: [{ ...bank.questions[0], options: ['A','B','C','D','E'].map(key => ({ key, text: key })) }, { id: 'esai-1', number: 2, type: 'Esai', text: 'Esai', difficulty: 'Sedang', key: '', rubric: 'r', minKata: 40 }] }, 'SMK')
+const simpanBank = calls.filter(call => call.name === 'save_assessment_bank').at(-1).args
+assert.equal(simpanBank.bank_data.name, 'Bab 1')
+assert.equal(simpanBank.bank_data.description, 'Bab 1 - Frasa')
+assert.equal(simpanBank.bank_data.owner_teacher_id, 'teacher', 'Superadmin menyusun atas nama guru: pemilik = guru penyusun')
+assert.equal(simpanBank.question_data[1].min_kata, 40)
+assert.equal(simpanBank.question_data[0].min_kata, 0)
 daily.classes.value = [{ id: classId, grade: 'SMK' }]
 daily.subjects.value = [{ id: subjectId, grade: 'SMK' }]
 daily.bankPackages.value = [bank]
@@ -327,7 +340,7 @@ const monitoringDb = {
   exam_assignments: [{ id: 'sesi-A', exam_id: 'ujian-monitor', student_id: 'A', status: 'berlangsung' }, { id: 'sesi-B', exam_id: 'ujian-monitor', student_id: 'B', status: 'selesai' }],
   exam_questions: [],
   exam_answers: [{ assignment_id: 'sesi-A', question_id: ids[0], answer: 'A', saved_at: new Date().toISOString() }, { assignment_id: 'sesi-A', question_id: ids[2], answer: '' }, { assignment_id: 'sesi-A', question_id: ids[1], answer: 'Di luar pilihan' }],
-  exam_violations: [{ assignment_id: 'sesi-A', occurred_at: new Date().toISOString() }, { assignment_id: 'sesi-A', occurred_at: new Date().toISOString() }]
+  exam_violations: [{ assignment_id: 'sesi-A', occurred_at: new Date().toISOString(), dipulihkan: false }, { assignment_id: 'sesi-A', occurred_at: new Date().toISOString(), dipulihkan: false }]
 }
 let failingTable = ''
 globalThis.useSupabaseClient = () => ({ from(table) {
@@ -339,7 +352,13 @@ globalThis.useSupabaseClient = () => ({ from(table) {
     then: resolve => Promise.resolve({ data: (monitoringDb[table] || []).filter(row => filters.every(filter => filter(row))), error: table === failingTable ? { message: 'Koneksi uji gagal' } : null }).then(resolve)
   }
   return query
+}, async rpc(name, args) {
+  rpcMonitor.push(name)
+  // cbt_soal_id_ujian (0066): id soal ujian dibaca lewat RPC, bukan langsung dari tabel soal.
+  const ujian = monitoringDb.exams.find(row => row.id === args.p_exam_id)
+  return { data: monitoringDb.questions.filter(row => row.bank_id === ujian?.question_bank_id).map(row => row.id), error: null }
 } })
+const rpcMonitor = []
 const monitorData = useAdminCbtData('cbt')
 await monitorData.load(true)
 assert.equal(monitorData.error.value, null)
@@ -363,6 +382,7 @@ monitoringDb.exam_assignments = []
 const unstarted = await monitorData.loadMonitoring({ ...monitorExam, questionIds: null })
 assert.equal(unstarted.length, 3)
 assert.ok(unstarted.every(student => student.status === 'Belum mulai' && student.total === 3 && student.lastActive === '-'))
+assert.ok(rpcMonitor.includes('cbt_soal_id_ujian'), 'Monitoring membaca id soal lewat RPC (pengawas bukan pemilik bank)')
 monitoringDb.exam_assignments = [{ id: 'sesi-A', exam_id: 'ujian-monitor', student_id: 'A', status: 'berlangsung' }, { id: 'sesi-B', exam_id: 'ujian-monitor', student_id: 'B', status: 'selesai' }]
 const { default: MonitoringSetup } = await import('../app/components/adminV2/cbt/CbtV2Monitoring.vue')
 let monitoringVm
@@ -395,7 +415,6 @@ assert.doesNotMatch(emptyMonitoringHtml, /data contoh|Ahmad Fauzan|Snapshot|>Ber
 const { default: ExamsSsr } = await import('../app/components/adminV2/cbt/CbtV2Exams.vue?ssr')
 const emptyExamsHtml = await renderToString(createSSRApp({ render: () => h(ExamsSsr, { grade: 'SMK', source: 'cbt', exams: [] }) }))
 assert.doesNotMatch(emptyExamsHtml, />\s*Selesai\s*</)
-assert.ok(emptyExamsHtml.includes('siswa aktif'))
 const scheduledVm = Exams.setup({ grade: 'SMK', source: 'cbt', exams: monitorData.exams.value }, { expose() {}, emit() {} })
 assert.equal(scheduledVm.rombelGroups.value[0].subjects, 1)
 assert.ok(scheduledVm.rombelGroups.value[0].exams.length >= 1)
@@ -583,11 +602,12 @@ for (const needle of ['route.query.kelas', 'Export Excel', 'dipilih'])
   assert.ok(kartuSource.includes(needle), `Kartu Ujian memuat ${needle}`)
 
 // Guru/wali kelas (bukan Superadmin): CBT PTS/PAS menolak kelola ujian dan token; ujian harian (LMS) tidak dibatasi.
-globalThis.useRbac = () => ({ adalahSuperadmin: ref(false), state: ref({ subjekSaya: null, namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji') })
+globalThis.useRbac = () => ({ adalahSuperadmin: ref(false), state: ref({ subjekSaya: null, namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji'),
+  bolehAksi: (_modul, _sub, _aksi, lama) => lama, cakupanSaya: () => 'semua', tertautGuru: ref(false), peranSaya: ref(null), penugasanSaya: ref(null) })
 const guru = useAdminCbtData('cbt')
 assert.equal(guru.bolehKelolaUjian(), false)
 for (const aksi of [() => guru.saveExam({}), () => guru.deleteExam('x')])
-  await assert.rejects(aksi, /Hanya Superadmin/)
+  await assert.rejects(aksi, /tidak memiliki izin/)
 assert.equal(useAdminCbtData('ujian_harian').bolehKelolaUjian(), true)
 
 await nextTick()

@@ -64,9 +64,12 @@ export interface BankQuestionItem {
   options?: { key: string; text: string }[]
   key: string | string[]
   rubric?: string
-  essayMode?: 'cerita' | 'hitung'
+  rubricImageUrl?: string
+  // Soal cerita = soal-soal dengan storyGroup sama (PG atau Esai); teks ceritanya di storyText.
   storyText?: string
   storyGroup?: string
+  // Minimal kata jawaban esai (0 = tanpa minimal). Diatur per bank di form, disimpan per soal.
+  minKata?: number
   mediaType?: 'audio' | 'video'
   mediaUrl?: string
   mediaFileName?: string
@@ -79,6 +82,13 @@ export interface BankPackage {
   classId?: string
   subjectId?: string
   code: string
+  name: string
+  // Keterangan / bab — hanya dipakai LMS.
+  description?: string
+  kisiKisi?: string
+  ownerTeacherId?: string | null
+  // Hanya untuk form: disalin ke minKata tiap soal Esai saat disimpan.
+  minKata?: number
   classroom: string
   subject: string
   grade: GradeType

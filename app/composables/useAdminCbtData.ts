@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import type { BankPackage, BankQuestionItem, ExamItem, GradeType, LiveStudent } from '~/components/adminV2/cbt/cbtV2Data'
 import type { AksiRbac } from './rbacCore'
+import { bolehAksesBank, type AksesBankAkun } from '~/utils/cbtAksesBank'
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
 const questionRequests = new Map<AssessmentSource, Promise<void>>()
@@ -133,10 +134,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     }
     return { data: rows, error: null }
   }
-  const BANK_KOLOM = 'id, code, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id'
+  const BANK_KOLOM = 'id, code, name, description, kisi_kisi, owner_teacher_id, classroom, subject, grade, difficulty, teacher_name, has_interactive, updated_at, class_id, subject_id'
   const petaBank = (row: any, classById: Map<string, CbtClass>, subjectById: Map<string, CbtSubject>, questions: BankQuestionItem[]): BankPackage => ({
     id: row.id,
     code: row.code,
+    name: row.name || row.subject,
+    description: row.description ?? undefined,
+    kisiKisi: row.kisi_kisi ?? undefined,
+    ownerTeacherId: row.owner_teacher_id ?? null,
     classId: row.class_id,
     subjectId: row.subject_id,
     classroom: classById.get(row.class_id)?.name ?? row.classroom,
@@ -328,10 +333,11 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       : rosterQuery.eq('class_id', exam.classId).eq('active', true)
     const [roster, questions] = await Promise.all([
       rosterQuery.order('name'),
-      client.from(tables.questions).select('id').eq('bank_id', exam.questionBankId)
+      // Lewat RPC: pengawas yang bukan pemilik bank tidak bisa membaca tabel soal (RLS 0066).
+      client.rpc('cbt_soal_id_ujian', { p_source: source, p_exam_id: exam.id })
     ])
     if (roster.error || questions.error) throw new Error((roster.error || questions.error)!.message)
-    const questionIds = new Set<string>(exam.questionIds ?? (questions.data ?? []).map((row: any) => row.id))
+    const questionIds = new Set<string>(exam.questionIds ?? (questions.data ?? []).map((row: any) => typeof row === 'string' ? row : row.cbt_soal_id_ujian ?? row.id))
     const assignmentIds = sessions.map((row: any) => row.id)
     const [answers, violations] = assignmentIds.length ? await Promise.all([
       client.from(tables.answers).select('assignment_id, question_id, answer, saved_at').in('assignment_id', assignmentIds),
@@ -413,7 +419,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       // Supabase membatasi 1000 baris per permintaan: tanpa paging, bank soal di atas 1000 butir terpotong diam-diam.
       const halaman = (from: number, withCount = false) => client
         .from(tables.questions)
-        .select('id, bank_id, number, type, difficulty, text, image_url, is_rtl, is_multi_select, options, answer_key, rubric, media_type, media_url, media_file_name, interactive_answer_type, essay_mode, story_text, story_group', withCount ? { count: 'exact' } : undefined)
+        .select('id, bank_id, number, type, difficulty, text, image_url, is_rtl, is_multi_select, options, answer_key, rubric, rubric_image_url, media_type, media_url, media_file_name, interactive_answer_type, story_text, story_group, min_kata', withCount ? { count: 'exact' } : undefined)
         .order('number').order('id').range(from, from + 999)
       const pertama = await halaman(0, true)
       if (pertama.error) throw pertama.error
@@ -439,9 +445,10 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
           options: row.options ?? undefined,
           key: row.answer_key,
           rubric: row.rubric ?? undefined,
-          essayMode: row.essay_mode ?? undefined,
+          rubricImageUrl: row.rubric_image_url ?? undefined,
           storyText: row.story_text ?? undefined,
           storyGroup: row.story_group ?? undefined,
+          minKata: row.min_kata ?? 0,
           mediaType: row.media_type ?? undefined,
           mediaUrl: row.media_url ?? undefined,
           mediaFileName: row.media_file_name ?? undefined,
@@ -492,7 +499,18 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   // Ubah ke false untuk kembali membatasi guru ke kelas+mapel yang ia ampu.
   const BANK_TERBUKA_SEMUA_GURU = true
   // Cakupan RBAC 'sendiri' mengalahkan shortcut di atas untuk peran tersebut.
-  const bolehKelolaBank = (classId?: string | null, subjectId?: string | null) => {
+  // Bank milik guru lain: hanya pemilik, wali kelas kelas itu, pimpinan (jenjang penugasannya), dan Superadmin (RLS 0066).
+  const aksesBankSaya = computed<AksesBankAkun>(() => {
+    const guruId = rbac.tertautGuru.value ? rbac.state.value.subjekSaya : null
+    return {
+      superadmin: adalahSuperadmin.value,
+      pimpinanJenjang: ['ketua_yayasan', 'kepala_sekolah', 'wakil_kepala_sekolah'].includes(rbac.peranSaya.value?.kunci ?? '') ? rbac.penugasanSaya.value?.jenjang ?? [] : [],
+      guruId,
+      waliKelasIds: guruId ? classes.value.filter(item => item.homeroomTeacherId && String(item.homeroomTeacherId) === guruId).map(item => item.id) : []
+    }
+  })
+  const bolehKelolaBank = (classId?: string | null, subjectId?: string | null, bank?: BankPackage) => {
+    if (bank && !bolehAksesBank(aksesBankSaya.value, bank)) return false
     if (adalahSuperadmin.value) return true
     if (BANK_TERBUKA_SEMUA_GURU && !cakupanSendiri.value) return true
     return ajarSaya(classId, subjectId)
@@ -507,7 +525,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     if (!classItem || !subjectItem) throw new Error('Kelas atau mata pelajaran tidak lagi tersedia.')
     const bankLama = bankPackages.value.find(item => item.id === pkg.id)
     if (!bolehAksi('bank', bankLama ? 'ubah' : 'buat', true)) throw new Error(`Peran Anda tidak memiliki izin ${bankLama ? 'ubah' : 'buat'} di Bank Soal ${modulRbac}.`)
-    if (!bolehKelolaBank(classItem.id, subjectItem.id) || (bankLama && !bolehKelolaBank(bankLama.classId, bankLama.subjectId))) {
+    if (!bolehKelolaBank(classItem.id, subjectItem.id) || (bankLama && !bolehKelolaBank(bankLama.classId, bankLama.subjectId, bankLama))) {
       throw new Error('Anda hanya dapat mengelola bank soal pada kelas dan mata pelajaran yang Anda ampu.')
     }
     if (pkg.grade !== expectedGrade || classItem.grade !== expectedGrade || subjectItem.grade !== expectedGrade) {
@@ -531,9 +549,23 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       if (!answers.length || answers.some(answer => !keys.includes(answer))) throw new Error('Kunci pilihan ganda tidak sesuai dengan opsi jawaban.')
     }
     if (classItem.grade !== subjectItem.grade) throw new Error('Jenjang kelas dan mata pelajaran tidak sesuai.')
+    const name = (pkg.name || '').trim()
+    if (!name) throw new Error('Nama bank soal wajib diisi.')
+    // Pemilik = guru penyusun. Superadmin menyusun atas nama guru yang dipilih; selain itu pemilik lama tetap / akun yang login.
+    const guruPenyusun = adalahSuperadmin.value ? teachers.value.filter(item => item.name.trim().toLowerCase() === (pkg.teacherName || '').trim().toLowerCase()) : []
+    const pemilik = adalahSuperadmin.value
+      ? (guruPenyusun.length === 1 ? guruPenyusun[0]!.id : bankLama?.ownerTeacherId ?? null)
+      : bankLama ? bankLama.ownerTeacherId ?? null : aksesBankSaya.value.guruId
+    // Tanpa pemilik, bank baru tidak akan terlihat lagi oleh pembuatnya sendiri.
+    if (!bankLama && !pemilik && !bolehAksesBank(aksesBankSaya.value, { ownerTeacherId: null, classId: classItem.id, grade: classItem.grade })) {
+      throw new Error('Akun Anda belum tertaut ke data guru, jadi bank soal tidak bisa dicatat sebagai milik Anda. Hubungi admin.')
+    }
 
     const payload: Record<string, any> = {
       code: pkg.code,
+      name,
+      description: source === 'ujian_harian' ? (pkg.description || '').trim() || null : null,
+      owner_teacher_id: pemilik,
       classroom: classItem.name,
       subject: subjectItem.name,
       grade: classItem.grade,
@@ -563,9 +595,10 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         options: question.options ?? null,
         answer_key: question.key,
         rubric: question.rubric ?? null,
-        essay_mode: question.essayMode ?? null,
-        story_text: question.storyText ?? null,
+        rubric_image_url: question.rubricImageUrl ?? null,
+        story_text: question.storyGroup ? question.storyText ?? null : null,
         story_group: question.storyGroup ?? null,
+        min_kata: question.type === 'Esai' ? Math.max(0, Math.floor(question.minKata ?? 0)) : 0,
         media_type: question.mediaType ?? null,
         media_url: question.mediaUrl ?? null,
         media_file_name: question.mediaFileName ?? null,
@@ -598,11 +631,17 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     return bankId
   }
 
+  const simpanKisiKisi = async (bankId: string, teks: string) => {
+    const { error: e } = await client.from(tables.banks).update({ kisi_kisi: teks.trim() || null }).eq('id', bankId).select('id').single()
+    if (e) throw new Error(e.message)
+    bankPackages.value = bankPackages.value.map(item => item.id === bankId ? { ...item, kisiKisi: teks.trim() || undefined } : item)
+  }
+
   const deleteBankPackage = async (id: string, grade?: GradeType) => {
     const bank = bankPackages.value.find(item => item.id === id)
     if (!bank || (grade && bank.grade !== grade)) throw new Error('Bank soal tidak tersedia pada jenjang yang dipilih.')
     if (!bolehAksi('bank', 'hapus', true)) throw new Error(`Peran Anda tidak memiliki izin hapus di Bank Soal ${modulRbac}.`)
-    if (!bolehKelolaBank(bank.classId, bank.subjectId)) throw new Error('Anda hanya dapat menghapus bank soal pada kelas dan mata pelajaran yang Anda ampu.')
+    if (!bolehKelolaBank(bank.classId, bank.subjectId, bank)) throw new Error('Anda hanya dapat menghapus bank soal milik Anda.')
     const { error: deleteError } = await client.from(tables.banks).delete().eq('id', id).eq('grade', grade ?? bank.grade).select('id').single()
     if (deleteError) throw new Error(deleteError.message)
     await load(true)
@@ -733,6 +772,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   return {
     adalahSuperadmin,
     bolehKelolaBank,
+    simpanKisiKisi,
     bolehKelolaUjian,
     bolehAksi,
     dalamCakupanSaya,
