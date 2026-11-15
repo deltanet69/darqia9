@@ -132,9 +132,10 @@ const importPreview = ref<WordBankPreview | null>(null)
 const importError = ref('')
 const isImporting = ref(false)
 const importFileName = ref('')
-// Paket tujuan otomatis: bank soal dengan kelas + mata pelajaran yang sama (soal ditambahkan, bukan ditolak).
+// Paket tujuan otomatis: bank soal dengan kelas + mata pelajaran + nama bank yang sama (soal ditambahkan, bukan ditolak).
 const importTargetFor = (classroom: string) => importPreview.value
-  ? currentGradePackages.value.find(pkg => pkg.classroom === classroom && pkg.subject === importPreview.value!.subject) ?? null
+  ? currentGradePackages.value.find(pkg => pkg.classroom === classroom && pkg.subject === importPreview.value!.subject
+    && pkg.name.trim().toLowerCase() === (importPreview.value!.package.name || importPreview.value!.subject).trim().toLowerCase()) ?? null
   : null
 const normalizeQuestionText = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim()
 // Soal impor yang teksnya sama dengan soal yang sudah ada di paket tujuan (per kelas). Pilihan: lewati (bawaan) atau perbarui soal lama.
@@ -160,7 +161,7 @@ const plainQuestionText = (value = '') => value.replace(/<[^>]+>/g, ' ').replace
 const questionMeta = (q: BankQuestionItem) => q.type === 'Esai' ? 'Rubrik terisi' : `Kunci ${Array.isArray(q.key) ? q.key.join(', ') : q.key || '-'}`
 
 const currentGradePackages = computed(() => {
-  return packages.value.filter(p => p.grade === props.grade && cbtData.bolehKelolaBank(p.classId, p.subjectId))
+  return packages.value.filter(p => p.grade === props.grade && cbtData.bolehKelolaBank(p.classId, p.subjectId, p))
 })
 const storedFormatCount = computed(() => new Set(currentGradePackages.value.flatMap(pkg => pkg.questions.map(q => q.type))).size)
 
@@ -205,7 +206,7 @@ const subjectPackages = computed(() => {
   const q = searchQuery.value.toLowerCase().trim()
   return currentGradePackages.value.filter(p => {
     const inCls = !selectedClass.value || p.classroom === selectedClass.value
-    const matchQ = !q || [p.subject, p.classroom, p.code, p.teacherName].some(value => (value || '').toLowerCase().includes(q))
+    const matchQ = !q || [p.name, p.description, p.subject, p.classroom, p.code, p.teacherName].some(value => (value || '').toLowerCase().includes(q))
     return inCls && matchQ
   })
 })
@@ -276,6 +277,40 @@ const startEditPackage = (pkg: BankPackage) => {
   persistFormDraft()
 }
 
+// Kisi-kisi AI: dibuat otomatis setelah bank disimpan (hanya bila masih kosong), atau dibuat ulang lewat tombol.
+const kisiStatus = ref<Record<string, 'memuat' | string>>({})
+const kisiDraf = ref<string | null>(null)
+const kisiMenyimpan = ref(false)
+const muatKisiKisi = async (bankId: string, mode: 'otomatis' | 'ulang') => {
+  if (kisiStatus.value[bankId] === 'memuat') return
+  kisiStatus.value = { ...kisiStatus.value, [bankId]: 'memuat' }
+  try {
+    const hasil = await $fetch<{ kisiKisi: string }>('/api/cbt/kisi-kisi', { method: 'POST', body: { source: props.source ?? 'cbt', bankId, mode } })
+    cbtData.bankPackages.value = cbtData.bankPackages.value.map(item => item.id === bankId ? { ...item, kisiKisi: hasil.kisiKisi } : item)
+    const { [bankId]: _, ...sisa } = kisiStatus.value
+    kisiStatus.value = sisa
+  } catch (error: any) {
+    kisiStatus.value = { ...kisiStatus.value, [bankId]: error?.data?.statusMessage || error?.statusMessage || 'Kisi-kisi gagal dibuat.' }
+  }
+}
+const buatUlangKisiKisi = (pkg: BankPackage) => {
+  if (pkg.kisiKisi && !confirm('Kisi-kisi yang sekarang akan diganti hasil AI yang baru. Lanjutkan?')) return
+  void muatKisiKisi(pkg.id, 'ulang')
+}
+const simpanKisiKisi = async (pkg: BankPackage) => {
+  if (kisiDraf.value === null || kisiMenyimpan.value) return
+  kisiMenyimpan.value = true
+  try {
+    await cbtData.simpanKisiKisi(pkg.id, kisiDraf.value)
+    kisiDraf.value = null
+    emit('toast', 'Kisi-kisi disimpan.')
+  } catch (error) {
+    emit('toast', error instanceof Error ? error.message : 'Kisi-kisi gagal disimpan.')
+  } finally { kisiMenyimpan.value = false }
+}
+// Teks cerita ditampilkan sekali, di atas pertanyaan pertama dari cerita itu.
+const awalCerita = (q: BankQuestionItem, idx: number) => !!q.storyGroup && displayedQuestions.value.findIndex(item => item.storyGroup === q.storyGroup) === idx
+
 const handleSavePackage = async (updatedPkg: BankPackage) => {
   if (isSaving.value) return
   isSaving.value = true
@@ -288,7 +323,10 @@ const handleSavePackage = async (updatedPkg: BankPackage) => {
     bankMode.value = 'detail'
     formDraft.value = null
     clearFormDraft()
-    emit('toast', `Paket bank soal ${updatedPkg.subject} berhasil disimpan.`)
+    kisiDraf.value = null
+    emit('toast', `Bank soal ${updatedPkg.name} berhasil disimpan.`)
+    // Tidak ditunggu: detail langsung tampil dengan status "Kisi-kisi sedang dibuat…".
+    if (!cbtData.bankPackages.value.find(item => item.id === savedId)?.kisiKisi) void muatKisiKisi(savedId, 'otomatis')
   } catch (saveError) {
     emit('toast', saveError instanceof Error ? saveError.message : 'Paket bank soal gagal disimpan.')
   } finally { isSaving.value = false }
@@ -533,7 +571,7 @@ const confirmImport = async () => {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Cari mata pelajaran, kelas, atau penyusun"
+          placeholder="Cari nama bank, bab, mata pelajaran, kelas, atau penyusun"
           class="w-full bg-white border border-[#E7EBF2] rounded-xl pl-9 pr-3 py-2.5 text-xs text-[#101828] outline-none shadow-xs"
         >
       </div>
@@ -549,8 +587,9 @@ const confirmImport = async () => {
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <h3 class="text-sm font-semibold text-[#101828] break-words">{{ p.subject }}</h3>
-              <p class="mt-0.5 text-xs text-[#667085]">{{ p.classroom }} · {{ p.updatedAt }}</p>
+              <h3 class="text-sm font-semibold text-[#101828] break-words">{{ p.name }}</h3>
+              <p class="mt-0.5 text-xs text-[#667085]">{{ p.subject }} · {{ p.classroom }} · {{ p.updatedAt }}</p>
+              <p v-if="p.description" class="mt-0.5 text-xs text-[#344054] break-words">{{ p.description }}</p>
             </div>
             <span class="shrink-0 rounded-lg bg-[#EFF2F7] px-2 py-1 text-[11px] font-bold text-[#344054]">{{ p.questions.length }} soal</span>
           </div>
@@ -596,7 +635,7 @@ const confirmImport = async () => {
           <table class="w-full text-left text-xs min-w-[700px]">
             <thead class="bg-[#FAFBFC] border-b border-[#E7EBF2] text-[10px] uppercase font-semibold text-[#667085] tracking-wider">
               <tr>
-                <th class="py-3 px-4">Mata Pelajaran &amp; Kelas</th>
+                <th class="py-3 px-4">Bank Soal</th>
                 <th class="py-3 px-4">Guru Penyusun</th>
                 <th class="py-3 px-4">Komposisi Format</th>
                 <th class="py-3 px-4">Kesulitan</th>
@@ -607,8 +646,9 @@ const confirmImport = async () => {
             <tbody class="divide-y divide-[#EFF2F7]">
               <tr v-for="p in subjectPackages" :key="p.id" class="hover:bg-[#FAFCFF] transition">
                 <td class="py-3 px-4">
-                  <strong class="block text-xs font-bold text-[#101828]">{{ p.subject }}</strong>
-                  <span class="block text-[11px] text-[#667085]">{{ p.classroom }} · {{ p.updatedAt }}</span>
+                  <strong class="block text-xs font-bold text-[#101828]">{{ p.name }}</strong>
+                  <span class="block text-[11px] text-[#667085]">{{ p.subject }} · {{ p.classroom }} · {{ p.updatedAt }}</span>
+                  <span v-if="p.description" class="block text-[11px] text-[#344054]">{{ p.description }}</span>
                 </td>
                 <td class="py-3 px-4 font-semibold text-[#344054]">{{ p.teacherName }}</td>
                 <td class="py-3 px-4">
@@ -676,9 +716,12 @@ const confirmImport = async () => {
       <!-- Head & Actions -->
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-1">
         <div>
-          <h2 class="text-lg font-semibold text-[#101828]">
-            {{ selectedPackage.subject }} · {{ selectedPackage.classroom }}
+          <h2 class="text-lg font-semibold text-[#101828] break-words">
+            {{ selectedPackage.name }}
           </h2>
+          <p class="text-xs text-[#667085] mt-0.5">
+            {{ selectedPackage.subject }} · {{ selectedPackage.classroom }}{{ selectedPackage.description ? ` · ${selectedPackage.description}` : '' }}
+          </p>
           <p class="text-xs text-[#667085] mt-0.5">
             Penyusun: {{ selectedPackage.teacherName }} · {{ selectedPackage.questions.length }} butir soal · {{ selectedPackage.code }}
           </p>
@@ -717,6 +760,35 @@ const confirmImport = async () => {
         </div>
       </div>
 
+      <!-- Kisi-kisi (media belajar) hasil AI, nantinya tampil di aplikasi Perpus siswa -->
+      <section class="bg-white border border-[#E7EBF2] rounded-2xl p-4 space-y-3" aria-labelledby="judul-kisi-kisi">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 id="judul-kisi-kisi" class="text-sm font-semibold text-[#101828]">Kisi-kisi</h3>
+            <p class="text-xs text-[#667085]">Dibuat otomatis oleh AI dari soal di bank ini. Periksa dan ubah bila perlu.</p>
+          </div>
+          <div v-if="kisiDraf === null && kisiStatus[selectedPackage.id] !== 'memuat'" class="flex flex-wrap gap-2">
+            <button v-if="selectedPackage.kisiKisi" type="button" class="min-h-11 px-3 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-[#F3F5F9]" @click="kisiDraf = selectedPackage.kisiKisi || ''">Ubah</button>
+            <button type="button" class="min-h-11 px-3 rounded-xl border border-[#B9D1F9] text-xs font-bold text-[#1B5FD9] hover:bg-[#E8F0FE]" @click="buatUlangKisiKisi(selectedPackage)">{{ selectedPackage.kisiKisi ? 'Buat ulang dengan AI' : 'Buat dengan AI' }}</button>
+          </div>
+        </div>
+        <p v-if="kisiStatus[selectedPackage.id] === 'memuat'" role="status" class="text-xs font-semibold text-[#1B5FD9]">Kisi-kisi sedang dibuat…</p>
+        <div v-else-if="kisiStatus[selectedPackage.id]" role="alert" class="flex flex-wrap items-center gap-2 rounded-xl bg-[#FDECEA] p-3 text-xs font-semibold text-[#B42318]">
+          <span>{{ kisiStatus[selectedPackage.id] }}</span>
+          <button type="button" class="min-h-11 px-3 underline" @click="muatKisiKisi(selectedPackage.id, 'ulang')">Coba lagi</button>
+        </div>
+        <div v-if="kisiDraf !== null" class="space-y-2">
+          <label for="kisi-kisi-teks" class="sr-only">Teks kisi-kisi</label>
+          <textarea id="kisi-kisi-teks" v-model="kisiDraf" rows="10" class="w-full border border-[#E7EBF2] rounded-xl p-3 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]" />
+          <div class="flex justify-end gap-2">
+            <button type="button" class="min-h-11 px-4 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054]" @click="kisiDraf = null">Batal</button>
+            <button type="button" class="min-h-11 px-4 rounded-xl bg-[#1B5FD9] text-xs font-bold text-white disabled:opacity-60" :disabled="kisiMenyimpan" @click="simpanKisiKisi(selectedPackage)">{{ kisiMenyimpan ? 'Menyimpan…' : 'Simpan' }}</button>
+          </div>
+        </div>
+        <p v-else-if="selectedPackage.kisiKisi" class="whitespace-pre-line text-xs leading-relaxed text-[#344054]">{{ selectedPackage.kisiKisi }}</p>
+        <p v-else-if="kisiStatus[selectedPackage.id] !== 'memuat' && !kisiStatus[selectedPackage.id]" class="text-xs text-[#667085]">Belum ada kisi-kisi.</p>
+      </section>
+
       <!-- Format Filter Bar -->
       <div class="bg-white border border-[#E7EBF2] rounded-xl p-2.5 shadow-xs overflow-x-auto">
         <div class="flex items-center gap-1 text-xs font-bold min-w-max">
@@ -751,12 +823,21 @@ const confirmImport = async () => {
               <span class="h-1.5 w-1.5 rounded-full" :style="{ background: formatColorHex(q.type) }" />
               {{ q.type === 'PG' && q.isMultiSelect ? 'PG Kompleks' : q.type }}
             </span>
+            <span v-if="q.storyGroup" class="shrink-0 rounded-full bg-[#E8F0FE] px-2 py-0.5 text-[10px] font-bold text-[#1B5FD9]">Cerita</span>
             <span class="min-w-0 flex-1 truncate text-[13px] text-[#101828]">{{ plainQuestionText(q.text) }}</span>
             <span class="hidden shrink-0 text-[11px] text-[#98A2B3] md:block">{{ q.difficulty }} - {{ questionMeta(q) }}</span>
             <span class="shrink-0 text-[11px] text-[#98A2B3] transition-transform" :class="isQuestionOpen(q, qIdx) ? 'rotate-180' : ''">&#9662;</span>
           </button>
 
           <div v-if="isQuestionOpen(q, qIdx)" class="space-y-3 px-4 pb-4 md:pl-[52px]">
+            <div
+              v-if="awalCerita(q, qIdx) && q.storyText"
+              class="overflow-x-auto rounded-lg border border-[#B9D1F9] bg-[#F6F9FF] p-3 text-xs leading-relaxed text-[#101828]"
+              :dir="isArabicText(q.storyText) ? 'rtl' : 'ltr'"
+            >
+              <b class="mb-1 block text-[11px] uppercase tracking-wide text-[#1B5FD9]">Teks cerita</b>
+              <span v-html="renderKaTeXHtml(q.storyText)" />
+            </div>
             <!-- Question Text -->
             <div
               class="block overflow-x-auto text-xs sm:text-sm font-medium text-[#101828] leading-relaxed"
@@ -786,7 +867,9 @@ const confirmImport = async () => {
             <!-- Answer / Rubric Box -->
             <div class="p-2.5 rounded-lg bg-[#EFF2F7] text-xs text-[#344054]">
               <b class="text-[#101828]">{{ q.type === 'Esai' ? 'Rubrik: ' : q.type === 'Interaktif' ? 'Media & Kunci: ' : 'Kunci: ' }}</b>
-              <span>{{ q.type === 'Interaktif' && q.mediaUrl ? `${q.mediaType === 'audio' ? 'Audio' : 'Video'} - ${q.mediaUrl} - ` : '' }}{{ q.rubric || (Array.isArray(q.key) ? q.key.join(', ') : q.key) || '-' }}</span>
+              <span v-if="q.type === 'Esai'" class="overflow-x-auto" v-html="renderKaTeXHtml(q.rubric || '-')" />
+              <span v-else>{{ q.type === 'Interaktif' && q.mediaUrl ? `${q.mediaType === 'audio' ? 'Audio' : 'Video'} - ${q.mediaUrl} - ` : '' }}{{ q.rubric || (Array.isArray(q.key) ? q.key.join(', ') : q.key) || '-' }}</span>
+              <img v-if="q.type === 'Esai' && q.rubricImageUrl" :src="q.rubricImageUrl" alt="Gambar rubrik penilaian" class="mt-2 max-h-64 rounded-lg border border-[#E7EBF2] object-contain">
             </div>
 
             <div class="flex gap-1.5">
@@ -874,11 +957,12 @@ const confirmImport = async () => {
                 <div><dt class="text-[#667085]">Jenjang</dt><dd class="font-semibold">{{ importPreview.package.grade }}</dd></div>
                 <div><dt class="text-[#667085]">Kelas</dt><dd class="font-semibold">{{ importPreview.classrooms.join(', ') }}</dd></div>
                 <div><dt class="text-[#667085]">Mata pelajaran</dt><dd class="font-semibold">{{ importPreview.subject }}</dd></div>
+                <div class="col-span-2"><dt class="text-[#667085]">Nama bank soal</dt><dd class="font-semibold break-words">{{ importPreview.package.name }}</dd></div>
                 <div><dt class="text-[#667085]">Butir soal</dt><dd class="font-semibold">{{ importPreview.questionCount }} butir</dd></div>
               </dl>
               <p class="mt-3 border-t border-[#D6E4FA] pt-2.5 text-[11px] font-semibold">
                 <template v-for="classroom in importPreview.classrooms" :key="classroom">
-                  <span class="block">{{ importTargetFor(classroom) ? `${classroom}: bank soal ${importPreview.subject} sudah ada (${importTargetFor(classroom)!.questions.length} soal), soal dari file ditambahkan. Maksimum 100 soal per paket.` : `${classroom}: bank soal belum ada, paket baru akan dibuat.` }}</span>
+                  <span class="block">{{ importTargetFor(classroom) ? `${classroom}: bank soal "${importPreview.package.name}" sudah ada (${importTargetFor(classroom)!.questions.length} soal), soal dari file ditambahkan. Maksimum 100 soal per paket.` : `${classroom}: bank soal belum ada, paket baru akan dibuat.` }}</span>
                 </template>
               </p>
               <div v-if="importDuplicates.length" class="mt-3 rounded-lg border border-[#F5D08A] bg-[#FFF8E6] p-2.5" role="alert">
