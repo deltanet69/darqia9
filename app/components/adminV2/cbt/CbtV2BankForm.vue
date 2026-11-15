@@ -17,6 +17,8 @@ interface Props {
   teacherOptions?: string[]
   selfName?: string
   saving?: boolean
+  // Keterangan / Bab hanya untuk LMS (ujian harian).
+  source?: 'cbt' | 'ujian_harian'
   initialStep?: 'PG' | 'Isian' | 'Esai' | 'Interaktif'
 }
 
@@ -32,6 +34,8 @@ const emit = defineEmits<{
 
 // Deep clone of package to edit without mutating directly
 const draft = ref<BankPackage>(JSON.parse(JSON.stringify(props.pkg)))
+// Minimal kata diatur per bank; bank lama mengambil dari soal esai pertamanya.
+draft.value.minKata ??= draft.value.questions.find(q => q.type === 'Esai')?.minKata ?? 0
 const optionKeys = computed(() => props.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'])
 for (const question of draft.value.questions) {
   if (question.type === 'PG') {
@@ -88,28 +92,20 @@ watch(questionsInStep, questions => {
   }
 }, { immediate: true })
 
-// Mapel hitungan (Matematika/IPA/Akuntansi) otomatis memilih esai hitungan; mapel lain memilih soal cerita.
-const modeBawaan = computed<'cerita' | 'hitung'>(() => /matematika|ipa|akuntansi|akutansi|fisika|kimia|biologi/i.test(draft.value.subject) ? 'hitung' : 'cerita')
-const modeEsai = (q: BankQuestionItem) => q.essayMode ?? modeBawaan.value
-const setModeEsai = (q: BankQuestionItem, mode: 'cerita' | 'hitung') => {
-  q.essayMode = mode
-  if (mode === 'cerita') q.storyGroup = q.storyGroup || crypto.randomUUID()
-  else { q.storyGroup = undefined; q.storyText = undefined }
-}
 // Teks cerita dipakai bersama oleh semua sub-soal dalam kelompok yang sama.
 const setCerita = (q: BankQuestionItem, value: string) => {
   q.storyGroup = q.storyGroup || crypto.randomUUID()
   for (const item of draft.value.questions) if (item.storyGroup === q.storyGroup) item.storyText = value
 }
 const subSoalCerita = (q: BankQuestionItem) => questionsInStep.value.filter(item => item.storyGroup && item.storyGroup === q.storyGroup)
-// Satu butir = satu soal, atau satu cerita beserta semua sub-soalnya.
-const anggota = (q: BankQuestionItem) => q.type === 'Esai' && modeEsai(q) === 'cerita' && q.storyGroup ? subSoalCerita(q) : [q]
+// Satu butir = satu soal, atau satu cerita beserta semua sub-soalnya (PG maupun Esai).
+const anggota = (q: BankQuestionItem) => q.storyGroup ? subSoalCerita(q) : [q]
 const daftarButir = computed(() => questionsInStep.value.filter((q, i, list) =>
-  !(q.type === 'Esai' && modeEsai(q) === 'cerita' && q.storyGroup) || list.findIndex(x => x.storyGroup === q.storyGroup) === i))
+  !q.storyGroup || list.findIndex(x => x.storyGroup === q.storyGroup) === i))
 
-const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif'): BankQuestionItem => {
+const blankQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif', cerita = false): BankQuestionItem => {
   return {
-    ...(type === 'Esai' ? { essayMode: modeBawaan.value, storyGroup: modeBawaan.value === 'cerita' ? crypto.randomUUID() : undefined } : {}),
+    storyGroup: cerita ? crypto.randomUUID() : undefined,
     id: crypto.randomUUID(),
     number: draft.value.questions.length + 1,
     type,
@@ -135,17 +131,16 @@ const ringkasSoal = (q: BankQuestionItem) => {
 }
 const kosongDiStep = computed(() => questionsInStep.value.filter(q => !q.text.trim()).length)
 
-const addQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif') => {
-  const q = blankQuestion(type)
+const addQuestion = (type: 'PG' | 'Isian' | 'Esai' | 'Interaktif', cerita = false) => {
+  const q = blankQuestion(type, cerita)
   draft.value.questions.push(q)
   activeQuestionId.value = q.id
   void nextTick(() => { if (typeof document !== 'undefined') document.getElementById('butir-soal-aktif')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) })
-  emit('toast', `Butir soal ${type} baru ditambahkan.`)
+  emit('toast', cerita ? `Soal cerita ${type} baru ditambahkan. Isi teks cerita, lalu pertanyaannya.` : `Butir soal ${type} baru ditambahkan.`)
 }
 
 const addSubSoal = (q: BankQuestionItem) => {
-  const baru = blankQuestion('Esai')
-  baru.essayMode = 'cerita'
+  const baru = blankQuestion(q.type)
   q.storyGroup = q.storyGroup || crypto.randomUUID()
   baru.storyGroup = q.storyGroup
   baru.storyText = q.storyText
@@ -154,7 +149,7 @@ const addSubSoal = (q: BankQuestionItem) => {
   const akhir = draft.value.questions.lastIndexOf(subSoalCerita(q).at(-1) || q)
   draft.value.questions.splice(akhir + 1, 0, baru)
   draft.value.questions.forEach((item, i) => { item.number = i + 1 })
-  emit('toast', 'Sub-soal baru ditambahkan pada cerita ini.')
+  emit('toast', 'Pertanyaan baru ditambahkan pada cerita ini.')
 }
 
 // Hapus satu butir utuh: untuk soal cerita, cerita beserta semua sub-soalnya.
@@ -229,11 +224,23 @@ const submitForm = () => {
     emit('toast', 'Pilih kelas dan mata pelajaran yang sesuai dengan jenjang aktif.')
     return
   }
+  if (!draft.value.name?.trim()) {
+    isSettingsOpen.value = true
+    emit('toast', 'Nama bank soal wajib diisi.')
+    return
+  }
   if (!props.lockTeacher && !draft.value.teacherName?.trim()) {
     emit('toast', 'Nama guru penyusun wajib diisi.')
     return
   }
   const validQuestions = draft.value.questions.filter(q => q.text.trim())
+  const ceritaKosong = validQuestions.find(q => q.storyGroup && !q.storyText?.trim())
+  if (ceritaKosong) {
+    currentStep.value = ceritaKosong.type
+    activeQuestionId.value = ceritaKosong.id
+    emit('toast', 'Isi teks cerita atau hapus butir cerita ini.')
+    return
+  }
   const formulaTexts = (q: BankQuestionItem) => [q.text, ...(q.options?.map(option => option.text) || []), ...(q.type === 'Isian' || q.interactiveAnswerType === 'Isian' ? [String(q.key || '')] : [])]
   const invalidFormula = validQuestions.find(q => formulaTexts(q).some(text => validateLatexExpressions(text)))
   if (invalidFormula) {
@@ -259,8 +266,8 @@ const submitForm = () => {
     emit('toast', 'Isi minimal 1 pertanyaan Pilihan Ganda.')
     return
   }
-  // Simpan mode esai yang sedang tampil, termasuk untuk soal lama yang belum punya mode.
-  for (const q of validQuestions) if (q.type === 'Esai') setModeEsai(q, modeEsai(q))
+  const minKata = Math.max(0, Math.floor(Number(draft.value.minKata) || 0))
+  for (const q of validQuestions) if (q.type === 'Esai') q.minKata = minKata
   draft.value.questions = validQuestions
   draft.value.updatedAt = 'Baru saja'
   emit('save', draft.value)
@@ -317,11 +324,35 @@ const submitForm = () => {
           :aria-expanded="isSettingsOpen"
           @click="isSettingsOpen = !isSettingsOpen"
         >
-          {{ draft.subject }} · {{ draft.classroom }}
+          {{ draft.name || draft.subject }} · {{ draft.classroom }}
         </button>
       </div>
 
       <div v-show="isSettingsOpen" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+        <div class="sm:col-span-2 lg:col-span-1">
+          <label for="bank-nama" class="block text-xs font-bold text-[#344054] mb-1.5">Nama Bank Soal</label>
+          <input
+            id="bank-nama"
+            v-model="draft.name"
+            type="text"
+            maxlength="120"
+            placeholder="Latihan membuat frasa dalam kalimat"
+            class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+          >
+        </div>
+
+        <div v-if="source === 'ujian_harian'" class="sm:col-span-2 lg:col-span-1">
+          <label for="bank-keterangan" class="block text-xs font-bold text-[#344054] mb-1.5">Keterangan / Bab</label>
+          <input
+            id="bank-keterangan"
+            v-model="draft.description"
+            type="text"
+            maxlength="160"
+            placeholder="Bab 1 - Frasa Kalimat"
+            class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+          >
+        </div>
+
         <div>
           <label class="block text-xs font-bold text-[#344054] mb-1.5">Rombel / Kelas</label>
           <select
@@ -358,6 +389,19 @@ const submitForm = () => {
             <option value="Sedang">Sedang</option>
             <option value="Sukar">Sukar</option>
           </select>
+        </div>
+
+        <div>
+          <label for="bank-min-kata" class="block text-xs font-bold text-[#344054] mb-1.5">Minimal kata jawaban esai</label>
+          <input
+            id="bank-min-kata"
+            v-model.number="draft.minKata"
+            type="number"
+            min="0"
+            inputmode="numeric"
+            class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+          >
+          <p class="mt-1 text-xs text-[#667085]">Isi 0 bila tanpa batas minimal.</p>
         </div>
 
         <div>
@@ -461,7 +505,7 @@ const submitForm = () => {
             <p class="text-xs text-[#667085] mt-0.5">
               {{ currentStep === 'PG' ? 'Pilih satu kunci atau aktifkan multi-select untuk PG kompleks.'
                 : currentStep === 'Isian' ? 'Tulis kunci jawaban yang benar untuk setiap soal. Rumus dan teks Arab didukung.'
-                : currentStep === 'Esai' ? 'Siapkan rubrik serta skor maksimal untuk koreksi guru. Soal cerita wajib dijawab minimal 50 kata; soal Matematika/IPA/Akuntansi tanpa minimal kata. Tidak ada batas maksimum.'
+                : currentStep === 'Esai' ? 'Tulis rubrik sebagai pedoman koreksi guru.'
                 : 'Pilih media dan jenis jawaban untuk setiap soal.' }}
             </p>
           </div>
@@ -551,53 +595,45 @@ const submitForm = () => {
                   :disabled="ocrBerjalan"
                   @click="removeQuestion(q)"
                 >
-                  {{ anggota(q).length > 1 ? 'Hapus cerita' : 'Hapus' }}
+                  {{ q.storyGroup ? 'Hapus cerita' : 'Hapus' }}
                 </button>
               </div>
             </div>
 
-            <!-- Question Body -->
+            <!-- Isi butir: soal biasa = 1 pertanyaan; soal cerita = teks cerita + beberapa pertanyaan -->
             <div class="p-4 space-y-3">
-              <fieldset v-if="q.type === 'Esai'" class="rounded-xl border border-[#E7EBF2] bg-[#F9FAFC] p-3 space-y-3">
-                <legend class="px-1 text-xs font-bold text-[#344054]">Jenis soal esai</legend>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <label
-                    v-for="opsi in [{ id: 'cerita', label: 'Soal Cerita', info: 'Satu cerita, beberapa sub-soal. Siswa wajib menjawab minimal 50 kata.' }, { id: 'hitung', label: 'Soal Matematika / IPA / Akuntansi', info: 'Jawaban boleh singkat atau berupa rumus, tanpa minimal kata.' }] as const"
-                    :key="opsi.id"
-                    class="flex min-h-11 cursor-pointer items-start gap-2 rounded-xl border bg-white p-2.5 text-xs"
-                    :class="modeEsai(q) === opsi.id ? 'border-[#1B5FD9] bg-[#E8F0FE]' : 'border-[#E7EBF2]'"
-                  >
-                    <input type="radio" :name="'mode-esai-' + q.id" :checked="modeEsai(q) === opsi.id" class="mt-0.5 h-4 w-4 accent-[#1B5FD9]" @change="anggota(q).forEach(s => setModeEsai(s, opsi.id))">
-                    <span><b class="block text-[#101828]">{{ opsi.label }}</b><span class="text-[#667085]">{{ opsi.info }}</span></span>
-                  </label>
-                </div>
-                <div v-if="modeEsai(q) === 'cerita'">
-                  <label class="block text-xs font-bold text-[#344054] mb-1">Teks Cerita</label>
-                  <CbtRichQuestionEditor
-                    :model-value="q.storyText || ''"
-                    @update:model-value="setCerita(q, $event)"
-                    @message="emit('toast', $event)"
-                    @busy="ocrBerjalan = $event"
-                  />
-                  <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">Kosongkan bila ini esai uraian biasa tanpa cerita. Soal-soal di bawah ini merujuk pada cerita tersebut.</p>
-                </div>
-              </fieldset>
+              <div v-if="q.storyGroup" class="rounded-xl border border-[#B9D1F9] bg-[#F6F9FF] p-3 space-y-2">
+                <span class="inline-flex rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-[#1B5FD9]">Soal cerita · {{ anggota(q).length }} pertanyaan</span>
+                <label class="block text-xs font-bold text-[#344054]">Teks cerita / bacaan</label>
+                <CbtRichQuestionEditor
+                  :model-value="q.storyText || ''"
+                  @update:model-value="setCerita(q, $event)"
+                  @message="emit('toast', $event)"
+                  @busy="ocrBerjalan = $event"
+                />
+                <p class="text-[11px] leading-relaxed text-[#667085]">Pertanyaan di bawah ini merujuk pada cerita ini. Saat soal diacak, pertanyaan cerita tetap berurutan dan selalu tampil bersama ceritanya.</p>
+              </div>
 
-              <!-- Soal cerita: semua sub-soal tampil dalam satu butir -->
-              <template v-if="q.type === 'Esai' && modeEsai(q) === 'cerita'">
-                <section v-for="(sub, si) in anggota(q)" :key="sub.id" class="rounded-xl border border-[#E7EBF2] p-3 space-y-3">
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="text-xs font-extrabold text-[#0A2A5C]">Soal {{ si + 1 }}</span>
-                    <button
-                      v-if="anggota(q).length > 1"
-                      type="button"
-                      class="px-2.5 py-1 rounded-lg border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-bold disabled:opacity-50"
-                      :disabled="ocrBerjalan"
-                      @click="removeSubSoal(q, sub)"
-                    >
-                      Hapus soal {{ si + 1 }}
-                    </button>
-                  </div>
+              <section
+                v-for="(sub, si) in anggota(q)"
+                :key="sub.id"
+                class="space-y-3"
+                :class="q.storyGroup ? 'rounded-xl border border-[#E7EBF2] p-3' : ''"
+              >
+                <div v-if="q.storyGroup" class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-extrabold text-[#0A2A5C]">Pertanyaan {{ si + 1 }}</span>
+                  <button
+                    v-if="anggota(q).length > 1"
+                    type="button"
+                    class="min-h-11 px-3 rounded-lg border border-[#F8D3CE] text-[#C43232] hover:bg-[#FDECEA] text-xs font-bold disabled:opacity-50"
+                    :disabled="ocrBerjalan"
+                    @click="removeSubSoal(q, sub)"
+                  >
+                    Hapus pertanyaan {{ si + 1 }}
+                  </button>
+                </div>
+                <div>
+                  <label v-if="!q.storyGroup" class="block text-xs font-bold text-[#344054] mb-1">Pertanyaan</label>
                   <CbtRichQuestionEditor
                     v-model="sub.text"
                     v-model:image-url="sub.imageUrl"
@@ -605,155 +641,140 @@ const submitForm = () => {
                     @message="emit('toast', $event)"
                     @busy="ocrBerjalan = $event"
                   />
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div class="sm:col-span-2">
-                      <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
-                      <textarea
-                        v-model="sub.rubric"
-                        rows="2"
-                        placeholder="Pedoman poin penilaian jawaban siswa..."
-                        class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
-                      />
+                </div>
+
+                <!-- PG Specific Options -->
+                <div v-if="sub.type === 'PG' || (sub.type === 'Interaktif' && sub.interactiveAnswerType !== 'Isian')">
+                  <div class="flex items-center justify-between gap-3 mb-2">
+                    <span class="text-xs font-bold text-[#344054]">Opsi Jawaban &amp; Kunci Benar</span>
+                    <button
+                      type="button"
+                      class="text-xs font-bold text-[#1B5FD9] hover:underline"
+                      @click="sub.isMultiSelect = !sub.isMultiSelect"
+                    >
+                      {{ sub.isMultiSelect ? 'Mode: PG Kompleks (Multi-Select)' : 'Mode: PG Biasa (Tunggal)' }}
+                    </button>
+                  </div>
+
+                  <div class="space-y-2">
+                    <div
+                      v-for="opt in (sub.options || [])"
+                      :key="opt.key"
+                      class="flex items-start gap-2"
+                    >
+                      <button
+                        type="button"
+                        class="w-11 h-11 rounded-xl font-extrabold text-xs shrink-0 border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
+                        :class="isOptionSelected(sub, opt.key)
+                          ? 'bg-[#1B5FD9] text-white border-[#1B5FD9]'
+                          : 'bg-[#EFF2F7] text-[#667085] border-[#E7EBF2] hover:border-[#1B5FD9]'"
+                        @click="toggleOptionKey(sub, opt.key)"
+                      >
+                        {{ opt.key }}
+                      </button>
+                      <div class="min-w-0 flex-1">
+                        <CbtRichQuestionEditor
+                          compact
+                          v-model="opt.text"
+                          @message="emit('toast', $event)"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Isian Specific -->
+                <div v-else-if="sub.type === 'Isian'">
+                  <label class="block text-xs font-bold text-[#344054] mb-1">Kunci Jawaban Isian</label>
+                  <CbtRichQuestionEditor
+                    compact
+                    v-model="(sub.key as string)"
+                    @message="emit('toast', $event)"
+                  />
+                  <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">Tulis jawaban yang benar persis seperti yang harus dijawab siswa. Rumus dan teks Arab didukung.</p>
+                </div>
+
+                <!-- Esai: rubrik mendukung rumus, gambar, dan OCR -->
+                <div v-else-if="sub.type === 'Esai'">
+                  <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
+                  <CbtRichQuestionEditor
+                    :model-value="sub.rubric || ''"
+                    @update:model-value="sub.rubric = $event"
+                    v-model:image-url="sub.rubricImageUrl"
+                    @message="emit('toast', $event)"
+                    @busy="ocrBerjalan = $event"
+                  />
+                </div>
+
+                <!-- Interaktif Specific -->
+                <div v-if="sub.type === 'Interaktif'" class="space-y-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-bold text-[#344054] mb-1">Jenis Media</label>
+                      <select
+                        v-model="sub.mediaType"
+                        class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
+                      >
+                        <option value="video">Video YouTube</option>
+                        <option value="audio">Audio Listening</option>
+                      </select>
                     </div>
                     <div>
-                      <label class="block text-xs font-bold text-[#344054] mb-1">Skor Maksimal</label>
+                      <label class="block text-xs font-bold text-[#344054] mb-1">URL Media Lampiran</label>
                       <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value="20"
-                        class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                        v-model="sub.mediaUrl"
+                        type="text"
+                        placeholder="Link video atau file audio"
+                        class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
                       >
                     </div>
                   </div>
-                </section>
-                <button type="button" class="w-full min-h-11 rounded-xl border border-[#B9D1F9] bg-white px-3 text-xs font-extrabold text-[#1B5FD9] hover:bg-[#E8F0FE] disabled:opacity-50" :disabled="ocrBerjalan" @click="addSubSoal(q)">
-                  Tambah soal pada cerita ini
-                </button>
-              </template>
-
-              <div v-else>
-                <label class="block text-xs font-bold text-[#344054] mb-1">Pertanyaan</label>
-                <CbtRichQuestionEditor
-                  v-model="q.text"
-                  v-model:image-url="q.imageUrl"
-                  v-model:rtl="q.isRtl"
-                  @message="emit('toast', $event)"
-                  @busy="ocrBerjalan = $event"
-                />
-              </div>
-
-              <!-- PG Specific Options -->
-              <div v-if="q.type === 'PG' || (q.type === 'Interaktif' && q.interactiveAnswerType !== 'Isian')">
-                <div class="flex items-center justify-between gap-3 mb-2">
-                  <span class="text-xs font-bold text-[#344054]">Opsi Jawaban &amp; Kunci Benar</span>
-                  <button
-                    type="button"
-                    class="text-xs font-bold text-[#1B5FD9] hover:underline"
-                    @click="q.isMultiSelect = !q.isMultiSelect"
-                  >
-                    {{ q.isMultiSelect ? 'Mode: PG Kompleks (Multi-Select)' : 'Mode: PG Biasa (Tunggal)' }}
-                  </button>
-                </div>
-
-                <div class="space-y-2">
-                  <div
-                    v-for="(opt, oIdx) in (q.options || [])"
-                    :key="opt.key"
-                    class="flex items-start gap-2"
-                  >
-                    <button
-                      type="button"
-                      class="w-11 h-11 rounded-xl font-extrabold text-xs shrink-0 border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5FD9]"
-                      :class="isOptionSelected(q, opt.key)
-                        ? 'bg-[#1B5FD9] text-white border-[#1B5FD9]'
-                        : 'bg-[#EFF2F7] text-[#667085] border-[#E7EBF2] hover:border-[#1B5FD9]'"
-                      @click="toggleOptionKey(q, opt.key)"
-                    >
-                      {{ opt.key }}
-                    </button>
-                    <div class="min-w-0 flex-1">
-                      <CbtRichQuestionEditor
-                        compact
-                        v-model="opt.text"
-                        @message="emit('toast', $event)"
-                      />
-                    </div>
+                  <div v-if="sub.interactiveAnswerType === 'Isian'">
+                    <label class="block text-xs font-bold text-[#344054] mb-1">Kunci / Jawaban</label>
+                    <CbtRichQuestionEditor
+                      compact
+                      v-model="(sub.key as string)"
+                      @message="emit('toast', $event)"
+                    />
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <!-- Isian Specific -->
-              <div v-else-if="q.type === 'Isian'">
-                <label class="block text-xs font-bold text-[#344054] mb-1">Kunci Jawaban Isian</label>
-                <CbtRichQuestionEditor
-                  compact
-                  v-model="(q.key as string)"
-                  @message="emit('toast', $event)"
-                />
-                <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">Tulis jawaban yang benar persis seperti yang harus dijawab siswa. Rumus dan teks Arab didukung.</p>
-              </div>
-
-              <!-- Esai Specific -->
-              <div v-else-if="q.type === 'Esai' && modeEsai(q) !== 'cerita'" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="sm:col-span-2">
-                  <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
-                  <textarea
-                    v-model="q.rubric"
-                    rows="2"
-                    placeholder="Pedoman poin penilaian jawaban siswa..."
-                    class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
-                  />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-[#344054] mb-1">Skor Maksimal</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value="20"
-                    class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
-                  >
-                </div>
-              </div>
-
-              <!-- Interaktif Specific -->
-              <div v-if="q.type === 'Interaktif'" class="space-y-3">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-xs font-bold text-[#344054] mb-1">Jenis Media</label>
-                    <select
-                      v-model="q.mediaType"
-                      class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
-                    >
-                      <option value="video">Video YouTube</option>
-                      <option value="audio">Audio Listening</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-bold text-[#344054] mb-1">URL Media Lampiran</label>
-                    <input
-                      v-model="q.mediaUrl"
-                      type="text"
-                      placeholder="Link video atau file audio"
-                      class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none"
-                    >
-                  </div>
-                </div>
-                <div v-if="q.interactiveAnswerType === 'Isian'">
-                  <label class="block text-xs font-bold text-[#344054] mb-1">Kunci / Jawaban</label>
-                  <CbtRichQuestionEditor
-                    compact
-                    v-model="(q.key as string)"
-                    @message="emit('toast', $event)"
-                  />
-                </div>
-              </div>
+              <button
+                v-if="q.storyGroup"
+                type="button"
+                class="w-full min-h-11 rounded-xl border border-[#B9D1F9] bg-white px-3 text-xs font-extrabold text-[#1B5FD9] hover:bg-[#E8F0FE] disabled:opacity-50"
+                :disabled="ocrBerjalan"
+                @click="addSubSoal(q)"
+              >
+                + Tambah pertanyaan untuk cerita ini
+              </button>
             </div>
           </article>
 
-          <!-- Add question button -->
+          <!-- Tambah butir: PG & Esai bisa soal biasa atau soal cerita -->
+          <div v-if="currentStep === 'PG' || currentStep === 'Esai'" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              class="w-full min-h-11 py-3 rounded-2xl border-2 border-dashed border-[#BBD0EC] bg-[#F8FBFF] hover:bg-[#E8F0FE] text-[#1B5FD9] font-extrabold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="ocrBerjalan"
+              @click="addQuestion(currentStep)"
+            >
+              <AdminV2Icon name="plus" :size="16" />
+              <span>Soal Biasa</span>
+            </button>
+            <button
+              type="button"
+              class="w-full min-h-11 py-3 rounded-2xl border-2 border-dashed border-[#BBD0EC] bg-[#F8FBFF] hover:bg-[#E8F0FE] text-[#1B5FD9] text-xs flex flex-col items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="ocrBerjalan"
+              @click="addQuestion(currentStep, true)"
+            >
+              <span class="inline-flex items-center gap-2 font-extrabold"><AdminV2Icon name="plus" :size="16" />Soal Cerita</span>
+              <span class="text-[11px] font-semibold text-[#667085]">1 bacaan untuk beberapa pertanyaan</span>
+            </button>
+          </div>
           <button
+            v-else
             type="button"
             class="w-full min-h-11 py-3 rounded-2xl border-2 border-dashed border-[#BBD0EC] bg-[#F8FBFF] hover:bg-[#E8F0FE] text-[#1B5FD9] font-extrabold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="ocrBerjalan"

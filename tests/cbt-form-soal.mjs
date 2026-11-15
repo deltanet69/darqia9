@@ -1,4 +1,4 @@
-﻿// Tes logika form bank soal (tambah butir berurutan tidak menghilangkan butir lain) — jalankan: node tests/cbt-form-soal.mjs
+// Tes logika form bank soal (tambah butir berurutan tidak menghilangkan butir lain) — jalankan: node tests/cbt-form-soal.mjs
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -64,5 +64,32 @@ assert.equal(vm.ocrBerjalan.value, false)
 props.subjectOptions = ['Matematika']
 await nextTick()
 assert.equal(vm.draft.value.questions.length, 3)
+// Soal cerita PG & Esai, nama bank wajib, teks cerita wajib, minimal kata disalin ke soal Esai.
+const ev2 = []
+const f = Form.setup(reactive({ pkg: { ...pkg, name: '', questions: [] }, editing: false, grade: 'SMK', source: 'ujian_harian', classOptions: ['X AK'], subjectOptions: ['Matematika'], saving: false, lockTeacher: true }), { expose() {}, emit: (e, v) => ev2.push([e, v]) })
+f.addQuestion('PG', true)
+const kepala = f.draft.value.questions.at(-1)
+assert.ok(kepala.storyGroup, 'PG cerita punya storyGroup')
+f.addSubSoal(kepala)
+assert.equal(f.draft.value.questions.filter(q => q.storyGroup === kepala.storyGroup).length, 2, 'dua pertanyaan dalam satu cerita')
+assert.equal(f.daftarButir.value.length, 1, 'cerita tampil sebagai satu butir')
+f.addQuestion('PG')
+assert.equal(f.draft.value.questions.at(-1).storyGroup, undefined, 'soal biasa tanpa storyGroup')
+for (const q of f.draft.value.questions) { q.text ||= 'teks'; q.options?.forEach(o => { o.text ||= 'opsi' }) }
+f.submitForm()
+assert.ok(ev2.some(([e, v]) => e === 'toast' && v === 'Nama bank soal wajib diisi.'))
+f.draft.value.name = 'Bab 1'
+f.submitForm()
+assert.ok(ev2.some(([e, v]) => e === 'toast' && v === 'Isi teks cerita atau hapus butir cerita ini.'))
+f.setCerita(kepala, 'Cerita bab 1')
+f.draft.value.minKata = 30
+f.currentStep.value = 'Esai'
+f.addQuestion('Esai')
+Object.assign(f.draft.value.questions.at(-1), { text: 'Esai', rubric: 'r' })
+f.submitForm()
+const disimpan = ev2.find(([e]) => e === 'save')?.[1]
+assert.ok(disimpan, 'bank tersimpan')
+assert.equal(disimpan.questions.find(q => q.type === 'Esai').minKata, 30)
+assert.deepEqual(disimpan.questions.filter(q => q.storyGroup).map(q => q.storyText), ['Cerita bab 1', 'Cerita bab 1'])
 console.log('ok form')
 

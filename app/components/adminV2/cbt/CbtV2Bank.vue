@@ -239,6 +239,9 @@ const startCreatePackage = (preselectedClass?: string) => {
   formDraft.value = {
     id: `PKG-${Date.now()}`,
     code: `${targetSubject.slice(0, 3).toUpperCase()}-${targetClass.replace(/\s+/g, '')}`,
+    name: '',
+    description: '',
+    minKata: 0,
     classroom: targetClass,
     subject: targetSubject,
     grade: props.grade,
@@ -481,6 +484,7 @@ const confirmImport = async () => {
         :saving="isSaving"
         :editing="isEditingForm"
         :grade="grade"
+        :source="source ?? 'cbt'"
         :class-options="allClasses"
         :subject-options="subjectsForClass(formDraft.classroom)"
         :subject-fallback="isSubjectFallback(formDraft.classroom)"
