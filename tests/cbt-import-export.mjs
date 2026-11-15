@@ -168,4 +168,66 @@ await cek('Word: Rumus Word (OMML), simbol font, dan pangkat terbaca, tidak lagi
     'PILIHAN_D: $' + String.raw`{x}^{2}+\{a\_b\}` + '$'
   ])
 })
+
+// Bank soal per bab + soal cerita (migrasi 0066)
+const XLSX = await import('xlsx')
+const paketCerita = () => {
+  const opsi = huruf => ['A', 'B', 'C', 'D', 'E'].map(key => ({ key, text: `${huruf} ${key}` }))
+  return {
+    id: 'PKG-C', code: 'X', name: 'Latihan frasa', description: 'Bab 1 - Frasa', classroom: 'X AK', subject: 'Matematika', grade: 'SMK', difficulty: 'Sedang',
+    teacherName: 'Guru', updatedAt: 'x', hasInteractive: false,
+    questions: [
+      { id: 'a', number: 1, type: 'PG', difficulty: 'Sedang', text: 'Soal umum', key: 'A', options: opsi('U') },
+      { id: 'b', number: 2, type: 'PG', difficulty: 'Sedang', text: 'Cerita no 1', key: 'B', options: opsi('C1'), storyGroup: 'g1', storyText: 'Pada suatu hari' },
+      { id: 'c', number: 3, type: 'PG', difficulty: 'Sedang', text: 'Cerita no 2', key: 'C', options: opsi('C2'), storyGroup: 'g1', storyText: 'Pada suatu hari' },
+      { id: 'd', number: 4, type: 'Esai', difficulty: 'Sedang', text: 'Esai', key: '', rubric: 'r', minKata: 40 }
+    ]
+  }
+}
+await cek('Excel: nama bank, keterangan, minimal kata, dan kode cerita ikut ekspor-impor', async () => {
+  const { blob, fileName } = await buildBankExcel(paketCerita())
+  const hasil = await readExcelBankTemplate(new File([await blob.arrayBuffer()], fileName), 'SMK', ['X AK'], ['Matematika'])
+  assert.deepEqual(hasil.issues, [])
+  assert.equal(hasil.package.name, 'Latihan frasa')
+  assert.equal(hasil.package.description, 'Bab 1 - Frasa')
+  const cerita = hasil.package.questions.filter(q => q.storyGroup)
+  assert.equal(cerita.length, 2)
+  assert.equal(new Set(cerita.map(q => q.storyGroup)).size, 1)
+  assert.deepEqual(cerita.map(q => q.storyText), ['Pada suatu hari', 'Pada suatu hari'])
+  assert.equal(hasil.package.questions.find(q => q.type === 'Esai').minKata, 40)
+})
+const excelDari = async (barisSoal) => {
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['JENJANG', 'SMK'], ['KELAS', 'X AK'], ['MATA_PELAJARAN', 'Matematika'], ['PENYUSUN', 'Guru']]), 'Metadata')
+  const header = ['No', 'Tipe', 'Kesulitan', 'Pertanyaan', 'Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D', 'Pilihan E', 'Kunci', 'Rubrik', 'Kode Cerita', 'Teks Cerita']
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...barisSoal]), 'Data Soal')
+  return new File([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], 'uji.xlsx')
+}
+const pg = (no, kode, teks = '') => [no, 'PG', 'Sedang', `Soal ${no}`, 'a', 'b', 'c', 'd', 'e', 'A', '', kode, teks]
+await cek('Excel: kode cerita beda huruf/spasi tetap satu cerita; tanpa NAMA_BANK_SOAL memakai nama mapel', async () => {
+  const hasil = await readExcelBankTemplate(await excelDari([pg(1, ' c1 ', 'Cerita'), pg(2, ''), pg(3, 'C1')]), 'SMK', ['X AK'], ['Matematika'])
+  assert.deepEqual(hasil.issues, [])
+  assert.equal(hasil.package.name, 'Matematika')
+  assert.deepEqual(hasil.package.questions.map(q => q.text), ['Soal 1', 'Soal 3', 'Soal 2'], 'anggota cerita dirapatkan')
+  assert.equal(hasil.package.questions[0].storyGroup, hasil.package.questions[1].storyGroup)
+})
+await cek('Excel: kode cerita lintas tipe dan cerita tanpa teks ditolak per soal', async () => {
+  const esai = [4, 'Esai', 'Sedang', 'Esai 4', '', '', '', '', '', '', 'rubrik', 'C1', '']
+  const hasil = await readExcelBankTemplate(await excelDari([pg(1, 'C1', 'Cerita'), esai, pg(2, 'C2'), pg(3, '')]), 'SMK', ['X AK'], ['Matematika'])
+  assert.ok(hasil.issues.some(i => /dipakai di tipe berbeda/.test(i.message)))
+  assert.ok(hasil.issues.some(i => /Teks Cerita untuk kode C2 belum diisi/.test(i.message)))
+  assert.deepEqual(hasil.package.questions.map(q => q.text), ['Soal 3'])
+})
+await cek('Word: TEKS_CERITA boleh beberapa paragraf; metadata baru dikenali', async () => {
+  const f = fields(['NAMA_BANK_SOAL: Bab 2', 'KETERANGAN: Bab 2 - Puisi', 'MIN_KATA_ESAI: 25', 'KODE_CERITA: C1', 'TEKS_CERITA: Paragraf 1', 'Paragraf 2'])
+  assert.equal(f.NAMABANKSOAL, 'Bab 2')
+  assert.equal(f.KETERANGAN, 'Bab 2 - Puisi')
+  assert.equal(f.MINKATAESAI, '25')
+  assert.equal(f.KODECERITA, 'C1')
+  assert.equal(f.TEKSCERITA, 'Paragraf 1\nParagraf 2')
+})
+await cek('CSV: memuat kolom Kode Cerita', async () => {
+  const { csv } = buildBankCsv(paketCerita())
+  assert.ok(csv.includes('"Kode Cerita"') && csv.includes('"C1"'))
+})
 console.log(`\n${lulus} tes lulus`)

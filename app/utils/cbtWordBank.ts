@@ -1,5 +1,6 @@
 import type { BankPackage, BankQuestionItem, GradeType } from '~/components/adminV2/cbt/cbtV2Data'
 import { cocokDaftarKelas } from './cbtKelas.ts'
+import { angkaMinKata, terapkanKodeCerita, type BarisCerita } from './cbtKodeCerita.ts'
 
 type ImportType = BankQuestionItem['type']
 
@@ -31,10 +32,11 @@ export const decodeXml = (value: string) => value
 // nama kolom adalah LANJUTAN isinya (pertanyaan beberapa paragraf, kode program, dst.) dan digabung dengan baris baru,
 // bukan dibuang. Kolom satu baris (TIPE, KUNCI, dst.) tidak pernah menyerap baris lain. Penanda "---" memutus lanjutan,
 // dan banner "BLOK SOAL ..." tidak dibaca.
-const KOLOM_NARASI = new Set(['PERTANYAAN', 'RUBRIK', 'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE'])
+const KOLOM_NARASI = new Set(['PERTANYAAN', 'RUBRIK', 'TEKSCERITA', 'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE'])
 const KOLOM_DIKENAL = new Set([
   'JENJANG', 'KELAS', 'MATAPELAJARAN', 'PENYUSUN', 'KESULITANPAKET', 'NO', 'TIPE', 'KESULITAN', 'PERTANYAAN',
-  'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE', 'KUNCI', 'MODEPG', 'RUBRIK', 'MEDIA', 'LINKMEDIA', 'JENISJAWABAN'
+  'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE', 'KUNCI', 'MODEPG', 'RUBRIK', 'MEDIA', 'LINKMEDIA', 'JENISJAWABAN',
+  'NAMABANKSOAL', 'KETERANGAN', 'MINKATAESAI', 'KODECERITA', 'TEKSCERITA'
 ])
 export const fields = (lines: string[]) => {
   const hasil: Record<string, string> = {}
@@ -227,7 +229,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
   }
   if (block.length) blocks.push(block)
   const options = grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
-  const questions: BankQuestionItem[] = []
+  const baris: BarisCerita[] = []
   const issues: WordBankIssue[] = []
   blocks.forEach((item, index) => {
     const row = fields(item)
@@ -238,7 +240,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
       const text = required(row.PERTANYAAN, 'PERTANYAAN', number)
       const question: BankQuestionItem = {
         id: `Q-IMP-${Date.now()}-${index + 1}`,
-        number: questions.length + 1,
+        number: baris.length + 1,
         type,
         difficulty: toDifficulty(row.KESULITAN),
         text,
@@ -272,11 +274,16 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
         question.interactiveAnswerType = jenisJawaban === 'ISIAN' ? 'Isian' : question.isMultiSelect ? 'PG_Multi' : 'PG'
         if (jenisJawaban === 'ISIAN') question.key = required(row.KUNCI, 'KUNCI', number)
       }
-      questions.push(question)
+      baris.push({ number, kode: row.KODECERITA || '', teks: row.TEKSCERITA || '', soal: question })
     } catch (error) {
       issues.push({ number, message: error instanceof Error ? error.message : 'Format soal tidak valid.' })
     }
   })
+  const cerita = terapkanKodeCerita(baris)
+  const questions = cerita.soal
+  issues.push(...cerita.issues)
+  const minKata = angkaMinKata(metadata.MINKATAESAI)
+  for (const q of questions) if (q.type === 'Esai') q.minKata = minKata
   if (!questions.length) throw new Error(`Tidak ada butir soal yang valid dalam dokumen.${issues[0] ? ` ${issues[0].message}` : ''}`)
   return {
     classroom,
@@ -288,6 +295,9 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
     package: {
       id: `PKG-IMP-${Date.now()}`,
       code: `IMP-${subject.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-6)}`,
+      name: clean(metadata.NAMABANKSOAL) || subject,
+      description: clean(metadata.KETERANGAN) || undefined,
+      minKata,
       classroom,
       subject,
       grade,

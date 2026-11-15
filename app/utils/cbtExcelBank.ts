@@ -1,6 +1,7 @@
 import type { BankPackage, BankQuestionItem, GradeType } from '~/components/adminV2/cbt/cbtV2Data'
 import { cocokDaftarKelas } from './cbtKelas.ts'
 import type { WordBankIssue, WordBankPreview } from './cbtWordBank'
+import { angkaMinKata, kodeCeritaEkspor, terapkanKodeCerita, type BarisCerita } from './cbtKodeCerita.ts'
 
 const clean = (value: unknown) => String(value ?? '').trim()
 const keyOf = (value = '') => value.toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -13,7 +14,8 @@ const toDifficulty = (value: string): BankQuestionItem['difficulty'] => {
 const DATA_HEADERS = (grade: GradeType) => [
   'No', 'Tipe', 'Kesulitan', 'Pertanyaan',
   ...(grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']).map(key => `Pilihan ${key}`),
-  'Kunci', 'Rubrik', 'Gambar (URL)', 'Jenis Media', 'Media (URL YouTube / Path Audio)', 'Arab RTL', 'Jenis Jawaban Interaktif'
+  'Kunci', 'Rubrik', 'Gambar (URL)', 'Jenis Media', 'Media (URL YouTube / Path Audio)', 'Arab RTL', 'Jenis Jawaban Interaktif',
+  'Kode Cerita', 'Teks Cerita'
 ]
 
 export const readExcelBankTemplate = async (file: File, currentGrade: GradeType, classes: string[], subjects: string[]): Promise<WordBankPreview> => {
@@ -59,7 +61,7 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
   }
 
   const letters = grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
-  const questions: BankQuestionItem[] = []
+  const baris: BarisCerita[] = []
   const issues: WordBankIssue[] = []
   let totalCount = 0
   rows.slice(headerIndex + 1).forEach((row, rowIndex) => {
@@ -78,7 +80,7 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
       if (!text) throw new Error(`Soal ${number}: Pertanyaan wajib diisi.`)
       const question: BankQuestionItem = {
         id: `Q-IMP-${Date.now()}-${rowIndex + 1}`,
-        number: questions.length + 1,
+        number: baris.length + 1,
         type,
         difficulty: toDifficulty(cellOf(row, 'Kesulitan')),
         text,
@@ -130,11 +132,16 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
           question.key = key
         }
       }
-      questions.push(question)
+      baris.push({ number, kode: cellOf(row, 'Kode Cerita'), teks: cellOf(row, 'Teks Cerita'), soal: question })
     } catch (error) {
       issues.push({ number, message: error instanceof Error ? error.message : 'Format soal tidak valid.' })
     }
   })
+  const cerita = terapkanKodeCerita(baris)
+  const questions = cerita.soal
+  issues.push(...cerita.issues)
+  const minKata = angkaMinKata(metadata.MINKATAESAI)
+  for (const q of questions) if (q.type === 'Esai') q.minKata = minKata
   if (!questions.length) throw new Error(`Tidak ada butir soal yang valid dalam file Excel.${issues[0] ? ` ${issues[0].message}` : ''}`)
   return {
     classroom,
@@ -146,6 +153,9 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
     package: {
       id: `PKG-IMP-${Date.now()}`,
       code: `IMP-${subject.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-6)}`,
+      name: clean(metadata.NAMABANKSOAL) || subject,
+      description: clean(metadata.KETERANGAN) || undefined,
+      minKata,
       classroom,
       subject,
       grade,
@@ -171,13 +181,17 @@ export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fi
     ['KELAS', pkg.classroom],
     ['MATA_PELAJARAN', pkg.subject],
     ['PENYUSUN', pkg.teacherName],
-    ['KESULITAN_PAKET', pkg.difficulty]
+    ['KESULITAN_PAKET', pkg.difficulty],
+    ['NAMA_BANK_SOAL', pkg.name || pkg.subject],
+    ['KETERANGAN', pkg.description || ''],
+    ['MIN_KATA_ESAI', pkg.questions.find(q => q.type === 'Esai')?.minKata ?? pkg.minKata ?? 0]
   ])
   XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Metadata')
   const letters = pkg.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
   const rows: unknown[][] = [DATA_HEADERS(pkg.grade)]
   let gambarDilewati = 0
-  for (const question of pkg.questions) {
+  const cerita = kodeCeritaEkspor(pkg.questions)
+  for (const [indeks, question] of pkg.questions.entries()) {
     if (question.imageUrl && !URL_GAMBAR_EKSPOR.test(question.imageUrl)) gambarDilewati += 1
     const optionOf = (key: string) => question.options?.find(option => option.key === key)?.text || ''
     rows.push([
@@ -194,14 +208,17 @@ export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fi
       question.isRtl ? 'Ya' : 'Tidak',
       question.type === 'Interaktif'
         ? question.interactiveAnswerType === 'PG_Multi' ? 'PG Multi' : question.interactiveAnswerType === 'Isian' ? 'Isian' : 'PG'
-        : ''
+        : '',
+      cerita[indeks]!.kode,
+      cerita[indeks]!.teks
     ])
   }
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), 'Data Soal')
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
     ['File ini hasil Export Excel dari Bank Soal Darqia 9 dan dapat diimpor kembali.'],
     ['Isi metadata di sheet "Metadata"; satu baris di sheet "Data Soal" = satu soal.'],
-    ['Jangan mengubah nama sheet dan nama kolom agar impor berjalan lancar.']
+    ['Jangan mengubah nama sheet dan nama kolom agar impor berjalan lancar.'],
+    ['Soal cerita: tulis kode yang sama (mis. C1) di kolom Kode Cerita untuk semua soal dalam satu cerita; Teks Cerita cukup diisi di baris pertama.']
   ]), 'Petunjuk')
   const output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
   const result = {

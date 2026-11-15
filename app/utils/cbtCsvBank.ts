@@ -1,4 +1,5 @@
 import type { BankPackage } from '~/components/adminV2/cbt/cbtV2Data'
+import { kodeCeritaEkspor } from './cbtKodeCerita.ts'
 
 // Sel yang diawali = + - @ dibaca Excel sebagai rumus; diberi apostrof di depan agar tampil sebagai teks.
 const bahaya = /^[=+\-@\t\r]/
@@ -14,9 +15,10 @@ const URL_HTTP = /^https?:\/\//i
 // Gambar tertanam (data URL) tidak dimasukkan karena ukurannya merusak berkas; jumlahnya dikembalikan untuk diberitahukan.
 export const buildBankCsv = (pkg: BankPackage): { csv: string; fileName: string; gambarDilewati: number } => {
   const huruf = pkg.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
-  const header = ['No', 'Tipe', 'Kesulitan', 'Pertanyaan', ...huruf.map(h => `Pilihan ${h}`), 'Kunci', 'Rubrik', 'Gambar (URL)', 'Jenis Media', 'Media (URL)', 'Arab RTL']
+  const header = ['No', 'Tipe', 'Kesulitan', 'Pertanyaan', ...huruf.map(h => `Pilihan ${h}`), 'Kunci', 'Rubrik', 'Gambar (URL)', 'Jenis Media', 'Media (URL)', 'Arab RTL', 'Kode Cerita', 'Teks Cerita']
   let gambarDilewati = 0
-  const baris = pkg.questions.map((q) => {
+  const cerita = kodeCeritaEkspor(pkg.questions)
+  const baris = pkg.questions.map((q, i) => {
     if (q.imageUrl && !URL_HTTP.test(q.imageUrl)) gambarDilewati += 1
     return [
       q.number,
@@ -29,7 +31,9 @@ export const buildBankCsv = (pkg: BankPackage): { csv: string; fileName: string;
       q.imageUrl && URL_HTTP.test(q.imageUrl) ? q.imageUrl : '',
       q.mediaType ? (q.mediaType === 'audio' ? 'Audio' : 'Video') : '',
       q.mediaUrl || '',
-      q.isRtl ? 'Ya' : 'Tidak'
+      q.isRtl ? 'Ya' : 'Tidak',
+      cerita[i]!.kode,
+      cerita[i]!.teks
     ].map(sel).join(',')
   })
   return {
