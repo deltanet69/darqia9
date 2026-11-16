@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import type { BankPackage, BankQuestionItem, ExamItem, GradeType, LiveStudent } from '~/components/adminV2/cbt/cbtV2Data'
 import type { AksiRbac } from './rbacCore'
 import { bolehAksesBank, type AksesBankAkun } from '~/utils/cbtAksesBank'
+import { blokJadwal, menitSlot, type BarisJadwal } from '~/utils/cbtJadwalUjian'
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
 const questionRequests = new Map<AssessmentSource, Promise<void>>()
@@ -106,7 +107,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   const stateKey = source === 'ujian_harian' ? 'ujian-harian' : 'cbt'
   const classes = useState<CbtClass[]>(`${stateKey}-master-classes`, () => [])
   const subjects = useState<CbtSubject[]>(`${stateKey}-master-subjects`, () => [])
-  const classSubjects = useState<{ class_id: string; subject_id: string; teacher_id?: string | null }[]>(`${stateKey}-class-subjects`, () => [])
+  const classSubjects = useState<(BarisJadwal & { teacher_id?: string | null })[]>(`${stateKey}-class-subjects`, () => [])
   const rbac = useRbac()
   const teachers = useState<CbtTeacher[]>('admin-master-teachers', () => [])
   const bankPackages = useState<BankPackage[]>(`${stateKey}-bank-packages`, () => [])
@@ -177,7 +178,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         ringan ? lewati : client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
         ringan ? lewati : client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
         client.from(tables.violations).select('assignment_id').eq('dipulihkan', false),
-        ringan ? lewati : client.from('class_schedules').select('class_id, subject_id, teacher_id').eq('active', true)
+        ringan ? lewati : client.from('class_schedules').select('class_id, subject_id, teacher_id, day_of_week, starts_at, ends_at').eq('active', true)
       ])
 
       const examResult = examAwal.error && /jenis|tipe|acak_/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
@@ -518,6 +519,12 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     if (bank) return bolehAksesBank(aksesBankSaya.value, bank)
     return mengampuSaya(classId, subjectId)
   }
+  // Ujian LMS: Superadmin semua kelas+mapel; guru & wali kelas hanya kelas+mapel yang jadwalnya menugaskan akunnya (sama dengan 0071).
+  // CBT tetap memakai cakupan RBAC.
+  const bolehUjianKelas = (classId?: string | null, subjectId?: string | null) => source === 'ujian_harian'
+    ? adalahSuperadmin.value || mengampuSaya(classId, subjectId)
+    : dalamCakupanSaya(classId, subjectId)
+  const jadwalUjian = (classId: string, subjectId: string) => blokJadwal(classSubjects.value, classId, subjectId)
   // Guru penyusun bawaan = akun yang login. Superadmin tanpa data guru dicatat sebagai "Superadmin"
   // (agar bisa menyusun bank soal atas namanya sendiri); akun lain tanpa data guru dikosongkan.
   const namaPenyusunSaya = computed(() => rbac.namaAkun.value || (adalahSuperadmin.value ? 'Superadmin' : ''))
@@ -655,9 +662,20 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     await load(true)
   }
 
-  const saveExam = async (input: CbtExamInput) => {
+  // muatUlang = false: pemanggil yang menyimpan banyak ujian sekaligus memuat ulang daftar sekali di akhir.
+  const saveExam = async (input: CbtExamInput, muatUlang = true) => {
     wajibKelolaUjian(input.id ? 'ubah' : 'buat')
-    if (!dalamCakupanSaya(input.classId, input.subjectId)) throw new Error('Cakupan peran Anda hanya kelas dan mata pelajaran yang Anda ampu.')
+    const lama = input.id ? exams.value.find(item => item.id === input.id) : undefined
+    if (!bolehUjianKelas(input.classId, input.subjectId) || (lama && !bolehUjianKelas(lama.classId, lama.subjectId))) {
+      throw new Error(source === 'ujian_harian'
+        ? 'Anda hanya dapat membuat ujian untuk kelas dan mata pelajaran yang Anda ampu di Jadwal Pelajaran.'
+        : 'Cakupan peran Anda hanya kelas dan mata pelajaran yang Anda ampu.')
+    }
+    if (source === 'ujian_harian') {
+      const batas = menitSlot(jadwalUjian(input.classId, input.subjectId), input.startsAt)
+      if (batas == null) throw new Error('Jam mulai ujian harus sama dengan jam pelajaran mapel ini di kelas tersebut (lihat Jadwal Pelajaran).')
+      if (Number(input.duration) > batas) throw new Error(`Durasi ujian maksimal ${batas} menit, sampai jam pelajaran selesai.`)
+    }
     const classItem = classes.value.find(item => item.id === input.classId)
     const subjectItem = subjects.value.find(item => item.id === input.subjectId)
     const bank = bankPackages.value.find(item => item.id === input.questionBankId)
@@ -722,12 +740,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       await load(true)
       throw new Error(`Ujian tersimpan, tetapi peserta belum ditugaskan sehingga ujian belum tampil di aplikasi siswa (${tokenError}). Klik Ubah pada ujian ini lalu simpan lagi untuk menugaskan peserta.`)
     }
-    await load(true)
+    if (muatUlang) await load(true)
     return token
   }
 
   const deleteExam = async (id: string) => {
     wajibKelolaUjian('hapus')
+    const ujian = exams.value.find(item => item.id === id)
+    if (ujian && !bolehUjianKelas(ujian.classId, ujian.subjectId)) throw new Error('Anda hanya dapat menghapus ujian di kelas dan mata pelajaran yang Anda ampu.')
     const { error: deleteError } = await client.from(tables.exams).delete().eq('id', id)
     if (deleteError) throw deleteError
     await load(true)
@@ -782,6 +802,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     bolehKelolaBank,
     simpanKisiKisi,
     bolehKelolaUjian,
+    bolehUjianKelas,
+    jadwalUjian,
     bolehAksi,
     dalamCakupanSaya,
     ajarSaya,

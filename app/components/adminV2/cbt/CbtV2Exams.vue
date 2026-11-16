@@ -2,8 +2,10 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import { kelompokCerita, pilihUnitAcak } from '~/utils/cbtCerita'
+import { menitSlot, slotMendatang } from '~/utils/cbtJadwalUjian'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2ExamDetail from './CbtV2ExamDetail.vue'
+import CbtV2ExamBulk from './CbtV2ExamBulk.vue'
 import CbtV2RombelViolations from './CbtV2RombelViolations.vue'
 import type { ExamItem, GradeType, CbtTabId } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
@@ -22,6 +24,10 @@ const cbtData = useAdminCbtData(props.source ?? 'cbt')
 const bolehKelola = computed(() => cbtData.bolehKelolaUjian('ubah'))
 const bolehBuat = computed(() => cbtData.bolehKelolaUjian('buat'))
 const bolehHapus = computed(() => cbtData.bolehKelolaUjian('hapus'))
+// LMS: kelas+mapel dibatasi jadwal mengajar akun (Superadmin semua), jam ujian = jam pelajaran, dan Superadmin bisa buat massal.
+const lms = computed(() => props.source === 'ujian_harian')
+const bolehUjianIni = (e: ExamItem) => cbtData.bolehUjianKelas(e.classId, e.subjectId)
+const bulkOpen = ref(false)
 
 const emit = defineEmits<{
   (e: 'switch-tab', tab: CbtTabId): void
@@ -101,6 +107,7 @@ const filteredExams = computed(() => currentExams.value.filter(e => {
   return true
 }))
 const gradeClasses = computed(() => cbtData.classes.value.filter(item => item.grade === props.grade))
+const kelasOpsi = computed(() => gradeClasses.value.filter(c => cbtData.bolehUjianKelas(c.id)))
 const gradePackages = computed(() => cbtData.bankPackages.value.filter(item => item.grade === props.grade))
 
 // Ringkasan per rombel; rombel tanpa jadwal yang cocok tidak ditampilkan.
@@ -204,9 +211,24 @@ const availablePackages = computed(() =>
 // Daftar mapel di Langkah 1 selalu dari Master Mapel jenjang ini — bukan dari
 // bank soal. Rombel yang belum memiliki bank soal tetap dapat memilih mapel;
 // ketiadaan banknya dijelaskan lewat subjectHasBank dan penjaga di goStep2.
+// LMS: hanya mapel yang ada di Jadwal Pelajaran kelas itu (dan diampu akun ini, kecuali Superadmin).
 const availableSubjects = computed(() =>
-  cbtData.subjects.value.filter(item => item.grade === props.grade)
+  cbtData.subjects.value.filter(item => item.grade === props.grade && (!lms.value
+    || (cbtData.bolehUjianKelas(newExam.value.classId, item.id) && cbtData.jadwalUjian(newExam.value.classId, item.id).length)))
 )
+const jadwalTerpilih = computed(() => newExam.value.classId && newExam.value.subjectId ? cbtData.jadwalUjian(newExam.value.classId, newExam.value.subjectId) : [])
+// Pilihan jam ujian LMS: jam pelajaran 4 minggu ke depan; jam ujian lama tetap tampil saat diubah bila masih sesuai jadwal.
+const slotOpsi = computed(() => {
+  const opsi = slotMendatang(jadwalTerpilih.value, new Date())
+  const kini = newExam.value.startsAt
+  const menit = kini ? menitSlot(jadwalTerpilih.value, kini) : null
+  return menit != null && !opsi.some(s => s.startsAt === kini) ? [{ startsAt: kini, selesai: '', menit }, ...opsi] : opsi
+})
+const batasMenit = computed(() => lms.value && newExam.value.startsAt ? menitSlot(jadwalTerpilih.value, newExam.value.startsAt) : null)
+const labelSlot = (s: { startsAt: string, selesai: string, menit: number }) =>
+  `${new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(s.startsAt))} · ${s.menit} menit`
+// Jam pelajaran lebih pendek dari durasi: durasi dipotong ke panjang jam pelajaran.
+watch(batasMenit, batas => { if (batas != null && Number(newExam.value.duration) > batas) newExam.value.duration = batas })
 
 const subjectHasBank = computed(() =>
   !newExam.value.subjectId || availablePackages.value.some(pkg => pkg.subjectId === newExam.value.subjectId)
@@ -273,6 +295,7 @@ const goStep2 = () => {
   if (!newExam.value.name.trim()) { emit('toast', 'Nama ujian wajib diisi.'); return }
   if (!newExam.value.classId || !newExam.value.subjectId) { emit('toast', 'Pilih rombel dan mata pelajaran dulu.'); return }
   if (!newExam.value.questionBankId) { emit('toast', 'Belum ada bank soal untuk mapel ini di rombel ini. Buat dulu di tab Bank Soal.'); return }
+  if (lms.value && !jadwalTerpilih.value.length) { emit('toast', 'Mapel ini belum ada di Jadwal Pelajaran rombel ini, jadi jam ujiannya belum bisa ditentukan.'); return }
   wizardStep.value = 2
   if (soalMode.value === 'acak' && !acakRolled.value && bankQuestions.value.length) rollRandom()
 }
@@ -284,17 +307,20 @@ const ringkasanKelas = computed(() => gradeClasses.value.find(c => c.id === newE
 const ringkasanMapel = computed(() => cbtData.subjects.value.find(s => s.id === newExam.value.subjectId)?.name ?? '-')
 
 const syncPackage = () => {
+  if (!availableSubjects.value.some(s => s.id === newExam.value.subjectId)) newExam.value.subjectId = ''
+  if (lms.value && newExam.value.startsAt && menitSlot(jadwalTerpilih.value, newExam.value.startsAt) == null) newExam.value.startsAt = ''
   const matching = availablePackages.value.find(pkg => pkg.subjectId === newExam.value.subjectId)
   newExam.value.questionBankId = matching?.id ?? ''
 }
 
 const openCreateSchedule = (classroom?: string) => {
-  const classItem = gradeClasses.value.find(item => item.name === classroom)
-    ?? gradeClasses.value[0]
+  const classItem = kelasOpsi.value.find(item => item.name === classroom)
+    ?? kelasOpsi.value[0]
   newExam.value = emptyExam()
-  if (props.source === 'ujian_harian') newExam.value.jenis = 'harian'
+  // LMS: jam ujian wajib dipilih dari jam pelajaran, tidak diisi bebas.
+  if (lms.value) { newExam.value.jenis = 'harian'; newExam.value.startsAt = '' }
   newExam.value.classId = classItem?.id ?? ''
-  const firstPackage = gradePackages.value.find(pkg => pkg.classId === newExam.value.classId)
+  const firstPackage = gradePackages.value.find(pkg => pkg.classId === newExam.value.classId && availableSubjects.value.some(s => s.id === pkg.subjectId))
   newExam.value.subjectId = firstPackage?.subjectId ?? ''
   newExam.value.questionBankId = firstPackage?.id ?? ''
   wizardStep.value = 1
@@ -368,6 +394,10 @@ const saveSchedule = async () => {
   }
   if (!selectedQuestionIds.value.length) {
     emit('toast', 'Pilih minimal satu soal untuk ujian.')
+    return
+  }
+  if (lms.value && !newExam.value.startsAt) {
+    emit('toast', 'Pilih jam ujian dari jam pelajaran mapel ini.')
     return
   }
   isSaving.value = true
@@ -449,6 +479,16 @@ const removeSchedule = async (exam: ExamItem) => {
             >
               {{ jumlahPelanggaranRombel > 99 ? '99+' : jumlahPelanggaranRombel }}
             </span>
+          </button>
+
+          <button
+            v-if="bolehBuat && lms && cbtData.adalahSuperadmin.value"
+            type="button"
+            class="px-4 py-2.5 rounded-xl bg-white border border-[#E7EBF2] hover:border-blue-400 text-[#1B5FD9] text-xs font-bold transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+            @click="bulkOpen = true"
+          >
+            <AdminV2Icon name="grid" :size="13" />
+            <span>Buat Ujian Banyak Kelas</span>
           </button>
 
           <button
@@ -720,7 +760,7 @@ const removeSchedule = async (exam: ExamItem) => {
                   Detail
                 </button>
                 <button
-                  v-if="bolehKelola"
+                  v-if="bolehKelola && bolehUjianIni(e)"
                   type="button"
                   class="text-xs font-bold text-slate-600 hover:text-blue-600 hover:underline px-1 cursor-pointer"
                   @click="openEditSchedule(e)"
@@ -728,7 +768,7 @@ const removeSchedule = async (exam: ExamItem) => {
                   Ubah
                 </button>
                 <button
-                  v-if="bolehHapus"
+                  v-if="bolehHapus && bolehUjianIni(e)"
                   type="button"
                   class="text-xs font-bold text-rose-600 hover:text-rose-800 hover:underline px-1 cursor-pointer"
                   @click="removeSchedule(e)"
@@ -788,7 +828,7 @@ const removeSchedule = async (exam: ExamItem) => {
                   <label class="block font-bold text-[#344054] mb-1">Rombel</label>
                   <select v-model="newExam.classId" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none" @change="syncPackage">
                     <option value="" disabled>Pilih rombel</option>
-                    <option v-for="c in gradeClasses" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    <option v-for="c in kelasOpsi" :key="c.id" :value="c.id">{{ c.name }}</option>
                   </select>
                 </div>
                 <div>
@@ -798,6 +838,8 @@ const removeSchedule = async (exam: ExamItem) => {
                     <option v-for="s in availableSubjects" :key="s.id" :value="s.id">{{ s.name }}</option>
                   </select>
                 </div>
+                <p v-if="lms && !kelasOpsi.length" class="sm:col-span-2 p-3 rounded-xl bg-[#FEF4E5] text-[#7A4A03] font-semibold">Akun Anda belum punya jadwal mengajar di jenjang ini. Ujian hanya bisa dibuat untuk kelas dan mapel yang Anda ampu di Jadwal Pelajaran.</p>
+                <p v-else-if="lms && newExam.classId && !availableSubjects.length" class="sm:col-span-2 p-3 rounded-xl bg-[#FEF4E5] text-[#7A4A03] font-semibold">Belum ada mapel di Jadwal Pelajaran rombel ini yang bisa Anda ujikan.</p>
                 <p v-if="!subjectHasBank" class="sm:col-span-2 p-3 rounded-xl bg-[#FEF4E5] text-[#7A4A03] font-semibold">Belum ada bank soal untuk mapel ini di rombel ini. Buat dulu bank soalnya di tab Bank Soal — ujian belum dapat dilanjutkan ke jadwal sebelum bank soal tersedia.</p>
               </div>
               <div v-if="source === 'ujian_harian'">
@@ -816,8 +858,9 @@ const removeSchedule = async (exam: ExamItem) => {
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="block font-bold text-[#344054] mb-1">Durasi (menit)</label>
-                  <input v-model="newExam.duration" type="number" min="1" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
+                  <label for="exam-durasi" class="block font-bold text-[#344054] mb-1">Durasi (menit)</label>
+                  <input id="exam-durasi" v-model.number="newExam.duration" type="number" min="1" :max="batasMenit ?? undefined" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
+                  <p v-if="lms" class="mt-1 text-[11px] text-[#667085]">Maksimal sepanjang jam pelajaran yang dipilih.</p>
                 </div>
                 <div>
                   <label class="block font-bold text-[#344054] mb-1">Pengawas</label>
@@ -832,7 +875,15 @@ const removeSchedule = async (exam: ExamItem) => {
 
             <div v-else class="space-y-3.5">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
+                <div v-if="lms">
+                  <label for="exam-slot" class="block font-bold text-[#344054] mb-1">Jam Pelajaran Ujian</label>
+                  <select id="exam-slot" v-model="newExam.startsAt" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]">
+                    <option value="" disabled>Pilih jam pelajaran</option>
+                    <option v-for="s in slotOpsi" :key="s.startsAt" :value="s.startsAt">{{ labelSlot(s) }}</option>
+                  </select>
+                  <p class="mt-1 text-[11px] text-[#667085]">Jam ujian mengikuti Jadwal Pelajaran {{ ringkasanMapel }} di {{ ringkasanKelas }}.</p>
+                </div>
+                <div v-else>
                   <label class="block font-bold text-[#344054] mb-1">Tanggal dan Waktu Mulai</label>
                   <input v-model="newExam.startsAt" type="datetime-local" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
                 </div>
@@ -936,6 +987,8 @@ const removeSchedule = async (exam: ExamItem) => {
         </div>
       </div>
     </Teleport>
+
+    <CbtV2ExamBulk v-if="bulkOpen" :grade="grade" @close="bulkOpen = false" @toast="emit('toast', $event)" />
 
     <CbtV2RombelViolations
       v-if="kueri('pelanggaran') && rombelDetail"

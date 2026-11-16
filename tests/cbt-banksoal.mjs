@@ -298,12 +298,24 @@ const simpanBebas = calls.filter(call => call.name === 'save_assessment_bank').a
 assert.equal(simpanBebas.bank_data.subject_id, subjectId)
 assert.equal(simpanBebas.bank_data.teacher_name, 'Pak Penyusun Luar')
 assert.equal(simpanBebas.bank_data.owner_teacher_id, null, 'nama di luar data guru = tanpa pemilik')
-daily.classSubjects.value = []
+// Ujian LMS: jam mulai wajib tepat di jam pelajaran mapel itu (Senin 07.00-07.40 + 07.40-08.20 = satu blok 80 menit).
+daily.classSubjects.value = [
+  { class_id: classId, subject_id: subjectId, teacher_id: 'teacher', day_of_week: 1, starts_at: '07:00:00', ends_at: '07:40:00' },
+  { class_id: classId, subject_id: subjectId, teacher_id: 'teacher', day_of_week: 1, starts_at: '07:40:00', ends_at: '08:20:00' }
+]
 daily.classes.value = [{ id: classId, grade: 'SMK' }]
 daily.subjects.value = [{ id: subjectId, grade: 'SMK' }]
 daily.bankPackages.value = [bank]
+const { slotMendatang } = await import('../app/utils/cbtJadwalUjian.ts')
+const senin = slotMendatang(daily.jadwalUjian(classId, subjectId), new Date())[0]
+assert.equal(senin.menit, 80)
+const ujianHarian = { name: 'Ujian harian uji', classId, subjectId, questionBankId: bankId, questionIds: [ids[0]], startsAt: senin.startsAt, duration: 30 }
+const jumlahPanggilan = calls.length
+await assert.rejects(daily.saveExam({ ...ujianHarian, startsAt: senin.startsAt.slice(0, 11) + '09:15' }), /jam pelajaran mapel ini/, 'jam di luar jadwal ditolak')
+await assert.rejects(daily.saveExam({ ...ujianHarian, duration: 81 }), /maksimal 80 menit/, 'durasi tidak boleh melewati jam pelajaran')
+assert.equal(calls.length, jumlahPanggilan, 'ujian yang ditolak tidak dikirim ke server')
 tablesRead.length = 0
-await daily.saveExam({ name: 'Ujian harian uji', classId, subjectId, questionBankId: bankId, questionIds: [ids[0]], startsAt: new Date().toISOString(), duration: 30 })
+await daily.saveExam(ujianHarian)
 assert.equal(calls.filter(call => call.name === 'save_assessment_exam').at(-1).args.source, 'ujian_harian')
 assert.equal(calls.at(-1).name, 'issue_exam_tokens')
 assert.equal(calls.at(-1).args.source, 'ujian_harian', 'Token peserta ujian harian diterbitkan dari sumber yang sama')
