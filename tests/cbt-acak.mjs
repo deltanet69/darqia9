@@ -41,6 +41,25 @@ for (const nis of ['1', '2', '3', '4', '5', '6', '7', '8']) {
 assert.ok(['1', '2', '3', '4', '5', '6', '7', '8'].some(n => acakPerSiswa(cerita, `${n}|c`, urut).map(q => q.id).join() !== 'u1,c1,c2,c3,u2,u3'), 'unit tetap diacak')
 // Bagian tetap: cerita dirapatkan pada posisi kemunculan pertama
 assert.deepEqual(acakPerSiswa(cerita, '1|c', urut, ['pg']).map(q => q.id), ['u1', 'c1', 'c2', 'c3', 'u2', 'u3'])
+// Esai: dua cerita + soal umum. Tiap cerita utuh, berurutan, dan tidak tercampur cerita lain; urutan berbeda antar siswa.
+const esaiCerita = [
+  { id: 'e1', sec: 'essay' },
+  { id: 'a1', sec: 'essay', storyGroup: 'A' }, { id: 'a2', sec: 'essay', storyGroup: 'A' },
+  { id: 'e2', sec: 'essay' },
+  { id: 'b1', sec: 'essay', storyGroup: 'B' }, { id: 'b2', sec: 'essay', storyGroup: 'B' }, { id: 'b3', sec: 'essay', storyGroup: 'B' },
+  { id: 'e3', sec: 'essay' }
+]
+const urutanEsai = new Set()
+for (let n = 1; n <= 20; n++) {
+  const h = acakPerSiswa(esaiCerita, `${n}|e`, urut).map(q => q.id)
+  urutanEsai.add(h.join())
+  assert.deepEqual(h.slice(h.indexOf('a1'), h.indexOf('a1') + 2), ['a1', 'a2'], 'cerita A utuh')
+  assert.deepEqual(h.slice(h.indexOf('b1'), h.indexOf('b1') + 3), ['b1', 'b2', 'b3'], 'cerita B utuh')
+}
+assert.ok(urutanEsai.size > 10, 'tiap siswa mendapat urutan esai berbeda')
+// PG: urutan soal dan pilihan berbeda antar siswa.
+const urutanPg = new Set(['1', '2', '3', '4', '5', '6', '7', '8'].map(n => acakPerSiswa(soal, `${n}|p`, urut, ['interaktif']).filter(q => q.sec === 'pg').map(q => `${q.id}:${q.options.join('')}`).join()))
+assert.equal(urutanPg.size, 8, 'urutan PG + pilihan berbeda tiap siswa')
 // Pilihan ujian lama yang hanya memuat sebagian cerita: tetap jalan
 assert.equal(acakPerSiswa(cerita.filter(q => q.id !== 'c2'), '1|c', urut).length, 5)
 // Wizard ujian "pilih N soal acak": cerita tidak pernah terpotong, total tidak lewat N.
