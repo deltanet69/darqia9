@@ -243,6 +243,18 @@
                   :model-value="answers[qIdx] || ''"
                   @update:model-value="answers[qIdx] = $event; $emit('text-input')"
                 />
+                <input
+                  v-else-if="curQuestion.jawabanPasti"
+                  v-model="answers[qIdx]"
+                  @input="$emit('text-input')"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  :placeholder="curQuestion.placeholder || 'Ketik jawabanmu di sini...'"
+                  class="w-full p-4 text-sm bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-merek-600 focus:ring-4 focus:ring-merek-100 outline-none transition-all text-slate-900"
+                >
                 <textarea
                   v-else
                   v-model="answers[qIdx]"
@@ -253,7 +265,8 @@
                   class="w-full p-4 text-sm bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-merek-600 focus:ring-4 focus:ring-merek-100 outline-none transition-all text-slate-900"
                 ></textarea>
                 <div class="flex items-center justify-between text-xs text-slate-400 font-semibold px-1">
-                  <span><b>{{ countWords(answers[qIdx]) }}</b> kata <template v-if="curQuestion.minWords">&bull; minimal {{ curQuestion.minWords }} kata</template></span>
+                  <span v-if="!curQuestion.jawabanPasti"><b>{{ countWords(answers[qIdx]) }}</b> kata <template v-if="curQuestion.minWords">&bull; minimal {{ curQuestion.minWords }} kata</template></span>
+                  <span v-else />
                   <span>Jawaban tersimpan otomatis</span>
                 </div>
               </div>

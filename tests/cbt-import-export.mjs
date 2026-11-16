@@ -226,6 +226,25 @@ await cek('Word: TEKS_CERITA boleh beberapa paragraf; metadata baru dikenali', a
   assert.equal(f.KODECERITA, 'C1')
   assert.equal(f.TEKSCERITA, 'Paragraf 1\nParagraf 2')
 })
+await cek('Esai titik-titik: Jawaban Pasti ikut ekspor-impor Excel, rubrik tidak wajib bila Jawaban Pasti ada', async () => {
+  const pkg = paketCerita()
+  pkg.questions.push({ id: 'p1', number: 5, type: 'Esai', difficulty: 'Sedang', text: 'She usually ... (go) to school.', key: '', jawabanPasti: "goes; go es" })
+  const { blob, fileName } = await buildBankExcel(pkg)
+  const hasil = await readExcelBankTemplate(new File([await blob.arrayBuffer()], fileName), 'SMK', ['X AK'], ['Matematika'])
+  assert.deepEqual(hasil.issues, [])
+  const esai = hasil.package.questions.filter(q => q.type === 'Esai')
+  assert.equal(esai.find(q => q.jawabanPasti).jawabanPasti, 'goes; go es')
+  assert.equal(esai.find(q => q.jawabanPasti).rubric, undefined)
+  assert.equal(esai.find(q => !q.jawabanPasti).rubric, 'r', 'esai uraian tetap memakai rubrik')
+})
+await cek('Esai tanpa Rubrik dan tanpa Jawaban Pasti ditolak dengan pesan yang jelas', async () => {
+  const kosong = [9, 'Esai', 'Sedang', 'Esai tanpa kunci', '', '', '', '', '', '', '', '', '']
+  const hasil = await readExcelBankTemplate(await excelDari([pg(1, ''), kosong]), 'SMK', ['X AK'], ['Matematika'])
+  assert.ok(hasil.issues.some(i => /atau isi Jawaban Pasti/.test(i.message)))
+})
+await cek('Word: label Jawaban Pasti dikenali sebagai isian satu baris', async () => {
+  assert.equal(fields(['No: 6', 'Tipe: Esai', 'Pertanyaan: She ... (go)', 'Jawaban Pasti: goes'] ).JAWABANPASTI, 'goes')
+})
 await cek('CSV: memuat kolom Kode Cerita', async () => {
   const { csv } = buildBankCsv(paketCerita())
   assert.ok(csv.includes('"Kode Cerita"') && csv.includes('"C1"'))

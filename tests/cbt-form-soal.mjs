@@ -91,5 +91,24 @@ const disimpan = ev2.find(([e]) => e === 'save')?.[1]
 assert.ok(disimpan, 'bank tersimpan')
 assert.equal(disimpan.questions.find(q => q.type === 'Esai').minKata, 30)
 assert.deepEqual(disimpan.questions.filter(q => q.storyGroup).map(q => q.storyText), ['Cerita bab 1', 'Cerita bab 1'])
+// Esai titik-titik: petunjuk muncul bila ada titik-titik tanpa Jawaban Pasti; jawaban pasti ikut tersimpan.
+const ev3 = []
+const f2 = Form.setup(reactive({ pkg: { ...pkg, name: 'Grammar', questions: [] }, editing: false, grade: 'SMK', source: 'ujian_harian', classOptions: ['X AK'], subjectOptions: ['Matematika'], saving: false, lockTeacher: true }), { expose() {}, emit: (e, v) => ev3.push([e, v]) })
+f2.addQuestion('PG')
+Object.assign(f2.draft.value.questions.at(-1), { text: 'Soal PG' })
+f2.draft.value.questions.at(-1).options.forEach(o => { o.text = 'opsi' })
+f2.currentStep.value = 'Esai'
+f2.addQuestion('Esai')
+const esaiTitik = f2.draft.value.questions.at(-1)
+esaiTitik.text = 'She usually ... (go) to school by bicycle every morning.'
+assert.equal(f2.punyaTitik(esaiTitik), true)
+assert.equal(f2.punyaTitik({ text: 'Jelaskan pengertian frasa.' }), false)
+assert.equal(f2.jawabanPasti(esaiTitik), '')
+f2.setJawabanPasti(esaiTitik, { target: { value: 'goes' } })
+assert.equal(f2.jawabanPasti(esaiTitik), 'goes')
+f2.submitForm()
+const simpanTitik = ev3.find(([e]) => e === 'save')?.[1]
+assert.ok(simpanTitik, 'bank dengan esai titik-titik tersimpan tanpa rubrik')
+assert.equal(simpanTitik.questions.find(q => q.type === 'Esai').jawabanPasti, 'goes')
 console.log('ok form')
 

@@ -59,16 +59,18 @@ for (const grade of ['SMP', 'SMK']) {
   const imported = await readWordBankTemplate(new File([fs.readFileSync(path.join(root, 'public/templates', name))], name), grade,
     [grade === 'SMK' ? 'XI AKL' : 'VIII A'], ['Matematika'])
   assert.deepEqual(imported.issues, [])
-  assert.deepEqual(imported.package.questions.map(q => q.type), ['PG', 'PG', 'PG', 'PG', 'Esai', 'Interaktif'])
+  assert.deepEqual(imported.package.questions.map(q => q.type), ['PG', 'PG', 'PG', 'PG', 'Esai', 'Esai', 'Interaktif'])
   assert.equal(imported.package.name, 'Latihan Bab 1')
   const ceritaTemplate = imported.package.questions.filter(q => q.storyGroup)
   assert.equal(ceritaTemplate.length, 2, 'template memuat contoh soal cerita 2 pertanyaan')
   assert.equal(ceritaTemplate[0].storyGroup, ceritaTemplate[1].storyGroup)
   assert.ok(ceritaTemplate.every(q => q.storyText?.startsWith('Rina menabung')))
+  assert.equal(imported.package.questions[4].jawabanPasti, undefined, 'esai uraian memakai rubrik')
+  assert.equal(imported.package.questions[5].jawabanPasti, 'goes', 'contoh esai titik-titik Bahasa Inggris')
   assert.equal(imported.package.questions[1].isMultiSelect, true)
   assert.deepEqual(imported.package.questions[1].key, ['A', 'C'])
-  assert.equal(imported.package.questions[5].interactiveAnswerType, 'PG')
-  assert.equal(imported.package.questions[5].options.length, grade === 'SMP' ? 4 : 5)
+  assert.equal(imported.package.questions[6].interactiveAnswerType, 'PG')
+  assert.equal(imported.package.questions[6].options.length, grade === 'SMP' ? 4 : 5)
 }
 const formula = '$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$'
 const payload = { text: formula, isRtl: false, containsFormula: true, reviewNote: '' }
@@ -341,6 +343,16 @@ globalThis.$fetch = async url => url === '/api/cbt/siapkan' ? { id: 'exam-lama-u
 await studentSession.bukaUjian(ujianSiswa)
 assert.equal(studentSession.questions.value.length, 3)
 assert.ok(studentSession.questions.value.some(q => q.type === 'short'), 'Soal lama Isian masih dimuat siswa')
+// Esai titik-titik (jawaban pasti) = kotak satu baris tanpa minimal kata; esai uraian tidak berubah.
+globalThis.$fetch = async url => url === '/api/cbt/siapkan' ? { id: 'exam-pasti-uji', source: 'cbt', duration: 90, sisaDetik: 5400, jawaban: {}, questions: [
+  { id: ids[0], bank_id: bankId, number: 1, type: 'Esai', text: 'She usually ... (go) to school.', difficulty: 'Sedang', min_kata: 50, isian_pasti: true },
+  { id: ids[1], bank_id: bankId, number: 2, type: 'Esai', text: 'Jelaskan pengertian frasa.', difficulty: 'Sedang', min_kata: 50, isian_pasti: false }
+] } : {}
+await studentSession.bukaUjian(ujianSiswa)
+const soalPasti = studentSession.questions.value.find(q => q.id === ids[0])
+const soalUraian = studentSession.questions.value.find(q => q.id === ids[1])
+assert.deepEqual([soalPasti.type, soalPasti.sec, soalPasti.minWords, soalPasti.jawabanPasti], ['short', 'essay', undefined, true])
+assert.deepEqual([soalUraian.type, soalUraian.sec, soalUraian.minWords, soalUraian.jawabanPasti], ['essay', 'essay', 50, false])
 
 const monitoringDb = {
   classes: [{ id: classId, name: 'Kelas uji', grade: 'SMK', active: true }],

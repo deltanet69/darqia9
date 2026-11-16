@@ -24,6 +24,7 @@ export interface QuestionItem {
   maxWords?: number
   storyText?: string
   storyGroup?: string
+  jawabanPasti?: boolean
   isRtl?: boolean
   mediaUrl?: string
   mediaFileName?: string
@@ -135,7 +136,8 @@ export const useCbtExam = () => {
           qType = 'short'
         } else if (q.type === 'Esai') {
           sec = 'essay'
-          qType = 'essay'
+          // Esai berjawaban pasti (isian titik-titik) tampil sebagai kotak satu baris, tetap di bagian Esai.
+          qType = q.isian_pasti ? 'short' : 'essay'
         } else if (q.type === 'Interaktif') {
           sec = 'interaktif'
           qType = q.media_type === 'video' ? 'video' : 'audio'
@@ -149,10 +151,11 @@ export const useCbtExam = () => {
           type: qType,
           text: q.text,
           options: options.length > 0 ? options : undefined,
-          placeholder: q.type === 'Esai' ? 'Tulis jawaban essay-mu di sini…' : 'Ketik jawaban singkatmu…',
-          minWords: q.type === 'Esai' && q.min_kata > 0 ? q.min_kata : undefined,
+          placeholder: q.isian_pasti ? 'Ketik jawabanmu di sini…' : q.type === 'Esai' ? 'Tulis jawaban essay-mu di sini…' : 'Ketik jawaban singkatmu…',
+          minWords: q.type === 'Esai' && !q.isian_pasti && q.min_kata > 0 ? q.min_kata : undefined,
           storyText: q.story_group ? q.story_text || undefined : undefined,
           storyGroup: q.story_group || undefined,
+          jawabanPasti: !!q.isian_pasti,
           isRtl: q.is_rtl,
           imageUrl: q.image_url,
           audioTitle: q.media_file_name || 'Audio Ujian',

@@ -419,7 +419,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       // Supabase membatasi 1000 baris per permintaan: tanpa paging, bank soal di atas 1000 butir terpotong diam-diam.
       const halaman = (from: number, withCount = false) => client
         .from(tables.questions)
-        .select('id, bank_id, number, type, difficulty, text, image_url, is_rtl, is_multi_select, options, answer_key, rubric, rubric_image_url, media_type, media_url, media_file_name, interactive_answer_type, story_text, story_group, min_kata', withCount ? { count: 'exact' } : undefined)
+        .select('id, bank_id, number, type, difficulty, text, image_url, is_rtl, is_multi_select, options, answer_key, rubric, rubric_image_url, media_type, media_url, media_file_name, interactive_answer_type, story_text, story_group, min_kata, jawaban_pasti', withCount ? { count: 'exact' } : undefined)
         .order('number').order('id').range(from, from + 999)
       const pertama = await halaman(0, true)
       if (pertama.error) throw pertama.error
@@ -449,6 +449,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
           storyText: row.story_text ?? undefined,
           storyGroup: row.story_group ?? undefined,
           minKata: row.min_kata ?? 0,
+          jawabanPasti: row.jawaban_pasti ?? undefined,
           mediaType: row.media_type ?? undefined,
           mediaUrl: row.media_url ?? undefined,
           mediaFileName: row.media_file_name ?? undefined,
@@ -605,6 +606,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
         story_text: question.storyGroup ? question.storyText ?? null : null,
         story_group: question.storyGroup ?? null,
         min_kata: question.type === 'Esai' ? Math.max(0, Math.floor(question.minKata ?? 0)) : 0,
+        jawaban_pasti: question.type === 'Esai' ? question.jawabanPasti?.trim() || null : null,
         media_type: question.mediaType ?? null,
         media_url: question.mediaUrl ?? null,
         media_file_name: question.mediaFileName ?? null,

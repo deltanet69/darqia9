@@ -15,7 +15,7 @@ const DATA_HEADERS = (grade: GradeType) => [
   'No', 'Tipe', 'Kesulitan', 'Pertanyaan',
   ...(grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']).map(key => `Pilihan ${key}`),
   'Kunci', 'Rubrik', 'Gambar (URL)', 'Jenis Media', 'Media (URL YouTube / Path Audio)', 'Arab RTL', 'Jenis Jawaban Interaktif',
-  'Kode Cerita', 'Teks Cerita'
+  'Kode Cerita', 'Teks Cerita', 'Jawaban Pasti'
 ]
 
 export const readExcelBankTemplate = async (file: File, currentGrade: GradeType, classes: string[], subjects: string[]): Promise<WordBankPreview> => {
@@ -107,9 +107,12 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
         question.key = question.isMultiSelect ? answers : answers[0]
       }
       if (type === 'Esai') {
-        const rubric = cellOf(row, 'Rubrik') || cellOf(row, 'Kunci')
-        if (!rubric) throw new Error(`Soal ${number}: RUBRIK wajib diisi untuk soal Esai.`)
-        question.rubric = rubric
+        // Jawaban Pasti = isian titik-titik yang dinilai otomatis; Rubrik hanya wajib bila tidak ada Jawaban Pasti.
+        const pasti = cellOf(row, 'Jawaban Pasti')
+        const rubric = cellOf(row, 'Rubrik') || (pasti ? '' : cellOf(row, 'Kunci'))
+        if (!pasti && !rubric) throw new Error(`Soal ${number}: RUBRIK wajib diisi untuk soal Esai (atau isi Jawaban Pasti).`)
+        if (rubric) question.rubric = rubric
+        if (pasti) question.jawabanPasti = pasti
       }
       if (type === 'Interaktif') {
         const mediaKind = keyOf(cellOf(row, 'Jenis Media'))
@@ -210,7 +213,8 @@ export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fi
         ? question.interactiveAnswerType === 'PG_Multi' ? 'PG Multi' : question.interactiveAnswerType === 'Isian' ? 'Isian' : 'PG'
         : '',
       cerita[indeks]!.kode,
-      cerita[indeks]!.teks
+      cerita[indeks]!.teks,
+      question.type === 'Esai' ? question.jawabanPasti || '' : ''
     ])
   }
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), 'Data Soal')

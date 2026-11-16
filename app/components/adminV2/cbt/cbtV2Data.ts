@@ -65,6 +65,8 @@ export interface BankQuestionItem {
   key: string | string[]
   rubric?: string
   rubricImageUrl?: string
+  // Esai berjawaban pasti (isian titik-titik, mis. Bahasa Inggris): dinilai otomatis tanpa AI. Beberapa jawaban benar dipisah titik koma.
+  jawabanPasti?: string
   // Soal cerita = soal-soal dengan storyGroup sama (PG atau Esai); teks ceritanya di storyText.
   storyText?: string
   storyGroup?: string

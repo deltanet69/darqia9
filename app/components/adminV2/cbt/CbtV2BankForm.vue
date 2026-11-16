@@ -173,6 +173,11 @@ const removeSubSoal = (q: BankQuestionItem, sub: BankQuestionItem) => {
   activeQuestionId.value = sisa[0]!.id
 }
 
+// Esai "titik-titik" (mis. Bahasa Inggris): bila Jawaban Pasti diisi, soal dinilai otomatis tanpa AI. Kosong = esai uraian (rubrik + AI).
+const jawabanPasti = (q: BankQuestionItem) => q.jawabanPasti ?? ''
+const setJawabanPasti = (q: BankQuestionItem, e: Event) => { q.jawabanPasti = (e.target as HTMLInputElement).value }
+const punyaTitik = (q: BankQuestionItem) => /\.{3,}|…|_{3,}/.test(q.text)
+
 const toggleInteractiveMode = () => {
   draft.value.hasInteractive = !draft.value.hasInteractive
   if (draft.value.hasInteractive && !draft.value.questions.some(q => q.type === 'Interaktif')) {
@@ -698,9 +703,25 @@ const submitForm = () => {
                   <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">Tulis jawaban yang benar persis seperti yang harus dijawab siswa. Rumus dan teks Arab didukung.</p>
                 </div>
 
-                <!-- Esai: rubrik mendukung rumus, gambar, dan OCR -->
-                <div v-else-if="sub.type === 'Esai'">
-                  <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
+                <!-- Esai: Jawaban Pasti untuk isian titik-titik (dinilai otomatis); rubrik untuk esai uraian (rumus, gambar, OCR) -->
+                <div v-else-if="sub.type === 'Esai'" class="space-y-3">
+                  <div class="rounded-xl border border-[#E7EBF2] bg-[#F9FAFC] p-3 space-y-1.5">
+                    <label :for="'pasti-' + sub.id" class="block text-xs font-bold text-[#344054]">Jawaban pasti (opsional)</label>
+                    <input
+                      :id="'pasti-' + sub.id"
+                      type="text"
+                      :value="jawabanPasti(sub)"
+                      maxlength="200"
+                      autocomplete="off"
+                      placeholder="Contoh: goes"
+                      class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                      @input="setJawabanPasti(sub, $event)"
+                    >
+                    <p class="text-[11px] leading-relaxed text-[#667085]">Isi untuk soal titik-titik atau jawaban satu kata/frasa. Contoh Bahasa Inggris: "She usually ... (go) to school" dengan jawaban pasti goes. Dinilai otomatis tanpa AI: cocok persis = nilai penuh, selain itu 0. Huruf besar/kecil dan tanda baca di ujung diabaikan. Beberapa jawaban benar dipisah titik koma, misalnya doesn't; does not. Siswa menjawab di kotak satu baris.</p>
+                    <p v-if="punyaTitik(sub) && !jawabanPasti(sub).trim()" class="text-[11px] font-semibold text-[#A15C00]" role="status">Soal ini berisi titik-titik. Isi Jawaban pasti agar dinilai otomatis dan tepat.</p>
+                  </div>
+                  <div>
+                  <label class="block text-xs font-bold text-[#344054] mb-1">{{ jawabanPasti(sub).trim() ? 'Rubrik Penilaian (opsional)' : 'Rubrik Penilaian' }}</label>
                   <CbtRichQuestionEditor
                     :model-value="sub.rubric || ''"
                     @update:model-value="sub.rubric = $event"
@@ -708,6 +729,7 @@ const submitForm = () => {
                     @message="emit('toast', $event)"
                     @busy="ocrBerjalan = $event"
                   />
+                  </div>
                 </div>
 
                 <!-- Interaktif Specific -->

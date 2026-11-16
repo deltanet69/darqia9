@@ -36,7 +36,7 @@ const KOLOM_NARASI = new Set(['PERTANYAAN', 'RUBRIK', 'TEKSCERITA', 'CERITA', 'P
 const KOLOM_DIKENAL = new Set([
   'JENJANG', 'KELAS', 'MATAPELAJARAN', 'PENYUSUN', 'KESULITANPAKET', 'NO', 'TIPE', 'KESULITAN', 'PERTANYAAN',
   'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE', 'KUNCI', 'MODEPG', 'RUBRIK', 'MEDIA', 'LINKMEDIA', 'JENISJAWABAN',
-  'NAMABANKSOAL', 'KETERANGAN', 'MINKATAESAI', 'MINIMALKATAESAI', 'KODECERITA', 'TEKSCERITA', 'CERITA'
+  'NAMABANKSOAL', 'KETERANGAN', 'MINKATAESAI', 'MINIMALKATAESAI', 'KODECERITA', 'TEKSCERITA', 'CERITA', 'JAWABANPASTI'
 ])
 export const fields = (lines: string[]) => {
   const hasil: Record<string, string> = {}
@@ -285,7 +285,13 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
         question.key = question.isMultiSelect ? answers : answers[0]
       }
       // Sebagian guru menulis kunci esai di KUNCI, bukan RUBRIK: keduanya diterima.
-      if (type === 'Esai') question.rubric = required(row.RUBRIK || row.KUNCI, 'RUBRIK', number)
+      if (type === 'Esai') {
+        // Jawaban Pasti = isian titik-titik yang dinilai otomatis; Rubrik hanya wajib bila tidak ada Jawaban Pasti.
+        const pasti = clean(row.JAWABANPASTI)
+        const rubrik = row.RUBRIK || (pasti ? '' : row.KUNCI)
+        if (pasti) { question.jawabanPasti = pasti; if (rubrik) question.rubric = clean(rubrik) }
+        else question.rubric = required(rubrik, 'RUBRIK', number)
+      }
       if (type === 'Interaktif') {
         const mediaUrl = required(row.LINKMEDIA, 'LINK_MEDIA', number)
         const mediaType = keyOf(row.MEDIA) === 'AUDIO' ? 'audio' : 'video'

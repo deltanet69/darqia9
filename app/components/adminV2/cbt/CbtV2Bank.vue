@@ -158,7 +158,7 @@ const formatColorHex = (type: string) => (({ PG: '#1B5FD9', Isian: '#0E9384', Es
 const toggleQuestion = (id: string) => { expandedQuestions.value = { ...expandedQuestions.value, [id]: !expandedQuestions.value[id] } }
 const isQuestionOpen = (q: BankQuestionItem, idx: number) => expandedQuestions.value[q.id] ?? idx === 0
 const plainQuestionText = (value = '') => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-const questionMeta = (q: BankQuestionItem) => q.type === 'Esai' ? 'Rubrik terisi' : `Kunci ${Array.isArray(q.key) ? q.key.join(', ') : q.key || '-'}`
+const questionMeta = (q: BankQuestionItem) => q.type === 'Esai' ? (q.jawabanPasti ? 'Jawaban pasti' : 'Rubrik terisi') : `Kunci ${Array.isArray(q.key) ? q.key.join(', ') : q.key || '-'}`
 
 const currentGradePackages = computed(() => {
   return packages.value.filter(p => p.grade === props.grade && cbtData.bolehKelolaBank(p.classId, p.subjectId, p))
@@ -864,6 +864,10 @@ const confirmImport = async () => {
                 <b>{{ opt.key }}.</b>
                 <span class="overflow-x-auto" :dir="isArabicText(opt.text) ? 'rtl' : 'ltr'" v-html="renderKaTeXHtml(opt.text)" />
               </span>
+            </div>
+
+            <div v-if="q.type === 'Esai' && q.jawabanPasti" class="p-2.5 rounded-lg bg-[#E7F8F0] border border-[#BDE7D0] text-xs text-[#087C52]">
+              <b>Jawaban pasti (dinilai otomatis): </b><span class="font-semibold">{{ q.jawabanPasti }}</span>
             </div>
 
             <!-- Answer / Rubric Box -->
