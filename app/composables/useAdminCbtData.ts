@@ -534,7 +534,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const existingBank = bankPackages.value.find(item => item.id === pkg.id)
     if (existingBank && existingBank.grade !== expectedGrade) throw new Error('Bank soal berasal dari jenjang lain.')
     const classHasSchedule = classSubjects.value.some(item => item.class_id === classItem.id)
-    if (classHasSchedule
+    if (!adalahSuperadmin.value && classHasSchedule
       && (!existingBank || existingBank.classId !== classItem.id || existingBank.subjectId !== subjectItem.id)
       && !classSubjects.value.some(item => item.class_id === classItem.id && item.subject_id === subjectItem.id)) {
       throw new Error('Mata pelajaran belum terdaftar pada jadwal kelas yang dipilih.')
@@ -554,7 +554,10 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     // Pemilik = guru penyusun. Superadmin menyusun atas nama guru yang dipilih; selain itu pemilik lama tetap / akun yang login.
     const guruPenyusun = adalahSuperadmin.value ? teachers.value.filter(item => item.name.trim().toLowerCase() === (pkg.teacherName || '').trim().toLowerCase()) : []
     const pemilik = adalahSuperadmin.value
-      ? (guruPenyusun.length === 1 ? guruPenyusun[0]!.id : bankLama?.ownerTeacherId ?? null)
+      // Nama penyusun bebas ditulis. Cocok tepat satu guru: dia pemiliknya. Nama tidak diubah: pemilik lama tetap.
+      // Nama di luar data guru: tanpa pemilik (hanya terlihat Superadmin, pimpinan, dan wali kelas).
+      ? (guruPenyusun.length === 1 ? guruPenyusun[0]!.id
+        : bankLama && bankLama.teacherName.trim().toLowerCase() === (pkg.teacherName || '').trim().toLowerCase() ? bankLama.ownerTeacherId ?? null : null)
       : bankLama ? bankLama.ownerTeacherId ?? null : aksesBankSaya.value.guruId
     // Tanpa pemilik, bank baru tidak akan terlihat lagi oleh pembuatnya sendiri.
     if (!bankLama && !pemilik && !bolehAksesBank(aksesBankSaya.value, { ownerTeacherId: null, classId: classItem.id, grade: classItem.grade })) {

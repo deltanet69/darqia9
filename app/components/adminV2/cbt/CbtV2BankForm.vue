@@ -414,17 +414,21 @@ const submitForm = () => {
             aria-readonly="true"
             class="w-full cursor-not-allowed rounded-xl border border-[#E7EBF2] bg-[#F2F4F7] p-2.5 text-xs text-[#101828] outline-none"
           >
-          <select
+          <input
             v-else
             v-model="draft.teacherName"
+            type="text"
+            list="daftar-penyusun"
+            maxlength="120"
+            autocomplete="off"
+            placeholder="Ketik nama penyusun atau pilih dari daftar"
             class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
           >
-            <option value="" disabled>Pilih guru penyusun</option>
-            <option v-if="selfName" :value="selfName">Saya sendiri · {{ selfName }}</option>
-            <option v-if="draft.teacherName && draft.teacherName !== selfName && !(teacherOptions || []).includes(draft.teacherName)" :value="draft.teacherName">{{ draft.teacherName }} (nama lama)</option>
-            <option v-for="nama in (teacherOptions || []).filter(item => item !== selfName)" :key="nama" :value="nama">{{ nama }}</option>
-          </select>
-          <p class="mt-1 text-xs text-[#667085]">{{ lockTeacher ? 'Terisi otomatis sesuai akun Anda.' : 'Pilih guru yang meminta bantuan, atau Saya sendiri bila Anda yang menyusun.' }}</p>
+          <datalist id="daftar-penyusun">
+            <option v-if="selfName" :value="selfName" />
+            <option v-for="nama in (teacherOptions || []).filter(item => item !== selfName)" :key="nama" :value="nama" />
+          </datalist>
+          <p class="mt-1 text-xs text-[#667085]">{{ lockTeacher ? 'Terisi otomatis sesuai akun Anda.' : 'Ketik nama siapa pun sebagai penyusun, atau pilih dari daftar guru. Nama di luar daftar guru tetap tersimpan.' }}</p>
         </div>
       </div>
       <nav class="hidden lg:block border-t border-[#E7EBF2] pt-3" aria-label="Jenis soal">

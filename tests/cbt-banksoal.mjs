@@ -288,6 +288,14 @@ assert.equal(simpanBank.bank_data.description, 'Bab 1 - Frasa')
 assert.equal(simpanBank.bank_data.owner_teacher_id, 'teacher', 'Superadmin menyusun atas nama guru: pemilik = guru penyusun')
 assert.equal(simpanBank.question_data[1].min_kata, 40)
 assert.equal(simpanBank.question_data[0].min_kata, 0)
+// Superadmin bebas: mapel di luar jadwal kelas dan nama penyusun bebas ditulis (migrasi 0067).
+daily.classSubjects.value = [{ class_id: classId, subject_id: '00000000-0000-4000-8000-0000000000ff', teacher_id: null }]
+await daily.saveBankPackage({ ...bank, id: 'bebas', name: 'Bab bebas', teacherName: 'Pak Penyusun Luar', questions: [{ ...bank.questions[0], options: ['A', 'B', 'C', 'D', 'E'].map(key => ({ key, text: key })) }] }, 'SMK')
+const simpanBebas = calls.filter(call => call.name === 'save_assessment_bank').at(-1).args
+assert.equal(simpanBebas.bank_data.subject_id, subjectId)
+assert.equal(simpanBebas.bank_data.teacher_name, 'Pak Penyusun Luar')
+assert.equal(simpanBebas.bank_data.owner_teacher_id, null, 'nama di luar data guru = tanpa pemilik')
+daily.classSubjects.value = []
 daily.classes.value = [{ id: classId, grade: 'SMK' }]
 daily.subjects.value = [{ id: subjectId, grade: 'SMK' }]
 daily.bankPackages.value = [bank]
@@ -430,6 +438,9 @@ await renderToString(createSSRApp({ setup() {
   return () => h('div')
 } }))
 assert.equal(bankVm.storedFormatCount.value, 2)
+monitorData.classSubjects.value = [{ class_id: classId, subject_id: '00000000-0000-4000-8000-0000000000ff', teacher_id: null }]
+assert.ok(bankVm.subjectsForClass('Kelas uji').includes('Mapel uji'), 'Superadmin boleh memilih mapel di luar jadwal kelas')
+monitorData.classSubjects.value = []
 monitorData.bankPackages.value = []
 
 const draftStore = new Map([['darqia:cbt-bank-draft:SMK:anon', JSON.stringify({ draft: bank, editing: false })]])
