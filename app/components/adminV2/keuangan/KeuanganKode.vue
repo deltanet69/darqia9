@@ -169,18 +169,18 @@ const tambahKet = async () => {
           Kode penentu nominal flat per tingkat berdasarkan <b>tahun masuk &amp; kategori siswa</b>. Satu kode dipakai bersama oleh banyak siswa.
         </p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
         <button
           type="button"
           @click="imporBuka = true"
-          class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[13px] font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+          class="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-[13px] font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
         >
           <span>Impor / Ekspor Excel</span>
         </button>
         <button
           type="button"
           @click="bukaModal()"
-          class="inline-flex items-center gap-2 rounded-xl bg-[#1B5FD9] px-4.5 py-2.5 text-[13px] font-bold text-white shadow-[0_2px_8px_rgba(27,95,217,0.25)] hover:bg-[#154cb0] transition-all cursor-pointer"
+          class="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#1B5FD9] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_2px_8px_rgba(27,95,217,0.25)] hover:bg-[#154cb0] transition-all cursor-pointer"
         >
           <AdminV2Icon name="plus" :size="15" />
           <span>Tambah Paket</span>
