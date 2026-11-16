@@ -618,13 +618,29 @@ for (const needle of ['route.query.kelas', 'Export Excel', 'dipilih'])
   assert.ok(kartuSource.includes(needle), `Kartu Ujian memuat ${needle}`)
 
 // Guru/wali kelas (bukan Superadmin): CBT PTS/PAS menolak kelola ujian dan token; ujian harian (LMS) tidak dibatasi.
-globalThis.useRbac = () => ({ adalahSuperadmin: ref(false), state: ref({ subjekSaya: null, namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji'),
-  bolehAksi: (_modul, _sub, _aksi, lama) => lama, cakupanSaya: () => 'semua', tertautGuru: ref(false), peranSaya: ref(null), penugasanSaya: ref(null) })
+globalThis.useRbac = () => ({ adalahSuperadmin: ref(false), state: ref({ subjekSaya: 'guru-1', namaSaya: 'Guru uji' }), namaAkun: ref('Guru uji'),
+  bolehAksi: (_modul, _sub, _aksi, lama) => lama, cakupanSaya: () => 'semua', tertautGuru: ref(true), peranSaya: ref(null), penugasanSaya: ref(null) })
 const guru = useAdminCbtData('cbt')
 assert.equal(guru.bolehKelolaUjian(), false)
 for (const aksi of [() => guru.saveExam({}), () => guru.deleteExam('x')])
   await assert.rejects(aksi, /tidak memiliki izin/)
 assert.equal(useAdminCbtData('ujian_harian').bolehKelolaUjian(), true)
+
+// Guru: bank hanya miliknya sendiri, di kelas+mapel yang ia ampu menurut jadwal (anti-fraud); wali kelas hanya bisa mengelola bank di kelasnya.
+const gk = useAdminCbtData('ujian_harian')
+gk.classes.value = [{ id: 'k1', name: 'X A', grade: 'SMK', homeroomTeacherId: null }, { id: 'k2', name: 'X B', grade: 'SMK', homeroomTeacherId: 'guru-1' }]
+gk.subjects.value = [{ id: 's1', name: 'Mapel 1', grade: 'SMK' }, { id: 's2', name: 'Mapel 2', grade: 'SMK' }]
+gk.classSubjects.value = [{ class_id: 'k1', subject_id: 's1', teacher_id: 'guru-1' }, { class_id: 'k1', subject_id: 's2', teacher_id: 'guru-2' }, { class_id: 'k2', subject_id: 's2', teacher_id: 'guru-2' }]
+gk.bankPackages.value = []
+assert.equal(gk.bolehKelolaBank('k1', 's1'), true, 'kelas+mapel yang diampu')
+assert.equal(gk.bolehKelolaBank('k1', 's2'), false, 'mapel guru lain di kelas yang sama')
+assert.equal(gk.bolehKelolaBank('k3', 's1'), false, 'kelas yang tidak diampu')
+assert.equal(gk.bolehKelolaBank('k2', 's2'), false, 'wali kelas tidak otomatis boleh membuat bank di mapel guru lain')
+assert.equal(gk.bolehKelolaBank('k1', 's1', { ownerTeacherId: 'guru-1', classId: 'k1', grade: 'SMK' }), true, 'bank milik sendiri')
+assert.equal(gk.bolehKelolaBank('k1', 's2', { ownerTeacherId: 'guru-2', classId: 'k1', grade: 'SMK' }), false, 'bank guru lain')
+assert.equal(gk.bolehKelolaBank('k2', 's2', { ownerTeacherId: 'guru-2', classId: 'k2', grade: 'SMK' }), true, 'wali kelas boleh mengelola bank di kelasnya')
+const soalGk = { id: 'qq', number: 1, type: 'PG', text: 'Soal', difficulty: 'Sedang', key: 'A', options: ['A', 'B', 'C', 'D', 'E'].map(key => ({ key, text: key })) }
+await assert.rejects(gk.saveBankPackage({ id: 'bk', classId: 'k1', subjectId: 's2', classroom: 'X A', subject: 'Mapel 2', grade: 'SMK', name: 'Curang', code: 'X', teacherName: 'Guru lain', difficulty: 'Sedang', updatedAt: 'x', hasInteractive: false, questions: [soalGk] }, 'SMK'), /milik Anda sendiri/)
 
 await nextTick()
 const summary = { parser: 'LULUS', retryDanPenolakanRumusInvalid: 'LULUS (penyedia tiruan)', ocrIndependenDanHasilKedaluwarsa: 'LULUS (penyedia tiruan)', daftarBankDanPemisahanJenjang: 'LULUS (Supabase tiruan + SSR)', opsiPilihanGanda: 'LULUS SMP 4 / SMK 5', templateDanImpor: 'LULUS SMP/SMK', pemilihanUrutanDanRpc: 'LULUS (Supabase tiruan)', pemuatanSiswa: 'LULUS (respons server tiruan)', pemisahanSumber: 'LULUS (Supabase tiruan)', monitoringDanDataKosong: 'LULUS (Supabase tiruan + SSR)', kompatibilitasLama: 'LULUS', formulir: 'LULUS', tokenPerSiswa: 'LULUS (migrasi 0017 + Supabase tiruan)', mapelUjianDariMaster: 'LULUS (Supabase tiruan)', evidence }

@@ -460,7 +460,7 @@ const confirmImport = async () => {
   try {
     const preview = importPreview.value
     for (const classroom of preview.classrooms) {
-      if (!subjectsForClass(classroom).includes(preview.subject)) throw new Error(`Mata pelajaran impor tidak sesuai dengan jadwal kelas ${classroom}.`)
+      if (!subjectsForClass(classroom).includes(preview.subject)) throw new Error(`Anda tidak mengampu ${preview.subject} di kelas ${classroom}, jadi soal tidak dapat diunggah ke sana. Hubungi admin bila jadwal mengajar Anda belum benar.`)
     }
     // Satu paket per kelas. Soal diklon per kelas karena saveBankPackage mengisi id baru pada objek soalnya.
     const gagal: string[] = []

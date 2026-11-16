@@ -494,11 +494,6 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       && (wali || (item.teacher_id && String(item.teacher_id) === saya)))
   }
   const dalamCakupanSaya = (classId?: string | null, subjectId?: string | null) => !cakupanSendiri.value || ajarSaya(classId, subjectId)
-  // shortcut (keputusan owner): selama admin masih melengkapi Jadwal Pelajaran, semua guru boleh mengelola bank soal
-  // seluruh kelas & mapel jenjangnya; penyusun tetap tercatat atas nama akun guru (lihat saveBankPackage).
-  // Ubah ke false untuk kembali membatasi guru ke kelas+mapel yang ia ampu.
-  const BANK_TERBUKA_SEMUA_GURU = true
-  // Cakupan RBAC 'sendiri' mengalahkan shortcut di atas untuk peran tersebut.
   // Bank milik guru lain: hanya pemilik, wali kelas kelas itu, pimpinan (jenjang penugasannya), dan Superadmin (RLS 0066).
   const aksesBankSaya = computed<AksesBankAkun>(() => {
     const guruId = rbac.tertautGuru.value ? rbac.state.value.subjekSaya : null
@@ -509,11 +504,18 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       waliKelasIds: guruId ? classes.value.filter(item => item.homeroomTeacherId && String(item.homeroomTeacherId) === guruId).map(item => item.id) : []
     }
   })
+  // Guru membuat bank hanya di kelas+mapel yang jadwalnya memang menugaskan dia (bukan sekadar wali kelas).
+  const mengampuSaya = (classId?: string | null, subjectId?: string | null) => {
+    const saya = aksesBankSaya.value.guruId
+    return !!saya && !!classId && classSubjects.value.some(item => item.class_id === classId
+      && (!subjectId || item.subject_id === subjectId) && item.teacher_id && String(item.teacher_id) === saya)
+  }
+  // Superadmin: semua. Bank yang sudah ada (argumen bank): pemilik, wali kelas, atau pimpinan (sama dengan RLS 0066/0069).
+  // Membuat / memindahkan bank (tanpa argumen bank): hanya kelas+mapel yang diampu.
   const bolehKelolaBank = (classId?: string | null, subjectId?: string | null, bank?: BankPackage) => {
-    if (bank && !bolehAksesBank(aksesBankSaya.value, bank)) return false
     if (adalahSuperadmin.value) return true
-    if (BANK_TERBUKA_SEMUA_GURU && !cakupanSendiri.value) return true
-    return ajarSaya(classId, subjectId)
+    if (bank) return bolehAksesBank(aksesBankSaya.value, bank)
+    return mengampuSaya(classId, subjectId)
   }
   // Guru penyusun bawaan = akun yang login. Superadmin tanpa data guru dicatat sebagai "Superadmin"
   // (agar bisa menyusun bank soal atas namanya sendiri); akun lain tanpa data guru dikosongkan.
@@ -525,8 +527,9 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     if (!classItem || !subjectItem) throw new Error('Kelas atau mata pelajaran tidak lagi tersedia.')
     const bankLama = bankPackages.value.find(item => item.id === pkg.id)
     if (!bolehAksi('bank', bankLama ? 'ubah' : 'buat', true)) throw new Error(`Peran Anda tidak memiliki izin ${bankLama ? 'ubah' : 'buat'} di Bank Soal ${modulRbac}.`)
-    if (!bolehKelolaBank(classItem.id, subjectItem.id) || (bankLama && !bolehKelolaBank(bankLama.classId, bankLama.subjectId, bankLama))) {
-      throw new Error('Anda hanya dapat mengelola bank soal pada kelas dan mata pelajaran yang Anda ampu.')
+    const dipindah = !bankLama || bankLama.classId !== classItem.id || bankLama.subjectId !== subjectItem.id
+    if ((dipindah && !bolehKelolaBank(classItem.id, subjectItem.id)) || (bankLama && !bolehKelolaBank(bankLama.classId, bankLama.subjectId, bankLama))) {
+      throw new Error('Anda hanya dapat mengelola bank soal milik Anda sendiri, pada kelas dan mata pelajaran yang Anda ampu.')
     }
     if (pkg.grade !== expectedGrade || classItem.grade !== expectedGrade || subjectItem.grade !== expectedGrade) {
       throw new Error('Jenjang bank soal, kelas, dan mata pelajaran harus sesuai dengan jenjang yang dipilih.')
