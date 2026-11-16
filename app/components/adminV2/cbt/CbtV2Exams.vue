@@ -18,9 +18,8 @@ interface Props {
 
 const props = defineProps<Props>()
 const cbtData = useAdminCbtData(props.source ?? 'cbt')
-// CBT PTS/PAS: buat/ubah/hapus ujian dan token peserta hanya Superadmin; guru dan wali kelas hanya melihat.
-// Ujian harian (LMS) memakai komponen ini juga dan tidak ikut dibatasi.
-// RBAC sub-modul Daftar Ujian (akun belum ditugaskan: aturan lama — LMS bebas, CBT hanya Superadmin).
+// CBT PTS/PAS: buat/ubah/hapus ujian dan token peserta hanya Superadmin (tidak bisa dibuka lewat RBAC); lainnya hanya melihat.
+// Ujian harian (LMS): RBAC sub-modul Daftar Ujian, dibatasi kelas+mapel yang diampu (bolehUjianKelas).
 const bolehKelola = computed(() => cbtData.bolehKelolaUjian('ubah'))
 const bolehBuat = computed(() => cbtData.bolehKelolaUjian('buat'))
 const bolehHapus = computed(() => cbtData.bolehKelolaUjian('hapus'))
@@ -482,7 +481,7 @@ const removeSchedule = async (exam: ExamItem) => {
           </button>
 
           <button
-            v-if="bolehBuat && lms && cbtData.adalahSuperadmin.value"
+            v-if="bolehBuat && cbtData.adalahSuperadmin.value"
             type="button"
             class="px-4 py-2.5 rounded-xl bg-white border border-[#E7EBF2] hover:border-blue-400 text-[#1B5FD9] text-xs font-bold transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
             @click="bulkOpen = true"
@@ -987,7 +986,7 @@ const removeSchedule = async (exam: ExamItem) => {
       </div>
     </Teleport>
 
-    <CbtV2ExamBulk v-if="bulkOpen" :grade="grade" @close="bulkOpen = false" @toast="emit('toast', $event)" />
+    <CbtV2ExamBulk v-if="bulkOpen" :grade="grade" :source="source ?? 'cbt'" @close="bulkOpen = false" @toast="emit('toast', $event)" />
 
     <CbtV2RombelViolations
       v-if="kueri('pelanggaran') && rombelDetail"

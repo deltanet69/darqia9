@@ -481,7 +481,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
   // ditugaskan tetap memakai aturan lama (argumen `lama`).
   const modulRbac = source === 'ujian_harian' ? 'LMS' : 'Manajemen CBT'
   const bolehAksi = (sub: string, aksi: AksiRbac, lama: boolean) => rbac.bolehAksi(modulRbac, sub, aksi, lama)
-  const bolehKelolaUjian = (aksi: AksiRbac = 'ubah') => bolehAksi('exams', aksi, source === 'ujian_harian' || adalahSuperadmin.value)
+  // CBT (PTS/PAS): hanya Superadmin, tidak bisa dibuka lewat RBAC (sama dengan trigger guard_exams_superadmin, 0072).
+  const bolehKelolaUjian = (aksi: AksiRbac = 'ubah') => source === 'cbt' ? adalahSuperadmin.value : bolehAksi('exams', aksi, true)
   const wajibKelolaUjian = (aksi: AksiRbac) => {
     if (!bolehKelolaUjian(aksi)) throw new Error(`Peran Anda tidak memiliki izin ${aksi} di Daftar Ujian ${modulRbac}.`)
   }

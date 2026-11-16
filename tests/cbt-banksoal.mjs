@@ -324,6 +324,38 @@ assert.ok(tablesRead.includes('ujian_harian'))
 assert.ok(!tablesRead.includes('question_banks'))
 assert.ok(!tablesRead.includes('exams'))
 
+// Buat ujian CBT banyak kelas: jadwal per mapel di dalam periode PTS/PAS, bentrok jam di kelas yang sama ditolak sebelum ada yang disimpan.
+{
+  const { default: Bulk } = await import('../app/components/adminV2/cbt/CbtV2ExamBulk.vue')
+  const bankB = { ...bank, id: '00000000-0000-4000-8000-000000000020', subjectId: '00000000-0000-4000-8000-000000000021' }
+  states.get('cbt-bank-packages').value = [bank, bankB]
+  states.get('cbt-exams').value = []
+  states.get('cbt-master-classes').value = [{ id: classId, name: 'Kelas uji', grade: 'SMK' }]
+  states.get('cbt-master-subjects').value = [{ id: subjectId, name: 'Mapel uji', grade: 'SMK' }, { id: bankB.subjectId, name: 'Mapel B', grade: 'SMK' }]
+  const toasts = []
+  const b = Bulk.setup(reactive({ grade: 'SMK', source: 'cbt' }), { expose() {}, emit: (e, v) => e === 'toast' && toasts.push(v) })
+  b.periode.value = [{ id: 'p1', periode: 'PAS Ganjil', startsOn: '2026-12-01', endsOn: '2026-12-10' }]
+  b.form.value.periodeId = 'p1'
+  b.form.value.name = 'PAS'
+  b.toggle(bank)
+  b.toggle(bankB)
+  assert.deepEqual({ ...b.jadwalCbt.value[bankId] }, { tanggal: '2026-12-01', jam: '07:30' }, 'awal = tanggal mulai periode + jam bawaan')
+  const sebelum = calls.length
+  await b.simpan()
+  assert.equal(calls.length, sebelum, 'jadwal bentrok: tidak ada ujian yang disimpan')
+  assert.ok(b.gagal.value.every(g => g.includes('beririsan')) && b.gagal.value.length === 2)
+  b.jadwalCbt.value[bankB.id] = { tanggal: '2026-12-11', jam: '07:30' }
+  await b.simpan()
+  assert.ok(b.gagal.value.some(g => g.includes('di luar periode')))
+  b.jadwalCbt.value[bankB.id] = { tanggal: '2026-12-01', jam: '09:00' }
+  await b.simpan()
+  assert.deepEqual(b.gagal.value, [])
+  const tersimpan = calls.slice(sebelum).filter(c => c.name === 'save_assessment_exam').map(c => c.args)
+  assert.equal(tersimpan.length, 2)
+  assert.ok(tersimpan.every(a => a.source === 'cbt' && a.exam_data.duration_minutes === 90))
+  assert.equal(new Date(tersimpan[1].exam_data.starts_at).getTime(), new Date('2026-12-01T09:00').getTime())
+}
+
 let studentSession
 const { useCbtExam } = await import('../app/composables/useCbtExam.ts')
 const studentApp = createSSRApp({ setup() { studentSession = useCbtExam(); return () => h('div') } })
