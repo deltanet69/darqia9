@@ -1,5 +1,11 @@
 {
-  "description": "Impeccable design detector: immediate-tier checks after Edit/Write on UI files, full-rule deep pass on Stop.",
+  "permissions": {
+    "allow": [
+      "Bash(git checkout *)",
+      "Bash(bash __TRACKED_VAR__/subagent-driven-development/scripts/sdd-workspace 'D:/Opang/Project Nuxt Js/Attaqwa 9/darqia/docs/superpowers/plans/2026-11-15-bank-soal-lms-cerita.md')",
+      "Bash(node tests/cbt-akses-bank.mjs)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -38,5 +44,6 @@
         ]
       }
     ]
-  }
+  },
+  "description": "Impeccable design detector: immediate-tier checks after Edit/Write on UI files, full-rule deep pass on Stop."
 }

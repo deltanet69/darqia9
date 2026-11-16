@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node tests/cbt-akses-bank.mjs)",
+      "Bash(python \"C:/Users/DELTAN~1/AppData/Local/Temp/claude/d--Opang-Project-Nuxt-Js-Attaqwa-9-darqia/88eb394b-f1f1-4362-8337-bc311ef3fdf5/scratchpad/ie_test.py\" tests/cbt-import-export.mjs)",
+      "Bash(node tests/cbt-import-export.mjs)"
+    ]
+  }
+}
