@@ -25,6 +25,8 @@ const TABS = [
   { id: 'cutoff', label: 'Cut-off Harian', icon: 'clock' },
   { id: 'riwayat', label: 'Riwayat Pembayaran', icon: 'file-text' }
 ] as const
+// Hanya tab yang boleh dilihat peran akun ini (RBAC sub-modul); tab aktif otomatis pindah bila yang dipilih tak diizinkan.
+const tabTerlihat = useRbac().jagaSubmenu('Keuangan Sekolah', [...TABS], tab)
 
 const cariCepat = ref('')
 const cari = ref('')
@@ -72,7 +74,6 @@ const kelasList = computed(() => [...new Set(baris.value.map(s => s.kelas))].sor
 const hasilCepat = computed(() => {
   const q = cariCepat.value.trim().toLowerCase()
   if (q.length < 2) return []
-const tabTerlihat = useRbac().jagaSubmenu('Keuangan Sekolah', TABS, tab)
   return baris.value.filter(s => s.nis.includes(q) || s.nama.toLowerCase().includes(q)).slice(0, 6)
 })
 
