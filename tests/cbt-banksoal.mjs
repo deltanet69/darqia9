@@ -59,7 +59,7 @@ for (const grade of ['SMP', 'SMK']) {
   const imported = await readWordBankTemplate(new File([fs.readFileSync(path.join(root, 'public/templates', name))], name), grade,
     [grade === 'SMK' ? 'XI AKL' : 'VIII A'], ['Matematika'])
   assert.deepEqual(imported.issues, [])
-  assert.deepEqual(imported.package.questions.map(q => q.type), ['PG', 'PG', 'Esai', 'Interaktif', 'PG', 'PG'])
+  assert.deepEqual(imported.package.questions.map(q => q.type), ['PG', 'PG', 'PG', 'PG', 'Esai', 'Interaktif'])
   assert.equal(imported.package.name, 'Latihan Bab 1')
   const ceritaTemplate = imported.package.questions.filter(q => q.storyGroup)
   assert.equal(ceritaTemplate.length, 2, 'template memuat contoh soal cerita 2 pertanyaan')
@@ -67,8 +67,8 @@ for (const grade of ['SMP', 'SMK']) {
   assert.ok(ceritaTemplate.every(q => q.storyText?.startsWith('Rina menabung')))
   assert.equal(imported.package.questions[1].isMultiSelect, true)
   assert.deepEqual(imported.package.questions[1].key, ['A', 'C'])
-  assert.equal(imported.package.questions[3].interactiveAnswerType, 'PG')
-  assert.equal(imported.package.questions[3].options.length, grade === 'SMP' ? 4 : 5)
+  assert.equal(imported.package.questions[5].interactiveAnswerType, 'PG')
+  assert.equal(imported.package.questions[5].options.length, grade === 'SMP' ? 4 : 5)
 }
 const formula = '$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$'
 const payload = { text: formula, isRtl: false, containsFormula: true, reviewNote: '' }

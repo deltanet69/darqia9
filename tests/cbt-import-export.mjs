@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { buildBankExcel, readExcelBankTemplate } from '../app/utils/cbtExcelBank.ts'
 import { cocokKelas, cocokDaftarKelas } from '../app/utils/cbtKelas.ts'
 import { buildBankCsv } from '../app/utils/cbtCsvBank.ts'
-import { decodeXml, fields, linesFromXml } from '../app/utils/cbtWordBank.ts'
+import { bagiBlokSoal, decodeXml, fields, linesFromXml } from '../app/utils/cbtWordBank.ts'
 
 let lulus = 0
 const cek = async (nama, fn) => { await fn(); lulus++; console.log('ok -', nama) }
@@ -229,5 +229,24 @@ await cek('Word: TEKS_CERITA boleh beberapa paragraf; metadata baru dikenali', a
 await cek('CSV: memuat kolom Kode Cerita', async () => {
   const { csv } = buildBankCsv(paketCerita())
   assert.ok(csv.includes('"Kode Cerita"') && csv.includes('"C1"'))
+})
+await cek('Word: soal cerita diapit MULAI/AKHIR tanpa kode, bacaan dipakai semua soal di dalamnya', async () => {
+  const blok = bagiBlokSoal([
+    'NO: 1', 'PERTANYAAN: Biasa', '--- AKHIR SOAL ---',
+    '=== MULAI SOAL CERITA - contoh ===', 'Cerita: Paragraf satu', 'Paragraf dua', '--- selesai cerita ---', 'Pertanyaan cerita 1',
+    'NO: 2', 'PERTANYAAN: Cerita 1', '--- AKHIR SOAL ---',
+    'NO: 3', 'PERTANYAAN: Cerita 2', '--- AKHIR SOAL ---',
+    '=== AKHIR SOAL CERITA ===',
+    'NO: 4', 'PERTANYAAN: Biasa lagi', '--- AKHIR SOAL ---',
+    '=== MULAI SOAL CERITA ===', 'Bacaan tanpa label', '--- x ---', 'NO: 5', '--- AKHIR SOAL ---'
+  ])
+  assert.equal(blok.length, 5)
+  assert.equal(blok[0].kode, undefined)
+  assert.deepEqual([blok[1].kode, blok[2].kode], ['SOAL CERITA 1', 'SOAL CERITA 1'])
+  assert.equal(blok[1].teks, 'Paragraf satu\nParagraf dua')
+  assert.equal(blok[2].teks, 'Paragraf satu\nParagraf dua')
+  assert.equal(blok[3].kode, undefined, 'soal sesudah AKHIR bukan bagian cerita')
+  assert.deepEqual([blok[4].kode, blok[4].teks], ['SOAL CERITA 2', 'Bacaan tanpa label'])
+  assert.ok(!blok.some(b => b.lines.some(l => /MULAI|AKHIR SOAL CERITA/.test(l))), 'penanda tidak masuk ke isi soal')
 })
 console.log(`\n${lulus} tes lulus`)

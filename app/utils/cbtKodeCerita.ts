@@ -16,7 +16,7 @@ export const terapkanKodeCerita = (baris: BarisCerita[]): { soal: BankQuestionIt
   for (const [kode, anggota] of grup) {
     const teks = anggota.find(b => b.teks.trim())?.teks.trim()
     const pesan = new Set(anggota.map(b => b.soal.type)).size > 1
-      ? (n: number) => `Soal ${n}: Kode Cerita ${kode} dipakai di tipe berbeda.`
+      ? (n: number) => `Soal ${n}: Kode Cerita ${kode} dipakai di tipe berbeda (satu soal cerita hanya boleh berisi PG saja atau Esai saja).`
       : !teks ? (n: number) => `Soal ${n}: Teks Cerita untuk kode ${kode} belum diisi.` : null
     if (pesan) {
       anggota.forEach(b => { tolak.add(b); issues.push({ number: b.number, message: pesan(b.number) }) })

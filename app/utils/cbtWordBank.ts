@@ -32,11 +32,11 @@ export const decodeXml = (value: string) => value
 // nama kolom adalah LANJUTAN isinya (pertanyaan beberapa paragraf, kode program, dst.) dan digabung dengan baris baru,
 // bukan dibuang. Kolom satu baris (TIPE, KUNCI, dst.) tidak pernah menyerap baris lain. Penanda "---" memutus lanjutan,
 // dan banner "BLOK SOAL ..." tidak dibaca.
-const KOLOM_NARASI = new Set(['PERTANYAAN', 'RUBRIK', 'TEKSCERITA', 'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE'])
+const KOLOM_NARASI = new Set(['PERTANYAAN', 'RUBRIK', 'TEKSCERITA', 'CERITA', 'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE'])
 const KOLOM_DIKENAL = new Set([
   'JENJANG', 'KELAS', 'MATAPELAJARAN', 'PENYUSUN', 'KESULITANPAKET', 'NO', 'TIPE', 'KESULITAN', 'PERTANYAAN',
   'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE', 'KUNCI', 'MODEPG', 'RUBRIK', 'MEDIA', 'LINKMEDIA', 'JENISJAWABAN',
-  'NAMABANKSOAL', 'KETERANGAN', 'MINKATAESAI', 'KODECERITA', 'TEKSCERITA'
+  'NAMABANKSOAL', 'KETERANGAN', 'MINKATAESAI', 'MINIMALKATAESAI', 'KODECERITA', 'TEKSCERITA', 'CERITA'
 ])
 export const fields = (lines: string[]) => {
   const hasil: Record<string, string> = {}
@@ -53,6 +53,36 @@ export const fields = (lines: string[]) => {
     }
   }
   return hasil
+}
+
+// Soal cerita di template Word: bacaan ditulis SEKALI di antara penanda "=== MULAI SOAL CERITA" dan "=== AKHIR SOAL CERITA";
+// semua kotak soal di antaranya otomatis memakai bacaan itu (tanpa kode). Bacaan = isi sebelum garis "---" pertama.
+const MULAI_CERITA = /^=+\s*MULAI SOAL CERITA/i
+const AKHIR_CERITA = /^=+\s*AKHIR SOAL CERITA/i
+interface BlokSoal { lines: string[], kode?: string, teks?: string }
+export const bagiBlokSoal = (lines: string[]): BlokSoal[] => {
+  type Cerita = { kode: string, header: string[], terbuka: boolean }
+  const blok: { lines: string[], cerita?: Cerita }[] = []
+  let cerita: Cerita | undefined
+  let saatIni: (typeof blok)[number] | undefined
+  let nomor = 0
+  for (const line of lines) {
+    if (MULAI_CERITA.test(line)) { cerita = { kode: `SOAL CERITA ${++nomor}`, header: [], terbuka: true }; saatIni = undefined; continue }
+    if (AKHIR_CERITA.test(line)) { cerita = undefined; saatIni = undefined; continue }
+    if (/^NO\s*:/i.test(line)) {
+      if (cerita) cerita.terbuka = false
+      saatIni = { lines: [], cerita }
+      blok.push(saatIni)
+    } else if (cerita?.terbuka) { cerita.header.push(line); continue }
+    saatIni?.lines.push(line) // penanda "---" ikut agar fields() memutus lanjutan kolom narasi
+  }
+  return blok.map(({ lines: isi, cerita: c }) => {
+    if (!c) return { lines: isi }
+    const sampai = c.header.findIndex(line => /^---/.test(line))
+    const bacaan = (sampai < 0 ? c.header : c.header.slice(0, sampai)).filter(line => !/^BLOK SOAL\b/i.test(line))
+    const f = fields(bacaan)
+    return { lines: isi, kode: c.kode, teks: f.CERITA || f.TEKSCERITA || bacaan.join('\n').trim() }
+  })
 }
 
 const documentXml = async (file: File) => {
@@ -205,7 +235,7 @@ const required = (value: string | undefined, label: string, number: number) => {
 export const readWordBankTemplate = async (file: File, currentGrade: GradeType, classes: string[], subjects: string[]): Promise<WordBankPreview> => {
   if (!file.name.toLowerCase().endsWith('.docx')) throw new Error('Gunakan template Word berformat .docx.')
   const lines = linesFromXml(await documentXml(file))
-  const start = lines.findIndex(line => /^NO\s*:/i.test(line))
+  const start = lines.findIndex(line => /^NO\s*:/i.test(line) || MULAI_CERITA.test(line))
   if (start < 0) throw new Error('Tidak ada blok soal. Gunakan template Bank Soal CBT.')
   const metadata = fields(lines.slice(0, start))
   const grade = clean(metadata.JENJANG).toUpperCase() as GradeType
@@ -221,18 +251,12 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
   if (!subjects.includes(subject)) throw new Error('MATA_PELAJARAN pada template tidak ditemukan pada jenjang ini.')
   if (!teacherName) throw new Error('PENYUSUN pada template wajib diisi.')
 
-  const blocks: string[][] = []
-  let block: string[] = []
-  for (const line of lines.slice(start)) {
-    if (/^NO\s*:/i.test(line) && block.length) { blocks.push(block); block = [] }
-    block.push(line) // penanda "---" ikut agar fields() memutus lanjutan kolom narasi
-  }
-  if (block.length) blocks.push(block)
+  const blocks = bagiBlokSoal(lines.slice(start))
   const options = grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
   const baris: BarisCerita[] = []
   const issues: WordBankIssue[] = []
   blocks.forEach((item, index) => {
-    const row = fields(item)
+    const row = fields(item.lines)
     const number = Number(row.NO || index + 1)
     try {
       const type = toType(row.TIPE)
@@ -274,7 +298,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
         question.interactiveAnswerType = jenisJawaban === 'ISIAN' ? 'Isian' : question.isMultiSelect ? 'PG_Multi' : 'PG'
         if (jenisJawaban === 'ISIAN') question.key = required(row.KUNCI, 'KUNCI', number)
       }
-      baris.push({ number, kode: row.KODECERITA || '', teks: row.TEKSCERITA || '', soal: question })
+      baris.push({ number, kode: item.kode || row.KODECERITA || '', teks: item.teks || row.TEKSCERITA || '', soal: question })
     } catch (error) {
       issues.push({ number, message: error instanceof Error ? error.message : 'Format soal tidak valid.' })
     }
@@ -282,7 +306,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
   const cerita = terapkanKodeCerita(baris)
   const questions = cerita.soal
   issues.push(...cerita.issues)
-  const minKata = angkaMinKata(metadata.MINKATAESAI)
+  const minKata = angkaMinKata(metadata.MINIMALKATAESAI || metadata.MINKATAESAI)
   for (const q of questions) if (q.type === 'Esai') q.minKata = minKata
   if (!questions.length) throw new Error(`Tidak ada butir soal yang valid dalam dokumen.${issues[0] ? ` ${issues[0].message}` : ''}`)
   return {
