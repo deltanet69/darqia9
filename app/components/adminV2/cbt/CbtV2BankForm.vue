@@ -173,9 +173,11 @@ const removeSubSoal = (q: BankQuestionItem, sub: BankQuestionItem) => {
   activeQuestionId.value = sisa[0]!.id
 }
 
-// Esai "titik-titik" (mis. Bahasa Inggris): bila Jawaban Pasti diisi, soal dinilai otomatis tanpa AI. Kosong = esai uraian (rubrik + AI).
+// Esai "titik-titik" (mis. Bahasa Inggris): mode Jawaban Pasti dinilai otomatis tanpa AI, mode Esai Uraian memakai rubrik + AI. Mode = ada tidaknya jawabanPasti (undefined = uraian).
 const jawabanPasti = (q: BankQuestionItem) => q.jawabanPasti ?? ''
 const setJawabanPasti = (q: BankQuestionItem, e: Event) => { q.jawabanPasti = (e.target as HTMLInputElement).value }
+const modePasti = (q: BankQuestionItem) => q.jawabanPasti !== undefined
+const setModePasti = (q: BankQuestionItem, pasti: boolean) => { q.jawabanPasti = pasti ? q.jawabanPasti ?? '' : undefined }
 const punyaTitik = (q: BankQuestionItem) => /\.{3,}|…|_{3,}/.test(q.text)
 
 const toggleInteractiveMode = () => {
@@ -244,6 +246,13 @@ const submitForm = () => {
     currentStep.value = ceritaKosong.type
     activeQuestionId.value = ceritaKosong.id
     emit('toast', 'Isi teks cerita atau hapus butir cerita ini.')
+    return
+  }
+  const pastiKosong = validQuestions.find(q => q.type === 'Esai' && q.jawabanPasti !== undefined && !q.jawabanPasti.trim())
+  if (pastiKosong) {
+    currentStep.value = 'Esai'
+    activeQuestionId.value = pastiKosong.id
+    emit('toast', 'Isi Jawaban pasti atau ganti ke Esai Uraian.')
     return
   }
   const formulaTexts = (q: BankQuestionItem) => [q.text, ...(q.options?.map(option => option.text) || []), ...(q.type === 'Isian' || q.interactiveAnswerType === 'Isian' ? [String(q.key || '')] : [])]
@@ -397,19 +406,6 @@ const submitForm = () => {
         </div>
 
         <div>
-          <label for="bank-min-kata" class="block text-xs font-bold text-[#344054] mb-1.5">Minimal kata jawaban esai</label>
-          <input
-            id="bank-min-kata"
-            v-model.number="draft.minKata"
-            type="number"
-            min="0"
-            inputmode="numeric"
-            class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
-          >
-          <p class="mt-1 text-xs text-[#667085]">Isi 0 bila tanpa batas minimal.</p>
-        </div>
-
-        <div>
           <label class="block text-xs font-bold text-[#344054] mb-1.5">Guru Penyusun</label>
           <input
             v-if="lockTeacher"
@@ -521,6 +517,25 @@ const submitForm = () => {
           <span class="text-xs font-extrabold px-2.5 py-1 rounded-full bg-[#E8F0FE] text-[#1B5FD9]">
             {{ countByType(currentStep) }} butir
           </span>
+        </div>
+
+        <!-- Minimal kata hanya relevan untuk esai uraian; ditaruh di langkah Esai agar tidak perlu membuka panel konfigurasi -->
+        <div v-if="currentStep === 'Esai'" class="rounded-xl border border-[#E7EBF2] bg-[#F9FAFC] p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <div class="min-w-0 flex-1">
+            <label for="bank-min-kata" class="block text-xs font-bold text-[#344054]">Minimal kata jawaban esai uraian</label>
+            <p class="text-[11px] leading-relaxed text-[#667085]">Berlaku untuk semua esai uraian di bank ini. Isi 0 bila tanpa batas minimal. Soal berjawaban pasti tidak terpengaruh.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              id="bank-min-kata"
+              v-model.number="draft.minKata"
+              type="number"
+              min="0"
+              inputmode="numeric"
+              class="w-24 min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+            >
+            <span class="text-xs font-semibold text-[#667085]">kata</span>
+          </div>
         </div>
 
         <!-- If Interactive not active -->
@@ -703,10 +718,34 @@ const submitForm = () => {
                   <p class="mt-1 text-[11px] leading-relaxed text-[#667085]">Tulis jawaban yang benar persis seperti yang harus dijawab siswa. Rumus dan teks Arab didukung.</p>
                 </div>
 
-                <!-- Esai: Jawaban Pasti untuk isian titik-titik (dinilai otomatis); rubrik untuk esai uraian (rumus, gambar, OCR) -->
+                <!-- Esai: pilih cara menilai. Esai Uraian = rubrik (rumus, gambar, OCR; dinilai AI). Jawaban Pasti = isian titik-titik, dinilai otomatis -->
                 <div v-else-if="sub.type === 'Esai'" class="space-y-3">
-                  <div class="rounded-xl border border-[#E7EBF2] bg-[#F9FAFC] p-3 space-y-1.5">
-                    <label :for="'pasti-' + sub.id" class="block text-xs font-bold text-[#344054]">Jawaban pasti (opsional)</label>
+                  <div class="space-y-1.5">
+                    <span class="block text-xs font-bold text-[#344054]">Cara menilai</span>
+                    <div class="flex rounded-xl bg-[#EEF1F6] p-1 gap-1" role="group" aria-label="Cara menilai esai">
+                      <button
+                        type="button"
+                        class="flex-1 min-h-11 px-3 rounded-lg text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9]"
+                        :class="!modePasti(sub) ? 'bg-white text-[#0A2A5C] shadow-sm' : 'text-[#667085]'"
+                        :aria-pressed="!modePasti(sub)"
+                        @click="setModePasti(sub, false)"
+                      >
+                        Esai Uraian
+                      </button>
+                      <button
+                        type="button"
+                        class="flex-1 min-h-11 px-3 rounded-lg text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5FD9]"
+                        :class="modePasti(sub) ? 'bg-white text-[#0A2A5C] shadow-sm' : 'text-[#667085]'"
+                        :aria-pressed="modePasti(sub)"
+                        @click="setModePasti(sub, true)"
+                      >
+                        Jawaban Pasti
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="modePasti(sub)" class="space-y-1.5">
+                    <label :for="'pasti-' + sub.id" class="block text-xs font-bold text-[#344054]">Jawaban pasti</label>
                     <input
                       :id="'pasti-' + sub.id"
                       type="text"
@@ -717,19 +756,31 @@ const submitForm = () => {
                       class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
                       @input="setJawabanPasti(sub, $event)"
                     >
-                    <p class="text-[11px] leading-relaxed text-[#667085]">Isi untuk soal titik-titik atau jawaban satu kata/frasa. Contoh Bahasa Inggris: "She usually ... (go) to school" dengan jawaban pasti goes. Dinilai otomatis tanpa AI: cocok persis = nilai penuh, selain itu 0. Huruf besar/kecil dan tanda baca di ujung diabaikan. Beberapa jawaban benar dipisah titik koma, misalnya doesn't; does not. Siswa menjawab di kotak satu baris.</p>
-                    <p v-if="punyaTitik(sub) && !jawabanPasti(sub).trim()" class="text-[11px] font-semibold text-[#A15C00]" role="status">Soal ini berisi titik-titik. Isi Jawaban pasti agar dinilai otomatis dan tepat.</p>
+                    <p class="text-[11px] leading-relaxed text-[#667085]">Dinilai otomatis tanpa AI: cocok persis = nilai penuh, selain itu 0. Beberapa jawaban benar dipisah titik koma, misalnya doesn't; does not. Huruf besar/kecil dan tanda baca di ujung diabaikan.</p>
                   </div>
-                  <div>
-                  <label class="block text-xs font-bold text-[#344054] mb-1">{{ jawabanPasti(sub).trim() ? 'Rubrik Penilaian (opsional)' : 'Rubrik Penilaian' }}</label>
-                  <CbtRichQuestionEditor
-                    :model-value="sub.rubric || ''"
-                    @update:model-value="sub.rubric = $event"
-                    v-model:image-url="sub.rubricImageUrl"
-                    @message="emit('toast', $event)"
-                    @busy="ocrBerjalan = $event"
-                  />
-                  </div>
+
+                  <template v-else>
+                    <p v-if="punyaTitik(sub)" class="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[#A15C00]" role="status">
+                      <span>Soal ini berisi titik-titik.</span>
+                      <button
+                        type="button"
+                        class="min-h-11 px-3 rounded-lg border border-[#F5D08A] bg-[#FFF8E6] font-bold text-[#7A4A03]"
+                        @click="setModePasti(sub, true)"
+                      >
+                        Pakai Jawaban Pasti
+                      </button>
+                    </p>
+                    <div>
+                      <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
+                      <CbtRichQuestionEditor
+                        :model-value="sub.rubric || ''"
+                        @update:model-value="sub.rubric = $event"
+                        v-model:image-url="sub.rubricImageUrl"
+                        @message="emit('toast', $event)"
+                        @busy="ocrBerjalan = $event"
+                      />
+                    </div>
+                  </template>
                 </div>
 
                 <!-- Interaktif Specific -->

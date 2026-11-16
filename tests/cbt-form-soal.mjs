@@ -110,5 +110,20 @@ f2.submitForm()
 const simpanTitik = ev3.find(([e]) => e === 'save')?.[1]
 assert.ok(simpanTitik, 'bank dengan esai titik-titik tersimpan tanpa rubrik')
 assert.equal(simpanTitik.questions.find(q => q.type === 'Esai').jawabanPasti, 'goes')
+// Pilihan cara menilai esai: mode Jawaban Pasti yang kosong tidak boleh tersimpan diam-diam sebagai esai uraian.
+f2.addQuestion('Esai')
+const esaiBaru = f2.draft.value.questions.at(-1)
+esaiBaru.text = 'Esai baru'
+assert.equal(f2.modePasti(esaiBaru), false, 'esai baru = uraian')
+f2.setModePasti(esaiBaru, true)
+assert.equal(f2.modePasti(esaiBaru), true)
+assert.equal(f2.jawabanPasti(esaiBaru), '')
+ev3.length = 0
+f2.submitForm()
+assert.ok(ev3.some(([e, v]) => e === 'toast' && v === 'Isi Jawaban pasti atau ganti ke Esai Uraian.'))
+assert.ok(!ev3.some(([e]) => e === 'save'), 'tidak tersimpan selama Jawaban Pasti kosong')
+f2.setModePasti(esaiBaru, false)
+assert.equal(esaiBaru.jawabanPasti, undefined)
+assert.equal(f2.modePasti(esaiTitik), true, 'esai lain tidak ikut berubah')
 console.log('ok form')
 
