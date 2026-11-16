@@ -82,14 +82,15 @@ f.draft.value.name = 'Bab 1'
 f.submitForm()
 assert.ok(ev2.some(([e, v]) => e === 'toast' && v === 'Isi teks cerita atau hapus butir cerita ini.'))
 f.setCerita(kepala, 'Cerita bab 1')
-f.draft.value.minKata = 30
 f.currentStep.value = 'Esai'
 f.addQuestion('Esai')
-Object.assign(f.draft.value.questions.at(-1), { text: 'Esai', rubric: 'r' })
+Object.assign(f.draft.value.questions.at(-1), { text: 'Esai', rubric: 'r', minKata: 30 })
+f.addQuestion('Esai')
+Object.assign(f.draft.value.questions.at(-1), { text: 'Esai 2', rubric: 'r' })
 f.submitForm()
 const disimpan = ev2.find(([e]) => e === 'save')?.[1]
 assert.ok(disimpan, 'bank tersimpan')
-assert.equal(disimpan.questions.find(q => q.type === 'Esai').minKata, 30)
+assert.deepEqual(disimpan.questions.filter(q => q.type === 'Esai').map(q => q.minKata), [30, 0], 'minimal kata per soal, kosong = 0')
 assert.deepEqual(disimpan.questions.filter(q => q.storyGroup).map(q => q.storyText), ['Cerita bab 1', 'Cerita bab 1'])
 // Esai titik-titik: petunjuk muncul bila ada titik-titik tanpa Jawaban Pasti; jawaban pasti ikut tersimpan.
 const ev3 = []

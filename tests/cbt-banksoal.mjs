@@ -66,6 +66,7 @@ for (const grade of ['SMP', 'SMK']) {
   assert.equal(ceritaTemplate[0].storyGroup, ceritaTemplate[1].storyGroup)
   assert.ok(ceritaTemplate.every(q => q.storyText?.startsWith('Rina menabung')))
   assert.equal(imported.package.questions[4].jawabanPasti, undefined, 'esai uraian memakai rubrik')
+  assert.equal(imported.package.questions[4].minKata, 30, 'minimal kata per soal dari baris Minimal Kata')
   assert.equal(imported.package.questions[5].jawabanPasti, 'goes', 'contoh esai titik-titik Bahasa Inggris')
   assert.equal(imported.package.questions[1].isMultiSelect, true)
   assert.deepEqual(imported.package.questions[1].key, ['A', 'C'])

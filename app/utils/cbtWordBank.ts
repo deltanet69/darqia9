@@ -36,7 +36,7 @@ const KOLOM_NARASI = new Set(['PERTANYAAN', 'RUBRIK', 'TEKSCERITA', 'CERITA', 'P
 const KOLOM_DIKENAL = new Set([
   'JENJANG', 'KELAS', 'MATAPELAJARAN', 'PENYUSUN', 'KESULITANPAKET', 'NO', 'TIPE', 'KESULITAN', 'PERTANYAAN',
   'PILIHANA', 'PILIHANB', 'PILIHANC', 'PILIHAND', 'PILIHANE', 'KUNCI', 'MODEPG', 'RUBRIK', 'MEDIA', 'LINKMEDIA', 'JENISJAWABAN',
-  'NAMABANKSOAL', 'KETERANGAN', 'MINKATAESAI', 'MINIMALKATAESAI', 'KODECERITA', 'TEKSCERITA', 'CERITA', 'JAWABANPASTI'
+  'NAMABANKSOAL', 'KETERANGAN', 'MINKATAESAI', 'MINIMALKATAESAI', 'KODECERITA', 'TEKSCERITA', 'CERITA', 'JAWABANPASTI', 'MINIMALKATA'
 ])
 export const fields = (lines: string[]) => {
   const hasil: Record<string, string> = {}
@@ -291,6 +291,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
         const rubrik = row.RUBRIK || (pasti ? '' : row.KUNCI)
         if (pasti) { question.jawabanPasti = pasti; if (rubrik) question.rubric = clean(rubrik) }
         else question.rubric = required(rubrik, 'RUBRIK', number)
+        if (clean(row.MINIMALKATA)) question.minKata = angkaMinKata(row.MINIMALKATA)
       }
       if (type === 'Interaktif') {
         const mediaUrl = required(row.LINKMEDIA, 'LINK_MEDIA', number)
@@ -313,7 +314,7 @@ export const readWordBankTemplate = async (file: File, currentGrade: GradeType, 
   const questions = cerita.soal
   issues.push(...cerita.issues)
   const minKata = angkaMinKata(metadata.MINIMALKATAESAI || metadata.MINKATAESAI)
-  for (const q of questions) if (q.type === 'Esai') q.minKata = minKata
+  for (const q of questions) if (q.type === 'Esai') q.minKata ??= minKata
   if (!questions.length) throw new Error(`Tidak ada butir soal yang valid dalam dokumen.${issues[0] ? ` ${issues[0].message}` : ''}`)
   return {
     classroom,

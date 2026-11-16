@@ -15,7 +15,7 @@ const URL_HTTP = /^https?:\/\//i
 // Gambar tertanam (data URL) tidak dimasukkan karena ukurannya merusak berkas; jumlahnya dikembalikan untuk diberitahukan.
 export const buildBankCsv = (pkg: BankPackage): { csv: string; fileName: string; gambarDilewati: number } => {
   const huruf = pkg.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']
-  const header = ['No', 'Tipe', 'Kesulitan', 'Pertanyaan', ...huruf.map(h => `Pilihan ${h}`), 'Kunci', 'Rubrik', 'Gambar (URL)', 'Jenis Media', 'Media (URL)', 'Arab RTL', 'Kode Cerita', 'Teks Cerita', 'Jawaban Pasti']
+  const header = ['No', 'Tipe', 'Kesulitan', 'Pertanyaan', ...huruf.map(h => `Pilihan ${h}`), 'Kunci', 'Rubrik', 'Gambar (URL)', 'Jenis Media', 'Media (URL)', 'Arab RTL', 'Kode Cerita', 'Teks Cerita', 'Jawaban Pasti', 'Minimal Kata']
   let gambarDilewati = 0
   const cerita = kodeCeritaEkspor(pkg.questions)
   const baris = pkg.questions.map((q, i) => {
@@ -34,7 +34,8 @@ export const buildBankCsv = (pkg: BankPackage): { csv: string; fileName: string;
       q.isRtl ? 'Ya' : 'Tidak',
       cerita[i]!.kode,
       cerita[i]!.teks,
-      q.type === 'Esai' ? q.jawabanPasti || '' : ''
+      q.type === 'Esai' ? q.jawabanPasti || '' : '',
+      q.type === 'Esai' ? q.minKata ?? 0 : ''
     ].map(sel).join(',')
   })
   return {

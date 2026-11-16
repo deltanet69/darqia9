@@ -34,8 +34,6 @@ const emit = defineEmits<{
 
 // Deep clone of package to edit without mutating directly
 const draft = ref<BankPackage>(JSON.parse(JSON.stringify(props.pkg)))
-// Minimal kata diatur per bank; bank lama mengambil dari soal esai pertamanya.
-draft.value.minKata ??= draft.value.questions.find(q => q.type === 'Esai')?.minKata ?? 0
 const optionKeys = computed(() => props.grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'])
 for (const question of draft.value.questions) {
   if (question.type === 'PG') {
@@ -280,8 +278,8 @@ const submitForm = () => {
     emit('toast', 'Isi minimal 1 pertanyaan Pilihan Ganda.')
     return
   }
-  const minKata = Math.max(0, Math.floor(Number(draft.value.minKata) || 0))
-  for (const q of validQuestions) if (q.type === 'Esai') q.minKata = minKata
+  // Minimal kata diatur per soal esai (0 = tanpa batas); isian kosong/tidak valid disimpan sebagai 0.
+  for (const q of validQuestions) if (q.type === 'Esai') q.minKata = Math.max(0, Math.floor(Number(q.minKata) || 0))
   draft.value.questions = validQuestions
   draft.value.updatedAt = 'Baru saja'
   emit('save', draft.value)
@@ -519,25 +517,6 @@ const submitForm = () => {
           </span>
         </div>
 
-        <!-- Minimal kata hanya relevan untuk esai uraian; ditaruh di langkah Esai agar tidak perlu membuka panel konfigurasi -->
-        <div v-if="currentStep === 'Esai'" class="rounded-xl border border-[#E7EBF2] bg-[#F9FAFC] p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-          <div class="min-w-0 flex-1">
-            <label for="bank-min-kata" class="block text-xs font-bold text-[#344054]">Minimal kata jawaban esai uraian</label>
-            <p class="text-[11px] leading-relaxed text-[#667085]">Berlaku untuk semua esai uraian di bank ini. Isi 0 bila tanpa batas minimal. Soal berjawaban pasti tidak terpengaruh.</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <input
-              id="bank-min-kata"
-              v-model.number="draft.minKata"
-              type="number"
-              min="0"
-              inputmode="numeric"
-              class="w-24 min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
-            >
-            <span class="text-xs font-semibold text-[#667085]">kata</span>
-          </div>
-        </div>
-
         <!-- If Interactive not active -->
         <div
           v-if="currentStep === 'Interaktif' && !draft.hasInteractive"
@@ -770,6 +749,19 @@ const submitForm = () => {
                         Pakai Jawaban Pasti
                       </button>
                     </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <label :for="'min-kata-' + sub.id" class="text-xs font-bold text-[#344054]">Minimal kata jawaban</label>
+                      <input
+                        :id="'min-kata-' + sub.id"
+                        v-model.number="sub.minKata"
+                        type="number"
+                        min="0"
+                        inputmode="numeric"
+                        placeholder="0"
+                        class="w-20 min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]"
+                      >
+                      <span class="text-[11px] text-[#667085]">kata, isi 0 bila tanpa batas</span>
+                    </div>
                     <div>
                       <label class="block text-xs font-bold text-[#344054] mb-1">Rubrik Penilaian</label>
                       <CbtRichQuestionEditor

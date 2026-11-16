@@ -245,6 +245,16 @@ await cek('Esai tanpa Rubrik dan tanpa Jawaban Pasti ditolak dengan pesan yang j
 await cek('Word: label Jawaban Pasti dikenali sebagai isian satu baris', async () => {
   assert.equal(fields(['No: 6', 'Tipe: Esai', 'Pertanyaan: She ... (go)', 'Jawaban Pasti: goes'] ).JAWABANPASTI, 'goes')
 })
+await cek('Minimal kata per soal ikut ekspor-impor Excel; tanpa kolom memakai bawaan metadata', async () => {
+  const pkg = paketCerita()
+  pkg.questions.push({ id: 'e2', number: 5, type: 'Esai', difficulty: 'Sedang', text: 'Esai dua', key: '', rubric: 'r2', minKata: 10 })
+  const { blob, fileName } = await buildBankExcel(pkg)
+  const hasil = await readExcelBankTemplate(new File([await blob.arrayBuffer()], fileName), 'SMK', ['X AK'], ['Matematika'])
+  assert.deepEqual(hasil.package.questions.filter(q => q.type === 'Esai').map(q => q.minKata), [40, 10])
+  const tanpaKolom = await readExcelBankTemplate(await excelDari([pg(1, ''), [2, 'Esai', 'Sedang', 'Esai', '', '', '', '', '', '', 'rubrik', '', '']]), 'SMK', ['X AK'], ['Matematika'])
+  assert.equal(tanpaKolom.package.questions.find(q => q.type === 'Esai').minKata, 0)
+  assert.equal(fields(['Minimal Kata: 25']).MINIMALKATA, '25')
+})
 await cek('CSV: memuat kolom Kode Cerita', async () => {
   const { csv } = buildBankCsv(paketCerita())
   assert.ok(csv.includes('"Kode Cerita"') && csv.includes('"C1"'))

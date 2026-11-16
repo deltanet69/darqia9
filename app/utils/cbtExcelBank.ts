@@ -15,7 +15,7 @@ const DATA_HEADERS = (grade: GradeType) => [
   'No', 'Tipe', 'Kesulitan', 'Pertanyaan',
   ...(grade === 'SMP' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']).map(key => `Pilihan ${key}`),
   'Kunci', 'Rubrik', 'Gambar (URL)', 'Jenis Media', 'Media (URL YouTube / Path Audio)', 'Arab RTL', 'Jenis Jawaban Interaktif',
-  'Kode Cerita', 'Teks Cerita', 'Jawaban Pasti'
+  'Kode Cerita', 'Teks Cerita', 'Jawaban Pasti', 'Minimal Kata'
 ]
 
 export const readExcelBankTemplate = async (file: File, currentGrade: GradeType, classes: string[], subjects: string[]): Promise<WordBankPreview> => {
@@ -113,6 +113,8 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
         if (!pasti && !rubric) throw new Error(`Soal ${number}: RUBRIK wajib diisi untuk soal Esai (atau isi Jawaban Pasti).`)
         if (rubric) question.rubric = rubric
         if (pasti) question.jawabanPasti = pasti
+        const minimal = cellOf(row, 'Minimal Kata')
+        if (minimal) question.minKata = angkaMinKata(minimal)
       }
       if (type === 'Interaktif') {
         const mediaKind = keyOf(cellOf(row, 'Jenis Media'))
@@ -144,7 +146,7 @@ export const readExcelBankTemplate = async (file: File, currentGrade: GradeType,
   const questions = cerita.soal
   issues.push(...cerita.issues)
   const minKata = angkaMinKata(metadata.MINKATAESAI)
-  for (const q of questions) if (q.type === 'Esai') q.minKata = minKata
+  for (const q of questions) if (q.type === 'Esai') q.minKata ??= minKata
   if (!questions.length) throw new Error(`Tidak ada butir soal yang valid dalam file Excel.${issues[0] ? ` ${issues[0].message}` : ''}`)
   return {
     classroom,
@@ -214,7 +216,8 @@ export const buildBankExcel = async (pkg: BankPackage): Promise<{ blob: Blob; fi
         : '',
       cerita[indeks]!.kode,
       cerita[indeks]!.teks,
-      question.type === 'Esai' ? question.jawabanPasti || '' : ''
+      question.type === 'Esai' ? question.jawabanPasti || '' : '',
+      question.type === 'Esai' ? question.minKata ?? 0 : ''
     ])
   }
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), 'Data Soal')
