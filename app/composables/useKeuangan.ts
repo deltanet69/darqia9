@@ -44,7 +44,7 @@ const buatAwal = (): KeadaanKeuangan => ({
   bayarLokal: [], urutKwitansiLokal: 100
 })
 
-const KOL_PEMBAYARAN = 'id, no_kwitansi, grade, nis, tingkat, nominal, keterangan, metode, petugas, tanggal, cutoff_id'
+const KOL_PEMBAYARAN = 'id, no_kwitansi, no_invoice, grade, nis, tingkat, nominal, keterangan, metode, petugas, tanggal, cutoff_id'
 const KOL_CUTOFF = 'id, kode, grade, dari, sampai, trx, total, oleh, bukti, jumlah_setor'
 
 export const useKeuangan = () => {
@@ -202,7 +202,7 @@ export const useKeuangan = () => {
   }
 
   const barisBayar = (b: any, kodeCutoff?: Map<string, string>): Pembayaran => ({
-    id: b.id, no: b.no_kwitansi, nis: b.nis, grade: b.grade, tingkat: b.tingkat,
+    id: b.id, no: b.no_kwitansi, noInvoice: b.no_invoice || null, nis: b.nis, grade: b.grade, tingkat: b.tingkat,
     nominal: Number(b.nominal), keterangan: b.keterangan, metode: b.metode, petugas: b.petugas || '',
     tanggal: formatTanggal(b.tanggal), tanggalISO: b.tanggal,
     cutoff: b.cutoff_id ? (kodeCutoff?.get(b.cutoff_id) || 'Cut-off') : null
@@ -232,17 +232,17 @@ export const useKeuangan = () => {
       if (f.cari) {
         const q = f.cari.toLowerCase()
         const nama = new Map(state.value.siswaInduk.map(s => [s.nis, s]))
-        rows = rows.filter(b => b.no.toLowerCase().includes(q) || b.nis.includes(q) || (nama.get(b.nis)?.nama || '').toLowerCase().includes(q) || (nama.get(b.nis)?.kelas || '').toLowerCase().includes(q))
+        rows = rows.filter(b => b.no.toLowerCase().includes(q) || (b.noInvoice || '').toLowerCase().includes(q) || b.nis.includes(q) || (nama.get(b.nis)?.nama || '').toLowerCase().includes(q) || (nama.get(b.nis)?.kelas || '').toLowerCase().includes(q))
       }
       return { rows, total: rows.length }
     }
     let q = client.from('keuangan_pembayaran').select(KOL_PEMBAYARAN + ', keuangan_cutoff(kode)', { count: 'exact' })
-      .eq('grade', grade).order('tanggal', { ascending: false }).order('created_at', { ascending: false })
+      .eq('grade', grade).is('dihapus_pada', null).order('tanggal', { ascending: false }).order('created_at', { ascending: false })
       .range(f.dari || 0, (f.dari || 0) + (f.jumlah || 100) - 1)
     if (f.metode) q = q.eq('metode', f.metode)
     if (f.dariISO) q = q.gte('tanggal', f.dariISO)
     if (f.sampaiISO) q = q.lte('tanggal', f.sampaiISO)
-    if (f.cari) q = q.or(`no_kwitansi.ilike.%${f.cari}%,nis.ilike.%${f.cari}%`)
+    if (f.cari) q = q.or(`no_kwitansi.ilike.%${f.cari}%,no_invoice.ilike.%${f.cari}%,nis.ilike.%${f.cari}%`)
     const { data, error, count } = await q
     if (error) { tanganiGalat(error); return { rows: [], total: 0 } }
     const rows = (data || []).map((b: any) => ({ ...barisBayar(b), cutoff: b.cutoff_id ? (b.keuangan_cutoff?.kode || 'Cut-off') : null }))
@@ -254,7 +254,7 @@ export const useKeuangan = () => {
   const muatBayarSiswa = async (grade: Grade, nis: string): Promise<Pembayaran[]> => {
     if (lokal.value) return state.value.bayarLokal.filter(b => b.nis === nis && b.grade === grade).slice().reverse()
     const { data, error } = await client.from('keuangan_pembayaran').select(KOL_PEMBAYARAN + ', keuangan_cutoff(kode)')
-      .eq('grade', grade).eq('nis', nis).order('tanggal', { ascending: false }).order('created_at', { ascending: false })
+      .eq('grade', grade).eq('nis', nis).is('dihapus_pada', null).order('tanggal', { ascending: false }).order('created_at', { ascending: false })
     if (error) { tanganiGalat(error); return [] }
     const rows = (data || []).map((b: any) => ({ ...barisBayar(b), cutoff: b.cutoff_id ? (b.keuangan_cutoff?.kode || 'Cut-off') : null }))
     await muatItems(rows)
@@ -264,23 +264,25 @@ export const useKeuangan = () => {
   // Simpan pembayaran model LIST: satu pembayaran, banyak item keterangan.
   // tingkat selalu null (waterfall) — pembayaran menempel ke siswa; alokasi
   // ke tingkat dihitung ulang oleh keuanganCore dari total riwayat.
-  const simpanBayar = async (input: { grade: Grade, nis: string, nominal: number, items: ItemBayar[], metode: Pembayaran['metode'], petugas: string, tanggalISO: string }): Promise<Pembayaran> => {
+  const simpanBayar = async (input: { grade: Grade, nis: string, nominal: number, items: ItemBayar[], metode: Pembayaran['metode'], petugas: string, tanggalISO: string, noInvoice?: string }): Promise<Pembayaran> => {
     const items = input.items.filter(i => i.keterangan.trim() && i.nominal > 0)
     if (!items.length) throw new Error('Isi minimal satu keterangan pembayaran dengan nominal di atas 0.')
     const keterangan = ringkasKeterangan(items, input.grade)
+    const noInvoice = input.noInvoice?.trim() || ''
+    if (noInvoice && lokal.value && state.value.bayarLokal.some(b => b.noInvoice === noInvoice)) throw new Error(`No. Invoice ${noInvoice} sudah dipakai pembayaran lain.`)
     // Keterangan yang diketik manual & belum ada di master didaftarkan
     // otomatis agar muncul sebagai pilihan combobox berikutnya.
     for (const it of items) if (!state.value.keterangan.includes(it.keterangan.trim())) void tambahKeterangan(it.keterangan.trim())
     if (lokal.value) {
       const no = 'KEU-' + input.tanggalISO.slice(0, 4) + '-' + String(++state.value.urutKwitansiLokal).padStart(4, '0')
-      const b: Pembayaran = { no, nis: input.nis, grade: input.grade, tingkat: null, nominal: input.nominal, keterangan, items, metode: input.metode, petugas: input.petugas, tanggal: formatTanggal(input.tanggalISO), tanggalISO: input.tanggalISO, cutoff: null }
+      const b: Pembayaran = { no, noInvoice: noInvoice || null, nis: input.nis, grade: input.grade, tingkat: null, nominal: input.nominal, keterangan, items, metode: input.metode, petugas: input.petugas, tanggal: formatTanggal(input.tanggalISO), tanggalISO: input.tanggalISO, cutoff: null }
       state.value.bayarLokal.push(b)
       await segarkanRekap(b.grade, b.nis)
       return b
     }
     const sisip = (tingkat: number | null) => client.from('keuangan_pembayaran').insert({
       grade: input.grade, nis: input.nis, tingkat, nominal: input.nominal,
-      keterangan, metode: input.metode, petugas: input.petugas, tanggal: input.tanggalISO
+      keterangan, metode: input.metode, petugas: input.petugas, tanggal: input.tanggalISO, no_invoice: noInvoice || null
     }).select(KOL_PEMBAYARAN).single()
     let { data, error } = await sisip(null)
     if (error && /tingkat/i.test(String(error.message || ''))) {
@@ -290,6 +292,7 @@ export const useKeuangan = () => {
       const t = h ? h.per.findIndex(p => p.sisa > 0) : -1
       ;({ data, error } = await sisip(t >= 0 ? t : 0))
     }
+    if (error?.code === '23505') throw new Error(`No. Invoice ${noInvoice} sudah dipakai pembayaran lain.`)
     if (error || !data) { tanganiGalat(error); throw error || new Error('Pembayaran gagal disimpan') }
     // Item + tingkatnya menentukan tagihan mana yang tertutup: bila gagal, pembayaran dibatalkan agar tidak setengah tersimpan.
     const barisItem = items.map((it, i) => ({ pembayaran_id: data.id, keterangan: it.keterangan.trim(), nominal: it.nominal, tingkat: it.tingkat ?? null, urutan: i + 1 }))
@@ -303,17 +306,44 @@ export const useKeuangan = () => {
     return { ...barisBayar(data), items }
   }
 
-  const hapusBayar = async (b: Pembayaran) => {
+  // Soft delete: baris tetap di database (dengan siapa + alasan) agar jejak pembukuan utuh; rekap & riwayat mengabaikannya.
+  const hapusBayar = async (b: Pembayaran, alasan: string) => {
     if (b.cutoff) throw new Error('Transaksi sudah cut-off dan terkunci')
+    if (alasan.trim().length < 5) throw new Error('Alasan penghapusan wajib diisi (minimal 5 karakter).')
     if (lokal.value) {
       state.value.bayarLokal = state.value.bayarLokal.filter(x => x.no !== b.no)
       await segarkanRekap(b.grade, b.nis)
       return
     }
-    const { error } = await client.from('keuangan_pembayaran').delete().eq('id', b.id)
+    const { data: u } = await client.auth.getUser()
+    const { error } = await client.from('keuangan_pembayaran')
+      .update({ dihapus_pada: new Date().toISOString(), dihapus_oleh: u?.user?.email || '', alasan_hapus: alasan.trim() }).eq('id', b.id)
     if (error) { tanganiGalat(error); throw error }
     await segarkanRekap(b.grade, b.nis)
-    catat('Keuangan', 'Hapus pembayaran', b.no)
+    catat('Keuangan', 'Hapus pembayaran (soft delete)', `${b.no} - ${alasan.trim()}`)
+  }
+
+  // Ubah pembayaran (nominal, item, metode, tanggal, no invoice) — atomik lewat fungsi database.
+  const ubahBayar = async (b: Pembayaran, input: { items: ItemBayar[], metode: Pembayaran['metode'], tanggalISO: string, noInvoice: string }) => {
+    if (b.cutoff) throw new Error('Transaksi sudah cut-off dan terkunci')
+    const items = input.items.filter(i => i.keterangan.trim() && i.nominal > 0)
+    if (!items.length) throw new Error('Isi minimal satu keterangan pembayaran dengan nominal di atas 0.')
+    const nominal = items.reduce((a, i) => a + i.nominal, 0)
+    const keterangan = ringkasKeterangan(items, b.grade)
+    const noInvoice = input.noInvoice.trim()
+    if (lokal.value) {
+      Object.assign(b, { items, nominal, keterangan, metode: input.metode, tanggalISO: input.tanggalISO, tanggal: formatTanggal(input.tanggalISO), noInvoice: noInvoice || null })
+      await segarkanRekap(b.grade, b.nis)
+      return
+    }
+    const { error } = await client.rpc('keuangan_ubah_pembayaran', {
+      p_id: b.id, p_nominal: nominal, p_metode: input.metode, p_tanggal: input.tanggalISO, p_no_invoice: noInvoice, p_keterangan: keterangan,
+      p_items: items.map((it, i) => ({ keterangan: it.keterangan.trim(), nominal: it.nominal, tingkat: it.tingkat ?? null, urutan: i + 1 }))
+    })
+    if (error?.code === '23505') throw new Error(`No. Invoice ${noInvoice} sudah dipakai pembayaran lain.`)
+    if (error) { tanganiGalat(error); throw error }
+    await segarkanRekap(b.grade, b.nis)
+    catat('Keuangan', 'Ubah pembayaran', b.no)
   }
 
   const simpanPenetapan = async (grade: Grade, nis: string, kode: string, tambahan: [number, number, number, number]) => {
@@ -374,20 +404,40 @@ export const useKeuangan = () => {
     catat('Keuangan', 'Impor kode siswa', `${daftar.length} siswa`)
   }
 
+  // Penetapan yang NIS-nya tak ada di tabel students (sisa uji coba / siswa dihapus) bukan pemakai sungguhan.
+  const nisTerdaftar = async (grade: Grade, nisList: string[]): Promise<Set<string>> => {
+    if (lokal.value || !nisList.length) return new Set(state.value.siswaInduk.filter(s => s.grade === grade).map(s => s.nis))
+    const { data, error } = await client.from('students').select('nis').eq('grade', grade).in('nis', nisList)
+    if (error) { tanganiGalat(error); throw error }
+    return new Set((data || []).map((s: any) => s.nis))
+  }
+
   const hapusPaket = async (kode: string) => {
-    const dipakai = state.value.penetapan.some(p => p.kode === kode)
     const p = state.value.paket.find(x => x.kode === kode)
     if (!p) return
-    if (dipakai) { // paket terpakai tidak dihapus — dinonaktifkan agar riwayat tetap terbaca
+    const tetap = state.value.penetapan.filter(x => x.kode === kode)
+    // Siswa nonaktif/lulus tetap dihitung: hanya NIS yang sama sekali tak ada di Data Induk dianggap yatim.
+    const terdaftar = await nisTerdaftar(p.grade, tetap.map(x => x.nis))
+    if (tetap.some(x => terdaftar.has(x.nis))) { // paket terpakai tidak dihapus — dinonaktifkan agar riwayat tetap terbaca
       p.aktif = false
-      if (!lokal.value) await client.from('keuangan_paket').update({ aktif: false }).eq('kode', kode)
+      if (!lokal.value) {
+        const { error } = await client.from('keuangan_paket').update({ aktif: false }).eq('kode', kode)
+        if (error) { tanganiGalat(error); throw error }
+      }
       return 'nonaktif'
     }
-    state.value.paket = state.value.paket.filter(x => x.kode !== kode)
     if (!lokal.value) {
+      // Penetapan yatim menahan FK keuangan_siswa -> keuangan_paket: bersihkan dulu.
+      if (tetap.length) {
+        const { error } = await client.from('keuangan_siswa').delete().eq('grade', p.grade).eq('kode', kode)
+        if (error) { tanganiGalat(error); throw error }
+      }
       const { error } = await client.from('keuangan_paket').delete().eq('kode', kode)
       if (error) { tanganiGalat(error); throw error }
     }
+    state.value.penetapan = state.value.penetapan.filter(x => x.kode !== kode)
+    state.value.paket = state.value.paket.filter(x => x.kode !== kode)
+    catat('Keuangan', 'Hapus kode keuangan', kode)
     return 'hapus'
   }
 
@@ -499,7 +549,7 @@ export const useKeuangan = () => {
 
   return {
     state, lokal, pesanGalat, muatSemua, barisSiswa, siswaSatu,
-    muatRiwayat, muatBayarSiswa, simpanBayar, hapusBayar,
+    muatRiwayat, muatBayarSiswa, simpanBayar, hapusBayar, ubahBayar,
     simpanPenetapan, simpanPaket, hapusPaket, simpanPaketBanyak, simpanPenetapanBanyak,
     tambahKeterangan, hapusKeterangan, buatCutoff, unggahBuktiCutoff, ubahCutoff, hapusCutoff,
     rilisTagihan, sudahDirilis

@@ -254,7 +254,7 @@ const tautanWA = computed(() => {
 
           <div class="border-b border-slate-200 pb-2 text-center">
             <h4 class="text-[15px] font-bold uppercase tracking-wider text-slate-900">Invoice Pembayaran</h4>
-            <p class="text-[11.5px] font-medium text-slate-500">No. Invoice: {{ bayar.no }} &middot; Tanggal: {{ bayar.tanggal }}</p>
+            <p class="text-[11.5px] font-medium text-slate-500">No. Kwitansi: {{ bayar.no }}<template v-if="bayar.noInvoice"> &middot; No. Invoice: {{ bayar.noInvoice }}</template> &middot; Tanggal: {{ bayar.tanggal }}</p>
           </div>
 
           <table class="mt-4 w-full text-[12.5px]">

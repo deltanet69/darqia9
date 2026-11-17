@@ -19,7 +19,7 @@ const parsedFromId = computed(() => {
   }
   return {
     grade: ((route.query.grade as string) || 'SMK').toUpperCase() as Grade,
-    nis: (route.query.nis as string) || '1130'
+    nis: (route.query.nis as string) || ''
   }
 })
 
@@ -43,13 +43,13 @@ onMounted(async () => {
 
 const siswaReal = computed<BarisSiswa | undefined>(() => K.siswaSatu(grade.value, nis.value))
 
-// Fallback data bila diakses dari tautan luar
-const namaSiswa = computed(() => siswaReal.value?.nama || (nis.value === '1130' ? 'ANISA UTAMA' : `Siswa NIS ${nis.value}`))
-const kelasSiswa = computed(() => siswaReal.value?.kelas || 'X MM')
-const nisnSiswa = computed(() => siswaReal.value?.nisn || '1033758619')
-const kodeSiswa = computed(() => siswaReal.value?.kode || 'R-2627')
-const angkatanSiswa = computed(() => siswaReal.value?.angkatan || 2025)
-const statusBayarSiswa = computed(() => siswaReal.value?.statusBayar || 'Kurang')
+// Siswa tidak ditemukan: tampilkan strip, jangan pernah data karangan.
+const namaSiswa = computed(() => siswaReal.value?.nama || `Siswa NIS ${nis.value}`)
+const kelasSiswa = computed(() => siswaReal.value?.kelas || '-')
+const nisnSiswa = computed(() => siswaReal.value?.nisn || '-')
+const kodeSiswa = computed(() => siswaReal.value?.kode || '-')
+const angkatanSiswa = computed(() => siswaReal.value?.angkatan || '-')
+const statusBayarSiswa = computed(() => siswaReal.value?.statusBayar || 'Belum Bayar')
 const sekolah = computed(() => grade.value === 'SMP' ? 'SMP IT Bina Cendekia Assalam' : 'SMK IT Attaqwa 9')
 
 const kepsek = computed(() => {

@@ -27,6 +27,7 @@ const items = ref<BarisItem[]>([itemBaru('SPP')])
 watch(() => props.siswa.nis, () => { items.value = [itemBaru('SPP')] })
 const metode = ref<Pembayaran['metode']>('Tunai')
 const tanggal = ref(new Date().toISOString().slice(0, 10))
+const noInvoice = ref('')
 const sibuk = ref(false)
 const galat = ref('')
 
@@ -69,8 +70,9 @@ const simpan = async () => {
   sibuk.value = true
   try {
     const daftar: ItemBayar[] = itemValid.value.map(b => ({ keterangan: b.keterangan.trim(), nominal: angkaItem(b), tingkat: b.tingkat }))
-    const b = await K.simpanBayar({ grade: props.siswa.grade, nis: props.siswa.nis, nominal: total.value, items: daftar, metode: metode.value, petugas: 'Anis Azyzy, S.T', tanggalISO: tanggal.value })
+    const b = await K.simpanBayar({ grade: props.siswa.grade, nis: props.siswa.nis, nominal: total.value, items: daftar, metode: metode.value, petugas: 'Anis Azyzy, S.T', tanggalISO: tanggal.value, noInvoice: noInvoice.value })
     items.value = [itemBaru('SPP')]
+    noInvoice.value = ''
     emit('tersimpan', b)
   } catch (e: any) {
     galat.value = e?.message || 'Pembayaran gagal disimpan.'
@@ -175,6 +177,17 @@ const simpan = async () => {
     <datalist id="daftar-keterangan-master">
       <option v-for="k in K.state.value.keterangan" :key="k" :value="k" />
     </datalist>
+
+    <!-- No. Invoice manual (pembukuan TU); No. Kwitansi KEU-... tetap dibuat otomatis -->
+    <div class="mt-4 pt-3 border-t border-slate-100">
+      <label class="mb-1 block text-[11.5px] font-medium text-slate-600">No. Invoice Pembukuan (opsional)</label>
+      <input
+        v-model="noInvoice"
+        placeholder="No Surat/No Invoice/Bulan/Tahun, cth: 01/01/12/2026"
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-[12.5px] text-slate-800 placeholder:text-slate-400 focus:border-[#1B5FD9] focus:outline-none"
+      >
+      <p class="mt-1 text-[11px] text-slate-400">Diketik manual oleh admin/TU. No. Kwitansi KEU-… tetap dibuat otomatis.</p>
+    </div>
 
     <!-- Metode Pembayaran & Tanggal Bayar -->
     <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">

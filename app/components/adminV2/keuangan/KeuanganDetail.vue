@@ -8,6 +8,7 @@ import {
 } from '~/composables/keuanganCore'
 import KeuanganFormBayar from './KeuanganFormBayar.vue'
 import KeuanganCetak from './KeuanganCetak.vue'
+import KeuanganKelolaBayar from './KeuanganKelolaBayar.vue'
 
 // Rincian Keuangan Siswa — tata letak 2 kolom hasil meeting manajemen
 // 4 Nov 2026: KIRI kartu siswa + form input pembayaran (nempel, bukan
@@ -20,6 +21,12 @@ const emit = defineEmits<{ kembali: [] }>()
 const grade = useAdminGrade()
 const K = useKeuangan()
 
+const kelola = ref<null | { b: Pembayaran, mode: 'ubah' | 'hapus' }>(null)
+const selesaiKelola = async (pesan: string) => {
+  kelola.value = null
+  riwayat.value = await K.muatBayarSiswa(grade.value, props.nis)
+  tampilNotif(pesan)
+}
 const cetak = ref<null | { jenis: 'wa' | 'surat' | 'kwitansi', bayar?: Pembayaran | null }>(null)
 const tambahanUntuk = ref<number | null>(null)
 const namaBiaya = ref('')
@@ -518,7 +525,11 @@ const simpanTambahan = async () => {
 
                 <!-- Info Invoice & Petugas -->
                 <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-slate-500">
-                  <span>No. Invoice: <b class="font-medium text-slate-700">{{ b.no }}</b></span>
+                  <span>No. Kwitansi: <b class="font-medium text-slate-700">{{ b.no }}</b></span>
+                  <template v-if="b.noInvoice">
+                    <span>&middot;</span>
+                    <span>No. Invoice: <b class="font-medium text-slate-700">{{ b.noInvoice }}</b></span>
+                  </template>
                   <span>&middot;</span>
                   <span>{{ b.tanggal }}</span>
                   <span>&middot;</span>
@@ -544,6 +555,10 @@ const simpanTambahan = async () => {
                 >
                   <span>Cetak Invoice</span>
                 </button>
+                <div v-if="!b.cutoff" class="flex gap-3 text-[12px] font-semibold">
+                  <button type="button" class="text-slate-600 hover:underline" @click="kelola = { b, mode: 'ubah' }">Ubah</button>
+                  <button type="button" class="text-[#B42318] hover:underline" @click="kelola = { b, mode: 'hapus' }">Hapus</button>
+                </div>
               </div>
             </div>
 
@@ -556,6 +571,8 @@ const simpanTambahan = async () => {
         </div>
       </div>
     </div>
+
+    <KeuanganKelolaBayar v-if="kelola" :bayar="kelola.b" :mode="kelola.mode" @tutup="kelola = null" @selesai="selesaiKelola" />
 
     <!-- Modal Cetak -->
     <KeuanganCetak

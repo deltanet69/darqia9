@@ -15,8 +15,9 @@ const imporBuka = ref(false)
 
 const barisSiswa = computed(() => K.barisSiswa(grade.value))
 const paketGrade = computed(() => K.state.value.paket.filter(p => p.grade === grade.value))
-const pemakai = (kode: string) => K.state.value.penetapan.filter(p => p.kode === kode && p.grade === grade.value).length
-const totalPemakai = computed(() => K.state.value.penetapan.filter(p => p.grade === grade.value).length)
+// Dihitung dari siswa Data Induk, bukan baris penetapan mentah (penetapan yatim tidak terhitung).
+const pemakai = (kode: string) => barisSiswa.value.filter(s => s.kode === kode).length
+const totalPemakai = computed(() => barisSiswa.value.filter(s => s.kode).length)
 const paketAktifCount = computed(() => paketGrade.value.filter(p => p.aktif).length)
 
 const tampilNotif = (t: string) => { notif.value = t; setTimeout(() => { notif.value = '' }, 3200) }
@@ -35,8 +36,13 @@ const simpan = async () => {
   modal.value = null
 }
 const hapus = async (p: PaketKeuangan) => {
-  const hasil = await K.hapusPaket(p.kode)
-  tampilNotif(hasil === 'nonaktif' ? `Paket ${p.kode} sedang dipakai ${pemakai(p.kode)} siswa — tidak dihapus, hanya dinonaktifkan agar riwayat tetap terbaca.` : `Paket ${p.kode} dihapus.`)
+  if (!confirm(`Hapus Kode Keuangan ${p.kode}?`)) return
+  try {
+    const hasil = await K.hapusPaket(p.kode)
+    tampilNotif(hasil === 'nonaktif' ? `Paket ${p.kode} masih dipasang ke siswa di Data Induk — tidak dihapus, hanya dinonaktifkan agar riwayat tetap terbaca.` : `Paket ${p.kode} dihapus.`)
+  } catch (e: any) {
+    tampilNotif(`Gagal menghapus ${p.kode}: ${e?.message || e}`)
+  }
 }
 const tambahKet = async () => {
   const nama = ketBaru.value.trim()

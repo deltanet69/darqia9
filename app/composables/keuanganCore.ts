@@ -51,7 +51,8 @@ export interface ItemBayar { keterangan: string, nominal: number, tingkat?: numb
 
 export interface Pembayaran {
   id?: string
-  no: string
+  no: string // nomor kwitansi otomatis (KEU-...)
+  noInvoice?: string | null // nomor pembukuan manual admin/TU, cth 01/01/12/2026
   nis: string
   grade: Grade
   tingkat: number | null // null = pembayaran waterfall (mengalir); angka = anotasi historis data lama

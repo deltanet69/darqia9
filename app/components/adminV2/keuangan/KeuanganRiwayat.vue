@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import KeuanganKelolaBayar from './KeuanganKelolaBayar.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAdminGrade } from '~/composables/useAdminGrade'
 import { useKeuangan } from '~/composables/useKeuangan'
@@ -34,23 +35,19 @@ const totalTunai = computed(() => tunaiRows.value.reduce((acc, b) => acc + (b.no
 const nonTunaiRows = computed(() => rows.value.filter(b => b.metode !== 'Tunai'))
 const totalNonTunai = computed(() => nonTunaiRows.value.reduce((acc, b) => acc + (b.nominal || 0), 0))
 
-const hapus = async (b: Pembayaran) => {
-  if (!window.confirm(`Hapus pembayaran ${b.no} senilai ${rp(b.nominal)}?`)) return
-  try {
-    await K.hapusBayar(b)
-    tampilNotif(`Pembayaran ${b.no} dihapus. Total Dibayar siswa dihitung ulang dari riwayat yang tersisa.`)
-    await muat()
-  } catch (e: any) {
-    tampilNotif(e?.message || 'Pembayaran gagal dihapus.')
-  }
+const kelola = ref<null | { b: Pembayaran, mode: 'ubah' | 'hapus' }>(null)
+const selesaiKelola = async (pesan: string) => {
+  kelola.value = null
+  tampilNotif(pesan)
+  await muat()
 }
 
 const ekspor = () => {
-  const kepala = 'No Invoice;Tanggal;NIS;Nama;Kelas;Tingkat;Keterangan;Metode;Nominal;Petugas;Status\n'
+  const kepala = 'No Kwitansi;No Invoice;Tanggal;NIS;Nama;Kelas;Tingkat;Keterangan;Metode;Nominal;Petugas;Status\n'
   const isi = rows.value.map(b => {
     const s = namaSiswa(b.nis)
     const rincian = b.items && b.items.length ? b.items.map(it => `${namaItem(it, b.grade)} ${it.nominal}`).join(' + ') : b.keterangan
-    return [b.no, b.tanggal, b.nis, s?.nama || '', s?.kelas || '', aliranBayar(b), rincian, b.metode, b.nominal, b.petugas, b.cutoff ? `Cut-off ${b.cutoff}` : 'Terbuka'].join(';')
+    return [b.no, b.noInvoice || '', b.tanggal, b.nis, s?.nama || '', s?.kelas || '', aliranBayar(b), rincian, b.metode, b.nominal, b.petugas, b.cutoff ? `Cut-off ${b.cutoff}` : 'Terbuka'].join(';')
   }).join('\n')
   const a = document.createElement('a')
   a.href = URL.createObjectURL(new Blob(['\ufeff' + kepala + isi], { type: 'text/csv' }))
@@ -229,6 +226,7 @@ const ekspor = () => {
             <tr v-for="b in rows" :key="b.no" class="hover:bg-slate-50/70 transition-colors">
               <td class="py-3.5 px-4 whitespace-nowrap">
                 <span class="font-bold text-[#1B5FD9] block">{{ b.no }}</span>
+                <span v-if="b.noInvoice" class="block text-[11.5px] font-semibold text-slate-600">Inv. {{ b.noInvoice }}</span>
                 <span class="text-[11.5px] text-slate-500">{{ b.tanggal }}</span>
               </td>
               <td class="py-3.5 px-4">
@@ -275,14 +273,10 @@ const ekspor = () => {
                 </span>
               </td>
               <td class="py-3.5 px-4 text-right whitespace-nowrap">
-                <button
-                  v-if="!b.cutoff"
-                  type="button"
-                  @click="hapus(b)"
-                  class="rounded-lg border border-red-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#B42318] hover:bg-red-50 cursor-pointer"
-                >
-                  Hapus
-                </button>
+                <template v-if="!b.cutoff">
+                  <button type="button" @click="kelola = { b, mode: 'ubah' }" class="mr-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">Ubah</button>
+                  <button type="button" @click="kelola = { b, mode: 'hapus' }" class="rounded-lg border border-red-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#B42318] hover:bg-red-50 cursor-pointer">Hapus</button>
+                </template>
                 <span v-else class="text-[12px] font-semibold text-slate-400">Terkunci</span>
               </td>
             </tr>
@@ -296,6 +290,7 @@ const ekspor = () => {
           <div class="flex items-start justify-between gap-2">
             <div>
               <span class="font-bold text-[#1B5FD9] text-[13px] block">{{ b.no }}</span>
+              <span v-if="b.noInvoice" class="block text-[11.5px] font-semibold text-slate-600">Inv. {{ b.noInvoice }}</span>
               <span class="text-[11.5px] text-slate-500">{{ b.tanggal }} &middot; {{ b.metode }}</span>
             </div>
             <span v-if="b.cutoff" class="rounded-full bg-amber-50 px-2.5 py-0.5 text-[10.5px] font-bold text-amber-800 border border-amber-200 shrink-0">
@@ -334,14 +329,10 @@ const ekspor = () => {
             <span class="text-slate-500">
               {{ b.keterangan }} &middot; <span class="font-semibold text-slate-700">{{ aliranBayar(b) }}</span>
             </span>
-            <button
-              v-if="!b.cutoff"
-              type="button"
-              @click="hapus(b)"
-              class="text-[11.5px] font-bold text-[#B42318] hover:underline cursor-pointer"
-            >
-              Hapus
-            </button>
+            <span v-if="!b.cutoff" class="flex gap-3">
+              <button type="button" @click="kelola = { b, mode: 'ubah' }" class="text-[11.5px] font-bold text-slate-700 hover:underline cursor-pointer">Ubah</button>
+              <button type="button" @click="kelola = { b, mode: 'hapus' }" class="text-[11.5px] font-bold text-[#B42318] hover:underline cursor-pointer">Hapus</button>
+            </span>
             <span v-else class="text-[11.5px] text-slate-400">Terkunci</span>
           </div>
         </div>
@@ -352,5 +343,6 @@ const ekspor = () => {
         <p class="mt-1 text-[12.5px] text-slate-500">Coba ubah kata kunci pencarian atau filter metode pembayaran.</p>
       </div>
     </div>
+    <KeuanganKelolaBayar v-if="kelola" :bayar="kelola.b" :mode="kelola.mode" @tutup="kelola = null" @selesai="selesaiKelola" />
   </div>
 </template>
