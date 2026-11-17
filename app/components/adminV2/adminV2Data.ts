@@ -65,7 +65,7 @@ export const GROUPS: GroupItem[] = [
       ['LMS', 'Ujian harian digital', 'i-book'],
       ['Konten Website', 'Kelola konten web', 'i-doc'],
       ['SPMB', 'Penerimaan murid baru', 'i-plus'],
-      ['Perpustakaan digital', 'Katalog & sirkulasi', 'i-book']
+      ['Perpustakaan digital', 'Koleksi buku & statistik baca', 'i-book']
     ]
   },
   {
@@ -102,7 +102,7 @@ export const ADMIN_DESTINATIONS: Record<string, string> = {
   'LMS': '/adminV2/lms',
   'Konten Website': '/adminV2/konten',
   'SPMB': '/adminV2/spmb',
-  'Perpustakaan digital': '#',
+  'Perpustakaan digital': '/adminV2/perpustakaan',
   'Manajemen user': '/adminV2/users',
   'Hak Akses (RBAC)': '/adminV2/rbac',
   'Log Aktivitas': '/adminV2/log-aktivitas',

@@ -331,6 +331,7 @@ const PATH_KE_MODUL: Array<[string, string | null]> = [
   ['/adminv2/lms', 'LMS'],
   ['/adminv2/konten', 'Konten Website'],
   ['/adminv2/spmb', 'SPMB'],
+  ['/adminv2/perpustakaan', 'Perpustakaan Digital'],
   ['/adminv2/users', 'Manajemen User'],
   ['/adminv2/rbac', 'Hak Akses (RBAC)'],
   ['/adminv2/log-aktivitas', 'Log Aktivitas'],

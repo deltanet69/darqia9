@@ -7,8 +7,8 @@ export const MODUL_MANAJEMEN_USER = 'Manajemen User'
 // Gerbang bersama endpoint /api/admin/users: sesi valid + secret key server
 // + hak kelola menurut (berurutan) email utama, role metadata auth lama,
 // peran terkunci RBAC (Superadmin: semua aksi), atau matriks izin RBAC
-// untuk modul Manajemen User sesuai aksi ('lihat' | 'buat' | 'ubah' | 'hapus').
-export const gerbangAdminUsers = async (event: any, aksi: string) => {
+// untuk modul Manajemen User (atau modul lain lewat parameter `modul`) sesuai aksi ('lihat' | 'buat' | 'ubah' | 'hapus').
+export const gerbangAdminUsers = async (event: any, aksi: string, modul: string = MODUL_MANAJEMEN_USER) => {
   let claims
   try {
     claims = await serverSupabaseUser(event)
@@ -52,7 +52,7 @@ export const gerbangAdminUsers = async (event: any, aksi: string) => {
         .from('rbac_permissions')
         .select('peran_id')
         .in('peran_id', peranIds)
-        .eq('modul', MODUL_MANAJEMEN_USER)
+        .eq('modul', modul)
         .eq(aksi, true)
       if (izin?.length) return konteks
     }

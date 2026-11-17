@@ -62,6 +62,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     // Kredensial server-only (tidak bocor ke browser)
+    // Folder buku PDF Perpustakaan Digital (katalog + berkas) di VPS
+    perpusDir: process.env.PERPUS_DIR || '/srv/darqia/perpus',
     instagramAppSecret: process.env.INSTAGRAM_APP_SECRET || '',
     instagramAccessToken: process.env.INSTAGRAM_ACCESS_TOKEN || '',
     // OCR bank soal: dua pembaca independen (utama + pemeriksa), keduanya API kompatibel OpenAI (/chat/completions).

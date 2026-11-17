@@ -1,181 +1,203 @@
-// Lapisan data Perpustakaan Digital (migrasi 0028):
-// - Katalog dibaca dari perpus_buku + perpus_bab (RLS baca publik — isi SIBI
-//   memang terbuka). Selama 0028 belum dijalankan: mode contoh lokal dengan
-//   data identik seed (perpusContoh.ts) + banner penanda, pola yang sama
-//   seperti Tiketing/Keuangan sebelum migrasinya jalan.
-// - Login NIS diverifikasi server (/api/perpus/login, service role) —
-//   halaman publik tidak pernah membaca tabel students langsung.
-// - Sesi + progres + rak tersimpan di localStorage perangkat (per NIS),
-//   persis desain preview v8: "sesi tersimpan di perangkat ini".
-import { computed, ref } from 'vue'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import {
-  jurusanDariKelas, tingkatDariKelas,
-  type Buku, type PetaProgres, type SesiSiswa
-} from './perpusCore'
-import { BUKU_CONTOH, SISWA_CONTOH } from './perpusContoh'
+// Keadaan bersama Perpustakaan Digital (klien): masuk Google + verifikasi NIS/NISN, katalog, kisi-kisi,
+// dan data baca per siswa (disimpan ke server). Satu instance untuk seluruh komponen perpus.
+import { computed } from 'vue'
+import { useState } from '#app'
+import { useSupabaseClient } from '#imports'
+import { jenjangHost } from '~/composables/domainCore'
+import { dataBaru, gabungBaca, kapan, type Buku, type DataSiswa, type SesiPerpus } from '~/composables/perpusCore'
 
-interface KeadaanPerpus {
-  keadaan: 'siap' | 'belum-migrasi' | 'galat'
-  memuat: boolean
-  termuat: boolean
-  buku: Buku[]
-  sesi: SesiSiswa | null
-  prog: PetaProgres
-  rak: string[]
+export interface TopikKisiBuku { t: string, i: string, buku: Array<{ id: string, skor: number }> }
+export interface Kisi { id: string, judul: string, mapel: string, hari: number, topik: TopikKisiBuku[] }
+type Tahap = 'memuat' | 'awal' | 'verifikasi' | 'masuk'
+type Tab = 'beranda' | 'katalog' | 'belajar' | 'koleksi' | 'profil'
+
+export interface Notif {
+  id: string, ts: number, waktu: string, jenis: string, judul: string, isi: string
+  kisiId?: string, mapel?: string, buku?: Buku, hal?: number
 }
 
-const buatAwal = (): KeadaanPerpus => ({
-  keadaan: 'siap', memuat: false, termuat: false, buku: [], sesi: null, prog: {}, rak: []
-})
+let simpanTimer: ReturnType<typeof setTimeout> | undefined
+let toastTimer: ReturnType<typeof setTimeout> | undefined
+let terpasang = false
+let catatanCb: ((v: string) => void) | null = null
 
-const kunci = (nis: string, apa: string) => `perpusv1_${nis}_${apa}`
+export function usePerpus() {
+  const supabase = useSupabaseClient()
+  const tahap = useState<Tahap>('perpus-tahap', () => 'memuat')
+  const email = useState('perpus-email', () => '')
+  const siswa = useState<SesiPerpus | null>('perpus-siswa', () => null)
+  const buku = useState<Buku[]>('perpus-buku', () => [])
+  const W = useState<DataSiswa>('perpus-w', dataBaru)
+  const dataSiap = useState('perpus-data-siap', () => false)
+  const kisi = useState<Kisi[]>('perpus-kisi', () => [])
+  const galat = useState('perpus-galat', () => '')
+  const V = useState('perpus-v', () => ({ tab: 'beranda' as Tab, detail: '' as string, q: '', mapel: '', kur: '', kol: 'riwayat' }))
+  const sheet = useState<{ jenis: 'filter' | 'notif' | 'materi' | 'catatan', kunci?: string, awal?: string } | null>('perpus-sheet', () => null)
+  const toastTeks = useState('perpus-toast', () => '')
+  const reader = useState<{ id: string, i?: number, panel: string | null, lompat: boolean } | null>('perpus-reader', () => null)
 
-export const usePerpus = () => {
-  const client = useSupabaseClient() as unknown as SupabaseClient
-  const state = useState<KeadaanPerpus>('perpus', buatAwal)
-  const pesanGalat = ref('')
-  const toastTeks = ref('')
-  let toastTimer: ReturnType<typeof setTimeout> | undefined
+  const jenjangTampil = computed<'SMP' | 'SMK'>(() => {
+    if (siswa.value) return siswa.value.jenjang
+    const host = import.meta.client ? location.hostname : ''
+    const j = jenjangHost(host)
+    if (j) return j.toUpperCase() as 'SMP' | 'SMK'
+    return import.meta.client && new URLSearchParams(location.search).get('jenjang') === 'SMP' ? 'SMP' : 'SMK'
+  })
 
-  const lokal = computed(() => state.value.keadaan === 'belum-migrasi')
-
-  const tampilToast = (teks: string) => {
-    toastTeks.value = teks
+  const toast = (t: string) => {
+    toastTeks.value = t
     clearTimeout(toastTimer)
-    toastTimer = setTimeout(() => { toastTeks.value = '' }, 2300)
+    toastTimer = setTimeout(() => { toastTeks.value = '' }, 2400)
   }
 
-  const masukModeLokal = () => {
-    if (state.value.keadaan === 'belum-migrasi') return
-    state.value.keadaan = 'belum-migrasi'
-    state.value.buku = structuredClone(BUKU_CONTOH)
-    state.value.termuat = true
+  const token = async () => (await supabase.auth.getSession()).data.session?.access_token || ''
+  const api = async <T = any>(url: string, opsi: { method?: string, body?: unknown } = {}): Promise<T> => {
+    const t = await token()
+    return await $fetch<T>(url, { method: (opsi.method || 'GET') as any, body: opsi.body as any, headers: { Authorization: `Bearer ${t}` } })
+  }
+  const pesanGalat = (e: any, cadangan: string) => e?.data?.statusMessage || e?.statusMessage || cadangan
+
+  // ----- data baca: simpan tertunda + pastikan terkirim saat tab ditutup -----
+  const kirim = async (keepalive = false) => {
+    if (!dataSiap.value || !siswa.value) return
+    const t = await token()
+    if (!t) return
+    const r = await fetch('/api/perpus/data', {
+      method: 'PUT', keepalive,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+      body: JSON.stringify({ data: W.value })
+    }).then(x => (x.ok ? x.json() : null)).catch(() => null)
+    // halaman terakhir yang lebih baru dari perangkat lain ikut terambil, tidak tertimpa
+    if (r?.baca) W.value.baca = gabungBaca(r.baca, W.value.baca)
+  }
+  const simpan = () => {
+    clearTimeout(simpanTimer)
+    simpanTimer = setTimeout(() => kirim(), 1200)
+  }
+  if (import.meta.client && !terpasang) {
+    terpasang = true
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { clearTimeout(simpanTimer); kirim(true) } })
+    window.addEventListener('pagehide', () => { clearTimeout(simpanTimer); kirim(true) })
   }
 
-  const tanganiGalat = (error: any): boolean => {
-    const pesan = String(error?.message || error || '')
-    if (error?.code === '42P01' || error?.code === 'PGRST205' || /does not exist|schema cache|Could not find the table/i.test(pesan)) {
-      masukModeLokal()
-      return true
-    }
-    pesanGalat.value = pesan
-    return false
+  // ----- masuk -----
+  const bersihkan = () => {
+    siswa.value = null; buku.value = []; kisi.value = []; W.value = dataBaru(); dataSiap.value = false
+    email.value = ''; reader.value = null; sheet.value = null
+    V.value = { tab: 'beranda', detail: '', q: '', mapel: '', kur: '', kol: 'riwayat' }
   }
 
-  const muatBuku = async () => {
-    if (state.value.termuat || state.value.memuat) return
-    state.value.memuat = true
+  const muatSemua = async () => {
+    const [b, d, k] = await Promise.all([
+      api<{ buku: Buku[] }>('/api/perpus/buku'),
+      api<{ data: DataSiswa }>('/api/perpus/data'),
+      api<{ kisi: Kisi[] }>('/api/perpus/kisi').catch(() => ({ kisi: [] as Kisi[] }))
+    ])
+    buku.value = b.buku; W.value = d.data; kisi.value = k.kisi; dataSiap.value = true
+  }
+
+  const cekSesi = async () => {
     try {
-      const [bukuRes, babRes] = await Promise.all([
-        client.from('perpus_buku').select('*').eq('aktif', true).order('urutan'),
-        client.from('perpus_bab').select('buku_id, urut, judul, isi').order('urut')
-      ])
-      if (bukuRes.error) throw bukuRes.error
-      if (babRes.error) throw babRes.error
-      const babPerBuku = new Map<string, Buku['bab']>()
-      for (const r of babRes.data || []) {
-        const arr = babPerBuku.get(r.buku_id) || []
-        arr.push({ judul: r.judul, isi: r.isi })
-        babPerBuku.set(r.buku_id, arr)
+      const r = await api<any>('/api/perpus/sesi', { method: 'POST' })
+      if (r.tahap === 'masuk') {
+        siswa.value = r.siswa
+        await muatSemua()
+        tahap.value = 'masuk'
+      } else {
+        email.value = r.email
+        tahap.value = 'verifikasi'
       }
-      state.value.buku = (bukuRes.data || []).map((b: any) => ({
-        id: b.id, judul: b.judul, lit: !!b.lit, tingkat: b.tingkat, mapel: b.mapel, jurusan: b.jurusan || '',
-        pengarang: b.pengarang, penerbit: b.penerbit, tahun: b.tahun, halaman: b.halaman,
-        gradasi: b.gradasi, inisial: b.inisial, deskripsi: b.deskripsi, rating: Number(b.rating),
-        bab: babPerBuku.get(b.id) || []
-      }))
-      state.value.keadaan = 'siap'
-      state.value.termuat = true
-    } catch (e) {
-      if (!tanganiGalat(e)) state.value.keadaan = 'galat'
-    } finally {
-      state.value.memuat = false
+    } catch (e: any) {
+      galat.value = e?.statusCode === 403 ? pesanGalat(e, 'Akun ini tidak dapat masuk ke perpustakaan.') : (e?.statusCode === 401 ? '' : 'Perpustakaan sedang tidak dapat dihubungi. Coba lagi sebentar lagi.')
+      await supabase.auth.signOut()
+      bersihkan()
+      tahap.value = 'awal'
     }
   }
 
-  const muatProgRak = (nis: string) => {
+  const mulai = async () => {
+    if ((await supabase.auth.getSession()).data.session) await cekSesi()
+    else tahap.value = 'awal'
+  }
+
+  const masukGoogle = async () => {
+    galat.value = ''
+    // redirectTo = halaman ini juga (di domain perpus "/" adalah alias /perpus, tanpa pengalihan yang membuang ?code=)
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } })
+    if (error) galat.value = 'Masuk dengan Google belum dapat dipakai. Coba lagi nanti.'
+  }
+
+  const verifikasi = async (body: { nomor: string, nisn?: string, lahir?: string }) => {
     try {
-      state.value.prog = JSON.parse(localStorage.getItem(kunci(nis, 'prog')) || '{}')
-      state.value.rak = JSON.parse(localStorage.getItem(kunci(nis, 'rak')) || '[]')
-    } catch { state.value.prog = {}; state.value.rak = [] }
-  }
-
-  const tetapkanSesi = (sesi: SesiSiswa) => {
-    state.value.sesi = sesi
-    try { localStorage.setItem('perpusv1_sesi', JSON.stringify(sesi)) } catch { /* abaikan */ }
-    muatProgRak(sesi.nis)
-  }
-
-  // Pulihkan sesi dari perangkat (dijalankan sekali di sisi klien).
-  const pulihkanSesi = () => {
-    if (state.value.sesi) return
-    try {
-      const mentah = localStorage.getItem('perpusv1_sesi')
-      if (!mentah) return
-      const sesi = JSON.parse(mentah) as SesiSiswa
-      if (sesi?.nis && sesi?.nama) tetapkanSesi(sesi)
-    } catch { /* sesi rusak -> abaikan, siswa login ulang */ }
-  }
-
-  const login = async (nisMentah: string): Promise<void> => {
-    const nis = nisMentah.trim()
-    if (!nis) throw new Error('Isi dulu NIS kamu.')
-    if (lokal.value) {
-      const s = SISWA_CONTOH.find(x => x.nis === nis)
-      if (!s) throw new Error('NIS tidak terdaftar atau status siswa tidak aktif. Periksa kembali NIS kamu, atau hubungi petugas perpustakaan.')
-      tetapkanSesi({ nis: s.nis, nama: s.nama, grade: 'SMK', kelas: s.kelas, tingkat: s.tingkat, jurusan: s.jurusan })
-      return
+      await api('/api/perpus/verifikasi', { method: 'POST', body })
+    } catch (e: any) {
+      const err: any = new Error(pesanGalat(e, 'Verifikasi gagal. Coba lagi.'))
+      err.butuhLengkap = e?.statusCode === 409
+      throw err
     }
-    const hasil: any = await $fetch('/api/perpus/login', { method: 'POST', body: { nis } }).catch(() => null)
-    if (!hasil?.ok || !hasil?.siswa) {
-      throw new Error('NIS tidak terdaftar atau status siswa tidak aktif. Periksa kembali NIS kamu, atau hubungi petugas perpustakaan.')
-    }
-    const s = hasil.siswa
-    tetapkanSesi({
-      nis: s.nis, nama: s.nama, grade: s.grade || 'SMK', kelas: s.kelas || '',
-      tingkat: tingkatDariKelas(s.kelas || '', s.grade || 'SMK'),
-      jurusan: jurusanDariKelas(s.kelas || '')
+    await cekSesi()
+    if (tahap.value === 'masuk') toast(`Terverifikasi. Selamat datang, ${siswa.value!.nama.split(' ')[0]}!`)
+  }
+
+  const keluar = async () => {
+    clearTimeout(simpanTimer)
+    await kirim()
+    await supabase.auth.signOut()
+    bersihkan()
+    tahap.value = 'awal'
+  }
+
+  const gantiAkun = async () => { await supabase.auth.signOut(); bersihkan(); tahap.value = 'awal' }
+
+  // ----- turunan -----
+  const bukuSaya = computed(() => buku.value)
+  const cariBuku = (id: string) => buku.value.find(b => b.id === id)
+  const bukuTersedia = (b: Buku) => b.tersedia && !b.terkunci
+  const catatBaca = (id: string, i: number, n: number) => { W.value.baca[id] = { i, n, ts: Date.now() }; simpan() }
+
+  // Pemberitahuan: kisi-kisi baru (≤ 3 hari) dan buku yang berhenti dibaca lebih dari 48 jam.
+  const notif = computed<Notif[]>(() => {
+    const n: Notif[] = []
+    const now = Date.now()
+    kisi.value.filter(k => k.hari <= 3).forEach((k) => {
+      const ts = now - k.hari * 864e5
+      n.push({ id: 'kisi:' + k.id, ts, waktu: kapan(ts), jenis: 'Kisi-kisi baru', judul: k.judul, isi: `${k.topik.length} topik dari gurumu. Rekomendasi bukunya sudah siap dibaca.`, kisiId: k.id, mapel: k.mapel })
     })
+    Object.entries(W.value.baca).forEach(([id, v]) => {
+      const b = cariBuku(id)
+      if (!b || now - v.ts < 48 * 36e5 || v.i >= v.n - 1) return
+      n.push({ id: `baca:${id}:${v.ts}`, ts: v.ts + 48 * 36e5, waktu: 'terakhir dibuka ' + kapan(v.ts), jenis: 'Lanjutkan membaca', judul: b.judul, isi: `Kamu berhenti di halaman ${v.i + 1} dari ${v.n}. Sedikit lagi, yuk lanjutkan.`, buku: b, hal: v.i })
+    })
+    return n.sort((a, b) => b.ts - a.ts)
+  })
+  const belumDibaca = computed(() => notif.value.filter(x => !W.value.nbaca.includes(x.id)).length)
+
+  // Pembaca hanya terbuka untuk buku yang berkasnya ada dan jadwalnya sedang buka.
+  // i kosong = lanjut dari halaman terakhir siswa; lompat = loncat ke halaman tertentu tanpa menimpa halaman terakhir.
+  const bukaReader = (id: string, i?: number, panel: string | null = null, lompat = false) => {
+    const b = cariBuku(id)
+    if (!b) return
+    if (b.terkunci) { toast('Buku ini hanya dapat dibuka Sabtu dan Minggu.'); return }
+    if (!b.tersedia) { toast('Buku ini belum tersedia.'); return }
+    if (b.format === 'epub') { toast('Buku EPUB belum bisa dibaca di aplikasi. Unduh dari halaman detail buku.'); return }
+    sheet.value = null
+    reader.value = { id, i, panel, lompat }
   }
 
-  const keluar = () => {
-    state.value.sesi = null
-    state.value.prog = {}
-    state.value.rak = []
-    try { localStorage.removeItem('perpusv1_sesi') } catch { /* abaikan */ }
-  }
+  const formCatatan = (awal: string, cb: (v: string) => void) => { catatanCb = cb; sheet.value = { jenis: 'catatan', awal } }
+  const simpanCatatan = (v: string) => { sheet.value = null; catatanCb?.(v); catatanCb = null }
 
-  const simpanProgRak = () => {
-    const nis = state.value.sesi?.nis
-    if (!nis) return
-    try {
-      localStorage.setItem(kunci(nis, 'prog'), JSON.stringify(state.value.prog))
-      localStorage.setItem(kunci(nis, 'rak'), JSON.stringify(state.value.rak))
-    } catch { /* abaikan */ }
-  }
+  // Statistik admin: satu pembacaan per sesi baca (server yang menyaring jeda < 30 menit). Gagal mencatat tidak boleh mengganggu siswa.
+  const catatBuka = (id: string) => { api('/api/perpus/buka', { method: 'POST', body: { id } }).catch(() => {}) }
 
-  // Catat bab terjauh yang dibuka (progres hanya maju, seperti preview).
-  const catatBaca = (bukuId: string, babIdx: number) => {
-    if (state.value.prog[bukuId] == null || babIdx > state.value.prog[bukuId]) {
-      state.value.prog[bukuId] = babIdx
-      simpanProgRak()
-    }
-  }
-
-  const alihRak = (bukuId: string): boolean => {
-    if (state.value.rak.includes(bukuId)) {
-      state.value.rak = state.value.rak.filter(x => x !== bukuId)
-      simpanProgRak()
-      return false
-    }
-    state.value.rak.push(bukuId)
-    simpanProgRak()
-    return true
+  const ke = (tab: Tab, detail = '') => {
+    V.value.tab = tab; V.value.detail = detail
+    if (import.meta.client) window.scrollTo(0, 0)
   }
 
   return {
-    state, lokal, pesanGalat, toastTeks, tampilToast,
-    muatBuku, pulihkanSesi, login, keluar, catatBaca, alihRak
+    tahap, email, siswa, buku, W, kisi, galat, V, sheet, toastTeks, reader, jenjangTampil,
+    toast, simpan, mulai, masukGoogle, verifikasi, keluar, gantiAkun, token,
+    bukuSaya, cariBuku, bukuTersedia, catatBaca, notif, belumDibaca, bukaReader, catatBuka, formCatatan, simpanCatatan, ke
   }
 }
