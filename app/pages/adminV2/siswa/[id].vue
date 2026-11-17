@@ -10,6 +10,7 @@ import AdminV2Toast from '~/components/adminV2/AdminV2Toast.vue'
 import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import StudentFormModal from '~/components/admin/siswa/StudentFormModal.vue'
+import OrtuAksesKartu from '~/components/adminV2/siswa/OrtuAksesKartu.vue'
 import { useAdminStudents, type StudentItem } from '~/composables/useAdminStudents'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 definePageMeta({ layout: false })
@@ -195,6 +196,7 @@ watch(activeTab,t=>{if(t==='absensi')void loadAttendance();if(t==='penilaian')vo
 </article>
 </div>
 </section>
+<OrtuAksesKartu v-if="student" :student-id="student.id"/>
 </div>
 <section v-else-if="activeTab==='absensi'" class="space-y-4">
 <div class="rounded-[20px] border border-[#E7EBF2] bg-white p-5 shadow-xs">

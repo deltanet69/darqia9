@@ -23,12 +23,12 @@
         </template>
         <form v-else novalidate @submit.prevent="masuk">
           <h2 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--p0)">Masuk</h2>
-          <p style="margin:2px 0 0;font-size:15px;color:#51607F">Gunakan NIS dan kata sandi dari sekolah.</p>
+          <p style="margin:2px 0 0;font-size:15px;color:#51607F">Gunakan NIS atau NISN anak dan kata sandi dari sekolah.</p>
 
           <div style="position:relative;margin-top:18px">
-            <label for="nis" class="sr">NIS siswa</label>
+            <label for="nis" class="sr">NIS atau NISN siswa</label>
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#7B8AA6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:16px;top:15px"><rect x="3" y="5" width="18" height="14" rx="3" /><circle cx="9" cy="11" r="2" /><path d="M6.5 16c.6-1.4 1.6-2 2.5-2s1.9.6 2.5 2M14 10h4M14 14h3" /></svg>
-            <input id="nis" v-model.trim="nis" class="fld" inputmode="numeric" autocomplete="username" placeholder="NIS siswa" style="padding-left:48px;font-weight:500">
+            <input id="nis" v-model.trim="nis" class="fld" inputmode="numeric" autocomplete="username" placeholder="NIS atau NISN anak" style="padding-left:48px;font-weight:500">
           </div>
           <div style="position:relative;margin-top:12px">
             <label for="pw" class="sr">Kata sandi</label>
@@ -87,7 +87,7 @@ onMounted(async () => {
 
 const masuk = async () => {
   galat.value = ''
-  if (!nis.value || !sandi.value) { galat.value = 'Isi NIS dan kata sandi.'; return }
+  if (!nis.value || !sandi.value) { galat.value = 'Isi NIS/NISN dan kata sandi.'; return }
   sibuk.value = true
   try {
     sesi.value = await $fetch<SesiOrtuKlien>('/api/ortu/login', { method: 'POST', body: { nis: nis.value, password: sandi.value, grade: jenjang.value } })

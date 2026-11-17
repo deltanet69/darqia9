@@ -10,6 +10,7 @@ import AdminV2Icon from '~/components/adminV2/AdminV2Icon.vue'
 import AdminV2Breadcrumb from '~/components/adminV2/AdminV2Breadcrumb.vue'
 import StudentFormModal from '~/components/admin/siswa/StudentFormModal.vue'
 import StudentImportModal from '~/components/admin/siswa/StudentImportModal.vue'
+import OrtuAksesModal from '~/components/adminV2/siswa/OrtuAksesModal.vue'
 import { useAdminStudents, type StudentItem } from '~/composables/useAdminStudents'
 import { GROUPS, getAdminDestination, type GroupItem } from '~/components/adminV2/adminV2Data'
 
@@ -100,6 +101,19 @@ const handleDeactivateStudent = async () => {
   const result = await studentsStore.executeDelete()
   triggerToast(result.message)
 }
+
+// Akses Portal Orang Tua: siswa dicentang (bertahan antarhalaman tabel) atau satu kelas.
+const terpilih = ref<string[]>([])
+const aksesOrtuBuka = ref(false)
+const kelasJenjang = computed(() => studentsStore.classes.value.filter(k => k.grade === studentsStore.grade.value).map(k => ({ id: k.id, name: k.name })).sort((a, b) => a.name.localeCompare(b.name)))
+const idHalaman = computed(() => studentsStore.filteredStudents.value.map(s => s.id))
+const semuaHalamanTerpilih = computed(() => idHalaman.value.length > 0 && idHalaman.value.every(id => terpilih.value.includes(id)))
+const pilihHalaman = () => {
+  terpilih.value = semuaHalamanTerpilih.value
+    ? terpilih.value.filter(id => !idHalaman.value.includes(id))
+    : [...new Set([...terpilih.value, ...idHalaman.value])]
+}
+watch(studentsStore.grade, () => { terpilih.value = [] })
 
 // Navigation & Global Modals
 const closeAllModals = () => {
@@ -230,6 +244,14 @@ onMounted(() => {
           >
             <AdminV2Icon name="dl" :size="16" class="text-[#667085]" />
             <span>Export CSV</span>
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#F3F5F9] text-[#344054] text-xs sm:text-sm font-bold rounded-xl border border-[#D0D5DD] shadow-xs hover:border-[#98A2B3] transition-all cursor-pointer"
+            @click="aksesOrtuBuka = true"
+          >
+            <AdminV2Icon name="users" :size="16" class="text-[#667085]" />
+            <span>Akses Portal Ortu<template v-if="terpilih.length"> ({{ terpilih.length }})</template></span>
           </button>
           <button
             type="button"
@@ -407,6 +429,9 @@ onMounted(() => {
           <table class="w-full text-left text-sm text-[#344054]">
             <thead class="bg-[#F8FAFC] text-xs font-bold text-[#64748B] border-b border-[#E2E8F0] uppercase tracking-wider">
               <tr>
+                <th class="px-3 py-3.5 w-10 text-center">
+                  <input type="checkbox" class="h-4 w-4 cursor-pointer accent-[#1B5FD9]" aria-label="Pilih semua siswa di halaman ini" :checked="semuaHalamanTerpilih" @change="pilihHalaman">
+                </th>
                 <th class="px-4 py-3.5 w-12 text-center">No</th>
                 <th class="px-4 py-3.5">Peserta Didik</th>
                 <th class="px-4 py-3.5">NIS &amp; NISN</th>
@@ -420,7 +445,7 @@ onMounted(() => {
             </thead>
             <tbody class="divide-y divide-[#F1F5F9]">
               <tr v-if="studentsStore.filteredStudents.value.length === 0">
-                <td colspan="9" class="py-14 text-center text-[#94A3B8]">
+                <td colspan="10" class="py-14 text-center text-[#94A3B8]">
                   <div class="text-sm font-bold mb-1 text-[#334155]">Tidak ada data siswa yang cocok</div>
                   <div class="text-xs text-[#94A3B8]">Coba sesuaikan kata kunci pencarian atau filter yang dipilih.</div>
                 </td>
@@ -430,6 +455,9 @@ onMounted(() => {
                 :key="s.id"
                 class="hover:bg-[#F8FAFC] transition"
               >
+                <td class="px-3 py-3.5 text-center">
+                  <input v-model="terpilih" type="checkbox" :value="s.id" class="h-4 w-4 cursor-pointer accent-[#1B5FD9]" :aria-label="`Pilih ${s.name}`">
+                </td>
                 <td class="px-4 py-3.5 text-xs text-[#94A3B8] font-mono text-center">{{ studentsStore.pageStart.value + idx }}</td>
                 <td class="px-4 py-3.5">
                   <div class="flex items-center gap-3">
@@ -587,6 +615,14 @@ onMounted(() => {
       @close="studentsStore.closeImportModal"
       @import="handleImportStudents"
       @download-template="studentsStore.downloadTemplate()"
+    />
+
+    <OrtuAksesModal
+      :open="aksesOrtuBuka"
+      :terpilih="terpilih"
+      :kelas="kelasJenjang"
+      @close="aksesOrtuBuka = false"
+      @selesai="triggerToast"
     />
 
     <!-- MODAL KONFIRMASI HAPUS SISWA (Persis 1:1) -->

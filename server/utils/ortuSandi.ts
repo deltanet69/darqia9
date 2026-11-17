@@ -1,5 +1,5 @@
 // Hash kata sandi akun orang tua dengan scrypt bawaan Node (tanpa library). Murni, dipakai server
-// dan skrip scripts/buat-akun-ortu.mjs. Format simpanan: scrypt$N$r$p$salt$hash (base64).
+// dan pembuatan akses di admin (/api/admin/ortu-akses). Format simpanan: scrypt$N$r$p$salt$hash (base64).
 import { randomBytes, randomInt, scrypt, timingSafeEqual } from 'node:crypto'
 
 const N = 16384

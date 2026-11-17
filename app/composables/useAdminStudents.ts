@@ -642,7 +642,7 @@ export const useAdminStudents = () => {
 
   onMounted(() => { void load() })
   return {
-    grade, students, currentGradeStudents, filteredStudents, classOptions, majorOptions, searchQuery,
+    grade, students, classes, currentGradeStudents, filteredStudents, classOptions, majorOptions, searchQuery,
     selectedClass, selectedMajor, selectedGender, selectedStatus, selectedRfid, detailModalStudent,
     isFormModalOpen, isImportModalOpen, formModalMode, formStudent, deleteConfirmStudent, stats,
     page, pageSize, totalStudents, totalPages, pageStart, pageEnd, goToPage,

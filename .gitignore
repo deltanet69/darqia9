@@ -52,5 +52,3 @@ supabase/migrations/*
 !/docs/laporan-perbaikan-crud-bank-soal.md
 tests/k6-siswa.json
 
-# Kata sandi awal akun orang tua (scripts/buat-akun-ortu.mjs) - jangan pernah di-commit
-akun-ortu-*.csv
