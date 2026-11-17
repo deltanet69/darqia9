@@ -54,7 +54,15 @@ assert.equal(a('absen.smkitattaqwa9.sch.id', '/absensi/10abc/'), '/10abc')
 
 // Halaman verifikasi publik terbuka di semua domain; modul belum jadi diarahkan ke web yayasan
 assert.equal(a('smpitbca.sch.id', '/verifikasi/tagihan/1'), null)
-assert.equal(a('parent.smpitbca.sch.id', '/'), 'https://darqiaattaqwa.sch.id/')
+// Portal Orang Tua: beranda /ortu tampil sebagai "/", rute /ortu/* lolos, domain lain dialihkan ke parent.<sekolah>
+assert.equal(a('parent.smpitbca.sch.id', '/'), null)
+assert.equal(a('parent.smpitbca.sch.id', '/ortu'), '/')
+assert.equal(a('parent.smkitattaqwa9.sch.id', '/ortu/login'), null)
+assert.equal(a('parent.smkitattaqwa9.sch.id', '/ortu/nilai', '/ortu/nilai?tab=uh'), null)
+assert.equal(a('parent.smkitattaqwa9.sch.id', '/cbt'), 'https://cbt.smkitattaqwa9.sch.id/')
+assert.equal(a('smkitattaqwa9.sch.id', '/ortu/login'), 'https://parent.smkitattaqwa9.sch.id/ortu/login')
+assert.equal(a('cbt.smpitbca.sch.id', '/ortu'), 'https://parent.smpitbca.sch.id/')
+assert.equal(jenjangHost('parent.smpitbca.sch.id'), 'smp')
 assert.equal(a('absen.darqiaattaqwa.sch.id', '/absensi'), 'https://darqiaattaqwa.sch.id/')
 
 // Awalan tidak boleh salah cocok (/smpx bukan /smp)

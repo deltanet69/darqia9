@@ -26,7 +26,7 @@ const HOST: Record<string, { modul: Modul, jenjang?: Jenjang }> = {
   [`parent.${SMK}`]: { modul: 'parent', jenjang: 'smk' }
 }
 
-// Halaman awal tiap modul. Modul tanpa halaman (Absensi Guru, Parent Portal) belum dibangun.
+// Halaman awal tiap modul. Modul tanpa halaman (Absensi Guru) belum dibangun.
 const beranda = (modul: Modul, jenjang?: Jenjang): string | null => {
   if (modul === 'yayasan') return '/'
   if (modul === 'sekolah') return `/${jenjang}`
@@ -35,6 +35,7 @@ const beranda = (modul: Modul, jenjang?: Jenjang): string | null => {
   if (modul === 'cbt') return '/cbt'
   if (modul === 'perpus') return '/perpus'
   if (modul === 'absen') return '/absensi'
+  if (modul === 'parent') return '/ortu'
   return null
 }
 
@@ -55,6 +56,7 @@ const pemilik = (path: string): { modul: Modul, jenjang?: Jenjang } | 'bebas' | 
   if (awal('/cbt')) return { modul: 'cbt' }
   if (awal('/perpus')) return { modul: 'perpus' }
   if (awal('/absensi')) return { modul: 'absen' }
+  if (awal('/ortu')) return { modul: 'parent' }
   if (p.startsWith('/admin')) return { modul: 'portal' }
   return null
 }
