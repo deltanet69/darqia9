@@ -1,7 +1,8 @@
 import { wajibSesiOrtu } from '../../utils/ortuSesi'
 import { ambilPresensiHarian } from '../../utils/ortuPresensi'
 import { persenHadir } from '../../utils/ortuData'
-import { bulanSah, tanggalWib } from '../../../app/composables/ortuCore'
+import { bulanSah } from '../../../app/composables/ortuCore'
+import { tanggalWib } from '../../../app/composables/dashboardCore'
 import type { PresensiOrtu } from '../../../app/types/ortu'
 
 // GET /api/ortu/presensi?bulan=YYYY-MM (bawaan: bulan berjalan WIB).

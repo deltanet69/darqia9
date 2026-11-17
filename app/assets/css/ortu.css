@@ -1,0 +1,51 @@
+/* Portal Orang Tua — gaya bersama hasil port prototype (dummy/parent-portal/ParentPortal.vue).
+   Semua aturan dibatasi di bawah .ortu agar tidak bocor ke modul lain. */
+.ortu { position: relative; width: 100%; max-width: 430px; height: 100vh; height: 100dvh; margin: 0 auto; overflow: hidden; background: #F7F9FD; color: #14213D; font-family: Inter, system-ui, sans-serif; --gold: #F0B429; }
+.ortu button { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.ortu input { font: inherit; }
+.ortu button:focus-visible, .ortu a:focus-visible { outline: 3px solid var(--p1); outline-offset: 2px; }
+.ortu .press { transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; }
+.ortu .press:active { transform: scale(.98); }
+.ortu .press:disabled { opacity: .6; cursor: default; }
+.ortu .scr { position: absolute; left: 0; right: 0; top: 64px; bottom: 88px; overflow-y: auto; overflow-x: hidden; padding: 28px 20px 28px; }
+.ortu .scroll { scrollbar-width: none; }
+.ortu .scroll::-webkit-scrollbar { display: none; }
+.ortu .chips { scrollbar-width: none; }
+.ortu .chips::-webkit-scrollbar { display: none; }
+.ortu .sr { position: absolute; left: -9999px; }
+
+@keyframes ortu-up { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+.ortu .on .up { animation: ortu-up .7s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ortu-fade { from { opacity: 0 } to { opacity: 1 } }
+.ortu .fade { animation: ortu-fade .45s ease both; }
+@keyframes ortu-sheet { from { transform: translateY(100%) } to { transform: none } }
+.ortu .sheet { animation: ortu-sheet .5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ortu-ring { from { stroke-dashoffset: var(--c) } }
+.ortu .on .ringv { animation: ortu-ring 1.5s cubic-bezier(.2,.8,.2,1) .25s both; }
+@keyframes ortu-grow { from { transform: scaleX(0) } }
+.ortu .scr.on .bar { transform-origin: left center; animation: ortu-grow 1.2s cubic-bezier(.2,.8,.2,1) .3s both; }
+@keyframes ortu-pulse { 0% { box-shadow: 0 0 0 0 rgba(34,160,90,.45) } 100% { box-shadow: 0 0 0 10px rgba(34,160,90,0) } }
+.ortu .dot { animation: ortu-pulse 2.2s ease-out infinite; }
+.ortu .pane { position: absolute; left: 0; right: 0; top: 64px; bottom: 88px; overflow-y: auto; padding: 12px 20px 28px; background: #F7F9FD; z-index: 3; visibility: hidden; transform: translateX(100%); transition: transform .6s cubic-bezier(.2,.8,.2,1), visibility 0s linear .6s; }
+.ortu .pane.on { visibility: visible; transform: none; transition: transform .6s cubic-bezier(.2,.8,.2,1), visibility 0s; }
+.ortu .pane.on .up { animation: ortu-up .7s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ortu-rise { from { transform: scaleY(0) } }
+.ortu .pane.on .col { transform-origin: center bottom; animation: ortu-rise .9s cubic-bezier(.2,.8,.2,1) .25s both; }
+.ortu .pane.on .bar { transform-origin: left center; animation: ortu-grow 1.1s cubic-bezier(.2,.8,.2,1) .3s both; }
+@keyframes ortu-toast { 0% { opacity: 0; transform: translateY(12px) } 12% { opacity: 1; transform: none } 85% { opacity: 1 } 100% { opacity: 0 } }
+.ortu .toast { animation: ortu-toast 2.4s ease both; }
+.ortu input.fld { box-sizing: border-box; width: 100%; height: 50px; border: 1.5px solid #DCE4F2; border-radius: 14px; padding: 0 14px; font-size: 17px; color: #14213D; background: #F9FBFF; outline: none; transition: border-color .25s, box-shadow .25s; }
+.ortu input.fld:focus { border-color: var(--p1); box-shadow: 0 0 0 4px var(--soft); }
+@keyframes ortu-swing { 0%, 62%, 100% { transform: rotate(0) } 6% { transform: rotate(16deg) } 12% { transform: rotate(-14deg) } 18% { transform: rotate(10deg) } 24% { transform: rotate(-7deg) } 30% { transform: rotate(3deg) } 36% { transform: rotate(0) } }
+.ortu .swing { transform-origin: 50% 12%; animation: ortu-swing 4.5s ease-in-out 1s infinite; }
+@keyframes ortu-badge { 0% { transform: scale(.4); opacity: 0 } 60% { transform: scale(1.18) } 100% { transform: scale(1); opacity: 1 } }
+.ortu .badge { animation: ortu-badge .6s cubic-bezier(.2,.9,.3,1.3) both; }
+@keyframes ortu-halo { 0% { box-shadow: 0 0 0 0 rgba(217,45,32,.45) } 100% { box-shadow: 0 0 0 9px rgba(217,45,32,0) } }
+.ortu .halo { animation: ortu-halo 2s ease-out infinite; }
+.ortu .lg { position: absolute; inset: 0; z-index: 40; overflow: hidden; }
+@keyframes ortu-spin { to { transform: rotate(360deg) } }
+.ortu .spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; animation: ortu-spin .8s linear infinite; }
+/* Kerangka saat memuat */
+@keyframes ortu-kedip { 50% { opacity: .55 } }
+.ortu .muat { border-radius: 22px; background: #E9EEF8; animation: ortu-kedip 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .ortu *, .ortu *::before, .ortu *::after { animation: none !important; transition: none !important; } }

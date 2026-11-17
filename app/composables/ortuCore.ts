@@ -22,7 +22,6 @@ export function semesterDari(tanggal: string): { label: string, tahunAjaran: str
     : { label: `Genap ${y - 1}/${y}`, tahunAjaran: `${y - 1}/${y}`, dari: `${y}-01-01`, sampai: `${y}-06-30` }
 }
 
-export const tanggalWib = (d = new Date()): string => new Date(d.getTime() + 7 * 3600_000).toISOString().slice(0, 10)
 
 export const bulanSah = (b: unknown): b is string => typeof b === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(b)
 
@@ -62,7 +61,7 @@ export function validasiProfilOrtu(body: unknown): { galat: string } | { nilai: 
   const nilai: Partial<Record<'wa' | 'email' | 'alamat', string | null>> = {}
   if ('wa' in b) {
     const wa = normalisasiWa(String(b.wa).trim())
-    if (!wa) return { galat: 'No. WhatsApp harus 9–15 angka, contoh 081234567890.' }
+    if (!wa) return { galat: 'No. WhatsApp harus 9 sampai 15 angka, contoh 081234567890.' }
     nilai.wa = wa
   }
   if ('email' in b) {
@@ -79,5 +78,3 @@ export function validasiProfilOrtu(body: unknown): { galat: string } | { nilai: 
   return { nilai }
 }
 
-// Status "sudah dibaca" notifikasi disimpan di perangkat (localStorage): id -> waktu dibaca.
-export const belumDibaca = (ids: string[], dibaca: Record<string, number>): string[] => ids.filter(id => !dibaca[id])

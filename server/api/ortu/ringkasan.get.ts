@@ -2,7 +2,7 @@ import { wajibSesiOrtu } from '../../utils/ortuSesi'
 import { ambilPresensiHarian } from '../../utils/ortuPresensi'
 import { muatSiswaOrtu, muatTagihanOrtu, muatUjianOrtu, persenHadir, rataUjian } from '../../utils/ortuData'
 import { rp } from '../../../app/composables/keuanganCore'
-import { tanggalWib } from '../../../app/composables/ortuCore'
+import { tanggalWib } from '../../../app/composables/dashboardCore'
 import type { NotifOrtu, RingkasanOrtu } from '../../../app/types/ortu'
 
 const LABEL_UJIAN = { UH: 'Ulangan Harian', PR: 'PR di Rumah', PTS: 'PTS', PAS: 'PAS' } as const

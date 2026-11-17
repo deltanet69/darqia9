@@ -1,6 +1,7 @@
 import { wajibSesiOrtu } from '../../utils/ortuSesi'
 import { muatUjianOrtu } from '../../utils/ortuData'
-import { semesterDari, tanggalWib } from '../../../app/composables/ortuCore'
+import { semesterDari } from '../../../app/composables/ortuCore'
+import { tanggalWib } from '../../../app/composables/dashboardCore'
 import type { NilaiOrtu } from '../../../app/types/ortu'
 
 // GET /api/ortu/nilai — semua ujian semester berjalan (UH/PR/PTS/PAS) beserta benar/salah; rincian per mapel dihitung di klien.

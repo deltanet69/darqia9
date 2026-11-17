@@ -1,7 +1,8 @@
 // Pemuat data bersama endpoint /api/ortu/*. Kolom selalu eksplisit: NIK/No. KK (nik, family_card_number,
 // father_nik, mother_nik) tidak pernah dipilih, jadi tidak mungkin ikut ke respons.
 import { hitungSiswa, namaItem, type Grade, type ItemBayar, type RekapBayar } from '../../app/composables/keuanganCore'
-import { jenisUjian, semesterDari, tanggalWib, tingkatOrtu } from '../../app/composables/ortuCore'
+import { jenisUjian, semesterDari, tingkatOrtu } from '../../app/composables/ortuCore'
+import { tanggalWib } from '../../app/composables/dashboardCore'
 import type { BayarOrtu, SiswaOrtu, TingkatOrtu, UjianOrtu } from '../../app/types/ortu'
 
 export const KOLOM_SISWA_ORTU = 'name, nis, grade, class_id, student_status, attendance_pct, exam_eligible, father_name, mother_name'
