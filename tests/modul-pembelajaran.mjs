@@ -67,7 +67,7 @@ cek('aturan akses: sunting hanya penulis / superadmin; setujui admin; arsip penu
   assert.equal(bolehSunting(m, 'superadmin', ''), true)
   assert.equal(bolehSunting({ ...m, deletedAt: '2026-10-31T00:00:00Z' }, 'superadmin', ''), false)
   assert.equal(bolehSetujui('superadmin'), true)
-  assert.equal(bolehSetujui('admin_tu'), true)
+  assert.equal(bolehSetujui('admin_tu'), false)
   assert.equal(bolehSetujui('guru'), false)
   assert.equal(bolehArsip(m, 'guru', 'guru-2'), false)
   assert.equal(bolehArsip(m, 'guru', 'guru-1'), true)

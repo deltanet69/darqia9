@@ -117,7 +117,7 @@ const labelJenis = (j: string) => j === 'projek' ? 'Projek kokurikuler lintas ma
     </div>
 
     <div class="mt-3 bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-wrap gap-x-6 gap-y-1.5 text-[12px] text-slate-500">
-      <span><span class="font-medium text-slate-700">Baca:</span> semua guru bisa membaca &amp; melihat seluruh modul</span>
+      <span><span class="font-medium text-slate-700">Baca:</span> modul sendiri + modul guru lain yang sudah disetujui (acuan, tanpa unduh)</span>
       <span><span class="font-medium text-slate-700">Sunting:</span> hanya penulis modul</span>
       <span><span class="font-medium text-slate-700">Superadmin:</span> CRUD penuh</span>
       <span><span class="font-medium text-slate-700">Hapus:</span> soft delete — masuk arsip, bisa dipulihkan</span>

@@ -60,7 +60,7 @@ const unduhPdf = () => {
             <span v-if="modul.deletedAt" class="inline-block text-[11px] font-semibold rounded px-2 py-1 bg-red-100 text-red-600">TERARSIP</span>
             <span class="ml-auto flex gap-2">
               <NuxtLink v-if="sayaPenulis" :to="`/adminV2/modul-ajar/${modul.id}/sunting`" class="text-[12.5px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-lg px-3 py-1.5 transition">Sunting</NuxtLink>
-              <button class="text-[12.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg px-3 py-1.5 transition" @click="unduhPdf">Unduh PDF</button>
+              <button v-if="sayaPenulis" class="text-[12.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg px-3 py-1.5 transition" @click="unduhPdf">Unduh PDF</button>
             </span>
           </div>
           <h1 class="text-[24px] leading-8 font-semibold text-blue-950 mt-3">{{ modul.judul || '(judul belum diisi)' }}</h1>

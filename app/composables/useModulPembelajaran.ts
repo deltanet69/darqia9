@@ -149,7 +149,8 @@ export const bolehSunting = (m: ModulPembelajaran, peran: PeranModul, guruId: st
   if (peran === 'superadmin') return true
   return !!guruId && m.authorTeacherId === guruId
 }
-export const bolehSetujui = (peran: PeranModul): boolean => peran === 'superadmin' || peran === 'admin_tu'
+// Hanya superadmin yang melihat modul "menunggu" milik orang lain (RLS 0079), jadi hanya dia yang bisa menyetujui.
+export const bolehSetujui = (peran: PeranModul): boolean => peran === 'superadmin'
 export const bolehArsip = (m: ModulPembelajaran, peran: PeranModul, guruId: string): boolean => {
   if (m.deletedAt) return false
   if (peran === 'superadmin') return true
