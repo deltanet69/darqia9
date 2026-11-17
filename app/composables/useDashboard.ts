@@ -58,19 +58,37 @@ export const useDashboard = () => {
   // ===== Overview =====
   const muatOverview = async (grade: Jenjang, denganKeuangan: boolean) => {
     const hariIni = tanggalWib()
+    // SMK (dashboard utama) = seluruh guru & staff aktif; SMP = hanya guru yang mengajar atau jadi wali kelas di SMP.
+    const idGuru = grade === 'SMK'
+      ? client.from('teachers').select('id').eq('active', true).limit(5000).then(({ data, error }) => {
+        if (error) throw new Error(error.message)
+        return (data ?? []).map((r: any) => r.id as string)
+      })
+      : Promise.all([
+        client.from('class_schedules').select('teacher_id, classes!inner(grade, active)').eq('active', true).eq('classes.grade', grade).eq('classes.active', true).not('teacher_id', 'is', null).limit(5000),
+        client.from('classes').select('homeroom_teacher_id').eq('grade', grade).eq('active', true).not('homeroom_teacher_id', 'is', null)
+      ]).then(async ([jd, kl]) => {
+        if (jd.error) throw new Error(jd.error.message)
+        if (kl.error) throw new Error(kl.error.message)
+        const semua = [...new Set([...(jd.data ?? []).map((r: any) => r.teacher_id), ...(kl.data ?? []).map((r: any) => r.homeroom_teacher_id)])]
+        if (!semua.length) return [] as string[]
+        const { data, error } = await client.from('teachers').select('id').in('id', semua).eq('active', true)
+        if (error) throw new Error(error.message)
+        return (data ?? []).map((r: any) => r.id as string)
+      })
     const [siswa, siswaHadir, rombel, guru, guruHadir, ujian, pengumuman, pembayaran, siswaTercatat, guruTercatat] = await Promise.allSettled([
       hitung(client.from('students').select('id', { count: 'exact', head: true }).eq('grade', grade).eq('active', true)),
       hitung(client.from('attendance').select('id, students!inner(grade)', { count: 'exact', head: true })
         .eq('students.grade', grade).eq('attendance_date', hariIni).in('status', HADIR)),
       hitung(client.from('classes').select('id', { count: 'exact', head: true }).eq('grade', grade).eq('active', true)),
-      hitung(client.from('teachers').select('id', { count: 'exact', head: true }).eq('grade', grade).eq('active', true)),
-      hitung(client.from('attendance').select('id, teachers!inner(grade)', { count: 'exact', head: true })
-        .eq('teachers.grade', grade).eq('attendance_date', hariIni).in('status', HADIR)),
+      idGuru.then(ids => ids.length),
+      idGuru.then(ids => ids.length ? hitung(client.from('attendance').select('id, teachers!inner(id)', { count: 'exact', head: true })
+        .in('teachers.id', ids).eq('attendance_date', hariIni).in('status', HADIR)) : 0),
       muatUjianMentah([grade]).then(d => kelompokkanUjian(d)),
       muatPengumuman([grade], false),
       denganKeuangan
         ? client.from('keuangan_pembayaran').select('id, no_kwitansi, nis, nominal, keterangan, metode, tanggal, created_at')
-          .eq('grade', grade).order('created_at', { ascending: false }).limit(5)
+          .eq('grade', grade).is('dihapus_pada', null).order('created_at', { ascending: false }).limit(5)
           .then(({ data, error }) => {
             if (error) throw new Error(error.message)
             return (data ?? []).map((r: any): BarisPembayaran => ({
@@ -82,8 +100,8 @@ export const useDashboard = () => {
         : Promise.resolve([] as BarisPembayaran[]),
       hitung(client.from('attendance').select('id, students!inner(grade)', { count: 'exact', head: true })
         .eq('students.grade', grade).eq('attendance_date', hariIni)),
-      hitung(client.from('attendance').select('id, teachers!inner(grade)', { count: 'exact', head: true })
-        .eq('teachers.grade', grade).eq('attendance_date', hariIni))
+      idGuru.then(ids => ids.length ? hitung(client.from('attendance').select('id, teachers!inner(id)', { count: 'exact', head: true })
+        .in('teachers.id', ids).eq('attendance_date', hariIni)) : 0)
     ])
     const nilai = <T>(r: PromiseSettledResult<T>, cadangan: T) => r.status === 'fulfilled' ? r.value : cadangan
     const galat = [siswa, siswaHadir, rombel, guru, guruHadir, ujian, pengumuman, pembayaran, siswaTercatat, guruTercatat]

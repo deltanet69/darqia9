@@ -171,6 +171,7 @@ html[data-theme="dark"] .bg-\[\#64748B\] { background-color: #546A8C; }
 /* Hover permukaan terang lainnya */
 html[data-theme="dark"] .hover\:bg-white:hover { background-color: #12294D; }
 html[data-theme="dark"] .hover\:bg-slate-100:hover { background-color: #12294D; }
+html[data-theme="dark"] .hover\:bg-slate-50:hover { background-color: #12294D; }
 html[data-theme="dark"] .hover\:bg-slate-200:hover { background-color: #22345C; }
 html[data-theme="dark"] .hover\:bg-\[\#E2E8F0\]:hover { background-color: #22345C; }
 html[data-theme="dark"] .hover\:bg-\[\#E4E7EC\]:hover,

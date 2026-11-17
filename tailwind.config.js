@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: [
     './components/**/*.{js,vue,ts}',
     './layouts/**/*.vue',
@@ -211,5 +212,15 @@ export default {
       }
     }
   },
-  plugins: [],
+  plugins: [
+    // Kolom isian tanpa kelas warna: tanpa ini browser memberi abu-abu/cokelat bawaan di dark mode.
+    // :where() = spesifisitas 0, jadi kelas bg-*/border-* mana pun tetap menang.
+    ({ addBase }) => addBase({
+      ':where([data-theme="dark"]) :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="image"]), textarea, select)': {
+        backgroundColor: '#0C1E3A', color: '#E9EFFA', borderColor: '#1C3560'
+      },
+      ':where([data-theme="dark"]) :where(input, textarea)::placeholder': { color: '#5F7396' },
+      ':where([data-theme="dark"]) :where(input:disabled, textarea:disabled, select:disabled)': { backgroundColor: '#0A1830', color: '#93A5C4' }
+    })
+  ],
 }

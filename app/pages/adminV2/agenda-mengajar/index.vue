@@ -64,9 +64,9 @@ const rekapError = ref('')
 // Hanya buku dengan penugasan jadwal aktif (sama dengan daftar buku), agar setiap baris rekap bisa dibuka.
 const rekapTampil = computed(() => rekap.value.filter(row => bukuSemua.value.some(book => book.buku_id === row.buku_id)))
 // Buku guru lain yang dibuka Superadmin dari rekap hanya untuk dibaca; isinya milik guru yang mengisi.
-const bacaSaja = computed(() => tampilan.value === 'buku')
-// Agenda bersifat pribadi: kecuali saat membuka buku dari rekap, hanya buku milik guru yang sedang login yang tampil.
-const books = computed(() => tampilan.value === 'buku' ? bukuSemua.value : bukuSemua.value.filter(book => book.guru_id === guruSayaId.value))
+const bacaSaja = computed(() => !adalahSuperadmin.value && tampilan.value === 'buku')
+// Superadmin melihat dan mengelola semua buku (semua kelas & mapel); guru hanya bukunya sendiri.
+const books = computed(() => adalahSuperadmin.value || tampilan.value === 'buku' ? bukuSemua.value : bukuSemua.value.filter(book => book.guru_id === guruSayaId.value))
 const tabData = ref<AgendaTabData>(emptyTabData())
 const loadingContext = ref(true)
 const loadingTab = ref(false)
@@ -214,7 +214,7 @@ const loadContext = async () => {
   }
   try {
     // Guru: semua buku dari jadwal yang di-assign kepadanya di jenjang mana pun (tidak tergantung pilihan jenjang di header).
-    const result = await agenda.loadBooks(academicYear, semester.value, guruSayaId.value ? null : jenjang.value.toUpperCase() as 'SMP' | 'SMK')
+    const result = await agenda.loadBooks(academicYear, semester.value, guruSayaId.value && !adalahSuperadmin.value ? null : jenjang.value.toUpperCase() as 'SMP' | 'SMK')
     bukuSemua.value = result
     const tujuan = kueriTerpakai ? null : books.value.find(book => book.kelas_id === kueri('kelas') && book.mapel_id === kueri('mapel') && (!kueri('guru') || book.guru_id === kueri('guru')))
     kueriTerpakai = true
@@ -455,7 +455,7 @@ onBeforeUnmount(() => { if (toastTimer) clearTimeout(toastTimer); scoreTimers.fo
           <button type="button" class="rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-[#0B1F3A]" @click="setTampilan('rekap')">Kembali ke Rekap</button>
         </div>
         <dl class="mt-3 grid grid-cols-2 gap-3 text-xs lg:grid-cols-4">
-          <div><dt class="font-semibold text-[#93B4F5]">Guru Pengisi</dt><dd class="mt-0.5 font-extrabold">{{ currentBook.guru_nama }}</dd></div>
+          <div><dt class="font-semibold text-[#93B4F5]">Guru Pengisi</dt><dd class="mt-0.5 font-extrabold">{{ currentBook.guru_nama || 'Belum ada guru' }}</dd></div>
           <div><dt class="font-semibold text-[#93B4F5]">Mata Pelajaran</dt><dd class="mt-0.5 font-extrabold">{{ currentBook.mapel_nama }}</dd></div>
           <div><dt class="font-semibold text-[#93B4F5]">Kelas</dt><dd class="mt-0.5 font-extrabold">{{ currentBook.kelas_nama }}</dd></div>
           <div><dt class="font-semibold text-[#93B4F5]">Semester</dt><dd class="mt-0.5 font-extrabold">{{ currentBook.semester }} &middot; {{ currentBook.tahun_ajaran }}</dd></div>
