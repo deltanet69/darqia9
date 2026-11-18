@@ -23,9 +23,10 @@ const api = useRuangUjian()
 const cbtData = useAdminCbtData('cbt')
 const rbac = useRbac()
 
-type SubTab = 'overview' | 'siswa' | 'alert'
+type SubTab = 'overview' | 'jadwal' | 'siswa' | 'alert'
 const SUB_TABS: { id: SubTab, label: string, icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: 'grid' },
+  { id: 'jadwal', label: 'Jadwal Ujian', icon: 'clock' },
   { id: 'siswa', label: 'Daftar Siswa', icon: 'users' },
   { id: 'alert', label: 'Alert Ujian', icon: 'alert' }
 ]
@@ -65,12 +66,12 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 // Satu "ujian ruang" = ujian-ujian kelas dengan mapel, jadwal, dan nama yang sama.
 const ujianRuang = computed(() => {
   const ids = new Set(tautan.value.map(item => item.exam_id))
-  const grup = new Map<string, { key: string, name: string, subject: string, startsAt: string, date: string, time: string, status: string, examIds: string[] }>()
+  const grup = new Map<string, { key: string, name: string, subject: string, startsAt: string, date: string, time: string, status: string, supervisorId: string, examIds: string[] }>()
   for (const exam of cbtData.exams.value.filter(item => ids.has(item.id))) {
     const key = `${exam.subjectId}|${exam.startsAt}|${exam.name}`
     const ada = grup.get(key)
     if (ada) ada.examIds.push(exam.id)
-    else grup.set(key, { key, name: exam.name, subject: exam.subject, startsAt: exam.startsAt ?? '', date: exam.date, time: exam.time, status: exam.status, examIds: [exam.id] })
+    else grup.set(key, { key, name: exam.name, subject: exam.subject, startsAt: exam.startsAt ?? '', date: exam.date, time: exam.time, status: exam.status, supervisorId: exam.supervisorId ?? '', examIds: [exam.id] })
   }
   return [...grup.values()].sort((a, b) => a.startsAt.localeCompare(b.startsAt))
 })
@@ -87,23 +88,16 @@ const ringkas = computed(() => ringkasProgres(baris.value))
 const komposisi = computed(() => komposisiKelas(anggota.value.map(item => item.kelas)))
 const alertTerkunci = computed(() => alerts.value.filter(item => item.locked).length)
 const sisaKapasitas = computed(() => Math.max(0, props.room.capacity - anggota.value.length))
-const namaPengawas = computed(() => cbtData.teachers.value.find(item => item.id === props.room.supervisorId)?.name ?? 'Belum ditentukan')
+const namaGuru = (id: string) => cbtData.teachers.value.find(item => item.id === id)?.name ?? ''
 const guruGrade = computed(() => cbtData.teachers.value.filter(item => item.grade === props.grade || item.grade === 'Yayasan'))
-// Punishment (kode pembuka & buka kunci) hanya untuk pengawas ruang ini atau Superadmin; DB juga menegakkannya.
+// Pengawas melekat di jadwal ujian; pengawas ruang = semua pengawas jadwal yang tertaut ke ruang ini.
+const namaPengawas = computed(() => [...new Set(ujianRuang.value.map(u => namaGuru(u.supervisorId)).filter(Boolean))].join(', ') || 'Belum ditentukan')
+// Punishment (kode pembuka & buka kunci) hanya untuk pengawas jadwal di ruang ini atau Superadmin; DB juga menegakkannya.
 const bolehPunishment = computed(() => rbac.adalahSuperadmin.value
-  || (!!rbac.state.value.subjekSaya && rbac.state.value.subjekSaya === props.room.supervisorId))
-// Kelola isi ruang (tambah/keluarkan siswa, pengawas, tugaskan ujian) = izin Ubah sub-modul Ruang Ujian (RBAC).
+  || (!!rbac.state.value.subjekSaya && ujianRuang.value.some(u => u.supervisorId === rbac.state.value.subjekSaya)))
+// Kelola isi ruang (tambah/keluarkan siswa, tugaskan ujian) = izin Ubah sub-modul Ruang Ujian (RBAC).
 const bolehKelola = computed(() => rbac.bolehAksi('Manajemen CBT', 'rooms', 'ubah', rbac.adalahSuperadmin.value))
-const ubahPengawas = async (supervisorId: string) => {
-  try {
-    await api.simpanRuang({
-      id: props.room.id, grade: props.room.grade, periode: props.room.periode, name: props.room.name,
-      capacity: props.room.capacity, supervisorId: supervisorId || null
-    })
-    emit('changed')
-    emit('toast', supervisorId ? 'Pengawas ruang diperbarui.' : 'Pengawas ruang dikosongkan.')
-  } catch (e) { emit('toast', e instanceof Error ? e.message : 'Pengawas gagal diubah.') }
-}
+const ringkasJadwal = (u: { examIds: string[] }) => ringkasProgres(barisSiswa(progres.value, u.examIds))
 
 const cari = ref('')
 const barisTampil = computed(() => {
@@ -195,7 +189,7 @@ const tambahAcak = async () => {
 // ---- Buat Ujian untuk ruang ----
 const ujianOpen = ref(false)
 const localDateTime = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
-const formUjian = ref({ name: '', subjectId: '', startsAt: '', duration: 90, ruangLain: [] as string[] })
+const formUjian = ref({ name: '', subjectId: '', startsAt: '', duration: 90, ruangLain: [] as string[], supervisorId: '' })
 const ruangLain = ref<RuangUjian[]>([])
 const progresSimpan = ref('')
 const classIdsRuang = computed(() => [...new Set(anggota.value.map(item => item.classId).filter((id): id is string => !!id))])
@@ -207,7 +201,7 @@ const mapelUjian = computed(() => {
 const tanpaBank = computed(() => formUjian.value.subjectId ? kelasTanpaBank(classIdsRuang.value, formUjian.value.subjectId, cbtData.bankPackages.value) : [])
 const bukaUjian = async () => {
   if (!anggota.value.length) return emit('toast', 'Isi ruang dengan siswa dulu sebelum membuat ujian.')
-  formUjian.value = { name: '', subjectId: '', startsAt: localDateTime(new Date(Date.now() + 86_400_000)), duration: 90, ruangLain: [] }
+  formUjian.value = { name: '', subjectId: '', startsAt: localDateTime(new Date(Date.now() + 86_400_000)), duration: 90, ruangLain: [], supervisorId: '' }
   progresSimpan.value = ''
   ujianOpen.value = true
   try { ruangLain.value = (await api.muatRuang(props.grade, props.room.periode)).filter(item => item.id !== props.room.id) } catch { ruangLain.value = [] }
@@ -251,7 +245,7 @@ const simpanUjian = async () => {
         const bank = bankDari(classId)
         await cbtData.saveExam({
           name: f.name.trim(), classId, subjectId: f.subjectId, questionBankId: bank.id,
-          questionIds: bank.questions.map(q => q.id), supervisorId: props.room.supervisorId ?? undefined,
+          questionIds: bank.questions.map(q => q.id), supervisorId: f.supervisorId || undefined,
           startsAt: f.startsAt, duration: f.duration
         })
       }
@@ -289,14 +283,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
         <div class="min-w-0">
           <span class="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#DCE9FF]">{{ room.periode }}</span>
           <h2 class="mt-2 text-xl font-extrabold text-white sm:text-2xl">{{ room.name }}</h2>
-          <p class="mt-1 text-xs text-[#C7D7F2]">{{ anggota.length }} / {{ room.capacity }} siswa<template v-if="arsip || !bolehKelola"> · Pengawas: {{ namaPengawas }}</template></p>
-          <div v-if="!arsip && bolehKelola" class="mt-2 max-w-xs">
-            <label class="mb-1 block text-[10px] font-extrabold uppercase tracking-wider text-[#C7D7F2]" for="pengawas-ruang">Pengawas ruang</label>
-            <select id="pengawas-ruang" :value="room.supervisorId ?? ''" class="min-h-11 w-full rounded-xl border border-white/20 bg-white px-3 text-sm text-[#101828]" @change="ubahPengawas(($event.target as HTMLSelectElement).value)">
-              <option value="">Belum ditentukan</option>
-              <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
-            </select>
-          </div>
+          <p class="mt-1 text-xs text-[#C7D7F2]">{{ anggota.length }} / {{ room.capacity }} siswa<template v-if="ujianRuang.length"> · Pengawas: {{ namaPengawas }}</template></p>
         </div>
         <div v-if="!arsip && bolehKelola" class="flex gap-2">
           <button type="button" class="min-h-11 flex-1 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-bold text-white hover:bg-white/20 sm:flex-none" @click="bukaTambah">Tambah Siswa</button>
@@ -326,7 +313,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
 
     <template v-else>
       <!-- Pilih ujian (Overview & Daftar Siswa) -->
-      <div v-if="sub !== 'alert' && ujianRuang.length" class="flex flex-col gap-1.5">
+      <div v-if="(sub === 'overview' || sub === 'siswa') && ujianRuang.length" class="flex flex-col gap-1.5">
         <label class="text-xs font-bold text-[#344054]" for="ujian-ruang">Ujian di ruang ini</label>
         <select id="ujian-ruang" v-model="ujianPilihan" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm sm:max-w-xl">
           <option v-for="u in ujianRuang" :key="u.key" :value="u.key">{{ u.subject }} · {{ u.name }} · {{ u.date }} {{ u.time }}</option>
@@ -376,6 +363,25 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
             <p v-if="ujianAktif" class="mt-4 border-t border-[#EFF2F7] pt-3 text-xs text-[#667085]">Rata-rata progres pengerjaan: <b class="text-[#101828]">{{ ringkas.rataProgres }}%</b></p>
           </section>
         </div>
+      </div>
+
+      <!-- JADWAL UJIAN -->
+      <div v-else-if="sub === 'jadwal'" class="space-y-2.5">
+        <p v-if="!ujianRuang.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Belum ada jadwal ujian di ruang ini.</p>
+        <article v-for="u in ujianRuang" :key="u.key" class="rounded-2xl border border-[#E7EBF2] bg-white p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <b class="block break-words text-sm font-bold text-[#101828]">{{ u.subject }} · {{ u.name }}</b>
+              <span class="text-xs text-[#667085]">{{ u.date }} · {{ u.time }} · {{ u.examIds.length }} kelas</span>
+            </div>
+            <span class="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold" :class="u.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : u.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ u.status }}</span>
+          </div>
+          <p class="mt-2 text-xs text-[#344054]">Pengawas: <b>{{ namaGuru(u.supervisorId) || 'Belum ditentukan' }}</b></p>
+          <div class="mt-3">
+            <div class="flex justify-between gap-3 text-[11px] font-semibold text-[#344054]"><span>{{ ringkasJadwal(u).selesai }} selesai · {{ ringkasJadwal(u).mengerjakan }} mengerjakan · {{ ringkasJadwal(u).belumMulai }} belum mulai<template v-if="ringkasJadwal(u).terkunci"> · {{ ringkasJadwal(u).terkunci }} terkunci</template></span><span>{{ ringkasJadwal(u).rataProgres }}%</span></div>
+            <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-[#EFF2F7]"><div class="h-full rounded-full bg-[#1B5FD9]" :style="{ width: `${ringkasJadwal(u).rataProgres}%` }" /></div>
+          </div>
+        </article>
       </div>
 
       <!-- DAFTAR SISWA -->
@@ -438,7 +444,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
           <p class="text-xs text-[#667085]">{{ alerts.length }} pelanggaran tercatat · {{ alertTerkunci }} akun terkunci</p>
           <label class="inline-flex min-h-9 items-center gap-2 text-xs font-bold text-[#344054]"><input v-model="hanyaTerkunci" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]"> Hanya terkunci</label>
         </div>
-        <p v-if="!bolehPunishment" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Kode pembuka dan buka kunci hanya untuk pengawas ruang ini ({{ namaPengawas }}) atau Superadmin.</p>
+        <p v-if="!bolehPunishment" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Kode pembuka dan buka kunci hanya untuk pengawas jadwal ujian di ruang ini ({{ namaPengawas }}) atau Superadmin.</p>
         <div v-if="alertTampil.length" class="grid gap-2.5 lg:grid-cols-2">
           <article v-for="a in alertTampil" :key="a.violation_id" class="rounded-2xl border bg-white p-4" :class="a.locked ? 'border-[#F5C6C0]' : 'border-[#E7EBF2]'">
             <div class="flex items-start justify-between gap-3">
@@ -521,6 +527,13 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
             <div class="grid grid-cols-2 gap-3">
               <div class="col-span-2 sm:col-span-1"><label class="mb-1 block font-bold text-[#344054]" for="uj-mulai">Mulai *</label><input id="uj-mulai" v-model="formUjian.startsAt" type="datetime-local" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
               <div class="col-span-2 sm:col-span-1"><label class="mb-1 block font-bold text-[#344054]" for="uj-durasi">Durasi (menit) *</label><input id="uj-durasi" v-model.number="formUjian.duration" type="number" min="1" max="600" inputmode="numeric" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
+            </div>
+            <div>
+              <label class="mb-1 block font-bold text-[#344054]" for="uj-peng">Pengawas jadwal ini</label>
+              <select id="uj-peng" v-model="formUjian.supervisorId" class="w-full rounded-xl border border-[#E7EBF2] bg-white p-3 text-sm outline-none focus:border-[#1B5FD9]">
+                <option value="">Belum ditentukan</option>
+                <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
+              </select>
             </div>
             <fieldset v-if="ruangLain.length">
               <legend class="mb-1.5 font-bold text-[#344054]">Tugaskan juga ke ruang lain <span class="font-normal text-[#667085]">(jadwal sama)</span></legend>

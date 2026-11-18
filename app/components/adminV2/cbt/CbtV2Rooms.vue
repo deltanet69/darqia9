@@ -45,8 +45,6 @@ onUnmounted(() => emit('detail', null))
 const totalSiswaAktif = computed(() => cbtData.classes.value.filter(item => item.grade === props.grade).reduce((sum, item) => sum + item.studentCount, 0))
 const siswaDiRuang = computed(() => ruang.value.reduce((sum, item) => sum + item.jumlahSiswa, 0))
 const siswaBelumRuang = computed(() => Math.max(0, totalSiswaAktif.value - siswaDiRuang.value))
-const guruGrade = computed(() => cbtData.teachers.value.filter(item => item.grade === props.grade || item.grade === 'Yayasan'))
-const namaGuru = (id: string | null) => cbtData.teachers.value.find(item => item.id === id)?.name ?? ''
 const gradeClasses = computed(() => cbtData.classes.value.filter(item => item.grade === props.grade))
 
 const muat = async () => {
@@ -75,11 +73,11 @@ watch([periode, () => props.grade], () => { void muat() })
 // ---- Form ruang (satuan) ----
 const formOpen = ref(false)
 const mode = ref<'satu' | 'banyak'>('satu')
-const form = ref({ id: '', name: '', capacity: 30, supervisorId: '' })
+const form = ref({ id: '', name: '', capacity: 30 })
 const bukaForm = (item?: RuangUjian) => {
   form.value = item
-    ? { id: item.id, name: item.name, capacity: item.capacity, supervisorId: item.supervisorId ?? '' }
-    : { id: '', name: `Ruang ${String(ruang.value.length + 1).padStart(2, '0')}`, capacity: 30, supervisorId: '' }
+    ? { id: item.id, name: item.name, capacity: item.capacity }
+    : { id: '', name: `Ruang ${String(ruang.value.length + 1).padStart(2, '0')}`, capacity: 30 }
   mode.value = 'satu'
   formOpen.value = true
 }
@@ -92,7 +90,7 @@ const simpanForm = async () => {
   try {
     const id = await api.simpanRuang({
       id: form.value.id || undefined, grade: props.grade, periode: periode.value,
-      name: form.value.name, capacity: form.value.capacity, supervisorId: form.value.supervisorId || null
+      name: form.value.name, capacity: form.value.capacity, supervisorId: null
     })
     formOpen.value = false
     await muat()
@@ -288,15 +286,6 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
               </span>
             </div>
 
-            <!-- Pengawas Row -->
-            <div class="flex items-center gap-2 text-xs text-slate-600 mb-3.5">
-              <AdminV2Icon name="user" :size="13" class="text-slate-400 shrink-0" />
-              <span class="text-slate-400 text-[11px]">Pengawas:</span>
-              <b class="font-bold text-slate-800 truncate text-[11.5px]">
-                {{ namaGuru(item.supervisorId) || 'Belum ditentukan' }}
-              </b>
-            </div>
-
             <!-- Capacity & Progress Tile -->
             <div class="bg-slate-50/80 rounded-xl p-3 border border-slate-150 space-y-2 group-hover:bg-blue-50/30 group-hover:border-blue-200/60 transition-colors">
               <div class="flex items-center justify-between text-xs">
@@ -386,13 +375,6 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
           <div v-if="mode === 'satu'" class="space-y-3.5 p-5 text-xs">
             <div><label class="mb-1 block font-bold text-[#344054]" for="rg-nama">Nama ruang *</label><input id="rg-nama" v-model="form.name" type="text" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
             <div><label class="mb-1 block font-bold text-[#344054]" for="rg-kap">Kapasitas siswa *</label><input id="rg-kap" v-model.number="form.capacity" type="number" min="1" max="60" inputmode="numeric" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"><p class="mt-1 text-[#667085]">Umumnya 28–30 siswa, menyesuaikan kondisi ruang.</p></div>
-            <div>
-              <label class="mb-1 block font-bold text-[#344054]" for="rg-peng">Pengawas ruang</label>
-              <select id="rg-peng" v-model="form.supervisorId" class="w-full rounded-xl border border-[#E7EBF2] bg-white p-3 text-sm outline-none focus:border-[#1B5FD9]">
-                <option value="">Belum ditentukan</option>
-                <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
-              </select>
-            </div>
           </div>
           <div v-else class="space-y-3.5 p-5 text-xs">
             <div class="grid grid-cols-2 gap-3">
