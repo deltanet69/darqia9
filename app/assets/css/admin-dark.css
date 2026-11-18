@@ -97,6 +97,7 @@ html[data-theme="dark"] .bg-\[\#F2F4F7\],
 html[data-theme="dark"] .bg-\[\#F1F5F9\],
 html[data-theme="dark"] .bg-\[\#F3F5F9\],
 html[data-theme="dark"] .bg-\[\#F9FAFC\],
+html[data-theme="dark"] .bg-\[\#F5F7FA\],
 html[data-theme="dark"] .bg-\[\#FAFBFC\],
 html[data-theme="dark"] .bg-\[\#EEF2F6\],
 html[data-theme="dark"] .bg-\[\#EEF1F6\],
@@ -188,6 +189,7 @@ html[data-theme="dark"] .hover\:bg-\[\#F8FAFD\]\/60:hover { background-color: rg
    ================================================================ */
 
 /* — Biru lembut: chip info, ubin ikon biru, sel terpilih — */
+html[data-theme="dark"] .bg-\[\#EEF4FF\],
 html[data-theme="dark"] .bg-\[\#E8F0FE\],
 html[data-theme="dark"] .bg-\[\#EFF4FF\],
 html[data-theme="dark"] .bg-\[\#EFF6FF\],
@@ -233,6 +235,7 @@ html[data-theme="dark"] .bg-\[\#FEF4F4\] { background-color: #33130F; }
 html[data-theme="dark"] .hover\:bg-\[\#FDECEA\]:hover { background-color: #421A14; }
 
 /* — Kuning/oranye lembut: kotak peringatan, lencana menunggu — */
+html[data-theme="dark"] .bg-\[\#FEF0C7\],
 html[data-theme="dark"] .bg-\[\#FEF4E5\],
 html[data-theme="dark"] .bg-\[\#FFFBEB\],
 html[data-theme="dark"] .bg-\[\#FFFAEB\],
