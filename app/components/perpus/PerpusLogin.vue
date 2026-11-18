@@ -5,7 +5,7 @@ import { inisialSiswa } from '~/composables/perpusCore'
 
 const P = usePerpus()
 const sekolah = computed(() => P.jenjangTampil.value === 'SMP'
-  ? { nama: 'SMP IT Bina Cendekia Assalam', logo: '/asset/logosmp.png' }
+  ? { nama: 'SMP IT Bina Cendekia Assalam', logo: '/asset/logosmp.webp' }
   : { nama: 'SMK IT Attaqwa 9', logo: '/asset/logo.png' })
 const langkah = computed(() => P.tahap.value === 'verifikasi' ? 'verif' : 'awal')
 

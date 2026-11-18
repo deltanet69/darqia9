@@ -42,7 +42,7 @@
           <!-- Brand / Logos -->
           <NuxtLink to="/smp" class="flex items-center gap-[10px] min-w-0 group" aria-label="Beranda SMP IT BCA">
             <img 
-              src="/asset/logosmp.png" 
+              src="/asset/logosmp.webp" 
               alt="Logo SMP IT Bina Cendekia Assalam" 
               class="w-[42px] h-[48px] lg:w-[46px] lg:h-[52px] object-contain shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,.25)]"
             />
@@ -172,7 +172,7 @@
       >
         <div class="pb-[12px] border-b border-[#D1E7DD] flex items-center justify-between">
           <div class="flex items-center gap-2.5">
-            <img src="/asset/logosmp.png" alt="Logo SMP" class="w-[36px] h-[40px] object-contain" />
+            <img src="/asset/logosmp.webp" alt="Logo SMP" class="w-[36px] h-[40px] object-contain" />
             <div>
               <b class="text-[14px] text-[#063826] block leading-tight">SMP IT Bina Cendekia Assalam</b>
               <small class="text-[11px] text-[#55705F]">Kelas Gender · Babelan Bekasi</small>

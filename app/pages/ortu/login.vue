@@ -1,20 +1,20 @@
 <template>
   <div class="ortu" :style="gayaTema(temaHalaman)">
     <div class="lg on" style="background:#F7F9FD">
-      <div style="position:absolute;left:0;right:0;top:0;height:480px;background:linear-gradient(160deg,var(--p0) 0%,var(--p1) 100%);overflow:hidden">
+      <div style="position:absolute;left:0;right:0;top:0;height:580px;background:linear-gradient(160deg,var(--p0) 0%,var(--p1) 100%);overflow:hidden">
         <svg width="340" height="340" viewBox="0 0 340 340" fill="none" aria-hidden="true" style="position:absolute;right:-130px;top:-90px"><circle cx="170" cy="170" r="168" stroke="#fff" stroke-opacity=".14" stroke-width="1.5" /><circle cx="170" cy="170" r="124" stroke="#fff" stroke-opacity=".14" stroke-width="1.5" /><circle cx="170" cy="170" r="80" stroke="#F0B429" stroke-opacity=".7" stroke-width="1.8" /></svg>
         <svg width="260" height="260" viewBox="0 0 260 260" fill="none" aria-hidden="true" style="position:absolute;left:-120px;top:210px"><circle cx="130" cy="130" r="128" stroke="#fff" stroke-opacity=".1" stroke-width="1.5" /><circle cx="130" cy="130" r="84" stroke="#fff" stroke-opacity=".1" stroke-width="1.5" /></svg>
       </div>
       <div class="up" :style="`position:absolute;left:28px;right:28px;top:${modeGanti ? 40 : 74}px;color:#fff`">
-        <div style="width:60px;height:60px;border-radius:19px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center">
+        <div style="width:60px;height:60px;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center">
           <img :src="temaHalaman.logo" :alt="`Logo ${temaHalaman.nama}`" width="42" height="42" style="width:42px;height:42px;object-fit:contain">
         </div>
-        <div style="margin-top:20px;font-size:15px;font-weight:500;color:#F6D27A">{{ temaHalaman.nama }}</div>
-        <h1 style="margin:8px 0 0;font-size:34px;line-height:1.12;font-weight:600;letter-spacing:-.03em">Portal<br>Orang Tua</h1>
+        <div style="margin-top:20px;font-size:17px;font-weight:500;color:#F6D27A">{{ temaHalaman.nama }}</div>
+        <h1 style="margin:8px 0 0;font-size:34px;line-height:1.12;font-weight:600;letter-spacing:-.03em">Portal Orang Tua</h1>
         <p v-if="!modeGanti" style="margin:12px 0 0;font-size:16px;line-height:1.5;color:rgba(255,255,255,.82)">Pantau kehadiran, nilai, dan administrasi putra-putri Bapak/Ibu.</p>
       </div>
 
-      <div class="up scroll" :style="`animation-delay:.14s;position:absolute;left:0;right:0;top:${modeGanti ? 250 : 384}px;bottom:0;box-sizing:border-box;padding:26px 24px 20px;background:#fff;border-radius:36px 36px 0 0;box-shadow:0 -14px 44px rgba(10,42,92,.18);overflow-y:auto`">
+      <div class="up scroll" :style="`animation-delay:.14s;position:absolute;left:0;right:0;top:${modeGanti ? 250 : 384}px;bottom:0;box-sizing:border-box;padding:26px 24px 20px;background:#fff;0 0;box-shadow:0 -14px 44px rgba(10,42,92,.18);overflow-y:auto`">
         <template v-if="modeGanti">
           <h2 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--p0)">Buat kata sandi baru</h2>
           <p style="margin:2px 0 0;font-size:15px;line-height:1.5;color:#51607F">Demi keamanan, ganti kata sandi dari sekolah sebelum melanjutkan.</p>
@@ -22,10 +22,10 @@
           <button type="button" style="display:block;margin:14px auto 0;min-height:44px;font-size:15px;font-weight:600;color:var(--p1)" @click="keluar">Keluar</button>
         </template>
         <form v-else novalidate @submit.prevent="masuk">
-          <h2 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--p0)">Masuk</h2>
+          <h2 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--p0)">Login Portal</h2>
           <p style="margin:2px 0 0;font-size:15px;color:#51607F">Gunakan NIS atau NISN anak dan kata sandi dari sekolah.</p>
-
-          <div style="position:relative;margin-top:18px">
+ 
+          <div style="position:relative;margin-top:32px">
             <label for="nis" class="sr">NIS atau NISN siswa</label>
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#7B8AA6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:16px;top:15px"><rect x="3" y="5" width="18" height="14" rx="3" /><circle cx="9" cy="11" r="2" /><path d="M6.5 16c.6-1.4 1.6-2 2.5-2s1.9.6 2.5 2M14 10h4M14 14h3" /></svg>
             <input id="nis" v-model.trim="nis" class="fld" inputmode="numeric" autocomplete="username" placeholder="NIS atau NISN anak" style="padding-left:48px;font-weight:500">

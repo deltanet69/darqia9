@@ -3,19 +3,21 @@
 import { hitungSiswa, namaItem, type Grade, type ItemBayar, type RekapBayar } from '../../app/composables/keuanganCore'
 import { jenisUjian, semesterDari, tingkatOrtu } from '../../app/composables/ortuCore'
 import { tanggalWib } from '../../app/composables/dashboardCore'
+import { formatTtl } from '../../app/utils/cbtKartuCetak'
 import type { BayarOrtu, SiswaOrtu, TingkatOrtu, UjianOrtu } from '../../app/types/ortu'
 
-export const KOLOM_SISWA_ORTU = 'name, nis, grade, class_id, student_status, attendance_pct, exam_eligible, father_name, mother_name'
+export const KOLOM_SISWA_ORTU = 'name, nis, nisn, birth_place, birth_date, grade, class_id, student_status, attendance_pct, exam_eligible, father_name, mother_name'
 
 export async function muatSiswaOrtu(db: any, studentId: string, kolomTambahan = ''): Promise<{ siswa: SiswaOrtu, baris: any }> {
   const { data: s, error } = await db.from('students').select(KOLOM_SISWA_ORTU + (kolomTambahan ? `, ${kolomTambahan}` : '')).eq('id', studentId).maybeSingle()
   if (error || !s) throw createError({ statusCode: 500, statusMessage: 'Data siswa gagal dimuat.' })
-  const kelas = s.class_id ? (await db.from('classes').select('name, academic_year').eq('id', s.class_id).maybeSingle()).data : null
+  const kelas = s.class_id ? (await db.from('classes').select('name, academic_year, major').eq('id', s.class_id).maybeSingle()).data : null
   const sem = semesterDari(tanggalWib())
   return {
     baris: s,
     siswa: {
-      nama: s.name, nis: s.nis || '', kelas: kelas?.name || 'Tanpa kelas',
+      nama: s.name, nis: s.nis || '', nisn: s.nisn || '', ttl: formatTtl(s.birth_place, s.birth_date),
+      kelas: kelas?.name || 'Tanpa kelas', jurusan: kelas?.major || '',
       tahunAjaran: kelas?.academic_year || sem.tahunAjaran, semester: sem.label, status: s.student_status || 'Aktif'
     }
   }

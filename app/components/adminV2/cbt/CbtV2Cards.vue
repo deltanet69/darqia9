@@ -4,7 +4,9 @@ import type { GradeType } from './cbtV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 import { useKartuUjian, type PeriodeKartu, type SiswaKartu } from '~/composables/useKartuUjian'
 import { periodeOpsi } from '~/composables/ruangUjianCore'
-import { cetakKartu } from '~/utils/cbtKartuCetak'
+import QRCode from 'qrcode'
+import { cetakKartu, buatNoPeserta, formatTtl } from '~/utils/cbtKartuCetak'
+import { URL_UNDUH_APK } from '~/utils/cbtKartuCetak'
 
 const props = withDefaults(defineProps<{ grade: GradeType, source?: 'cbt' | 'ujian_harian' }>(), { source: 'cbt' })
 const emit = defineEmits<{ (e: 'toast', msg: string): void }>()
@@ -255,10 +257,20 @@ const salin = async (s: SiswaKartu) => {
   try { await navigator.clipboard.writeText(s.token!); emit('toast', `Token ${s.name} disalin.`) } catch { emit('toast', `Token ${s.name}: ${s.token}`) }
 }
 
-const cetak = (daftar: SiswaKartu[], judul: string) => {
-  const kartu = daftar.filter(bisaCetak).map(s => ({ name: s.name, nis: s.nis, classroom: s.classroom, room: s.room, token: s.token! }))
-  const galat = cetakKartu({ kartu, grade: props.grade, jenis: aktif.value!.periode.split(' ').slice(0, 2).join(' '), judul })
-  if (galat) emit('toast', galat)
+const cetak = async (daftar: SiswaKartu[], judul: string) => {
+  // Gerbang bisaCetak (eligible + aktif + token terbit) tetap berlaku.
+  const siap = daftar.filter(bisaCetak)
+  if (!siap.length) { emit('toast', 'Belum ada kartu yang dapat dicetak. Terbitkan token terlebih dahulu.'); return }
+  const periode = aktif.value!.periode
+  const kartu = siap.map(s => ({
+    name: s.name, nis: s.nis, nisn: s.nisn, ttl: formatTtl(s.birthPlace, s.birthDate), classroom: s.classroom, major: s.major,
+    room: s.room, token: s.token!, noPeserta: buatNoPeserta(tahun.value, periode, s.nis)
+  }))
+  try {
+    const qr = await QRCode.toDataURL(URL_UNDUH_APK, { margin: 0, width: 240, errorCorrectionLevel: 'M' })
+    const galat = cetakKartu({ kartu, grade: props.grade, jenis: periode.split(' ').slice(0, 2).join(' '), judul, tahunAjaran: tahun.value, qr })
+    if (galat) emit('toast', galat)
+  } catch { emit('toast', 'QR kartu gagal dibuat.') }
 }
 
 // Ekspor daftar yang sedang tampil (mengikuti filter kelas, status, dan pencarian).

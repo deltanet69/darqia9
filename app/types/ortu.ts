@@ -6,7 +6,7 @@ export interface SesiOrtuKlien { nis: string, nama: string, jenjang: JenjangOrtu
 export type StatusPresensi = 'tepat' | 'terlambat' | 'alpa' | 'izin' | 'sakit'
 export interface PresensiHarian { tanggal: string, jamMasuk: string | null, status: StatusPresensi }
 
-export interface SiswaOrtu { nama: string, nis: string, kelas: string, tahunAjaran: string, semester: string, status: string }
+export interface SiswaOrtu { nama: string, nis: string, nisn: string, ttl: string, jurusan: string, kelas: string, tahunAjaran: string, semester: string, status: string }
 
 export interface NotifOrtu {
   id: string

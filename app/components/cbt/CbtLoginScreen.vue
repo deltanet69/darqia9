@@ -29,7 +29,7 @@
       <!-- Identitas & Logo Sekolah -->
       <div class="relative">
         <div class="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 p-2.5 flex items-center justify-center shadow-xl shadow-merek-950/40">
-          <img :src="activeGrade === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'" alt="Logo Sekolah" class="w-full h-full object-contain">
+          <img :src="activeGrade === 'SMP' ? '/asset/logosmp.webp' : '/asset/logo.png'" alt="Logo Sekolah" class="w-full h-full object-contain">
         </div>
       </div>
       <p class="mt-3 text-xs font-black text-merek-100 text-center tracking-tight">{{ jenjangText }}</p>

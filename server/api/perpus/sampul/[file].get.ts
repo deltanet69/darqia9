@@ -5,10 +5,10 @@ import { jalurBerkas } from '../../../utils/perpus'
 
 export default defineEventHandler(async (event) => {
   const file = getRouterParam(event, 'file') || ''
-  const path = /^[a-z0-9-]+\.jpg$/.test(file) ? jalurBerkas(`sampul/${file}`) : null
+  const path = /^[a-z0-9-]+\.(jpg|webp)$/.test(file) ? jalurBerkas(`sampul/${file}`) : null
   const info = path ? await stat(path).catch(() => null) : null
   if (!path || !info?.isFile()) throw createError({ statusCode: 404, statusMessage: 'Sampul tidak ditemukan.' })
-  setHeader(event, 'Content-Type', 'image/jpeg')
+  setHeader(event, 'Content-Type', file.endsWith('.webp') ? 'image/webp' : 'image/jpeg')
   setHeader(event, 'Content-Length', info.size)
   setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
   return sendStream(event, createReadStream(path))

@@ -4,7 +4,7 @@ import type { JenisUjian, KontakOrtu, TingkatOrtu } from '../types/ortu.ts'
 
 export const TEMA_ORTU = {
   SMK: { p0: '#0A2A5C', p1: '#1B5FD9', soft: '#E8F0FE', nama: 'SMK IT Attaqwa 9', singkat: 'SMK IT Attaqwa 9', logo: '/asset/logo.png' },
-  SMP: { p0: '#0B4A2A', p1: '#15803D', soft: '#E7F5EC', nama: 'SMP IT Bina Cendekia Assalam', singkat: 'SMP IT Bina Cendekia', logo: '/asset/logosmp.png' }
+  SMP: { p0: '#0B4A2A', p1: '#15803D', soft: '#E7F5EC', nama: 'SMP IT Bina Cendekia Assalam', singkat: 'SMP IT Bina Cendekia', logo: '/asset/logosmp.webp' }
 } as const
 
 // Aturan tap kartu RFID di gerbang — hanya untuk teks legenda; status dihitung di sumber data, bukan di klien.

@@ -109,7 +109,7 @@ definePageMeta({ layout: 'smk' })
               <!-- Image Container -->
               <div class="relative aspect-[16/10] rounded-[18px] overflow-hidden bg-[#0A2A5C]">
                 <img 
-                  src="/asset/SMK/gedung-smk.jpg" 
+                  src="/asset/SMK/gedung-smk.webp" 
                   alt="Gedung Kampus SMK IT Attaqwa 9 Babelan Bekasi" 
                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   loading="lazy"
@@ -465,7 +465,7 @@ definePageMeta({ layout: 'smk' })
             <div class="relative w-full max-w-[280px]">
               <div class="aspect-[3/4] bg-[#0A2A5C] rounded-[20px] overflow-hidden shadow-[0_12px_30px_rgba(10,42,92,0.18)] border-2 border-white relative group">
                 <img 
-                  src="/asset/SMK/kepala-sekolah.jpg" 
+                  src="/asset/SMK/kepala-sekolah.webp" 
                   alt="Kepala Sekolah SMK IT Attaqwa 9" 
                   class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
@@ -612,7 +612,7 @@ definePageMeta({ layout: 'smk' })
               </div>
 
               <img 
-                src="/asset/SMK/herosmk.png" 
+                src="/asset/SMK/herosmk.webp" 
                 alt="Siswa SMK IT Attaqwa 9" 
                 class="relative z-0 w-full h-auto max-h-[340px] sm:max-h-[390px] lg:max-h-[440px] object-contain object-bottom block drop-shadow-[0_15px_30px_rgba(0,0,0,0.45)] select-none pointer-events-none"
                 loading="lazy"

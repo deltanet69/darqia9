@@ -552,7 +552,7 @@ const activeTab = ref<'jadwal' | 'syarat' | 'beasiswa' | 'alur'>('jadwal')
               </div>
 
               <img 
-                src="/asset/SMK/herosmk.png" 
+                src="/asset/SMK/herosmk.webp" 
                 alt="Siswa SMK IT Attaqwa 9" 
                 class="relative z-0 w-full h-auto max-h-[340px] sm:max-h-[390px] lg:max-h-[440px] object-contain object-bottom block drop-shadow-[0_15px_30px_rgba(0,0,0,0.45)] select-none pointer-events-none"
                 loading="lazy"

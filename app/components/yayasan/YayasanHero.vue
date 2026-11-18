@@ -1,7 +1,7 @@
 <template>
   <section 
     id="beranda"
-    class="relative overflow-hidden text-white pt-[190px] lg:pt-[230px] pb-[56px] lg:pb-[170px] bg-[#0A2A5C] bg-cover bg-center bg-no-repeat bg-[linear-gradient(135deg,rgba(10,42,92,0.95)_40%,rgba(18,62,133,0.88)_80%,rgba(27,95,217,0.85)_100%),url('/bgdarqia.png')]"
+    class="relative overflow-hidden text-white pt-[190px] lg:pt-[230px] pb-[56px] lg:pb-[170px] bg-[#0A2A5C] bg-cover bg-center bg-no-repeat bg-[linear-gradient(135deg,rgba(10,42,92,0.95)_40%,rgba(18,62,133,0.88)_80%,rgba(27,95,217,0.85)_100%),url('/bgdarqia.webp')]"
   >
     <!-- Background Ambient Glow & Patterns -->
     <div class="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">

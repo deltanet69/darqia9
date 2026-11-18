@@ -12,7 +12,7 @@ useHead(() => ({ title: `Perpustakaan Digital — ${P.jenjangTampil.value === 'S
 
 const NAV: Array<[string, string, string]> = [['beranda', 'Beranda', 'home'], ['katalog', 'Katalog', 'katalog'], ['belajar', 'Belajar', 'belajar'], ['koleksi', 'Koleksi', 'koleksi'], ['profil', 'Profil', 'profil']]
 const URUT_TAB = [0, 2, 1, 3, 4] // navbar bawah: Katalog di tengah sebagai tombol bulat
-const logo = computed(() => (P.jenjangTampil.value === 'SMP' ? '/asset/logosmp.png' : '/asset/logo.png'))
+const logo = computed(() => (P.jenjangTampil.value === 'SMP' ? '/asset/logosmp.webp' : '/asset/logo.png'))
 const V = P.V
 const tab = (k: string) => P.ke(k as any)
 const lonceng = () => { P.sheet.value = { jenis: 'notif' } }

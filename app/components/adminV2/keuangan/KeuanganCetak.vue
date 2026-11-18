@@ -17,7 +17,7 @@ const sekolah = computed(() => props.siswa.grade === 'SMP' ? 'SMP IT Bina Cendek
 const hariIni = formatTanggalPanjang(new Date().toISOString().slice(0, 10))
 
 const kopSurat = computed(() => {
-  return props.siswa.grade === 'SMP' ? '/kop surat/KopSMP.jpg' : '/kop surat/KopSMK.jpg'
+  return props.siswa.grade === 'SMP' ? '/kop surat/KopSMP.webp' : '/kop surat/KopSMK.jpg'
 })
 
 const kepsek = computed(() => {

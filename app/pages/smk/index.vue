@@ -97,7 +97,7 @@ const isLiveFeed = computed(() => Boolean(feedResponse.value?.isLive))
 
               <!-- Foto Siswa Asli (Frameless Cutout, Grounded di Ujung Bawah Frame) -->
               <img 
-                src="/asset/SMK/herosmk.png" 
+                src="/asset/SMK/herosmk.webp" 
                 alt="Siswa SMK IT Attaqwa 9" 
                 class="relative z-0 w-full h-auto max-h-[500px] sm:max-h-[600px] lg:max-h-[750px] object-contain object-bottom block drop-shadow-[0_25px_40px_rgba(0,0,0,0.5)] select-none pointer-events-none"
                 loading="eager"
@@ -553,7 +553,7 @@ const isLiveFeed = computed(() => Boolean(feedResponse.value?.isLive))
             <!-- Image Frame -->
             <div class="relative h-[210px] overflow-hidden bg-[#0A2A5C]">
               <img 
-                src="/asset/SMK/news-spmb.jpg" 
+                src="/asset/SMK/news-spmb.webp" 
                 alt="Pendaftaran SPMB SMK IT Attaqwa 9" 
                 class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
                 loading="lazy"
@@ -606,7 +606,7 @@ const isLiveFeed = computed(() => Boolean(feedResponse.value?.isLive))
           >
             <div class="relative h-[210px] overflow-hidden bg-[#0A2A5C]">
               <img 
-                src="/asset/SMK/news-deeplearning.jpg" 
+                src="/asset/SMK/news-deeplearning.webp" 
                 alt="Pembelajaran Deep Learning SMK IT Attaqwa 9" 
                 class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
                 loading="lazy"
@@ -654,7 +654,7 @@ const isLiveFeed = computed(() => Boolean(feedResponse.value?.isLive))
           >
             <div class="relative h-[210px] overflow-hidden bg-[#0A2A5C]">
               <img 
-                src="/asset/SMK/news-blk.jpg" 
+                src="/asset/SMK/news-blk.webp" 
                 alt="BLK Komunitas SMK IT Attaqwa 9" 
                 class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
                 loading="lazy"
@@ -912,7 +912,7 @@ const isLiveFeed = computed(() => Boolean(feedResponse.value?.isLive))
 
               <!-- Foto Siswa Asli (Grounded ke dasar card) -->
               <img 
-                src="/asset/SMK/herosmk.png" 
+                src="/asset/SMK/herosmk.webp" 
                 alt="Siswa SMK IT Attaqwa 9" 
                 class="relative z-0 w-full h-auto max-h-[340px] sm:max-h-[390px] lg:max-h-[440px] object-contain object-bottom block drop-shadow-[0_15px_30px_rgba(0,0,0,0.45)] select-none pointer-events-none"
                 loading="lazy"

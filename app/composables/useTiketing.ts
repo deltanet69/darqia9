@@ -91,12 +91,13 @@ export const useTiketing = () => {
     }
   }
 
-  const unggah = async (tiketId: string, berkas: File): Promise<{ path: string, nama: string }> => {
+  const unggah = async (tiketId: string, asli: File): Promise<{ path: string, nama: string }> => {
+    const berkas = await kompresGambar(asli)
     const nama = namaAman(berkas.name)
     const path = `${tiketId}/${nama}`
     const { error } = await client.storage.from(BUCKET).upload(path, berkas)
     if (error) throw error
-    return { path, nama: berkas.name }
+    return { path, nama: asli.name }
   }
 
   const buatTiket = async (input: { judul: string, kategori: string, deskripsi: string, grade: GradeTiket, berkas?: File | null }): Promise<TiketRow> => {

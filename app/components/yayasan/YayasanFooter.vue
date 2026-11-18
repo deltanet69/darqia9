@@ -6,7 +6,7 @@
         <div>
           <div class="flex items-center gap-[12px] mb-[16px]">
             <img src="/asset/logo.png" alt="Logo Yayasan" class="w-[44px] h-[50px] object-contain">
-            <img src="/asset/logosmp.png" alt="Logo Yayasan" class="w-[44px] h-[50px] object-contain">
+            <img src="/asset/logosmp.webp" alt="Logo Yayasan" class="w-[44px] h-[50px] object-contain">
             
           </div>
           <p class="gsap-rv text-[#C9D9F5] text-[15px] leading-[1.65] max-w-[440px] mb-[18px]">

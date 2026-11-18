@@ -92,10 +92,11 @@ const chipStatusKelas: Record<string, string> = {
 function bukaDetail(id: string) { pilihanId.value = id; tampilan.value = 'detail' }
 function bukaFormulir(id = '') { editId.value = id; tampilan.value = 'formulir' }
 
-async function simpanFormulir(record: SpmbAdminRecord, berkas?: File | null) {
-  if (berkas) {
+async function simpanFormulir(record: SpmbAdminRecord, asli?: File | null) {
+  if (asli) {
     try {
       const supabase = useSupabaseClient()
+      const berkas = await kompresGambar(asli)
       const nama = berkas.name.replace(/[^\w.\-]+/g, '_')
       const { error } = await supabase.storage.from('spmb-bukti').upload(`${record.id}/${nama}`, berkas)
       if (!error) {

@@ -220,7 +220,7 @@ const smp = cbt.grade.value === 'SMP'
 useHead({
   meta: [{ name: 'theme-color', content: smp ? '#15803d' : '#0A2A5C' }],
   link: [
-    { key: 'ikon', rel: 'icon', type: 'image/png', href: smp ? '/asset/logosmp.png' : '/asset/logo.png' },
+    { key: 'ikon', rel: 'icon', type: 'image/png', href: smp ? '/asset/logosmp.webp' : '/asset/logo.png' },
     { key: 'ikon-apple', rel: 'apple-touch-icon', href: smp ? '/icons/smp-192.png' : '/icons/smk-192.png' }
   ]
 })

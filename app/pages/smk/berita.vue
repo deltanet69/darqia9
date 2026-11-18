@@ -48,7 +48,7 @@ const articlesData: Article[] = [
     authorRole: 'Sekretariat SPMB 2027',
     readTime: '3 mnt baca',
     views: 1420,
-    image: '/asset/SMK/news-spmb.jpg',
+    image: '/asset/SMK/news-spmb.webp',
     featured: true,
     tags: ['SPMB', 'Pendaftaran', 'Gelombang 1', 'Beasiswa Tahfidz'],
     summary: 'Penerimaan murid baru tahun ajaran 2027/2028 resmi dibuka dengan tiga gelombang dan biaya registrasi hanya Rp50.000. Kuota terbatas hanya tujuh rombel — ditambah pendaftaran inden untuk 2028/2029.',
@@ -77,7 +77,7 @@ const articlesData: Article[] = [
     authorRole: 'Pengembang Kurikulum Vokasi',
     readTime: '4 mnt baca',
     views: 890,
-    image: '/asset/SMK/news-deeplearning.jpg',
+    image: '/asset/SMK/news-deeplearning.webp',
     featured: false,
     tags: ['Kurikulum Merdeka', 'Deep Learning', 'Metode Belajar', 'Vokasi'],
     summary: 'Bukan sekadar menghafal — bagaimana pendekatan pembelajaran mendalam mengubah cara siswa memahami pelajaran vokasi dan pemecahan masalah kontekstual.',
@@ -106,7 +106,7 @@ const articlesData: Article[] = [
     authorRole: 'Divisi Kemitraan Industri',
     readTime: '3 mnt baca',
     views: 960,
-    image: '/asset/SMK/news-blk.jpg',
+    image: '/asset/SMK/news-blk.webp',
     featured: false,
     tags: ['BLK Komunitas', 'Kemnaker RI', 'Prakerin', 'Fasilitas Bengkel'],
     summary: 'Gedung Balai Latihan Kerja Komunitas Kemnaker RI di SMK IT Attaqwa 9 menjadi pusat praktik kejuruan berstandar industri nasional.',
@@ -135,7 +135,7 @@ const articlesData: Article[] = [
     authorRole: 'Biro Prestasi & Publikasi',
     readTime: '4 mnt baca',
     views: 1680,
-    image: '/asset/SMK/ig-4.jpg',
+    image: '/asset/SMK/ig-4.webp',
     featured: false,
     tags: ['LKS SMK', 'TKJ', 'Juara 1', 'Kabupaten Bekasi', 'Prestasi'],
     summary: 'Siswa kompetensi keahlian TKJ SMK IT Attaqwa 9 berhasil membuktikan keunggulan skill di ajang bergengsi Lomba Kompetensi Siswa (LKS) IT Network.',
@@ -164,7 +164,7 @@ const articlesData: Article[] = [
     authorRole: "Koordinator Tahfidz Yanbu'a",
     readTime: '3 mnt baca',
     views: 740,
-    image: '/asset/SMK/ig-3.jpg',
+    image: '/asset/SMK/ig-3.webp',
     featured: false,
     tags: ['Tahfidz', 'Yanbua', 'Karakter Santri', 'Simaan Quran'],
     summary: "Metode Yanbu'a membuat setoran hafalan Qur'an menjadi pembiasaan yang terukur, tartil, dan menyenangkan bagi santri sekolah kejuruan.",
@@ -193,7 +193,7 @@ const articlesData: Article[] = [
     authorRole: 'Kaprog Keahlian DKV',
     readTime: '3 mnt baca',
     views: 1120,
-    image: '/asset/SMK/ig-2.jpg',
+    image: '/asset/SMK/ig-2.webp',
     featured: false,
     tags: ['DKV', 'UI/UX Design', 'Motion Graphic', 'Portofolio', 'Karya Digital'],
     summary: 'Pameran karya digital santri vokasi siap industri: prototipe aplikasi mobile interaktif, desain branding, dan kreasi visual berstandar agensi.',
@@ -222,7 +222,7 @@ const articlesData: Article[] = [
     authorRole: 'Biro Seleksi Akademik',
     readTime: '2 mnt baca',
     views: 910,
-    image: '/asset/SMK/ig-1.jpg',
+    image: '/asset/SMK/ig-1.webp',
     featured: false,
     tags: ['SPMB', 'Jadwal Tes', 'CBT Seleksi', 'Wawancara'],
     summary: 'Tes seleksi gelombang pertama dilaksanakan Ahad, 27 Desember 2026. Pengumuman hasil seleksi 30 Desember 2026.',
@@ -249,7 +249,7 @@ const articlesData: Article[] = [
     authorRole: 'Tim Akreditasi BAN-SM',
     readTime: '4 mnt baca',
     views: 1240,
-    image: '/asset/SMK/gedung-smk.jpg',
+    image: '/asset/SMK/gedung-smk.webp',
     featured: false,
     tags: ['Akreditasi A', 'Penjaminan Mutu', 'Fasilitas', 'BAN-SM'],
     summary: 'Hasil evaluasi BAN-SM mengukuhkan SMK IT Attaqwa 9 sebagai sekolah vokasi berpredikat Unggul dengan nilai kepatuhan standar industri tinggi.',
@@ -1070,7 +1070,7 @@ onUnmounted(() => {
               </div>
 
               <img 
-                src="/asset/SMK/herosmk.png" 
+                src="/asset/SMK/herosmk.webp" 
                 alt="Siswa SMK IT Attaqwa 9" 
                 class="relative z-0 w-full h-auto max-h-[340px] sm:max-h-[390px] lg:max-h-[440px] object-contain object-bottom block drop-shadow-[0_15px_30px_rgba(0,0,0,0.45)] select-none pointer-events-none"
                 loading="lazy"

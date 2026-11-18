@@ -10,7 +10,7 @@
         <div class="lg:col-span-4">
           <div class="flex items-center gap-3 mb-4">
             <img 
-              src="/asset/logosmp.png" 
+              src="/asset/logosmp.webp" 
               alt="Logo SMP IT BCA" 
               class="w-[42px] h-[48px] object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,.3)]"
             />

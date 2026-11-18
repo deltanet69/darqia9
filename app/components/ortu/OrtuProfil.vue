@@ -118,7 +118,8 @@
 
 <script setup lang="ts">
 import { inisialNama } from '~/composables/keuanganCore'
-import { cetakKartu } from '~/utils/cbtKartuCetak'
+import QRCode from 'qrcode'
+import { cetakKartu, buatNoPeserta, URL_UNDUH_APK } from '~/utils/cbtKartuCetak'
 import type { KartuOrtu, KontakOrtu, ProfilOrtu } from '~/types/ortu'
 
 type KartuDipilih = { jenis: 'pelajar' } | { jenis: 'ujian', periodeId: string, periode: string }
@@ -271,7 +272,11 @@ const unduhKartu = async () => {
       if (!(await ambilToken())) { unduh.value = 'siap'; return }
       // Format kartu sama dengan cetak kartu ujian admin (cbtKartuCetak).
       const s = p.value!.siswa
-      const pesan = cetakKartu({ kartu: [{ name: s.nama, nis: s.nis, classroom: kelasKartu.value || s.kelas, token: token.value }], grade: sesi.value?.jenjang ?? 'SMK', jenis: c.periode, judul: `${c.periode} · ${s.nama}` })
+      const qr = await QRCode.toDataURL(URL_UNDUH_APK, { margin: 0, width: 240, errorCorrectionLevel: 'M' })
+      const pesan = cetakKartu({
+        kartu: [{ name: s.nama, nis: s.nis, nisn: s.nisn, ttl: s.ttl, classroom: kelasKartu.value || s.kelas, major: s.jurusan, token: token.value, noPeserta: buatNoPeserta(s.tahunAjaran, c.periode, s.nis) }],
+        grade: sesi.value?.jenjang ?? 'SMK', jenis: c.periode, judul: `${c.periode} · ${s.nama}`, tahunAjaran: s.tahunAjaran, qr
+      })
       if (pesan) { galatKartu.value = pesan; unduh.value = 'siap'; return }
     }
     unduh.value = 'selesai'

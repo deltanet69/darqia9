@@ -15,6 +15,10 @@ export interface SiswaKartu {
   studentId: string
   name: string
   nis: string
+  nisn: string
+  birthPlace: string
+  birthDate: string
+  major: string
   classId: string | null
   classroom: string
   room: string
@@ -79,8 +83,8 @@ export const useKartuUjian = (sumber: SumberKartu = 'cbt') => {
       ? client.from('exam_room_members').select('student_id, exam_rooms!inner(name)').eq('periode', periode.periode).is('deleted_at', null).is('exam_rooms.deleted_at', null).range(0, 999)
       : Promise.resolve({ data: [], error: null })
     const [kartu, siswa, ruang] = await Promise.all([
-      client.from('exam_cards').select('id, student_id, token, class_id, classroom, students(name, nis, exam_eligible, active)').eq('period_id', periode.id).range(0, 999),
-      client.from('students').select('id, nis, name, class_id, exam_eligible, classes(name)').eq('grade', periode.grade).eq('active', true).range(0, 999),
+      client.from('exam_cards').select('id, student_id, token, class_id, classroom, students(name, nis, nisn, birth_place, birth_date, exam_eligible, active), classes(major)').eq('period_id', periode.id).range(0, 999),
+      client.from('students').select('id, nis, nisn, birth_place, birth_date, name, class_id, exam_eligible, classes(name, major)').eq('grade', periode.grade).eq('active', true).range(0, 999),
       ruangQuery
     ])
     galat(kartu.error)
@@ -91,7 +95,9 @@ export const useKartuUjian = (sumber: SumberKartu = 'cbt') => {
     const rows: SiswaKartu[] = (kartu.data ?? []).map((row: any) => {
       punyaKartu.add(row.student_id)
       return {
-        studentId: row.student_id, name: row.students?.name ?? '-', nis: row.students?.nis || '', classId: row.class_id,
+        studentId: row.student_id, name: row.students?.name ?? '-', nis: row.students?.nis || '',
+        nisn: row.students?.nisn || '', birthPlace: row.students?.birth_place || '', birthDate: row.students?.birth_date || '', major: row.classes?.major || '',
+        classId: row.class_id,
         classroom: row.classroom || 'Tanpa kelas', room: ruangByStudent.get(row.student_id) ?? '',
         eligible: row.students?.exam_eligible !== false, active: row.students?.active !== false, cardId: row.id, token: row.token
       }
@@ -99,7 +105,9 @@ export const useKartuUjian = (sumber: SumberKartu = 'cbt') => {
     for (const row of (siswa.data ?? []) as any[]) {
       if (punyaKartu.has(row.id)) continue
       rows.push({
-        studentId: row.id, name: row.name, nis: row.nis || '', classId: row.class_id,
+        studentId: row.id, name: row.name, nis: row.nis || '',
+        nisn: row.nisn || '', birthPlace: row.birth_place || '', birthDate: row.birth_date || '', major: row.classes?.major || '',
+        classId: row.class_id,
         classroom: row.classes?.name ?? 'Tanpa kelas', room: ruangByStudent.get(row.id) ?? '',
         eligible: row.exam_eligible !== false, active: true
       })

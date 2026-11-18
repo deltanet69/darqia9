@@ -266,8 +266,9 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     try {
       let buktiPath: string | null = null
       if (fileObj.value) {
-        const namaBerkas = fileObj.value.name.replace(/[^\w.\-]+/g, '_')
-        const { error: errUp } = await supabase.storage.from('spmb-bukti').upload(`${id}/${namaBerkas}`, fileObj.value)
+        const berkas = await kompresGambar(fileObj.value)
+        const namaBerkas = berkas.name.replace(/[^\w.\-]+/g, '_')
+        const { error: errUp } = await supabase.storage.from('spmb-bukti').upload(`${id}/${namaBerkas}`, berkas)
         if (!errUp) buktiPath = `${id}/${namaBerkas}`
       }
       const { error: errIns } = await supabase.from('spmb_registrations').insert({

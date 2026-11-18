@@ -42,7 +42,7 @@
           <!-- Brand / Logos -->
           <a href="#beranda" class="flex items-center gap-[10px] mr-auto min-w-0 group" aria-label="Beranda Yayasan">
             <img 
-              src="/asset/logosmp.png" 
+              src="/asset/logosmp.webp" 
               alt="Logo SMP IT BCA" 
               class="w-[42px] h-[50px] lg:w-[46px] lg:h-[54px] object-contain shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,.25)]"
             >
@@ -190,7 +190,7 @@
         @click.stop
       >
         <div class="pb-[12px] border-b border-[#E3EAF7] flex items-center justify-center gap-[14px]">
-          <img src="/asset/logosmp.png" alt="Logo SMP" class="w-[44px] h-[50px] object-contain">
+          <img src="/asset/logosmp.webp" alt="Logo SMP" class="w-[44px] h-[50px] object-contain">
           <img src="/asset/logo.png" alt="Logo SMK" class="w-[44px] h-[50px] object-contain">
         </div>
 
