@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { pilihUnitAcak } from '~/utils/cbtCerita'
+import { tugasTerpakai } from '~/utils/cbtNilai'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { BankPackage, GradeType } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 import { useKartuUjian, type PeriodeKartu } from '~/composables/useKartuUjian'
 
 // Superadmin: satu ujian per bank soal terpilih (banyak kelas + banyak mapel sekaligus).
-// Tanggal & jam diatur per mapel. CBT (PTS/PAS): di dalam periode ujian (tab Kartu Ujian), durasi dari isian.
-// LMS: jam mulai + jam selesai; durasi = selisihnya (ujian berakhir serentak di jam selesai, migrasi 0084).
+// Tanggal, jam mulai, dan jam selesai diatur per mapel; durasi = selisihnya. CBT (PTS/PAS): di dalam periode ujian
+// (tab Kartu Ujian). LMS: ujian berakhir serentak di jam selesai (migrasi 0084).
 const props = defineProps<{ grade: GradeType, source?: AssessmentSource }>()
 const emit = defineEmits<{ (e: 'close'): void, (e: 'toast', msg: string): void }>()
 const cbt = props.source === 'cbt'
@@ -21,10 +22,10 @@ const form = ref({
   jenis: (cbt ? 'akhir' : 'harian') as 'akhir' | 'tengah_semester' | 'harian' | 'pr',
   tanggal: tanggalLokal(new Date(Date.now() + 86_400_000)),
   jam: '07:30',
-  selesai: '08:15',
+  selesai: cbt ? '09:00' : '08:15',
   periodeId: '',
-  durasi: (cbt ? 90 : null) as number | null,
-  jumlahSoal: null as number | null
+  jumlahSoal: null as number | null,
+  tugasKe: null as number | null
 })
 const pilih = ref<string[]>([])
 // Tanggal + jam per bank terpilih (awal = tanggal mulai periode CBT / tanggal bawaan, dan jam bawaan).
@@ -85,15 +86,10 @@ const pilihSemuaKelas = (bank: BankPackage[]) => { for (const b of bank) if (bis
 const rencana = (b: BankPackage): { startsAt: string, durasi: number } | string => {
   const j = jadwal.value[b.id]
   if (!j?.tanggal || !j.jam) return 'tanggal dan jam ujian wajib diisi.'
-  if (!cbt) {
-    const durasi = menitDari(j.jam, j.selesai)
-    return durasi > 0 ? { startsAt: `${j.tanggal}T${j.jam}`, durasi } : 'jam selesai harus setelah jam mulai.'
-  }
-  const durasiInput = Math.floor(Number(form.value.durasi) || 0)
-  const p = periodeAktif.value
+  const p = cbt ? periodeAktif.value : undefined
   if (p && (j.tanggal < p.startsOn || j.tanggal > p.endsOn)) return `tanggal di luar periode ${p.periode} (${p.startsOn} s.d. ${p.endsOn}).`
-  if (durasiInput < 1) return 'durasi ujian wajib diisi.'
-  return { startsAt: `${j.tanggal}T${j.jam}`, durasi: durasiInput }
+  const durasi = menitDari(j.jam, j.selesai)
+  return durasi > 0 ? { startsAt: `${j.tanggal}T${j.jam}`, durasi } : 'jam selesai harus setelah jam mulai.'
 }
 
 // Dua ujian di kelas yang sama tidak boleh beririsan jam (termasuk ujian yang sudah ada).
@@ -120,6 +116,10 @@ const simpan = async () => {
     const label = `${namaKelas(b.classId)} · ${namaMapel(b.subjectId)}`
     if (typeof r === 'string') gagal.value.push(`${label}: ${r}`)
     else if (bentrok(b, r, daftar)) gagal.value.push(`${label}: jamnya beririsan dengan ujian lain di kelas ini.`)
+    else if (!cbt && f.tugasKe) {
+      const dipakai = tugasTerpakai(cbtData.exams.value, { classId: b.classId!, subjectId: b.subjectId!, startsAt: r.startsAt }).get(f.tugasKe)
+      if (dipakai) gagal.value.push(`${label}: Nilai Tugas ke-${f.tugasKe} sudah dipakai ujian "${dipakai}" di semester ini.`)
+    }
   }
   if (gagal.value.length) return emit('toast', 'Perbaiki jadwal yang ditandai dulu.')
   menyimpan.value = true
@@ -136,7 +136,7 @@ const simpan = async () => {
       try {
         await cbtData.saveExam({
           name: f.name.trim(), classId: b.classId!, subjectId: b.subjectId!, questionBankId: b.id, questionIds,
-          startsAt: r.startsAt, duration: r.durasi, jenis: f.jenis
+          startsAt: r.startsAt, duration: r.durasi, jenis: f.jenis, tugasKe: cbt ? undefined : f.tugasKe
         }, false)
         berhasil++
       } catch (e) { gagal.value.push(`${label}: ${e instanceof Error ? e.message : 'gagal disimpan.'}`) }
@@ -168,7 +168,7 @@ const simpan = async () => {
 
         <div class="p-5 space-y-3.5 overflow-y-auto">
           <p class="p-3 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] font-semibold">
-            <template v-if="cbt">Satu ujian dibuat untuk setiap bank soal yang dicentang. Tanggal dan jam diatur per mapel di dalam periode ujian PTS/PAS, tidak mengikuti jadwal pelajaran.</template>
+            <template v-if="cbt">Satu ujian dibuat untuk setiap bank soal yang dicentang. Tanggal dan jam diatur per mapel di dalam periode ujian PTS/PAS, tidak mengikuti jadwal pelajaran. Pengawas ditugaskan per ruang di Ruang Ujian, menu Jadwal Ujian.</template>
             <template v-else>Satu ujian dibuat untuk setiap bank soal yang dicentang. Waktu ujian siswa dihitung dari jam mulai sampai jam selesai, dan semua siswa selesai serentak di jam selesai.</template>
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -197,7 +197,14 @@ const simpan = async () => {
               </select>
               <p v-if="!memuat && !periode.length" class="mt-1 text-[11px] text-[#B42318]">Buat dulu periode PTS/PAS di tab Kartu Ujian.</p>
             </div>
-            <div v-else>
+            <div v-if="!cbt">
+              <label for="bulk-tugas" class="block font-bold text-[#344054] mb-1">Masuk Nilai Tugas (Agenda Mengajar)</label>
+              <select id="bulk-tugas" v-model="form.tugasKe" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 bg-white outline-none">
+                <option :value="null">Tidak dimasukkan ke nilai tugas</option>
+                <option v-for="n in 10" :key="n" :value="n">Tugas ke-{{ n }}</option>
+              </select>
+            </div>
+            <div v-if="!cbt">
               <label for="bulk-tanggal" class="block font-bold text-[#344054] mb-1">Tanggal ujian bawaan</label>
               <input id="bulk-tanggal" v-model="form.tanggal" type="date" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
             </div>
@@ -205,17 +212,13 @@ const simpan = async () => {
               <label for="bulk-jam" class="block font-bold text-[#344054] mb-1">Jam mulai bawaan</label>
               <input id="bulk-jam" v-model="form.jam" type="time" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
             </div>
-            <div v-if="!cbt">
+            <div>
               <label for="bulk-selesai" class="block font-bold text-[#344054] mb-1">Jam selesai bawaan</label>
               <input id="bulk-selesai" v-model="form.selesai" type="time" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
             </div>
-            <div v-if="!cbt">
+            <div>
               <label for="bulk-waktu" class="block font-bold text-[#344054] mb-1">Waktu ujian bawaan (menit)</label>
               <input id="bulk-waktu" :value="menitDari(form.jam, form.selesai) > 0 ? menitDari(form.jam, form.selesai) : ''" type="number" min="1" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]" @input="form.selesai = tambahMenit(form.jam, nilaiMenit($event))">
-            </div>
-            <div v-if="cbt">
-              <label for="bulk-durasi" class="block font-bold text-[#344054] mb-1">Durasi (menit) *</label>
-              <input id="bulk-durasi" v-model.number="form.durasi" type="number" min="1" placeholder="90" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
             </div>
             <div>
               <label for="bulk-jumlah" class="block font-bold text-[#344054] mb-1">Jumlah soal per ujian</label>
@@ -252,12 +255,10 @@ const simpan = async () => {
               <div v-if="pilih.includes(b.id) && jadwal[b.id]" class="flex flex-wrap items-center gap-2 pl-6">
                 <input v-model="jadwal[b.id]!.tanggal" type="date" :min="cbt ? periodeAktif?.startsOn : undefined" :max="cbt ? periodeAktif?.endsOn : undefined" :aria-label="`Tanggal ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
                 <input v-model="jadwal[b.id]!.jam" type="time" :aria-label="`Jam mulai ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
-                <template v-if="!cbt">
-                  <span class="text-[#667085]">s.d.</span>
-                  <input v-model="jadwal[b.id]!.selesai" type="time" :aria-label="`Jam selesai ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
-                  <input :value="menitDari(jadwal[b.id]!.jam, jadwal[b.id]!.selesai) > 0 ? menitDari(jadwal[b.id]!.jam, jadwal[b.id]!.selesai) : ''" type="number" min="1" :aria-label="`Waktu ujian (menit) ${k.nama} ${namaMapel(b.subjectId)}`" class="w-20 min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]" @input="jadwal[b.id]!.selesai = tambahMenit(jadwal[b.id]!.jam, nilaiMenit($event))">
-                  <span class="text-[#667085]">menit</span>
-                </template>
+                <span class="text-[#667085]">s.d.</span>
+                <input v-model="jadwal[b.id]!.selesai" type="time" :aria-label="`Jam selesai ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
+                <input :value="menitDari(jadwal[b.id]!.jam, jadwal[b.id]!.selesai) > 0 ? menitDari(jadwal[b.id]!.jam, jadwal[b.id]!.selesai) : ''" type="number" min="1" :aria-label="`Waktu ujian (menit) ${k.nama} ${namaMapel(b.subjectId)}`" class="w-20 min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]" @input="jadwal[b.id]!.selesai = tambahMenit(jadwal[b.id]!.jam, nilaiMenit($event))">
+                <span class="text-[#667085]">menit</span>
               </div>
             </div>
           </section>

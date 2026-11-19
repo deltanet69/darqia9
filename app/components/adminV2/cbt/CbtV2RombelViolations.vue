@@ -49,7 +49,7 @@ const kodeTerbaru = computed(() => {
   }
   return ids
 })
-const butuhKode = (p: PelanggaranRombel) => kodeTerbaru.value.has(p.id)
+const butuhKode = (p: PelanggaranRombel) => kodeTerbaru.value.has(p.id) && !!p.kode
 const perluKode = computed(() => (daftar.value ?? []).filter(butuhKode))
 const terkunciTotal = computed(() => (daftar.value ?? []).filter(p => p.ke >= 3 && !p.dipulihkan).length)
 
@@ -158,6 +158,7 @@ const salin = async (p: PelanggaranRombel) => {
                     <button type="button" class="min-h-11 rounded-xl border px-3.5 text-xs font-extrabold transition" :class="disalin === p.id ? 'border-[#ABEFC6] bg-[#ECFDF3] text-[#067647]' : 'border-[#E7EBF2] bg-white text-[#344054] hover:border-[#1B5FD9] hover:text-[#1B5FD9]'" @click="salin(p)">{{ disalin === p.id ? 'Tersalin' : 'Salin' }}</button>
                   </div>
                 </template>
+                <span v-else-if="kodeTerbaru.has(p.id)" class="inline-block rounded-full bg-[#FFFAEB] px-3 py-1 text-[11px] font-bold text-[#B54708]">Kode dipegang pengawas ruang</span>
                 <span v-else-if="menunggu(p)" class="inline-block rounded-full bg-[#FFFAEB] px-3 py-1 text-[11px] font-bold text-[#B54708]">Ikut terbuka dengan kode terbaru</span>
                 <span v-else-if="p.dipulihkan" class="inline-block rounded-full bg-[#ECFDF3] px-3 py-1 text-[11px] font-extrabold text-[#067647]">Dipulihkan Superadmin</span>
                 <div v-else-if="p.ke >= 3" class="flex flex-wrap items-center gap-2 sm:justify-end">

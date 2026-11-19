@@ -15,8 +15,16 @@ export interface RuangUjian {
 
 export type JenisSeb = 'ruang' | 'kelas'
 
+export interface TautanUjian {
+  exam_id: string
+  room_id: string
+  supervisor_id: string | null
+}
+
 export interface KodeQuitSeb {
   kode: string | null
+  kodeLama?: string[] // kode sebelum Generate ulang, terbaru di depan (migrasi 0086)
+  sesiAktif?: number // siswa yang sedang ujian; generate ulang ditolak selama > 0 (migrasi 0087)
   diubahPada: string
   diubahOleh: string
 }
@@ -178,12 +186,22 @@ export const useRuangUjian = () => {
     galat(error)
   }
 
-  // Ujian yang sudah ditautkan ke ruang (lintas kelas) dengan daftar ruangnya.
-  const muatTautanUjian = async (roomIds: string[]): Promise<{ exam_id: string, room_id: string }[]> => {
+  // Ujian yang sudah ditautkan ke ruang (lintas kelas) dengan daftar ruang dan pengawas jadwalnya (migrasi 0088).
+  const muatTautanUjian = async (roomIds: string[]): Promise<TautanUjian[]> => {
     if (!roomIds.length) return []
-    const { data, error } = await client.from('exam_room_exams').select('exam_id, room_id').in('room_id', roomIds)
+    const ambil = (kolom: string) => client.from('exam_room_exams').select(kolom).in('room_id', roomIds)
+    let { data, error } = await ambil('exam_id, room_id, supervisor_id')
+    // Migrasi 0088 belum dijalankan: ruang tetap tampil, pengawas jadwal kosong.
+    if (error && /supervisor_id/.test(error.message)) ({ data, error } = await ambil('exam_id, room_id'))
     galat(error)
-    return (data ?? []) as { exam_id: string, room_id: string }[]
+    return ((data ?? []) as any[]).map(row => ({ ...row, supervisor_id: row.supervisor_id ?? null })) as TautanUjian[]
+  }
+
+  // Pengawas per ruang + jadwal. Hak akses dan bentrok jam pengawas dijaga trigger database (0088).
+  const tugaskanPengawas = async (roomId: string, examIds: string[], supervisorId: string | null) => {
+    wajib('ubah')
+    const { error } = await client.from('exam_room_exams').update({ supervisor_id: supervisorId }).eq('room_id', roomId).in('exam_id', examIds)
+    galat(error)
   }
 
   const tautkanUjian = async (examIds: string[], roomIds: string[]) => {
@@ -218,6 +236,6 @@ export const useRuangUjian = () => {
   return {
     muatPeriodeRiwayat, muatRuang, simpanRuang, hapusRuang, generateRuang, isiAcak, tambahAnggota,
     keluarkanAnggota, muatAnggota, muatSiswaBebas, muatProgres, muatAlert, bukaKunci,
-    muatTautanUjian, tautkanUjian, lepasUjian, kodeQuitSeb, generateKodeQuitSeb
+    muatTautanUjian, tautkanUjian, lepasUjian, tugaskanPengawas, kodeQuitSeb, generateKodeQuitSeb
   }
 }

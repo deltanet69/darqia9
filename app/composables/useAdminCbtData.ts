@@ -3,6 +3,18 @@ import type { BankPackage, BankQuestionItem, ExamItem, GradeType, LiveStudent } 
 import type { AksiRbac } from './rbacCore'
 import { bolehAksesBank, type AksesBankAkun } from '~/utils/cbtAksesBank'
 import { blokJadwal, type BarisJadwal } from '~/utils/cbtJadwalUjian'
+import type { NilaiPenugasan } from '~/utils/cbtNilai'
+
+export interface EsaiKoreksi {
+  questionId: string
+  nomor: number
+  pertanyaan: string
+  rubrik: string | null
+  jawabanPasti: string | null
+  jawaban: string | null
+  skor: number | null
+  bobot: number
+}
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
 const questionRequests = new Map<AssessmentSource, Promise<void>>()
@@ -76,6 +88,7 @@ export interface CbtExamInput {
   acakSingkat?: boolean
   acakEsai?: boolean
   jenis?: 'akhir' | 'tengah_semester' | 'harian' | 'pr' // CBT: akhir/tengah semester; LMS: harian/pr
+  tugasKe?: number | null // LMS: nomor Nilai Tugas di Agenda Mengajar; null = tidak masuk nilai tugas
 }
 
 const isUuid = (value?: string) =>
@@ -168,20 +181,22 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       // Kolom jenis (0047) / tipe (0049) belum ada sebelum migrasi dijalankan; ulangi tanpa kolom itu.
       const kolomUjianDasar = 'id, name, class_id, subject_id, question_bank_id, grade, starts_at, duration_minutes, status, code, supervisor_id'
       const ambilUjian = (kolom: string) => client.from(tables.exams).select(kolom).order('starts_at', { ascending: false })
-      const [classResult, subjectResult, bankResult, examAwal, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult] = await Promise.all([
+      const [classResult, subjectResult, bankResult, examAwal, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult, pengawasResult] = await Promise.all([
         ringan ? lewati : client.from('classes').select('id, name, grade, major, room, academic_year, homeroom_teacher_id, active').eq('active', true).order('name'),
         ringan ? lewati : client.from('subjects').select('id, code, name, grade, kkm, active').eq('active', true).order('name'),
         ringan ? lewati : client.from(tables.banks).select(BANK_KOLOM).order('updated_at', { ascending: false }),
-        ambilUjian(`${kolomUjianDasar}, ${source === 'cbt' ? 'jenis' : 'tipe'}, acak_esai, acak_pg, acak_singkat`),
+        ambilUjian(`${kolomUjianDasar}, ${source === 'cbt' ? 'jenis' : 'tipe, tugas_ke'}, acak_esai, acak_pg, acak_singkat`),
         client.from(tables.assignments).select('id, exam_id, student_id, status'),
         ringan ? lewati : fetchSiswaAktif(),
         ringan ? lewati : client.from('teachers').select('id, nip, name, grade, active').eq('active', true),
         ringan ? lewati : client.from(source === 'cbt' ? 'exam_questions' : 'ujian_harian_exam_questions').select('exam_id, question_id, position').order('position'),
         client.from(tables.violations).select('assignment_id').eq('dipulihkan', false),
-        ringan ? lewati : client.from('class_schedules').select('class_id, subject_id, teacher_id, day_of_week, starts_at, ends_at').eq('active', true)
+        ringan ? lewati : client.from('class_schedules').select('class_id, subject_id, teacher_id, day_of_week, starts_at, ends_at').eq('active', true),
+        // CBT: pengawas ditugaskan per ruang & jadwal (0088). Galat (migrasi belum jalan) diabaikan.
+        source === 'cbt' ? client.from('exam_room_exams').select('exam_id, supervisor_id').not('supervisor_id', 'is', null) : lewati
       ])
 
-      const examResult = examAwal.error && /jenis|tipe|acak_/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
+      const examResult = examAwal.error && /jenis|tipe|acak_|tugas_ke/i.test(String(examAwal.error.message || '')) ? await ambilUjian(kolomUjianDasar) : examAwal
       const firstError = [classResult, subjectResult, bankResult, examResult, assignmentResult, studentResult, teacherResult, selectionResult, violationResult, scheduleResult]
         .find(result => result.error)?.error
       if (firstError) throw firstError
@@ -191,6 +206,13 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       const subjectRows = subjectResult.data ?? []
       const teacherRows = teacherResult.data ?? []
       const teacherById = new Map((ringan ? teachers.value : teacherRows).map((row: any) => [row.id, row]))
+      const pengawasRuang = new Map<string, Set<string>>()
+      for (const row of pengawasResult.error ? [] : pengawasResult.data ?? []) {
+        pengawasRuang.set(row.exam_id, (pengawasRuang.get(row.exam_id) ?? new Set()).add(row.supervisor_id))
+      }
+      const namaPengawas = (row: any) => pengawasRuang.has(row.id)
+        ? [...pengawasRuang.get(row.id)!].map(id => teacherById.get(id)?.name).filter(Boolean).join(', ')
+        : teacherById.get(row.supervisor_id)?.name ?? ''
       const studentCounts = new Map<string, number>()
       const boysCounts = new Map<string, number>()
       for (const student of studentResult.data ?? []) {
@@ -292,13 +314,14 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
             doing: counts.doing,
             violations: violationCounts.get(row.id) ?? 0,
             violatorIds: [...(violatorsByExam.get(row.id) ?? [])],
-            supervisor: teacherById.get(row.supervisor_id)?.name ?? '',
+            supervisor: namaPengawas(row),
             supervisorId: row.supervisor_id ?? '',
             bankCode: bankById.get(row.question_bank_id)?.code ?? '',
             acakPg: row.acak_pg !== false,
             acakSingkat: row.acak_singkat !== false,
             acakEsai: row.acak_esai !== false,
-            jenis: source === 'ujian_harian' ? (row.tipe ?? 'harian') : (row.jenis ?? 'akhir')
+            jenis: source === 'ujian_harian' ? (row.tipe ?? 'harian') : (row.jenis ?? 'akhir'),
+            tugasKe: row.tugas_ke ?? null
           } as ExamItem
         })
 
@@ -317,6 +340,18 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       if (ringan) memuatRingan.value = false
       else loading.value = false
     }
+  }
+
+  // CBT: kolom unlock_code tertutup (migrasi 0088); kode buka hanya untuk pengawas jadwal di ruang siswa atau Superadmin.
+  const kolomKode = source === 'cbt' ? '' : ', unlock_code'
+  const isiKodeCbt = async (rows: any[]) => {
+    const ids = source === 'cbt' ? rows.filter(row => row.locked).map(row => row.id) : []
+    if (!ids.length) return
+    let { data, error } = await client.rpc('cbt_kode_buka', { p_violation_ids: ids }) as { data: any[] | null, error: any }
+    // Migrasi 0088 belum dijalankan (fungsi belum ada): kolom masih terbuka, baca langsung.
+    if (error) ({ data } = await client.from(tables.violations).select('id, unlock_code').in('id', ids) as { data: any[] | null })
+    const kode = new Map((data ?? []).map((row: any) => [row.id, row.unlock_code]))
+    for (const row of rows) row.unlock_code = kode.get(row.id) ?? null
   }
 
   // umurMaksMs > 0: pakai hasil cache bila belum lewat umur itu (detail mapel). 0 = selalu ambil baru (tab Monitoring).
@@ -342,9 +377,10 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const assignmentIds = sessions.map((row: any) => row.id)
     const [answers, violations] = assignmentIds.length ? await Promise.all([
       client.from(tables.answers).select('assignment_id, question_id, answer, saved_at').in('assignment_id', assignmentIds),
-      client.from(tables.violations).select('id, assignment_id, violation_type, occurred_at, occurrence, locked, unlock_code').in('assignment_id', assignmentIds).eq('dipulihkan', false)
+      client.from(tables.violations).select(`id, assignment_id, violation_type, occurred_at, occurrence, locked${kolomKode}`).in('assignment_id', assignmentIds).eq('dipulihkan', false)
     ]) : [{ data: [], error: null }, { data: [], error: null }]
     if (answers.error || violations.error) throw new Error((answers.error || violations.error)!.message)
+    await isiKodeCbt(violations.data ?? [])
     const sessionByStudent = new Map(sessions.map((row: any) => [row.student_id, row]))
     const hasil: LiveStudent[] = (roster.data ?? []).map((student: any) => {
       const session: any = sessionByStudent.get(student.id)
@@ -381,11 +417,12 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     if (!examIds.length) return []
     const t = tables.assignments
     const { data, error: e1 } = await client.from(tables.violations)
-      .select(`id, assignment_id, violation_type, occurred_at, occurrence, locked, unlock_code, dipulihkan, ${t}!inner(exam_id, student_id, status)`)
+      .select(`id, assignment_id, violation_type, occurred_at, occurrence, locked${kolomKode}, dipulihkan, ${t}!inner(exam_id, student_id, status)`)
       .in(`${t}.exam_id`, examIds)
       .order('occurred_at', { ascending: false })
     if (e1) throw new Error(e1.message)
     const baris = (data ?? []) as any[]
+    await isiKodeCbt(baris)
     const belumAda = [...new Set(baris.map(v => v[t]?.student_id).filter((id: string) => id && !cacheMurid.has(id)))]
     if (belumAda.length) {
       const { data: murid, error: e2 } = await client.from('students').select('id, name, nis').in('id', belumAda)
@@ -408,6 +445,27 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     const { data, error: e } = await client.rpc('cbt_pulihkan_ujian', { p_source: source, p_assignment_id: assignmentId })
     if (e) throw new Error(e.message)
     return (data as { sisaDetik?: number })?.sisaDetik ?? 0
+  }
+
+  // Nilai Siswa: nilai asli per penugasan (rumus sama dengan hasil di aplikasi siswa, migrasi 0089).
+  const loadNilai = async (examIds: string[]): Promise<NilaiPenugasan[]> => {
+    if (!examIds.length) return []
+    const { data, error: e } = await client.rpc('cbt_rekap_nilai', { p_source: source, p_exam_ids: examIds })
+    if (e) throw new Error(/cbt_rekap_nilai/.test(e.message) ? 'Jalankan migrasi 0089_rekap_nilai_admin.sql di Supabase SQL Editor.' : e.message)
+    return (data ?? []) as NilaiPenugasan[]
+  }
+
+  const loadEsai = async (assignmentId: string): Promise<EsaiKoreksi[]> => {
+    const { data, error: e } = await client.rpc('cbt_esai_penugasan', { p_source: source, p_assignment_id: assignmentId })
+    if (e) throw new Error(e.message)
+    return (data ?? []) as EsaiKoreksi[]
+  }
+
+  // skor 0..1 dari bobot soal.
+  const koreksiEsai = async (assignmentId: string, questionId: string, skor: number) => {
+    if (!bolehAksi('results', 'ubah', true)) throw new Error(`Peran Anda tidak memiliki izin ubah di Nilai Siswa ${modulRbac}.`)
+    const { error: e } = await client.rpc('cbt_koreksi_esai', { p_source: source, p_assignment_id: assignmentId, p_question_id: questionId, p_skor: skor })
+    if (e) throw new Error(e.message)
   }
 
   const loadQuestions = (force = false): Promise<void> => {
@@ -731,6 +789,16 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
           throw new Error(`Ujian tersimpan, tetapi jenis ujian belum tersimpan. Jalankan migrasi ${source === 'cbt' ? '0047_cbt_siswa_app' : '0049_ujian_harian_pr_kode_buka'}.sql di Supabase SQL Editor.`)
         }
       }
+      // LMS: nilai siswa masuk Nilai Tugas ke-N di Agenda Mengajar (trigger 0090 menyinkronkan nilainya).
+      if (source === 'ujian_harian' && input.tugasKe !== undefined) {
+        const { error: tugasError } = await client.from('ujian_harian').update({ tugas_ke: input.tugasKe || null }).eq('id', savedExamId)
+        if (tugasError) {
+          await load(true)
+          throw new Error(/tugas_ke/.test(tugasError.message)
+            ? 'Ujian tersimpan, tetapi nomor tugas belum tersimpan. Jalankan migrasi 0090_ujian_harian_nilai_tugas.sql di Supabase SQL Editor.'
+            : `Ujian tersimpan, tetapi nomor tugas belum tersimpan: ${tugasError.message}`)
+        }
+      }
     }
     if (tokenError) {
       await load(true)
@@ -816,6 +884,9 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     loadQuestions,
     loadMonitoring,
     loadPelanggaranRombel,
+    loadNilai,
+    loadEsai,
+    koreksiEsai,
     pulihkanUjian,
     load,
     saveBankPackage,

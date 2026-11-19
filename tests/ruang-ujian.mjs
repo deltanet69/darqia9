@@ -2,7 +2,8 @@
 import assert from 'node:assert'
 import {
   periodeOpsi, persenProgres, labelStatus, labelPelanggaran, validasiRuang,
-  barisSiswa, ringkasProgres, komposisiKelas, kelasTanpaBank, bentrokJadwal
+  barisSiswa, ringkasProgres, komposisiKelas, kelasTanpaBank, bentrokJadwal,
+  cekJadwalMassal, durasiBaris, tanggalIsian, jamIsian
 } from '../app/composables/ruangUjianCore.ts'
 
 let lulus = 0
@@ -84,6 +85,40 @@ cek('bentrokJadwal: irisan jam dengan mapel/jam/durasi berbeda ditolak, sesi ide
   assert.ok(bentrokJadwal(ada, { subjectId: 'm1', startsAt: '2026-12-01T08:00:00Z', duration: 60 }))
   assert.equal(bentrokJadwal(ada, { subjectId: 'm2', startsAt: '2026-12-01T09:30:00Z', duration: 90 }), null)
   assert.equal(bentrokJadwal([], { subjectId: 'm2', startsAt: '2026-12-01T09:30:00Z', duration: 90 }), null)
+})
+
+const b = (o) => ({ tanggal: '2026-12-07', mulai: '07:30', selesai: '09:00', subjectId: 'm1', supervisorId: '', ...o })
+
+cek('cekJadwalMassal: isian wajib, jam selesai setelah mulai', () => {
+  assert.deepEqual(cekJadwalMassal([b({ tanggal: '' }), b({ tanggal: '2026-12-08', subjectId: '' }), b({ tanggal: '2026-12-09', selesai: '07:00' })], []),
+    ['Tanggal wajib diisi.', 'Pilih mata pelajaran.', 'Jam selesai harus setelah jam mulai.'])
+  assert.equal(durasiBaris(b({})), 90)
+})
+
+cek('cekJadwalMassal: baris beririsan ditolak, berurutan & beda hari boleh', () => {
+  const hasil = cekJadwalMassal([b({}), b({ mulai: '08:30', selesai: '10:00', subjectId: 'm2' }), b({ mulai: '10:00', selesai: '11:30', subjectId: 'm3' }), b({ tanggal: '2026-12-08' })], [])
+  assert.match(hasil[0], /baris 2/)
+  assert.match(hasil[1], /baris 1/)
+  assert.equal(hasil[2], '')
+  assert.equal(hasil[3], '')
+})
+
+cek('cekJadwalMassal: bentrok dengan jadwal ruang yang ada, jadwal identik boleh', () => {
+  const ada = [{ subjectId: 'm1', startsAt: '2026-12-07T07:30', duration: 90 }]
+  assert.deepEqual(cekJadwalMassal([b({})], ada), [''])
+  assert.match(cekJadwalMassal([b({ mulai: '08:00', selesai: '09:00', subjectId: 'm2' })], ada)[0], /sudah ada di ruang/)
+})
+
+cek('isian Excel: tanggal & jam dari teks maupun angka Excel', () => {
+  assert.equal(tanggalIsian('7-12-2026'), '2026-12-07')
+  assert.equal(tanggalIsian('07/12/2026'), '2026-12-07')
+  assert.equal(tanggalIsian('2026-12-07'), '2026-12-07')
+  assert.equal(tanggalIsian(46363), '2026-12-07')
+  assert.equal(tanggalIsian('besok'), '')
+  assert.equal(jamIsian('7.30'), '07:30')
+  assert.equal(jamIsian('07:30'), '07:30')
+  assert.equal(jamIsian(0.3125), '07:30')
+  assert.equal(jamIsian('25:00'), '')
 })
 
 console.log(`\n${lulus} tes lulus`)

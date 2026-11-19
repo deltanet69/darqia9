@@ -31,16 +31,20 @@ export const useDashboard = () => {
   const muatUjianMentah = async (grades: Jenjang[]): Promise<UjianMentah[]> => {
     const sejak = `${tanggalWib()}T00:00:00+07:00`
     const kolom = 'id, name, starts_at, status, class_id, subject_id, supervisor_id, classes(name), subjects(name)'
-    const [cbt, lms] = await Promise.all([
-      client.from('exams').select(`${kolom}, jenis`).in('grade', grades).gte('starts_at', sejak).not('status', 'in', '(selesai,dibatalkan)').order('starts_at').limit(200),
+    const ambilCbt = (k: string) => client.from('exams').select(k).in('grade', grades).gte('starts_at', sejak).not('status', 'in', '(selesai,dibatalkan)').order('starts_at').limit(200)
+    const [cbtAwal, lms] = await Promise.all([
+      ambilCbt(`${kolom}, jenis, exam_room_exams(supervisor_id)`),
       client.from('ujian_harian').select(`${kolom}, tipe`).in('grade', grades).gte('starts_at', sejak).not('status', 'in', '(selesai,dibatalkan)').order('starts_at').limit(200)
     ])
+    // Migrasi 0088 belum dijalankan: tanpa pengawas per ruang.
+    const cbt: { data: any[] | null, error: any } = cbtAwal.error && /supervisor_id/.test(cbtAwal.error.message) ? await ambilCbt(`${kolom}, jenis`) : cbtAwal
     if (cbt.error) throw new Error(cbt.error.message)
     if (lms.error) throw new Error(lms.error.message)
     const ubah = (sumber: 'cbt' | 'lms') => (r: any): UjianMentah => ({
       id: r.id, name: r.name, starts_at: r.starts_at, status: r.status, sumber,
       jenis: sumber === 'cbt' ? (r.jenis ?? 'akhir') : (r.tipe ?? 'harian'),
       class_id: r.class_id, subject_id: r.subject_id, supervisor_id: r.supervisor_id,
+      pengawas_ruang: (r.exam_room_exams ?? []).map((x: any) => x.supervisor_id).filter(Boolean),
       kelas: r.classes?.name ?? '-', mapel: r.subjects?.name ?? '-'
     })
     return [...(cbt.data ?? []).map(ubah('cbt')), ...(lms.data ?? []).map(ubah('lms'))]

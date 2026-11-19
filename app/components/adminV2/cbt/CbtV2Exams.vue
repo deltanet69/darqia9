@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import { kelompokCerita, pilihUnitAcak } from '~/utils/cbtCerita'
+import { tugasTerpakai } from '~/utils/cbtNilai'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2ExamDetail from './CbtV2ExamDetail.vue'
 import CbtV2ExamBulk from './CbtV2ExamBulk.vue'
@@ -85,10 +86,14 @@ const emptyExam = () => ({
   acakPg: true,
   acakSingkat: true,
   acakEsai: true,
-  jenis: 'akhir' as 'akhir' | 'tengah_semester' | 'harian' | 'pr'
+  jenis: 'akhir' as 'akhir' | 'tengah_semester' | 'harian' | 'pr',
+  tugasKe: null as number | null
 })
 
 const newExam = ref(emptyExam())
+// LMS: nomor Nilai Tugas di Agenda Mengajar; nomor yang dipakai ujian lain di kelas+mapel+semester ini ditandai.
+const tugasDipakai = computed(() => tugasTerpakai(props.exams, newExam.value))
+const opsiTugas = computed(() => Array.from({ length: Math.max(5, ...tugasDipakai.value.keys(), newExam.value.tugasKe ?? 0) + 1 }, (_, i) => i + 1))
 // Pengawas: guru jenjang ini + Yayasan. Bila daftar jenjang ini kosong (data guru belum berjenjang), semua guru aktif ditampilkan.
 const pengawasOpsi = computed(() => {
   const sesuai = cbtData.teachers.value.filter(t => t.grade === props.grade || t.grade === 'Yayasan')
@@ -214,7 +219,8 @@ const availableSubjects = computed(() =>
   cbtData.subjects.value.filter(item => item.grade === props.grade && (!lms.value
     || (cbtData.bolehUjianKelas(newExam.value.classId, item.id) && cbtData.jadwalUjian(newExam.value.classId, item.id).length)))
 )
-// LMS: jadwal = tanggal & jam mulai + jam selesai; durasi = selisihnya (siswa selesai serentak di jam selesai, migrasi 0084).
+// Jadwal = tanggal & jam mulai + jam selesai; durasi = selisihnya. LMS: siswa selesai serentak di jam selesai (migrasi 0084);
+// CBT: durasi penuh sejak siswa menekan Mulai.
 const jamSelesai = ref('')
 const jamAkhir = (startsAt: string, menit: number) => startsAt ? localDateTime(new Date(new Date(startsAt).getTime() + menit * 60_000)).slice(11, 16) : ''
 const menitUjian = computed(() => {
@@ -223,7 +229,7 @@ const menitUjian = computed(() => {
   const mulai = new Date(newExam.value.startsAt)
   return Math.round((new Date(mulai.getFullYear(), mulai.getMonth(), mulai.getDate(), h, m).getTime() - mulai.getTime()) / 60_000)
 })
-watch(menitUjian, n => { if (lms.value && n > 0) newExam.value.duration = n })
+watch(menitUjian, n => { if (n > 0) newExam.value.duration = n })
 
 const subjectHasBank = computed(() =>
   !newExam.value.subjectId || availablePackages.value.some(pkg => pkg.subjectId === newExam.value.subjectId)
@@ -339,7 +345,8 @@ const openEditSchedule = (exam: ExamItem) => {
     acakPg: exam.acakPg !== false,
     acakSingkat: exam.acakSingkat !== false,
     acakEsai: exam.acakEsai !== false,
-    jenis: exam.jenis ?? (props.source === 'ujian_harian' ? 'harian' : 'akhir')
+    jenis: exam.jenis ?? (props.source === 'ujian_harian' ? 'harian' : 'akhir'),
+    tugasKe: exam.tugasKe ?? null
   }
   jamSelesai.value = jamAkhir(newExam.value.startsAt, newExam.value.duration)
   wizardStep.value = 1
@@ -391,8 +398,13 @@ const saveSchedule = async () => {
     emit('toast', 'Pilih minimal satu soal untuk ujian.')
     return
   }
-  if (lms.value && (!newExam.value.startsAt || menitUjian.value < 1)) {
+  if (!newExam.value.startsAt || menitUjian.value < 1) {
     emit('toast', 'Isi tanggal, jam mulai, dan jam selesai ujian. Jam selesai harus setelah jam mulai.')
+    return
+  }
+  const bentrok = newExam.value.tugasKe ? tugasDipakai.value.get(newExam.value.tugasKe) : undefined
+  if (lms.value && bentrok) {
+    emit('toast', `Nilai Tugas ke-${newExam.value.tugasKe} untuk kelas dan mapel ini sudah dipakai ujian "${bentrok}" di semester yang sama.`)
     return
   }
   isSaving.value = true
@@ -729,7 +741,7 @@ const removeSchedule = async (exam: ExamItem) => {
               </span>
               <div class="min-w-0">
                 <b class="block text-sm font-bold text-slate-900 break-words">{{ e.subject }}</b>
-                <span class="block text-[11px] text-slate-500 font-medium break-words mt-0.5">{{ e.name }} &middot; {{ soalLabel(e) }}</span>
+                <span class="block text-[11px] text-slate-500 font-medium break-words mt-0.5">{{ e.name }} &middot; {{ soalLabel(e) }}<template v-if="e.tugasKe"> &middot; Nilai Tugas ke-{{ e.tugasKe }}</template></span>
               </div>
               <span class="text-xs text-slate-700 font-medium">
                 <span class="md:hidden text-slate-400">Pengawas: </span>{{ e.supervisor || 'Belum ditentukan' }}
@@ -844,6 +856,16 @@ const removeSchedule = async (exam: ExamItem) => {
                   <option value="pr">PR di Rumah (kode buka muncul acak)</option>
                 </select>
               </div>
+              <div v-if="source === 'ujian_harian'">
+                <label for="exam-tugas" class="block font-bold text-[#344054] mb-1">Masuk Nilai Tugas (Agenda Mengajar)</label>
+                <select id="exam-tugas" v-model="newExam.tugasKe" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
+                  <option :value="null">Tidak dimasukkan ke nilai tugas</option>
+                  <option v-for="n in opsiTugas" :key="n" :value="n" :disabled="tugasDipakai.has(n)">
+                    Tugas ke-{{ n }}{{ tugasDipakai.has(n) ? ` · dipakai "${tugasDipakai.get(n)}"` : '' }}
+                  </option>
+                </select>
+                <p class="mt-1 text-[11px] text-[#667085]">Nilai akhir siswa otomatis masuk ke Nilai Tugas ini setelah dikumpulkan dan esainya selesai dikoreksi.</p>
+              </div>
               <div v-else>
                 <label class="block font-bold text-[#344054] mb-1">Jenis Ujian</label>
                 <select v-model="newExam.jenis" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
@@ -851,11 +873,8 @@ const removeSchedule = async (exam: ExamItem) => {
                   <option value="tengah_semester">Ujian Tengah Semester</option>
                 </select>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div v-if="!lms">
-                  <label for="exam-durasi" class="block font-bold text-[#344054] mb-1">Durasi (menit)</label>
-                  <input id="exam-durasi" v-model.number="newExam.duration" type="number" min="1" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
-                </div>
+              <p v-if="!lms" class="p-3 rounded-xl bg-[#F6F8FC] text-[#43506B] font-semibold">Pengawas ujian CBT ditugaskan per ruang di Ruang Ujian, menu Jadwal Ujian.</p>
+              <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block font-bold text-[#344054] mb-1">Pengawas</label>
                   <select v-model="newExam.supervisorId" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none">
@@ -869,25 +888,19 @@ const removeSchedule = async (exam: ExamItem) => {
 
             <div v-else class="space-y-3.5">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <template v-if="lms">
-                  <div>
-                    <label for="exam-mulai" class="block font-bold text-[#344054] mb-1">Tanggal dan Jam Mulai</label>
-                    <input id="exam-mulai" v-model="newExam.startsAt" type="datetime-local" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]">
-                  </div>
-                  <div>
-                    <label for="exam-selesai" class="block font-bold text-[#344054] mb-1">Jam Selesai</label>
-                    <input id="exam-selesai" v-model="jamSelesai" type="time" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]">
-                    <p class="mt-1 text-[11px]" :class="menitUjian > 0 ? 'text-[#667085]' : 'text-[#B42318]'">{{ menitUjian > 0 ? 'Semua siswa selesai serentak di jam ini.' : 'Jam selesai harus setelah jam mulai.' }}</p>
-                  </div>
-                  <div>
-                    <label for="exam-waktu" class="block font-bold text-[#344054] mb-1">Waktu Ujian (menit)</label>
-                    <input id="exam-waktu" :value="menitUjian > 0 ? menitUjian : ''" type="number" min="1" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]" @input="jamSelesai = jamAkhir(newExam.startsAt, Number(($event.target as HTMLInputElement).value) || 0)">
-                    <p class="mt-1 text-[11px] text-[#667085]">Jam selesai menyesuaikan otomatis.</p>
-                  </div>
-                </template>
-                <div v-else>
-                  <label class="block font-bold text-[#344054] mb-1">Tanggal dan Waktu Mulai</label>
-                  <input v-model="newExam.startsAt" type="datetime-local" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
+                <div>
+                  <label for="exam-mulai" class="block font-bold text-[#344054] mb-1">Tanggal dan Jam Mulai</label>
+                  <input id="exam-mulai" v-model="newExam.startsAt" type="datetime-local" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]">
+                </div>
+                <div>
+                  <label for="exam-selesai" class="block font-bold text-[#344054] mb-1">Jam Selesai</label>
+                  <input id="exam-selesai" v-model="jamSelesai" type="time" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]">
+                  <p class="mt-1 text-[11px]" :class="menitUjian > 0 ? 'text-[#667085]' : 'text-[#B42318]'">{{ menitUjian < 1 ? 'Jam selesai harus setelah jam mulai.' : lms ? 'Semua siswa selesai serentak di jam ini.' : 'Siswa mendapat waktu ujian penuh sejak menekan Mulai.' }}</p>
+                </div>
+                <div>
+                  <label for="exam-waktu" class="block font-bold text-[#344054] mb-1">Waktu Ujian (menit)</label>
+                  <input id="exam-waktu" :value="menitUjian > 0 ? menitUjian : ''" type="number" min="1" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]" @input="jamSelesai = jamAkhir(newExam.startsAt, Number(($event.target as HTMLInputElement).value) || 0)">
+                  <p class="mt-1 text-[11px] text-[#667085]">Jam selesai menyesuaikan otomatis.</p>
                 </div>
                 <div>
                   <label class="block font-bold text-[#344054] mb-1">Token Peserta</label>

@@ -2,14 +2,15 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2SebQuit from './CbtV2SebQuit.vue'
+import { bacaJadwalRuang, eksporJadwalRuang } from '~/utils/cbtExcelJadwalRuang'
 import type { GradeType } from './cbtV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 import {
-  useRuangUjian, type RuangUjian, type AnggotaRuang, type SiswaBebas, type AlertRuang
+  useRuangUjian, type RuangUjian, type AnggotaRuang, type SiswaBebas, type AlertRuang, type TautanUjian
 } from '~/composables/useRuangUjian'
 import {
   barisSiswa, ringkasProgres, komposisiKelas, kelasTanpaBank, bentrokJadwal, labelStatus, labelPelanggaran, persenProgres,
-  type ProgresRow
+  cekJadwalMassal, durasiBaris, jadwalBaris, irisan, type ProgresRow, type BarisJadwalRuang
 } from '~/composables/ruangUjianCore'
 
 const props = defineProps<{ room: RuangUjian, grade: GradeType, arsip: boolean }>()
@@ -20,6 +21,8 @@ const emit = defineEmits<{
 }>()
 
 const api = useRuangUjian()
+const route = useRoute()
+const router = useRouter()
 const cbtData = useAdminCbtData('cbt')
 const rbac = useRbac()
 
@@ -35,7 +38,7 @@ const sub = ref<SubTab>('overview')
 const anggota = ref<AnggotaRuang[]>([])
 const progres = ref<ProgresRow[]>([])
 const alerts = ref<AlertRuang[]>([])
-const tautan = ref<{ exam_id: string, room_id: string }[]>([])
+const tautan = ref<TautanUjian[]>([])
 const loading = ref(true)
 const error = ref('')
 let timer: ReturnType<typeof setInterval> | null = null
@@ -58,23 +61,35 @@ const muatSemua = async () => {
 onMounted(async () => {
   void cbtData.load()
   await muatSemua()
+  // Dari tombol Atur Jadwal di daftar ruang (?jadwal=atur): langsung buka form jadwal ruang ini.
+  if (route.query.jadwal === 'atur') {
+    sub.value = 'jadwal'
+    void router.replace({ query: { ...route.query, jadwal: undefined } })
+    if (!props.arsip && bolehKelola.value) bukaMassal()
+  }
   // Progres diperbarui tiap 15 detik selama halaman terbuka dan tab browser terlihat.
   timer = setInterval(() => { if (!document.hidden && !props.arsip) void muatRingan().catch(() => {}) }, 15_000)
 })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 
-// Satu "ujian ruang" = ujian-ujian kelas dengan mapel, jadwal, dan nama yang sama.
-const ujianRuang = computed(() => {
-  const ids = new Set(tautan.value.map(item => item.exam_id))
-  const grup = new Map<string, { key: string, name: string, subject: string, startsAt: string, date: string, time: string, status: string, supervisorId: string, examIds: string[] }>()
-  for (const exam of cbtData.exams.value.filter(item => ids.has(item.id))) {
+// Satu "jadwal ruang" = ujian-ujian kelas dengan mapel, jadwal, dan nama yang sama. Pengawas melekat di
+// tautan ruang + jadwal (migrasi 0088), jadi pengawas ruang ini tidak ikut menjadi pengawas ruang lain.
+const ujianSemua = computed(() => {
+  const pengawasExam = new Map(tautan.value.map(item => [item.exam_id, item.supervisor_id ?? '']))
+  const grup = new Map<string, { key: string, name: string, subject: string, subjectId: string, startsAt: string, duration: number, date: string, time: string, status: string, supervisorId: string, examIds: string[] }>()
+  for (const exam of cbtData.exams.value.filter(item => pengawasExam.has(item.id))) {
     const key = `${exam.subjectId}|${exam.startsAt}|${exam.name}`
     const ada = grup.get(key)
-    if (ada) ada.examIds.push(exam.id)
-    else grup.set(key, { key, name: exam.name, subject: exam.subject, startsAt: exam.startsAt ?? '', date: exam.date, time: exam.time, status: exam.status, supervisorId: exam.supervisorId ?? '', examIds: [exam.id] })
+    if (ada) { ada.examIds.push(exam.id); ada.supervisorId ||= pengawasExam.get(exam.id)! }
+    else grup.set(key, { key, name: exam.name, subject: exam.subject, subjectId: exam.subjectId ?? '', startsAt: exam.startsAt ?? '', duration: exam.duration, date: exam.date, time: exam.time, status: exam.status, supervisorId: pengawasExam.get(exam.id)!, examIds: [exam.id] })
   }
   return [...grup.values()].sort((a, b) => a.startsAt.localeCompare(b.startsAt))
 })
+const saya = computed(() => rbac.state.value.subjekSaya ?? '')
+// Kelola isi ruang (tambah/keluarkan siswa, tugaskan ujian & pengawas) = izin Ubah sub-modul Ruang Ujian (RBAC).
+const bolehKelola = computed(() => rbac.bolehAksi('Manajemen CBT', 'rooms', 'ubah', rbac.adalahSuperadmin.value))
+// Selain pengelola, akun hanya melihat jadwal yang ia awasi di ruang ini.
+const ujianRuang = computed(() => bolehKelola.value ? ujianSemua.value : ujianSemua.value.filter(u => !!saya.value && u.supervisorId === saya.value))
 const ujianPilihan = ref('')
 watch(ujianRuang, list => {
   if (!list.some(item => item.key === ujianPilihan.value)) {
@@ -86,17 +101,34 @@ const ujianAktif = computed(() => ujianRuang.value.find(item => item.key === uji
 const baris = computed(() => barisSiswa(progres.value, ujianAktif.value ? ujianAktif.value.examIds : null))
 const ringkas = computed(() => ringkasProgres(baris.value))
 const komposisi = computed(() => komposisiKelas(anggota.value.map(item => item.kelas)))
-const alertTerkunci = computed(() => alerts.value.filter(item => item.locked).length)
+const examTampil = computed(() => new Set(ujianRuang.value.flatMap(u => u.examIds)))
+const alertRuang = computed(() => bolehKelola.value ? alerts.value : alerts.value.filter(item => examTampil.value.has(item.exam_id)))
+const alertTerkunci = computed(() => alertRuang.value.filter(item => item.locked).length)
 const sisaKapasitas = computed(() => Math.max(0, props.room.capacity - anggota.value.length))
 const namaGuru = (id: string) => cbtData.teachers.value.find(item => item.id === id)?.name ?? ''
-const guruGrade = computed(() => cbtData.teachers.value.filter(item => item.grade === props.grade || item.grade === 'Yayasan'))
-// Pengawas melekat di jadwal ujian; pengawas ruang = semua pengawas jadwal yang tertaut ke ruang ini.
-const namaPengawas = computed(() => [...new Set(ujianRuang.value.map(u => namaGuru(u.supervisorId)).filter(Boolean))].join(', ') || 'Belum ditentukan')
-// Punishment (kode pembuka & buka kunci) hanya untuk pengawas jadwal di ruang ini atau Superadmin; DB juga menegakkannya.
-const bolehPunishment = computed(() => rbac.adalahSuperadmin.value
-  || (!!rbac.state.value.subjekSaya && ujianRuang.value.some(u => u.supervisorId === rbac.state.value.subjekSaya)))
-// Kelola isi ruang (tambah/keluarkan siswa, tugaskan ujian) = izin Ubah sub-modul Ruang Ujian (RBAC).
-const bolehKelola = computed(() => rbac.bolehAksi('Manajemen CBT', 'rooms', 'ubah', rbac.adalahSuperadmin.value))
+// Pengawas: guru jenjang ini + Yayasan. Bila kosong (data guru belum berjenjang), semua guru aktif ditampilkan.
+const guruGrade = computed(() => {
+  const sesuai = cbtData.teachers.value.filter(item => item.grade === props.grade || item.grade === 'Yayasan')
+  return sesuai.length ? sesuai : cbtData.teachers.value
+})
+const namaPengawas = computed(() => [...new Set(ujianSemua.value.map(u => namaGuru(u.supervisorId)).filter(Boolean))].join(', ') || 'Belum ditentukan')
+// Kode quit SEB ruang: pengawas salah satu jadwal di ruang ini atau Superadmin. Kode pembuka per siswa hanya
+// dikirim database untuk jadwal yang diawasi pemanggil (room_alerts 0088), jadi tombolnya mengikuti ada/tidaknya kode.
+const bolehPunishment = computed(() => rbac.adalahSuperadmin.value || ujianSemua.value.some(u => !!saya.value && u.supervisorId === saya.value))
+const pengawasSimpan = ref('')
+const ubahPengawas = async (u: { key: string, examIds: string[], supervisorId: string }, el: HTMLSelectElement) => {
+  const supervisorId = el.value
+  pengawasSimpan.value = u.key
+  try {
+    await api.tugaskanPengawas(props.room.id, u.examIds, supervisorId || null)
+    tautan.value = await api.muatTautanUjian([props.room.id])
+    emit('toast', supervisorId ? `${namaGuru(supervisorId)} ditugaskan sebagai pengawas.` : 'Pengawas jadwal dikosongkan.')
+  } catch (e) {
+    emit('toast', e instanceof Error ? e.message : 'Pengawas gagal ditugaskan.')
+    el.value = u.supervisorId // pilihan ditolak (mis. bentrok jam): kembalikan tampilan
+    tautan.value = await api.muatTautanUjian([props.room.id]).catch(() => tautan.value)
+  } finally { pengawasSimpan.value = '' }
+}
 const ringkasJadwal = (u: { examIds: string[] }) => ringkasProgres(barisSiswa(progres.value, u.examIds))
 
 const cari = ref('')
@@ -123,7 +155,7 @@ const keluarkan = async (row: { student_id: string, student_name: string, status
 
 // ---- Alert ----
 const hanyaTerkunci = ref(false)
-const alertTampil = computed(() => hanyaTerkunci.value ? alerts.value.filter(item => item.locked) : alerts.value)
+const alertTampil = computed(() => hanyaTerkunci.value ? alertRuang.value.filter(item => item.locked) : alertRuang.value)
 const waktu = (iso: string) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 const salinKode = async (kode: string) => {
   try { await navigator.clipboard.writeText(kode); emit('toast', `Kode ${kode} disalin.`) } catch { emit('toast', 'Kode gagal disalin.') }
@@ -189,7 +221,7 @@ const tambahAcak = async () => {
 // ---- Buat Ujian untuk ruang ----
 const ujianOpen = ref(false)
 const localDateTime = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
-const formUjian = ref({ name: '', subjectId: '', startsAt: '', duration: 90, ruangLain: [] as string[], supervisorId: '' })
+const formUjian = ref({ name: '', subjectId: '', startsAt: '', duration: 90, ruangLain: [] as string[] })
 const ruangLain = ref<RuangUjian[]>([])
 const progresSimpan = ref('')
 const classIdsRuang = computed(() => [...new Set(anggota.value.map(item => item.classId).filter((id): id is string => !!id))])
@@ -201,7 +233,7 @@ const mapelUjian = computed(() => {
 const tanpaBank = computed(() => formUjian.value.subjectId ? kelasTanpaBank(classIdsRuang.value, formUjian.value.subjectId, cbtData.bankPackages.value) : [])
 const bukaUjian = async () => {
   if (!anggota.value.length) return emit('toast', 'Isi ruang dengan siswa dulu sebelum membuat ujian.')
-  formUjian.value = { name: '', subjectId: '', startsAt: localDateTime(new Date(Date.now() + 86_400_000)), duration: 90, ruangLain: [], supervisorId: '' }
+  formUjian.value = { name: '', subjectId: '', startsAt: localDateTime(new Date(Date.now() + 86_400_000)), duration: 90, ruangLain: [] }
   progresSimpan.value = ''
   ujianOpen.value = true
   try { ruangLain.value = (await api.muatRuang(props.grade, props.room.periode)).filter(item => item.id !== props.room.id) } catch { ruangLain.value = [] }
@@ -245,7 +277,7 @@ const simpanUjian = async () => {
         const bank = bankDari(classId)
         await cbtData.saveExam({
           name: f.name.trim(), classId, subjectId: f.subjectId, questionBankId: bank.id,
-          questionIds: bank.questions.map(q => q.id), supervisorId: f.supervisorId || undefined,
+          questionIds: bank.questions.map(q => q.id),
           startsAt: f.startsAt, duration: f.duration
         })
       }
@@ -257,11 +289,162 @@ const simpanUjian = async () => {
     ujianOpen.value = false
     await muatSemua()
     emit('changed')
-    emit('toast', `Ujian ${f.name.trim()} ditugaskan ke ${semuaRuang.length} ruang (${daftarKelas.length} kelas).`)
+    emit('toast', `Ujian ${f.name.trim()} ditugaskan ke ${semuaRuang.length} ruang (${daftarKelas.length} kelas). Tugaskan pengawasnya di menu Jadwal Ujian.`)
   } catch (e) {
     emit('toast', e instanceof Error ? e.message : 'Ujian gagal dibuat.')
   } finally { saving.value = false; progresSimpan.value = '' }
 }
+// ---- Atur Jadwal: banyak mapel sekaligus untuk ruang ini, masing-masing dengan pengawasnya ----
+// Alur sama dengan Buat Ujian (ujian per kelas + bank soal kelas, lalu ditautkan ke ruang), tetapi semua baris
+// diperiksa dulu sebelum ada yang disimpan, agar tidak ada jadwal setengah jadi.
+type BarisMassal = BarisJadwalRuang & { mapelImpor?: string, pengawasImpor?: string }
+const massalOpen = ref(false)
+const namaMassal = ref('')
+const barisMassal = ref<BarisMassal[]>([])
+const galatMassal = ref<string[]>([])
+const jenisPeriode = computed(() => props.room.periode.startsWith('PTS') ? 'tengah_semester' as const : 'akhir' as const)
+const tambahJam = (jam: string, menit: number) => {
+  const [h = 0, m = 0] = jam.split(':').map(Number)
+  const t = Math.min(h * 60 + m + menit, 23 * 60 + 59)
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
+}
+const barisBaru = (sebelum?: BarisMassal): BarisMassal => sebelum
+  ? { tanggal: sebelum.tanggal, mulai: sebelum.selesai, selesai: tambahJam(sebelum.selesai, durasiBaris(sebelum) || 90), subjectId: '', supervisorId: '' }
+  : { tanggal: localDateTime(new Date(Date.now() + 86_400_000)).slice(0, 10), mulai: '07:30', selesai: '09:00', subjectId: '', supervisorId: '' }
+const bukaMassal = (isi?: BarisMassal[]) => {
+  if (!anggota.value.length) return emit('toast', 'Isi ruang dengan siswa dulu sebelum mengatur jadwal.')
+  namaMassal.value = ujianSemua.value[0]?.name ?? props.room.periode
+  barisMassal.value = isi?.length ? isi : [barisBaru()]
+  galatMassal.value = (isi ?? []).map(b => b.mapelImpor || b.pengawasImpor ? 'Isian dari Excel tidak dikenali. Pilih dari daftar.' : '')
+  progresSimpan.value = ''
+  massalOpen.value = true
+}
+const tambahBaris = () => { barisMassal.value = [...barisMassal.value, barisBaru(barisMassal.value.at(-1))] }
+const hapusBaris = (i: number) => {
+  barisMassal.value = barisMassal.value.filter((_, k) => k !== i)
+  galatMassal.value = galatMassal.value.filter((_, k) => k !== i)
+}
+const namaMapel = (id: string) => cbtData.subjects.value.find(item => item.id === id)?.name ?? '-'
+const bankKelas = (classId: string, subjectId: string) => cbtData.bankPackages.value.find(x => x.classId === classId && x.subjectId === subjectId && x.grade === props.grade)
+const examCocok = (classId: string, b: BarisJadwalRuang) => {
+  const mulai = new Date(`${b.tanggal}T${b.mulai}`).getTime()
+  return cbtData.exams.value.find(e => e.classId === classId && e.subjectId === b.subjectId && new Date(e.startsAt ?? '').getTime() === mulai)
+}
+
+// Pemeriksaan lengkap tanpa menyimpan apa pun. Mengembalikan pesan per baris ('' = aman).
+const periksaMassal = async (): Promise<string[]> => {
+  const daftar = barisMassal.value
+  const pesan = cekJadwalMassal(daftar, ujianSemua.value.map(u => ({ subjectId: u.subjectId, startsAt: u.startsAt, duration: u.duration })))
+  await Promise.all([cbtData.loadQuestions(true), cbtData.load(true)])
+  // Pengawas tidak boleh sedang bertugas di ruang lain pada jam yang beririsan (database juga menolaknya).
+  const ruangPeriode = (await api.muatRuang(props.grade, props.room.periode)).filter(item => item.id !== props.room.id)
+  const tautanLain = await api.muatTautanUjian(ruangPeriode.map(item => item.id))
+  const examById = new Map(cbtData.exams.value.map(e => [e.id, e]))
+  const bertugas = (supervisorId: string, j: { startsAt?: string, duration: number }) => tautanLain.find((t) => {
+    const e = examById.get(t.exam_id)
+    return t.supervisor_id === supervisorId && !!e?.startsAt && irisan(j, { startsAt: e.startsAt, duration: e.duration })
+  })
+  return daftar.map((b, i) => {
+    if (b.mapelImpor && !b.subjectId) return `Mapel "${b.mapelImpor}" dari Excel tidak dikenali atau belum punya bank soal di ruang ini. Pilih dari daftar.`
+    if (b.pengawasImpor && !b.supervisorId) return `Pengawas "${b.pengawasImpor}" dari Excel tidak dikenali. Pilih dari daftar.`
+    if (pesan[i]) return pesan[i]!
+    const kosong = kelasTanpaBank(classIdsRuang.value, b.subjectId, cbtData.bankPackages.value)
+    if (kosong.length) return `Belum ada bank soal ${namaMapel(b.subjectId)} untuk kelas ${kosong.map(namaKelas).join(', ')}.`
+    const tanpaSoal = classIdsRuang.value.filter(id => !bankKelas(id, b.subjectId)?.questions.length)
+    if (tanpaSoal.length) return `Bank soal ${namaMapel(b.subjectId)} kelas ${tanpaSoal.map(namaKelas).join(', ')} masih kosong.`
+    const j = jadwalBaris(b)
+    // Ujian per kelas dipakai bersama semua ruang: kelas yang sama tidak boleh punya ujian lain di jam itu.
+    for (const classId of classIdsRuang.value) {
+      const lain = cbtData.exams.value.find(e => e.classId === classId && !!e.startsAt && irisan(j, { startsAt: e.startsAt, duration: e.duration })
+        && !(e.subjectId === b.subjectId && new Date(e.startsAt).getTime() === new Date(j.startsAt!).getTime() && e.duration === j.duration))
+      if (lain) return `Kelas ${namaKelas(classId)} sudah punya ujian ${lain.subject} (${lain.date} ${lain.time}) yang beririsan.`
+    }
+    const tugas = b.supervisorId ? bertugas(b.supervisorId, j) : undefined
+    if (tugas) return `${namaGuru(b.supervisorId)} sudah mengawasi ${ruangPeriode.find(x => x.id === tugas.room_id)?.name ?? 'ruang lain'} pada jam ini.`
+    return ''
+  })
+}
+
+const simpanMassal = async () => {
+  if (saving.value) return
+  if (!namaMassal.value.trim()) return emit('toast', 'Nama ujian wajib diisi.')
+  if (!barisMassal.value.length) return emit('toast', 'Tambahkan minimal satu jadwal mapel.')
+  saving.value = true
+  progresSimpan.value = 'Memeriksa jadwal…'
+  try {
+    galatMassal.value = await periksaMassal()
+    if (galatMassal.value.some(Boolean)) return emit('toast', 'Perbaiki baris yang ditandai dulu. Belum ada jadwal yang disimpan.')
+    const daftar = barisMassal.value
+    const kelas = classIdsRuang.value
+    let n = 0
+    for (const b of daftar) {
+      for (const classId of kelas) {
+        progresSimpan.value = `Menyimpan ujian ${++n} dari ${daftar.length * kelas.length}…`
+        if (examCocok(classId, b)) continue // ujian kelas ini sudah dibuat ruang lain dengan jadwal sama: dipakai ulang
+        const bank = bankKelas(classId, b.subjectId)!
+        await cbtData.saveExam({
+          name: namaMassal.value.trim(), classId, subjectId: b.subjectId, questionBankId: bank.id,
+          questionIds: bank.questions.map(q => q.id), startsAt: `${b.tanggal}T${b.mulai}`, duration: durasiBaris(b), jenis: jenisPeriode.value
+        }, false)
+      }
+    }
+    progresSimpan.value = 'Menautkan jadwal dan pengawas ke ruang…'
+    await cbtData.load(true)
+    for (const b of daftar) {
+      const examIds = kelas.map(classId => examCocok(classId, b)?.id ?? '')
+      if (examIds.some(id => !id)) throw new Error(`Ujian ${namaMapel(b.subjectId)} tersimpan tetapi tidak ditemukan kembali. Muat ulang halaman lalu periksa menu Jadwal Ujian.`)
+      await api.tautkanUjian(examIds, [props.room.id])
+      if (b.supervisorId) await api.tugaskanPengawas(props.room.id, examIds, b.supervisorId)
+    }
+    massalOpen.value = false
+    emit('changed')
+    emit('toast', `${daftar.length} jadwal mapel tersimpan di ${props.room.name}.`)
+  } catch (e) {
+    emit('toast', e instanceof Error ? e.message : 'Jadwal gagal disimpan.')
+  } finally {
+    await muatSemua()
+    saving.value = false
+    progresSimpan.value = ''
+  }
+}
+
+// ---- Export / Import Excel jadwal ruang ini ----
+const eksporExcel = async () => {
+  try {
+    const berkas = `jadwal-${props.room.name}-${props.room.periode}`.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    await eksporJadwalRuang(`${berkas}.xlsx`, ujianRuang.value.map((u) => {
+      const mulai = localDateTime(new Date(u.startsAt))
+      return {
+        tanggal: mulai.slice(0, 10), mulai: mulai.slice(11, 16),
+        selesai: localDateTime(new Date(new Date(u.startsAt).getTime() + u.duration * 60_000)).slice(11, 16),
+        mapel: u.subject, pengawas: namaGuru(u.supervisorId)
+      }
+    }), mapelUjian.value.map(m => m.name), guruGrade.value.map(g => g.name))
+  } catch (e) { emit('toast', e instanceof Error ? e.message : 'Export gagal.') }
+}
+const imporExcel = async (ev: Event) => {
+  const input = ev.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  try {
+    const sama = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+    // Nama dicocokkan persis (tanpa beda huruf besar/kecil); nama ganda/tidak dikenal harus dipilih manual.
+    const hasil = (await bacaJadwalRuang(file)).map((x): BarisMassal => {
+      const mapel = mapelUjian.value.filter(m => sama(m.name, x.mapel))
+      const guru = x.pengawas ? guruGrade.value.filter(g => sama(g.name, x.pengawas)) : []
+      return {
+        tanggal: x.tanggal, mulai: x.mulai, selesai: x.selesai,
+        subjectId: mapel.length === 1 ? mapel[0]!.id : '', supervisorId: guru.length === 1 ? guru[0]!.id : '',
+        mapelImpor: mapel.length === 1 ? undefined : (x.mapel || '(kosong)'),
+        pengawasImpor: x.pengawas && guru.length !== 1 ? x.pengawas : undefined
+      }
+    })
+    bukaMassal(hasil)
+    emit('toast', `${hasil.length} baris jadwal dibaca dari Excel. Periksa lalu klik Simpan Jadwal.`)
+  } catch (e) { emit('toast', e instanceof Error ? e.message : 'Berkas Excel gagal dibaca.') }
+}
+
 const lepasUjian = async (item: { name: string, examIds: string[] }) => {
   if (!confirm(`Lepas ujian ${item.name} dari ${props.room.name}? Ujian di kelas tidak dihapus.`)) return
   try {
@@ -273,9 +456,9 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-4 mt-10">
     <!-- Header ruang -->
-    <div class="rounded-[22px] bg-[#0A2A5C] px-5 py-5 shadow-sm sm:px-6">
+    <div class="rounded-[22px] bg-[#0A2A5C] px-5 py-5 shadow-sm sm:px-6 ">
       <button type="button" class="mb-3 inline-flex min-h-9 items-center gap-1.5 text-xs font-bold text-[#C7D7F2] hover:text-white" @click="emit('back')">
         <AdminV2Icon name="back" :size="14" /><span>Semua ruang</span>
       </button>
@@ -283,7 +466,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
         <div class="min-w-0">
           <span class="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#DCE9FF]">{{ room.periode }}</span>
           <h2 class="mt-2 text-xl font-extrabold text-white sm:text-2xl">{{ room.name }}</h2>
-          <p class="mt-1 text-xs text-[#C7D7F2]">{{ anggota.length }} / {{ room.capacity }} siswa<template v-if="ujianRuang.length"> · Pengawas: {{ namaPengawas }}</template></p>
+          <p class="mt-1 text-xs text-[#C7D7F2]">{{ anggota.length }} / {{ room.capacity }} siswa<template v-if="ujianSemua.length"> · Pengawas: {{ namaPengawas }}</template></p>
         </div>
         <div v-if="!arsip && bolehKelola" class="flex gap-2">
           <button type="button" class="min-h-11 flex-1 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-bold text-white hover:bg-white/20 sm:flex-none" @click="bukaTambah">Tambah Siswa</button>
@@ -367,8 +550,18 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
 
       <!-- JADWAL UJIAN -->
       <div v-else-if="sub === 'jadwal'" class="space-y-2.5">
+        <div class="flex flex-wrap gap-2">
+          <template v-if="!arsip && bolehKelola">
+            <button type="button" class="min-h-11 rounded-xl bg-[#1B5FD9] px-4 text-xs font-bold text-white hover:bg-[#164fb6]" @click="bukaMassal()">Atur Jadwal</button>
+            <label class="inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-[#E7EBF2] bg-white px-4 text-xs font-bold text-[#344054] hover:border-[#1B5FD9] focus-within:outline focus-within:outline-2 focus-within:outline-[#1B5FD9]">
+              Import Excel<input type="file" accept=".xlsx" class="sr-only" @change="imporExcel">
+            </label>
+          </template>
+          <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-4 text-xs font-bold text-[#344054] hover:border-[#1B5FD9]" @click="eksporExcel">Export Excel</button>
+        </div>
         <p v-if="!ujianRuang.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Belum ada jadwal ujian di ruang ini.</p>
-        <article v-for="u in ujianRuang" :key="u.key" class="rounded-2xl border border-[#E7EBF2] bg-white p-4">
+        <p v-else-if="!arsip && bolehKelola" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Pilih pengawas untuk tiap jadwal. Pengawas hanya bisa membuka ruang ini, jadwal yang ia awasi, dan kode pembuka kunci siswanya. Satu guru tidak bisa mengawasi dua ruang di jam yang sama.</p>
+        <article v-for="u in ujianRuang" :key="u.key" class="rounded-2xl border bg-white p-4" :class="saya && u.supervisorId === saya ? 'border-[#1B5FD9]' : 'border-[#E7EBF2]'">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <b class="block break-words text-sm font-bold text-[#101828]">{{ u.subject }} · {{ u.name }}</b>
@@ -376,7 +569,15 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
             </div>
             <span class="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold" :class="u.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : u.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ u.status }}</span>
           </div>
-          <p class="mt-2 text-xs text-[#344054]">Pengawas: <b>{{ namaGuru(u.supervisorId) || 'Belum ditentukan' }}</b></p>
+          <div v-if="!arsip && bolehKelola" class="mt-3 max-w-sm">
+            <label class="mb-1 block text-[11px] font-bold text-[#344054]" :for="`peng-${u.key}`">Pengawas jadwal ini</label>
+            <select :id="`peng-${u.key}`" :value="u.supervisorId" :disabled="!!pengawasSimpan" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm outline-none focus:border-[#1B5FD9] disabled:opacity-60" @change="ubahPengawas(u, $event.target as HTMLSelectElement)">
+              <option value="">Belum ditentukan</option>
+              <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
+            </select>
+            <p v-if="pengawasSimpan === u.key" class="mt-1 text-[11px] font-bold text-[#1B5FD9]" role="status">Menyimpan…</p>
+          </div>
+          <p v-else class="mt-2 text-xs text-[#344054]">Pengawas: <b>{{ namaGuru(u.supervisorId) || 'Belum ditentukan' }}</b><span v-if="saya && u.supervisorId === saya" class="ml-2 rounded-full bg-[#E8F0FE] px-2 py-0.5 text-[10px] font-extrabold text-[#1B5FD9]">Tugas Anda</span></p>
           <div class="mt-3">
             <div class="flex justify-between gap-3 text-[11px] font-semibold text-[#344054]"><span>{{ ringkasJadwal(u).selesai }} selesai · {{ ringkasJadwal(u).mengerjakan }} mengerjakan · {{ ringkasJadwal(u).belumMulai }} belum mulai<template v-if="ringkasJadwal(u).terkunci"> · {{ ringkasJadwal(u).terkunci }} terkunci</template></span><span>{{ ringkasJadwal(u).rataProgres }}%</span></div>
             <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-[#EFF2F7]"><div class="h-full rounded-full bg-[#1B5FD9]" :style="{ width: `${ringkasJadwal(u).rataProgres}%` }" /></div>
@@ -441,10 +642,10 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
       <!-- ALERT UJIAN -->
       <div v-else class="space-y-3">
         <div class="flex items-center justify-between gap-3">
-          <p class="text-xs text-[#667085]">{{ alerts.length }} pelanggaran tercatat · {{ alertTerkunci }} akun terkunci</p>
+          <p class="text-xs text-[#667085]">{{ alertRuang.length }} pelanggaran tercatat · {{ alertTerkunci }} akun terkunci</p>
           <label class="inline-flex min-h-9 items-center gap-2 text-xs font-bold text-[#344054]"><input v-model="hanyaTerkunci" type="checkbox" class="h-4 w-4 accent-[#1B5FD9]"> Hanya terkunci</label>
         </div>
-        <p v-if="!bolehPunishment" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Kode pembuka dan buka kunci hanya untuk pengawas jadwal ujian di ruang ini ({{ namaPengawas }}) atau Superadmin.</p>
+        <p class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Kode pembuka dan buka kunci hanya tampil untuk pengawas jadwal ujian tersebut di ruang ini, atau Superadmin.</p>
         <div v-if="alertTampil.length" class="grid gap-2.5 lg:grid-cols-2">
           <article v-for="a in alertTampil" :key="a.violation_id" class="rounded-2xl border bg-white p-4" :class="a.locked ? 'border-[#F5C6C0]' : 'border-[#E7EBF2]'">
             <div class="flex items-start justify-between gap-3">
@@ -454,7 +655,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
             <p class="mt-2 text-xs text-[#344054]"><b>{{ labelPelanggaran(a.violation_type) }}</b> · pelanggaran ke-{{ a.occurrence }} · {{ waktu(a.occurred_at) }}</p>
             <div v-if="a.locked" class="mt-3 flex items-center justify-between gap-3 rounded-xl bg-[#F8FAFD] p-3">
               <div><span class="block text-[10px] font-extrabold uppercase tracking-wider text-[#667085]">Kode pembuka akses</span><b class="font-mono text-lg tracking-[0.2em] text-[#101828]">{{ a.occurrence >= 3 || !a.unlock_code ? '------' : a.unlock_code }}</b></div>
-              <div v-if="a.occurrence < 3 && a.unlock_code && bolehPunishment" class="flex gap-2">
+              <div v-if="a.occurrence < 3 && a.unlock_code" class="flex gap-2">
                 <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-3 text-xs font-bold text-[#344054]" @click="salinKode(a.unlock_code)">Salin</button>
                 <button v-if="!arsip" type="button" class="min-h-11 rounded-xl bg-[#1B5FD9] px-3 text-xs font-bold text-white" @click="bukaKunci(a)">Buka kunci</button>
               </div>
@@ -528,13 +729,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
               <div class="col-span-2 sm:col-span-1"><label class="mb-1 block font-bold text-[#344054]" for="uj-mulai">Mulai *</label><input id="uj-mulai" v-model="formUjian.startsAt" type="datetime-local" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
               <div class="col-span-2 sm:col-span-1"><label class="mb-1 block font-bold text-[#344054]" for="uj-durasi">Durasi (menit) *</label><input id="uj-durasi" v-model.number="formUjian.duration" type="number" min="1" max="600" inputmode="numeric" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
             </div>
-            <div>
-              <label class="mb-1 block font-bold text-[#344054]" for="uj-peng">Pengawas jadwal ini</label>
-              <select id="uj-peng" v-model="formUjian.supervisorId" class="w-full rounded-xl border border-[#E7EBF2] bg-white p-3 text-sm outline-none focus:border-[#1B5FD9]">
-                <option value="">Belum ditentukan</option>
-                <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
-              </select>
-            </div>
+            <p class="text-[#667085]">Pengawas ditugaskan per ruang setelah ujian dibuat, di menu Jadwal Ujian.</p>
             <fieldset v-if="ruangLain.length">
               <legend class="mb-1.5 font-bold text-[#344054]">Tugaskan juga ke ruang lain <span class="font-normal text-[#667085]">(jadwal sama)</span></legend>
               <div class="flex flex-wrap gap-1.5">
@@ -546,6 +741,56 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
           <div class="flex gap-2 border-t border-[#E7EBF2] bg-[#F8FAFD] p-4">
             <button type="button" class="min-h-11 flex-1 rounded-xl border border-[#E7EBF2] bg-white text-xs font-bold text-[#344054]" :disabled="saving" @click="ujianOpen = false">Batal</button>
             <button type="button" class="min-h-11 flex-1 rounded-xl bg-[#1B5FD9] text-xs font-bold text-white disabled:opacity-60" :disabled="saving || !!tanpaBank.length" @click="simpanUjian">{{ saving ? 'Menyimpan…' : 'Tayangkan Ujian' }}</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+    <!-- MODAL ATUR JADWAL (banyak mapel) -->
+    <Teleport to="body">
+      <div v-if="massalOpen" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Atur jadwal ujian ruang" @keydown.esc="!saving && (massalOpen = false)">
+        <div class="flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl border border-[#E7EBF2] bg-white shadow-2xl sm:rounded-2xl">
+          <div class="flex items-center justify-between border-b border-[#E7EBF2] p-5">
+            <div><span class="text-[10px] font-extrabold uppercase tracking-wider text-[#1B5FD9]">{{ room.name }} · {{ room.periode }}</span><h3 class="mt-0.5 text-base font-extrabold text-[#101828]">Atur Jadwal Ujian</h3></div>
+            <button type="button" class="flex h-9 w-9 items-center justify-center rounded-lg text-[#667085] hover:bg-[#EFF2F7]" aria-label="Tutup" :disabled="saving" @click="massalOpen = false"><AdminV2Icon name="x" :size="16" /></button>
+          </div>
+          <div class="space-y-3.5 overflow-y-auto p-5 text-xs">
+            <div class="rounded-xl bg-[#E8F0FE] p-3 font-semibold text-[#0A2A5C]">Satu baris = satu mapel untuk semua siswa di ruang ini. Tiap kelas memakai bank soalnya sendiri dan token terbit otomatis. Semua baris diperiksa dulu; bila ada yang salah, tidak ada yang disimpan.</div>
+            <div><label class="mb-1 block font-bold text-[#344054]" for="jm-nama">Nama ujian *</label><input id="jm-nama" v-model="namaMassal" type="text" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
+            <p v-if="!mapelUjian.length" class="font-semibold text-[#B42318]">Belum ada bank soal untuk kelas-kelas di ruang ini. Buat dulu di tab Bank Soal.</p>
+            <ol class="space-y-2.5">
+              <li v-for="(b, i) in barisMassal" :key="i" class="rounded-xl border p-3" :class="galatMassal[i] ? 'border-[#F5C6C0] bg-[#FFFBFA]' : 'border-[#E7EBF2]'">
+                <div class="mb-2 flex items-center justify-between">
+                  <b class="text-[11px] font-extrabold uppercase tracking-wider text-[#667085]">Mapel ke-{{ i + 1 }}</b>
+                  <button v-if="barisMassal.length > 1" type="button" class="min-h-9 px-2 text-[11px] font-bold text-[#B42318]" :disabled="saving" @click="hapusBaris(i)">Hapus</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-[1.2fr_0.8fr_0.8fr]">
+                  <div class="col-span-2 sm:col-span-1"><label class="mb-1 block font-bold text-[#344054]" :for="`jm-tgl-${i}`">Tanggal</label><input :id="`jm-tgl-${i}`" v-model="b.tanggal" type="date" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] px-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
+                  <div><label class="mb-1 block font-bold text-[#344054]" :for="`jm-mulai-${i}`">Jam mulai</label><input :id="`jm-mulai-${i}`" v-model="b.mulai" type="time" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] px-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
+                  <div><label class="mb-1 block font-bold text-[#344054]" :for="`jm-selesai-${i}`">Jam selesai</label><input :id="`jm-selesai-${i}`" v-model="b.selesai" type="time" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] px-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
+                  <div class="col-span-2 sm:col-span-1">
+                    <label class="mb-1 block font-bold text-[#344054]" :for="`jm-mapel-${i}`">Mata pelajaran</label>
+                    <select :id="`jm-mapel-${i}`" v-model="b.subjectId" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm outline-none focus:border-[#1B5FD9]">
+                      <option value="" disabled>{{ b.mapelImpor ? `Excel: ${b.mapelImpor} (tidak tersedia)` : 'Pilih mapel' }}</option>
+                      <option v-for="m in mapelUjian" :key="m.id" :value="m.id">{{ m.name }}</option>
+                    </select>
+                  </div>
+                  <div class="col-span-2">
+                    <label class="mb-1 block font-bold text-[#344054]" :for="`jm-peng-${i}`">Pengawas</label>
+                    <select :id="`jm-peng-${i}`" v-model="b.supervisorId" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm outline-none focus:border-[#1B5FD9]" @change="b.pengawasImpor = undefined">
+                      <option value="">{{ b.pengawasImpor ? `Excel: ${b.pengawasImpor} (tidak dikenali)` : 'Belum ditentukan' }}</option>
+                      <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
+                    </select>
+                  </div>
+                </div>
+                <p class="mt-2 text-[11px]" :class="galatMassal[i] ? 'font-semibold text-[#B42318]' : 'text-[#667085]'" :role="galatMassal[i] ? 'alert' : undefined">{{ galatMassal[i] || (durasiBaris(b) > 0 ? `Waktu ujian ${durasiBaris(b)} menit.` : 'Jam selesai harus setelah jam mulai.') }}</p>
+              </li>
+            </ol>
+            <button type="button" class="min-h-11 w-full rounded-xl border border-dashed border-[#1B5FD9] text-xs font-bold text-[#1B5FD9] hover:bg-[#E8F0FE] disabled:opacity-60" :disabled="saving || barisMassal.length >= 50" @click="tambahBaris">+ Tambah mapel</button>
+            <p v-if="progresSimpan" class="font-bold text-[#1B5FD9]" role="status">{{ progresSimpan }}</p>
+          </div>
+          <div class="flex gap-2 border-t border-[#E7EBF2] bg-[#F8FAFD] p-4">
+            <button type="button" class="min-h-11 flex-1 rounded-xl border border-[#E7EBF2] bg-white text-xs font-bold text-[#344054]" :disabled="saving" @click="massalOpen = false">Batal</button>
+            <button type="button" class="min-h-11 flex-1 rounded-xl bg-[#1B5FD9] text-xs font-bold text-white disabled:opacity-60" :disabled="saving || !mapelUjian.length" @click="simpanMassal">{{ saving ? 'Menyimpan…' : `Simpan ${barisMassal.length} Jadwal` }}</button>
           </div>
         </div>
       </div>

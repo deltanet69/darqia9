@@ -34,6 +34,11 @@ cek('ujian milik guru = ia pengawas atau kelas+mapel ada di jadwal mengajarnya',
   assert.deepEqual(ujianMilikGuru(daftar, 'g1', [{ class_id: 'k1', subject_id: 'm1' }]).map(x => x.id), ['a', 'c'])
 })
 
+cek('ujian milik guru = ia pengawas salah satu ruang ujian itu (0088)', () => {
+  const daftar = [u({ id: 'a', class_id: 'k9', pengawas_ruang: ['g2', 'g1'] }), u({ id: 'b', class_id: 'k9', pengawas_ruang: ['g2'] })]
+  assert.deepEqual(ujianMilikGuru(daftar, 'g1', []).map(x => x.id), ['a'])
+})
+
 cek('rekap absensi: hadir = tepat waktu + terlambat', () => {
   assert.deepEqual(rekapAbsensi(['tepat_waktu', 'terlambat', 'izin', 'alpa', 'tepat_waktu']),
     { hadir: 3, terlambat: 1, izin: 1, sakit: 0, alpa: 1, total: 5 })

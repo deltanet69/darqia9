@@ -520,8 +520,9 @@ const handleDocumentClick = (e: MouseEvent) => {
       <!-- TAB 5: STUDENT RESULTS & GRADES TAB -->
       <CbtV2Results
         v-else-if="activeTab === 'results'"
+        :key="`results-${assessmentSource}-${grade}`"
         :grade="grade"
-        :students="students"
+        :source="assessmentSource"
         @open-drawer="openDrawer"
         @toast="triggerToast"
       />

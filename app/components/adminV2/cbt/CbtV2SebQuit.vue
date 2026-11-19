@@ -9,6 +9,7 @@ const emit = defineEmits<{ (e: 'toast', msg: string): void }>()
 
 const api = useRuangUjian()
 const kode = ref<string | null>(null)
+const kodeLama = ref<string[]>([])
 const diubahPada = ref('')
 const diubahOleh = ref('')
 const proses = ref(false)
@@ -25,8 +26,14 @@ const waktuUbah = computed(() => diubahPada.value
   ? `${new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).format(new Date(diubahPada.value))} WIB`
   : '-')
 
-const terapkan = (d: { kode: string | null, diubahPada: string, diubahOleh: string }) => {
+// Siswa yang sedang ujian di kelas/ruang ini (migrasi 0087): generate ulang terkunci selama > 0.
+const sesiAktif = ref(0)
+const alasanKunci = computed(() => `Generate ulang terkunci — ${sesiAktif.value} siswa sedang ujian dengan kode ini.`)
+
+const terapkan = (d: { kode: string | null, kodeLama?: string[], sesiAktif?: number, diubahPada: string, diubahOleh: string }) => {
   kode.value = d.kode
+  kodeLama.value = d.kode ? d.kodeLama ?? [] : []
+  sesiAktif.value = Number(d.sesiAktif) || 0
   diubahPada.value = d.diubahPada
   diubahOleh.value = d.diubahOleh || '-'
 }
@@ -40,15 +47,22 @@ onMounted(async () => {
   try { terapkan(await api.kodeQuitSeb(props.jenis, props.targetId)) } catch (e) { galat.value = e instanceof Error ? e.message : 'Kode quit SEB gagal dimuat.' } finally { proses.value = false }
 })
 const toggleTampil = () => {
-  if (kode.value) { kode.value = null; return }
+  if (kode.value) { kode.value = null; kodeLama.value = []; return }
   void jalankan(async () => terapkan(await api.kodeQuitSeb(props.jenis, props.targetId, true)))
 }
-const generateUlang = () => {
-  if (!confirm('Generate ulang kode quit SEB? Kode lama langsung tidak berlaku.')) return
-  void jalankan(async () => {
+const generateUlang = async () => {
+  // Tombol nonaktif (aria-disabled) tetap bisa diketuk agar alasannya muncul sebagai peringatan.
+  if (sesiAktif.value > 0) { alert(alasanKunci.value); return }
+  if (!confirm('Generate ulang kode quit SEB? Siswa yang sudah membuka SEB tetap memakai kode lama (tetap tampil di bawah kode baru).')) return
+  proses.value = true
+  try {
     terapkan(await api.generateKodeQuitSeb(props.jenis, props.targetId))
-    emit('toast', 'Kode baru dibuat — kode lama sudah tidak berlaku')
-  })
+    emit('toast', 'Kode baru dibuat. Kode lama tetap tampil untuk siswa yang sudah di dalam SEB.')
+  } catch (e) {
+    // Server menolak (sesi aktif muncul setelah halaman dimuat): pesan server tampil apa adanya.
+    alert(e instanceof Error ? e.message : 'Kode quit SEB gagal dibuat.')
+    try { terapkan(await api.kodeQuitSeb(props.jenis, props.targetId, !!kode.value)) } catch { /* jumlah sesi disegarkan saat dibuka ulang */ }
+  } finally { proses.value = false }
 }
 const salinTautan = async () => {
   try { await navigator.clipboard.writeText(tautan.value); emit('toast', 'Tautan config tersalin') } catch { emit('toast', 'Tautan gagal disalin.') }
@@ -66,10 +80,15 @@ const salinTautan = async () => {
           <div class="flex min-h-[84px] flex-[1_1_200px] items-center justify-center rounded-[14px] bg-[#0A2A5C] py-3.5 pl-5 pr-2 font-mono text-[44px] font-extrabold tracking-[12px] text-white" aria-live="polite">{{ kode ?? '•••' }}</div>
           <div class="flex flex-[0_1_220px] flex-col gap-2.5">
             <button type="button" :disabled="proses" class="min-h-11 rounded-[11px] bg-[#0A2A5C] px-3.5 py-3 text-sm font-bold text-white disabled:opacity-60" @click="toggleTampil">{{ kode ? 'SEMBUNYIKAN' : 'TAMPILKAN KODE' }}</button>
-            <button type="button" :disabled="proses" class="min-h-11 rounded-[11px] border-2 border-[#0A2A5C] bg-white px-3.5 py-3 text-sm font-bold text-[#0A2A5C] disabled:opacity-60" @click="generateUlang">GENERATE ULANG</button>
+            <button type="button" :disabled="proses" :aria-disabled="sesiAktif > 0" :title="sesiAktif > 0 ? alasanKunci : undefined" class="min-h-11 rounded-[11px] border-2 border-[#0A2A5C] bg-white px-3.5 py-3 text-sm font-bold text-[#0A2A5C] disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-50" @click="generateUlang">GENERATE ULANG</button>
           </div>
         </div>
-        <p class="mt-3.5 text-[13px] leading-relaxed text-[#64748B]">Generate ulang langsung mematikan kode lama. Kode terakhir diubah: {{ waktuUbah }} oleh {{ diubahOleh }}.</p>
+        <p v-if="sesiAktif > 0" class="mt-3.5 rounded-xl border border-[#F5C6C0] bg-[#FFFBFA] px-4 py-3 text-[13px] font-semibold text-[#B42318]" role="status">{{ alasanKunci }}</p>
+        <div v-if="kodeLama.length" class="mt-3.5 rounded-xl border border-[#F5D9A8] bg-[#FFFAEB] px-4 py-3 text-[13px] leading-relaxed text-[#7A4B05]">
+          <b>Kode sebelumnya:</b> <span class="font-mono font-bold tracking-[3px]">{{ kodeLama.join(' · ') }}</span><br>
+          Siswa yang membuka config SEB sebelum kode diganti hanya bisa keluar dengan kode lama. Coba dari yang paling kiri.
+        </div>
+        <p class="mt-3.5 text-[13px] leading-relaxed text-[#64748B]">Generate ulang: siswa yang membuka tautan config setelahnya memakai kode baru. Kode terakhir diubah: {{ waktuUbah }} oleh {{ diubahOleh }}.</p>
       </template>
     </section>
 

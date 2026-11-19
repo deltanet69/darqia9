@@ -4,7 +4,7 @@ import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2RoomDetail from './CbtV2RoomDetail.vue'
 import type { GradeType } from './cbtV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
-import { useRuangUjian, type RuangUjian, type SiswaBebas } from '~/composables/useRuangUjian'
+import { useRuangUjian, type RuangUjian, type SiswaBebas, type TautanUjian } from '~/composables/useRuangUjian'
 import { periodeOpsi, validasiRuang } from '~/composables/ruangUjianCore'
 
 const props = defineProps<{ grade: GradeType }>()
@@ -17,13 +17,14 @@ const { tahun, muatOpsi } = useTahunAjaran()
 const riwayat = ref<string[]>([])
 const periode = ref('')
 const ruang = ref<RuangUjian[]>([])
+const tautan = ref<TautanUjian[]>([])
 const loading = ref(false)
 const error = ref('')
 // Ruang yang dibuka disimpan di URL (?ruang=), jadi tombol kembali browser dan breadcrumb ikut bekerja.
 const route = useRoute()
 const router = useRouter()
 const selectedId = computed(() => typeof route.query.ruang === 'string' ? route.query.ruang : null)
-const bukaRuang = (id: string) => router.push({ query: { ...route.query, ruang: id } })
+const bukaRuang = (id: string, jadwal?: 'atur') => router.push({ query: { ...route.query, ruang: id, jadwal } })
 const tutupRuang = () => { const { ruang: _ruang, ...sisa } = route.query; return router.push({ query: sisa }) }
 const saving = ref(false)
 
@@ -37,7 +38,28 @@ const bolehBuat = computed(() => bolehRuang('buat'))
 const bolehUbah = computed(() => bolehRuang('ubah'))
 const bolehHapus = computed(() => bolehRuang('hapus'))
 const bolehKelola = computed(() => bolehBuat.value || bolehUbah.value || bolehHapus.value)
-const selected = computed(() => ruang.value.find(item => item.id === selectedId.value) ?? null)
+// Selain pengelola Ruang Ujian, akun hanya melihat ruang yang salah satu jadwalnya ia awasi (pengawas per ruang + jadwal, 0088).
+const saya = computed(() => useRbac().state.value.subjekSaya ?? '')
+const ruangTampil = computed(() => bolehUbah.value ? ruang.value
+  : ruang.value.filter(item => tautan.value.some(t => t.room_id === item.id && !!saya.value && t.supervisor_id === saya.value)))
+// Jadwal yang diawasi akun ini, satu baris per ruang + mapel + jam (ujian beberapa kelas digabung).
+const jadwalSaya = computed(() => {
+  const examById = new Map(cbtData.exams.value.map(item => [item.id, item]))
+  const grup = new Map<string, { key: string, roomId: string, ruang: string, subject: string, name: string, date: string, time: string, startsAt: string, status: string, kelas: number }>()
+  for (const t of tautan.value) {
+    const exam = examById.get(t.exam_id)
+    if (!exam || !saya.value || t.supervisor_id !== saya.value) continue
+    const key = `${t.room_id}|${exam.subjectId}|${exam.startsAt}|${exam.name}`
+    const ada = grup.get(key)
+    if (ada) { ada.kelas++; continue }
+    grup.set(key, {
+      key, roomId: t.room_id, ruang: ruang.value.find(item => item.id === t.room_id)?.name ?? '-', subject: exam.subject, name: exam.name,
+      date: exam.date, time: exam.time, startsAt: exam.startsAt ?? '', status: exam.status, kelas: 1
+    })
+  }
+  return [...grup.values()].sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+})
+const selected = computed(() => ruangTampil.value.find(item => item.id === selectedId.value) ?? null)
 // Beri tahu halaman induk (untuk menyembunyikan sub menu CBT dan mengisi breadcrumb).
 watch(selected, item => emit('detail', item?.name ?? null), { immediate: true })
 onUnmounted(() => emit('detail', null))
@@ -53,12 +75,14 @@ const muat = async () => {
   error.value = ''
   try {
     ruang.value = await api.muatRuang(props.grade, periode.value)
+    tautan.value = await api.muatTautanUjian(ruang.value.map(item => item.id))
     riwayat.value = await api.muatPeriodeRiwayat(props.grade)
-    // ?ruang= yang tidak ada di periode ini (tautan lama/periode lain) dibersihkan agar tidak menjebak.
-    if (selectedId.value && !ruang.value.some(item => item.id === selectedId.value)) await tutupRuang()
+    // ?ruang= yang tidak ada di periode ini / tidak diawasi akun ini dibersihkan agar tidak menjebak.
+    if (selectedId.value && !ruangTampil.value.some(item => item.id === selectedId.value)) await tutupRuang()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ruang ujian gagal dimuat.'
     ruang.value = []
+    tautan.value = []
   } finally { loading.value = false }
 }
 
@@ -196,7 +220,7 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
       </div>
 
       <!-- Ringkasan Statistik Ruang Ujian -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div v-if="bolehUbah" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <!-- Metric 1: Total Ruang -->
         <div class="rounded-2xl border border-[#E7EBF2] bg-white p-4 shadow-[0_1px_3px_rgba(16,24,40,0.04)] flex items-center gap-3.5">
           <div class="w-11 h-11 rounded-xl bg-blue-50 text-[#1B5FD9] border border-blue-100/80 flex items-center justify-center shrink-0 shadow-2xs">
@@ -242,13 +266,31 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
         </div>
       </div>
 
-      <div v-if="error" class="rounded-xl border border-rose-200 bg-rose-50/70 px-4 py-3 text-xs text-rose-700 font-medium" role="alert">{{ error }}. Pastikan migrasi 0033 sudah dijalankan.</div>
+      <!-- Jadwal pengawasan akun ini -->
+      <section v-if="!error && !loading && jadwalSaya.length" class="rounded-2xl border border-[#1B5FD9]/30 bg-white p-4 sm:p-5">
+        <h3 class="text-sm font-extrabold text-[#101828]">Jadwal Pengawasan Saya</h3>
+        <p class="mt-0.5 text-xs text-[#667085]">Ruang dan jadwal yang ditugaskan kepada Anda pada {{ periode }}. Kode pembuka kunci siswa ada di menu Alert Ujian ruang tersebut.</p>
+        <ul class="mt-3 divide-y divide-[#EFF2F7]">
+          <li v-for="j in jadwalSaya" :key="j.key" class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+              <b class="block break-words text-sm font-bold text-[#101828]">{{ j.ruang }} · {{ j.subject }}</b>
+              <span class="text-xs text-[#667085]">{{ j.date }} · {{ j.time }} · {{ j.name }} · {{ j.kelas }} kelas</span>
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
+              <span class="rounded-full px-2.5 py-0.5 text-[10px] font-extrabold" :class="j.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : j.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ j.status }}</span>
+              <button type="button" class="min-h-11 rounded-xl bg-[#1B5FD9] px-4 text-xs font-bold text-white hover:bg-[#164fb6]" @click="bukaRuang(j.roomId)">Buka Ruang</button>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <div v-if="error" class="rounded-xl border border-rose-200 bg-rose-50/70 px-4 py-3 text-xs text-rose-700 font-medium" role="alert">{{ error }}. Pastikan migrasi 0033 dan 0088 sudah dijalankan.</div>
       <div v-else-if="loading" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-slate-500">Memuat ruang ujian…</div>
 
       <!-- Grid Kartu Ruang Ujian Modern & Terstruktur -->
-      <div v-else-if="ruang.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-else-if="ruangTampil.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <article
-          v-for="item in ruang"
+          v-for="item in ruangTampil"
           :key="item.id"
           class="bg-white border border-[#E7EBF2] hover:border-[#1B5FD9] rounded-2xl p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04),0_6px_16px_-6px_rgba(16,24,40,0.06)] hover:shadow-[0_8px_24px_-4px_rgba(27,95,217,0.12)] -translate-y-0 hover:-translate-y-0.5 transition-all duration-200 group flex flex-col justify-between cursor-pointer"
           @click="bukaRuang(item.id)"
@@ -307,13 +349,21 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
           </div>
 
           <!-- Card Actions Footer -->
-          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+          <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
             <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#1B5FD9] group-hover:text-blue-700 group-hover:translate-x-0.5 transition-transform">
               <span>Buka Ruang</span>
               <span>&rarr;</span>
             </span>
 
             <div v-if="!arsip && bolehKelola" class="flex items-center gap-1.5">
+              <button v-if="bolehUbah"
+                type="button"
+                class="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100 text-xs font-bold text-[#1B5FD9] transition-colors cursor-pointer shadow-2xs active:scale-95"
+                title="Atur jadwal mapel & pengawas ruang ini"
+                @click.stop="bukaRuang(item.id, 'atur')"
+              >
+                Atur Jadwal
+              </button>
               <button v-if="bolehUbah"
                 type="button"
                 class="px-2.5 py-1 rounded-lg border border-[#E7EBF2] bg-white hover:bg-slate-50 hover:border-slate-300 text-xs font-bold text-slate-700 transition-colors cursor-pointer shadow-2xs active:scale-95"
@@ -339,9 +389,9 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
         <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
           <AdminV2Icon name="bldg" :size="20" />
         </div>
-        <p class="text-base font-bold text-slate-900">Belum ada ruang untuk {{ periode }}</p>
+        <p class="text-base font-bold text-slate-900">{{ bolehUbah ? `Belum ada ruang untuk ${periode}` : `Belum ada tugas pengawasan pada ${periode}` }}</p>
         <p class="mx-auto mt-1 max-w-md text-xs text-slate-500">
-          {{ bolehBuat ? "Klik Buat Ruang. Anda dapat membuat satu ruang, atau banyak ruang sekaligus dengan siswa dibagi otomatis." : "Ruang ujian dibuat oleh Superadmin." }}
+          {{ bolehBuat ? "Klik Buat Ruang. Anda dapat membuat satu ruang, atau banyak ruang sekaligus dengan siswa dibagi otomatis." : bolehUbah ? "Ruang ujian dibuat oleh Superadmin." : "Ruang dan jadwal yang Anda awasi akan tampil di sini setelah ditugaskan oleh pengelola Ruang Ujian." }}
         </p>
         <button
           v-if="bolehBuat && !arsip"

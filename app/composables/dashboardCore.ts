@@ -15,6 +15,7 @@ export interface UjianMentah {
   class_id: string
   subject_id: string
   supervisor_id: string | null
+  pengawas_ruang?: string[] // CBT: pengawas per ruang + jadwal (migrasi 0088)
   kelas: string
   mapel: string
 }
@@ -59,10 +60,10 @@ export function kelompokkanUjian(daftar: UjianMentah[], batas = 3): Record<TabUj
   return hasil
 }
 
-// Ujian milik guru: ia pengawasnya, atau kelas+mapel ujian ada di jadwal mengajarnya.
+// Ujian milik guru: ia pengawasnya (ujian atau salah satu ruangnya), atau kelas+mapel ujian ada di jadwal mengajarnya.
 export function ujianMilikGuru(daftar: UjianMentah[], guruId: string, ajar: Array<{ class_id: string, subject_id: string }>): UjianMentah[] {
   const pasangan = new Set(ajar.map(a => `${a.class_id}|${a.subject_id}`))
-  return daftar.filter(u => u.supervisor_id === guruId || pasangan.has(`${u.class_id}|${u.subject_id}`))
+  return daftar.filter(u => u.supervisor_id === guruId || !!u.pengawas_ruang?.includes(guruId) || pasangan.has(`${u.class_id}|${u.subject_id}`))
 }
 
 export const tanggalWib = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(d)

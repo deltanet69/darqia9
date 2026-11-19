@@ -50,6 +50,7 @@ export interface ExamItem {
   acakSingkat?: boolean
   acakEsai?: boolean
   jenis?: 'akhir' | 'tengah_semester' | 'harian' | 'pr'
+  tugasKe?: number | null // LMS: masuk Nilai Tugas ke-N di Agenda Mengajar (migrasi 0090)
 }
 
 export interface BankQuestionItem {
@@ -173,15 +174,6 @@ export interface ExamGroupItem {
   status: 'Berlangsung' | 'Terjadwal' | 'Selesai'
   supervisor: string
   subjects: number
-}
-
-export interface ClassResultItem {
-  name: string
-  count: number
-  avg: number
-  graded: number
-  needGrading: number
-  passed: number
 }
 
 export const KKM_DEFAULT = 75
@@ -401,19 +393,6 @@ export const EXAM_GROUPS: Record<GradeType, ExamGroupItem[]> = {
     { classroom: 'IX-A', students: 44, date: '2 Okt - 8 Okt 2026', status: 'Terjadwal', supervisor: 'Bpk. Ahmad Dahlan, S.Pd', subjects: 6 },
     { classroom: 'VIII-B', students: 44, date: '5 Okt - 10 Okt 2026', status: 'Terjadwal', supervisor: 'Ibu Rina Marlina, M.Pd', subjects: 6 },
     { classroom: 'VII-A', students: 44, date: '27 Sep - 29 Sep 2026', status: 'Selesai', supervisor: 'Ust. Hendra Gunawan, S.Pd.I', subjects: 4 }
-  ]
-}
-
-export const CLASS_RESULTS: Record<GradeType, ClassResultItem[]> = {
-  SMK: [
-    { name: 'X RPL 1', count: 40, avg: 82.4, graded: 38, needGrading: 2, passed: 36 },
-    { name: 'XI RPL 1', count: 40, avg: 79.2, graded: 40, needGrading: 0, passed: 35 },
-    { name: 'XII TKJ 1', count: 38, avg: 85.0, graded: 38, needGrading: 0, passed: 37 }
-  ],
-  SMP: [
-    { name: 'VII-A', count: 44, avg: 84.5, graded: 44, needGrading: 0, passed: 42 },
-    { name: 'VIII-B', count: 44, avg: 78.0, graded: 44, needGrading: 0, passed: 39 },
-    { name: 'IX-A', count: 44, avg: 81.2, graded: 44, needGrading: 0, passed: 40 }
   ]
 }
 
