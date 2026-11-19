@@ -76,6 +76,10 @@ export default defineNuxtConfig({
     ocrKeduaKey: process.env.OCR_KEDUA_KEY || '',
     ocrKeduaModel: process.env.OCR_KEDUA_MODEL || 'deepseek-v4-flash-vision-exp',
     ocrKeduaJson: process.env.OCR_KEDUA_JSON !== 'false',
+    // Gerbang aplikasi CBT. Darurat: NUXT_CBT_GERBANG_APLIKASI=false lalu restart (tanpa build ulang).
+    // NUXT_CBT_GERBANG_NIS_BEBAS: daftar NIS (pisah koma) yang boleh ujian dari browser biasa.
+    cbtGerbangAplikasi: true,
+    cbtGerbangNisBebas: '120194',
     public: {
       // Kredensial public (bisa diakses di client jika dibutuhkan)
       instagramAppId: process.env.NUXT_PUBLIC_INSTAGRAM_APP_ID || '',

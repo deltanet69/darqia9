@@ -28,13 +28,14 @@ interface KeadaanSiswa {
   jadwalAt: number
   rekapAt: number
   memuat: boolean
+  wajibAplikasi: boolean // dari server: siswa ini di browser biasa dan tidak dikecualikan gerbang aplikasi
 }
 
 const KUNCI_SESI = 'cbt_sesi_v1'
 const KUNCI_CACHE = 'cbt_cache_v1'
 const SEGAR_MS = 60_000
 
-const awal = (): KeadaanSiswa => ({ sesi: null, siswa: null, ujian: [], rekap: null, selisihJam: 0, jadwalAt: 0, rekapAt: 0, memuat: false })
+const awal = (): KeadaanSiswa => ({ sesi: null, siswa: null, ujian: [], rekap: null, selisihJam: 0, jadwalAt: 0, rekapAt: 0, memuat: false, wajibAplikasi: false })
 
 const simpanLokal = (kunci: string, nilai: unknown) => { try { sessionStorage.setItem(kunci, JSON.stringify(nilai)) } catch { /* penyimpanan tidak tersedia */ } }
 const bacaLokal = <T>(kunci: string): T | null => { try { return JSON.parse(sessionStorage.getItem(kunci) || 'null') as T | null } catch { return null } }
@@ -49,7 +50,8 @@ export const useCbtSiswa = () => {
     state.value.ujian = data.ujian || []
     state.value.selisihJam = data.serverNow ? new Date(data.serverNow).getTime() - Date.now() : 0
     state.value.jadwalAt = Date.now()
-    simpanLokal(KUNCI_CACHE, { siswa: state.value.siswa, ujian: state.value.ujian, selisihJam: state.value.selisihJam, jadwalAt: state.value.jadwalAt })
+    state.value.wajibAplikasi = data.wajibAplikasi === true
+    simpanLokal(KUNCI_CACHE, { siswa: state.value.siswa, ujian: state.value.ujian, selisihJam: state.value.selisihJam, jadwalAt: state.value.jadwalAt, wajibAplikasi: state.value.wajibAplikasi })
   }
 
   const keluar = () => {
@@ -69,13 +71,14 @@ export const useCbtSiswa = () => {
   const pulihkan = (): boolean => {
     if (state.value.sesi) return true
     const sesi = bacaLokal<SesiSiswa>(KUNCI_SESI)
-    const cache = bacaLokal<{ siswa: ProfilSiswa, ujian: UjianSiswa[], selisihJam: number, jadwalAt: number }>(KUNCI_CACHE)
+    const cache = bacaLokal<{ siswa: ProfilSiswa, ujian: UjianSiswa[], selisihJam: number, jadwalAt: number, wajibAplikasi?: boolean }>(KUNCI_CACHE)
     if (!sesi || !cache) return false
     state.value.sesi = sesi
     state.value.siswa = cache.siswa
     state.value.ujian = cache.ujian
     state.value.selisihJam = cache.selisihJam
     state.value.jadwalAt = cache.jadwalAt
+    state.value.wajibAplikasi = cache.wajibAplikasi === true
     return true
   }
 

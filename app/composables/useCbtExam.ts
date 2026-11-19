@@ -441,6 +441,16 @@ export const useCbtExam = () => {
 
   const pesanGalat = (e: any, cadangan: string): string => e?.data?.statusMessage || e?.statusMessage || cadangan
 
+  // Gerbang aplikasi: User-Agent aplikasi dicek server; penanda window.DarqiaLock hanya terlihat di sini, jadi dikirim.
+  const ditolakServer = ref(false)
+  const diLock = (): boolean => typeof window !== 'undefined' && !!(window as any).DarqiaLock
+  const ditolakGerbang = (e: any): boolean => !!e?.data?.data?.gerbangAplikasi && (ditolakServer.value = true)
+  // Dihitung dari state sesi, jadi tetap muncul setelah muat ulang. PR dan ujian yang sedang dikerjakan tidak diganggu;
+  // ujian lain tetap ditolak server saat dibuka.
+  const gerbangAplikasi = computed(() => ditolakServer.value || (siswa.state.value.wajibAplikasi && !diLock()
+    && screen.value !== 'exam' && screen.value !== 'review'
+    && !siswa.state.value.ujian.some(u => u.jenis === 'pr' || u.statusSiswa === 'berlangsung')))
+
   // Login ringan: hanya NIS + token. Soal tidak dimuat di sini.
   const doLogin = async (): Promise<void> => {
     if (loadingExam.value) return
@@ -494,7 +504,7 @@ export const useCbtExam = () => {
     if (!lanjut && !cache && ref.mulai && siswa.sekarang() - new Date(ref.mulai).getTime() < 60_000) await sleep(Math.random() * 2500)
     const hasil = await $fetch<any>('/api/cbt/siapkan', {
       method: 'POST',
-      body: { nis: sesi.nis, token: sesi.token, grade: sesi.grade, source: ref.source, examId: ref.id, tanpaSoal: !!cache, versi: cache?.versi }
+      body: { nis: sesi.nis, token: sesi.token, grade: sesi.grade, source: ref.source, examId: ref.id, tanpaSoal: !!cache, versi: cache?.versi, aplikasi: diLock() }
     })
     const soalMentah = hasil.questions || cache?.soal
     if (!soalMentah?.length) throw new Error('Ujian belum memiliki soal. Hubungi pengawas.')
@@ -565,6 +575,7 @@ export const useCbtExam = () => {
     try {
       await siapkanUjian(u)
     } catch (error: any) {
+      if (ditolakGerbang(error)) return
       triggerToast(pesanGalat(error, error?.message || 'Ujian gagal dibuka. Coba lagi.'), 3500)
       void siswa.muatJadwal(true)
     } finally { loadingExam.value = false }
@@ -612,9 +623,10 @@ export const useCbtExam = () => {
   // Timer dimulai di server saat siswa menekan Mulai (tahan refresh/ganti perangkat).
   const beginExam = async (): Promise<void> => {
     try {
-      const hasil = await $fetch<any>('/api/cbt/mulai', { method: 'POST', body: kunciDasar() })
+      const hasil = await $fetch<any>('/api/cbt/mulai', { method: 'POST', body: { ...kunciDasar(), aplikasi: diLock() } })
       remainingTime.value = hasil.sisaDetik
     } catch (error: any) {
+      if (ditolakGerbang(error)) return
       triggerToast(pesanGalat(error, 'Ujian belum bisa dimulai. Coba lagi.'), 3500)
       return
     }
@@ -1172,8 +1184,17 @@ export const useCbtExam = () => {
   // Batal keluar / kembali dari cache halaman: deteksi pindah tab aktif lagi.
   const onPageShow = (): void => { keluarPada = 0 }
 
+  // Sinyal dari aplikasi Android (evaluateJavascript): pelanggaran penuh lewat jalur yang sama. Satu insiden dihitung
+  // sekali: sinyal dalam 10 detik setelah pelanggaran lain (mis. visibilitychange untuk kejadian yang sama) diabaikan.
+  const cbtNativeSinyal = (jenis: string): void => {
+    if ((screen.value !== 'exam' && screen.value !== 'review') || Date.now() - lastViolationTimestamp < 10_000) return
+    if (jenis === 'pindah_tab') triggerCheatLock('Aplikasi ujian ditinggalkan (pindah aplikasi atau layar dimatikan)', undefined, 'pindah_tab')
+    else if (jenis === 'alt_tab') triggerCheatLock('Penguncian layar aplikasi dilepas atau layar terpisah dibuka', undefined, 'alt_tab')
+  }
+
   const registerListeners = (): void => {
     if (typeof window === 'undefined') return
+    ;(window as any).cbtNativeSinyal = cbtNativeSinyal
     document.addEventListener('keydown', onKeydown)
     document.addEventListener('visibilitychange', onVisibilityChange)
     document.addEventListener('fullscreenchange', onFullscreenChange)
@@ -1190,6 +1211,7 @@ export const useCbtExam = () => {
 
   const unregisterListeners = (): void => {
     if (typeof window === 'undefined') return
+    delete (window as any).cbtNativeSinyal
     document.removeEventListener('keydown', onKeydown)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     document.removeEventListener('fullscreenchange', onFullscreenChange)
@@ -1312,6 +1334,7 @@ export const useCbtExam = () => {
     simulateViolation,
     perluLayarPenuh,
     masukLayarPenuh,
+    gerbangAplikasi,
     registerListeners,
     unregisterListeners
   }

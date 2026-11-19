@@ -1,6 +1,6 @@
 // Jalur server untuk aplikasi CBT siswa. Semua fungsi database cbt_siswa_* hanya bisa dipanggil lewat
 // service role di sini (bukan dari peramban), sehingga pembatas percobaan salah tidak bisa dilewati.
-import { serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import type { H3Event } from 'h3'
 import { createHash } from 'node:crypto'
 import { buatPembatas } from './pembatas'
@@ -21,6 +21,7 @@ export interface BodySiswa {
   kode?: string
   tanpaSoal?: boolean
   versi?: string
+  aplikasi?: boolean
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -46,6 +47,7 @@ export async function bacaBodySiswa(event: H3Event, perluUjian = false): Promise
   if (typeof b?.kode === 'string') hasil.kode = b.kode.trim().slice(0, 12)
   if (b?.tanpaSoal === true) hasil.tanpaSoal = true
   if (typeof b?.versi === 'string') hasil.versi = b.versi.slice(0, 32)
+  if (b?.aplikasi === true) hasil.aplikasi = true
   return hasil
 }
 
@@ -89,6 +91,35 @@ export async function rpcSiswa(event: H3Event, fungsi: string, args: Record<stri
   if (fungsi === 'cbt_siswa_login') batasNis.hapus(b.nis)
   setResponseHeader(event, 'Cache-Control', 'no-store')
   return data
+}
+
+// Gerbang aplikasi: siswa wajib ujian lewat aplikasi resmi (DarqiaCBT Android / SEB iOS). Bebas gerbang bila saklar
+// dimatikan (NUXT_CBT_GERBANG_APLIKASI=false), NIS ada di daftar pengecualian, atau sesi login milik guru/admin.
+// shortcut: User-Agent & penanda aplikasi bisa dipalsukan; naikkan ke Config Key SEB / tanda tangan aplikasi bila perlu.
+export const PESAN_GERBANG = 'Ujian wajib lewat aplikasi.'
+export async function bebasGerbang(event: H3Event, b: BodySiswa): Promise<boolean> {
+  const cfg = useRuntimeConfig(event)
+  if (String(cfg.cbtGerbangAplikasi) === 'false') return true
+  const ua = getRequestHeader(event, 'user-agent') || ''
+  if (b.aplikasi || ua.includes('DarqiaCBT/') || (/\bSEB\//.test(ua) && /iPhone|iPad|iPod|Macintosh/.test(ua))) return true
+  if (String(cfg.cbtGerbangNisBebas).split(',').map(s => s.trim()).includes(b.nis)) return true
+  try {
+    if (!(await serverSupabaseUser(event))?.sub) return false
+    const { data } = await (await serverSupabaseClient(event) as any).rpc('is_staff')
+    return data === true
+  } catch { return false }
+}
+
+// Dipakai siapkan/mulai: ujian PR tidak digerbang. pr() baru dicek bila gerbang menolak (hemat query).
+export async function wajibAplikasi(event: H3Event, b: BodySiswa, pr: () => boolean | Promise<boolean>) {
+  if (await bebasGerbang(event, b) || await pr()) return
+  throw createError({ statusCode: 403, statusMessage: PESAN_GERBANG, data: { gerbangAplikasi: true } })
+}
+
+export async function ujianPr(event: H3Event, b: BodySiswa): Promise<boolean> {
+  if (b.source !== 'ujian_harian') return false
+  const { data } = await klienService(event).from('ujian_harian').select('tipe').eq('id', b.examId!).maybeSingle()
+  return data?.tipe === 'pr'
 }
 
 export const argumenSiswa = (b: BodySiswa) => ({ p_nis: b.nis, p_token: b.token, p_grade: b.grade })

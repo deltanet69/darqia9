@@ -159,6 +159,23 @@
       </div>
     </div>
 
+    <!-- GERBANG APLIKASI: siswa di browser biasa wajib memakai aplikasi resmi. Sengaja tidak bisa ditutup. -->
+    <div
+      v-if="cbt.gerbangAplikasi.value"
+      class="fixed inset-0 z-[250] flex items-center justify-center bg-merek-d1/95 p-6"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="judul-gerbang-aplikasi"
+    >
+      <div class="w-full max-w-xs rounded-3xl bg-white p-6 text-center shadow-2xl">
+        <p id="judul-gerbang-aplikasi" class="text-base font-black text-slate-900">Ujian Wajib Lewat Aplikasi</p>
+        <p class="mt-1 text-xs text-slate-500">Ujian tidak bisa dikerjakan dari browser biasa. Unduh dan pasang aplikasi ujian resmi sekolah, lalu masuk kembali dari aplikasi tersebut.</p>
+        <a href="https://darqiaattaqwa.sch.id/unduh" class="mt-4 flex min-h-12 w-full items-center justify-center rounded-2xl bg-merek-600 text-sm font-bold text-white active:scale-95">
+          Unduh
+        </a>
+      </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div
       v-if="cbt.toastMsg.value !== ''"

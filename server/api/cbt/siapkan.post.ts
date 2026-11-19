@@ -1,9 +1,11 @@
-import { acakSoal, argumenUjian, bacaBodySiswa, rpcSiswa, soalUjian, versiSoal } from '../../utils/cbtSiswa'
+import { acakSoal, argumenUjian, bacaBodySiswa, rpcSiswa, soalUjian, versiSoal, wajibAplikasi } from '../../utils/cbtSiswa'
 
 // Membuka ujian yang jamnya sudah tiba: data ujian + keadaan tersimpan (dari database) + soal (dari cache server).
 export default defineEventHandler(async (event) => {
   const b = await bacaBodySiswa(event, true)
   const info = await rpcSiswa(event, 'cbt_siswa_siapkan', argumenUjian(b), b) as Record<string, unknown>
+  // Ujian yang sudah dimulai (mulaiPada) tidak diganggu gerbang aplikasi.
+  if (!info.mulaiPada) await wajibAplikasi(event, b, () => info.jenis === 'pr')
   const acak = await acakSoal(event, b.source!, b.examId!)
   info.acak = acak
   info.acakEsai = acak.esai // aplikasi lama yang masih terbuka saat deploy
