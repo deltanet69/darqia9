@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import type { BankPackage, BankQuestionItem, ExamItem, GradeType, LiveStudent } from '~/components/adminV2/cbt/cbtV2Data'
 import type { AksiRbac } from './rbacCore'
 import { bolehAksesBank, type AksesBankAkun } from '~/utils/cbtAksesBank'
-import { blokJadwal, menitSlot, type BarisJadwal } from '~/utils/cbtJadwalUjian'
+import { blokJadwal, type BarisJadwal } from '~/utils/cbtJadwalUjian'
 
 export type AssessmentSource = 'cbt' | 'ujian_harian'
 const questionRequests = new Map<AssessmentSource, Promise<void>>()
@@ -671,11 +671,6 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
       throw new Error(source === 'ujian_harian'
         ? 'Anda hanya dapat membuat ujian untuk kelas dan mata pelajaran yang Anda ampu di Jadwal Pelajaran.'
         : 'Cakupan peran Anda hanya kelas dan mata pelajaran yang Anda ampu.')
-    }
-    if (source === 'ujian_harian') {
-      const batas = menitSlot(jadwalUjian(input.classId, input.subjectId), input.startsAt)
-      if (batas == null) throw new Error('Jam mulai ujian harus sama dengan jam pelajaran mapel ini di kelas tersebut (lihat Jadwal Pelajaran).')
-      if (Number(input.duration) > batas) throw new Error(`Durasi ujian maksimal ${batas} menit, sampai jam pelajaran selesai.`)
     }
     const classItem = classes.value.find(item => item.id === input.classId)
     const subjectItem = subjects.value.find(item => item.id === input.subjectId)

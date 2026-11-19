@@ -173,7 +173,7 @@ const jadwalTeks = (j: JenisUjian) => {
   const a = daftarJenis(j).map(u => u.tanggal).sort()
   if (!a.length) return 'Belum dijadwalkan'
   const awal = new Date(a[0]!).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' })
-  return daftarJenis(j).every(u => u.selesai) ? `Dilaksanakan mulai ${awal}` : `Dijadwalkan mulai ${awal}`
+  return daftarJenis(j).every(u => u.selesai || u.tidakIkut) ? `Dilaksanakan mulai ${awal}` : `Dijadwalkan mulai ${awal}`
 }
 const kepala = computed(() => ({
   ring: { t: 'Per mata pelajaran', s: 'Ketuk untuk melihat semua penilaian' },
@@ -204,7 +204,7 @@ const barisNilai = computed(() => {
     return {
       k: u.id, n: u.mapel, s: ada ? String(Math.round(u.nilai!)) : '', w: '', buka: false, split: ada,
       bw: ada ? `${u.benar / u.total * 100}%` : '', sw: ada ? `${u.salah / u.total * 100}%` : '',
-      baris: ada ? `${u.benar} benar · ${u.salah} salah dari ${u.total} soal` : u.mapel ? `Dijadwalkan ${tgl(u.tanggal)}` : 'Mapel dan jadwal rinci diumumkan H-2 sebelum ujian'
+      baris: ada ? `${u.benar} benar · ${u.salah} salah dari ${u.total} soal` : u.tidakIkut ? `Tidak mengikuti ujian (${tgl(u.tanggal)})` : u.mapel ? `Dijadwalkan ${tgl(u.tanggal)}` : 'Mapel dan jadwal rinci diumumkan H-2 sebelum ujian'
     }
   })
 })

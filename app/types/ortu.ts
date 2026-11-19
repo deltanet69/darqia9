@@ -36,6 +36,7 @@ export interface UjianOrtu {
   mapel: string | null
   tanggal: string // ISO
   selesai: boolean
+  tidakIkut: boolean // waktu ujian sudah lewat dan siswa tidak pernah memulai
   total: number
   benar: number
   salah: number

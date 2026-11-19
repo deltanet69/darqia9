@@ -2,7 +2,6 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import { kelompokCerita, pilihUnitAcak } from '~/utils/cbtCerita'
-import { menitSlot, slotMendatang } from '~/utils/cbtJadwalUjian'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2ExamDetail from './CbtV2ExamDetail.vue'
 import CbtV2ExamBulk from './CbtV2ExamBulk.vue'
@@ -215,19 +214,16 @@ const availableSubjects = computed(() =>
   cbtData.subjects.value.filter(item => item.grade === props.grade && (!lms.value
     || (cbtData.bolehUjianKelas(newExam.value.classId, item.id) && cbtData.jadwalUjian(newExam.value.classId, item.id).length)))
 )
-const jadwalTerpilih = computed(() => newExam.value.classId && newExam.value.subjectId ? cbtData.jadwalUjian(newExam.value.classId, newExam.value.subjectId) : [])
-// Pilihan jam ujian LMS: jam pelajaran 4 minggu ke depan; jam ujian lama tetap tampil saat diubah bila masih sesuai jadwal.
-const slotOpsi = computed(() => {
-  const opsi = slotMendatang(jadwalTerpilih.value, new Date())
-  const kini = newExam.value.startsAt
-  const menit = kini ? menitSlot(jadwalTerpilih.value, kini) : null
-  return menit != null && !opsi.some(s => s.startsAt === kini) ? [{ startsAt: kini, selesai: '', menit }, ...opsi] : opsi
+// LMS: jadwal = tanggal & jam mulai + jam selesai; durasi = selisihnya (siswa selesai serentak di jam selesai, migrasi 0084).
+const jamSelesai = ref('')
+const jamAkhir = (startsAt: string, menit: number) => startsAt ? localDateTime(new Date(new Date(startsAt).getTime() + menit * 60_000)).slice(11, 16) : ''
+const menitUjian = computed(() => {
+  if (!newExam.value.startsAt || !jamSelesai.value) return 0
+  const [h = 0, m = 0] = jamSelesai.value.split(':').map(Number)
+  const mulai = new Date(newExam.value.startsAt)
+  return Math.round((new Date(mulai.getFullYear(), mulai.getMonth(), mulai.getDate(), h, m).getTime() - mulai.getTime()) / 60_000)
 })
-const batasMenit = computed(() => lms.value && newExam.value.startsAt ? menitSlot(jadwalTerpilih.value, newExam.value.startsAt) : null)
-const labelSlot = (s: { startsAt: string, selesai: string, menit: number }) =>
-  `${new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(s.startsAt))} · ${s.menit} menit`
-// Jam pelajaran lebih pendek dari durasi: durasi dipotong ke panjang jam pelajaran.
-watch(batasMenit, batas => { if (batas != null && Number(newExam.value.duration) > batas) newExam.value.duration = batas })
+watch(menitUjian, n => { if (lms.value && n > 0) newExam.value.duration = n })
 
 const subjectHasBank = computed(() =>
   !newExam.value.subjectId || availablePackages.value.some(pkg => pkg.subjectId === newExam.value.subjectId)
@@ -294,7 +290,6 @@ const goStep2 = () => {
   if (!newExam.value.name.trim()) { emit('toast', 'Nama ujian wajib diisi.'); return }
   if (!newExam.value.classId || !newExam.value.subjectId) { emit('toast', 'Pilih rombel dan mata pelajaran dulu.'); return }
   if (!newExam.value.questionBankId) { emit('toast', 'Belum ada bank soal untuk mapel ini di rombel ini. Buat dulu di tab Bank Soal.'); return }
-  if (lms.value && !jadwalTerpilih.value.length) { emit('toast', 'Mapel ini belum ada di Jadwal Pelajaran rombel ini, jadi jam ujiannya belum bisa ditentukan.'); return }
   wizardStep.value = 2
   if (soalMode.value === 'acak' && !acakRolled.value && bankQuestions.value.length) rollRandom()
 }
@@ -307,7 +302,6 @@ const ringkasanMapel = computed(() => cbtData.subjects.value.find(s => s.id === 
 
 const syncPackage = () => {
   if (!availableSubjects.value.some(s => s.id === newExam.value.subjectId)) newExam.value.subjectId = ''
-  if (lms.value && newExam.value.startsAt && menitSlot(jadwalTerpilih.value, newExam.value.startsAt) == null) newExam.value.startsAt = ''
   const matching = availablePackages.value.find(pkg => pkg.subjectId === newExam.value.subjectId)
   newExam.value.questionBankId = matching?.id ?? ''
 }
@@ -316,8 +310,8 @@ const openCreateSchedule = (classroom?: string) => {
   const classItem = kelasOpsi.value.find(item => item.name === classroom)
     ?? kelasOpsi.value[0]
   newExam.value = emptyExam()
-  // LMS: jam ujian wajib dipilih dari jam pelajaran, tidak diisi bebas.
-  if (lms.value) { newExam.value.jenis = 'harian'; newExam.value.startsAt = '' }
+  if (lms.value) { newExam.value.jenis = 'harian'; newExam.value.duration = 45 }
+  jamSelesai.value = jamAkhir(newExam.value.startsAt, newExam.value.duration)
   newExam.value.classId = classItem?.id ?? ''
   const firstPackage = gradePackages.value.find(pkg => pkg.classId === newExam.value.classId && availableSubjects.value.some(s => s.id === pkg.subjectId))
   newExam.value.subjectId = firstPackage?.subjectId ?? ''
@@ -347,6 +341,7 @@ const openEditSchedule = (exam: ExamItem) => {
     acakEsai: exam.acakEsai !== false,
     jenis: exam.jenis ?? (props.source === 'ujian_harian' ? 'harian' : 'akhir')
   }
+  jamSelesai.value = jamAkhir(newExam.value.startsAt, newExam.value.duration)
   wizardStep.value = 1
   soalMode.value = 'manual'
   acakRolled.value = true
@@ -372,6 +367,7 @@ onMounted(() => {
     try { draf = JSON.parse(sessionStorage.getItem(draftKey()) || 'null') } catch { /* draf rusak diabaikan */ }
     if (!draf?.exam) return
     newExam.value = draf.exam
+    jamSelesai.value = jamAkhir(newExam.value.startsAt, newExam.value.duration)
     wizardStep.value = draf.step === 2 ? 2 : 1
     soalMode.value = draf.mode === 'manual' ? 'manual' : 'acak'
     acakCount.value = Number(draf.acak) || 40
@@ -395,8 +391,8 @@ const saveSchedule = async () => {
     emit('toast', 'Pilih minimal satu soal untuk ujian.')
     return
   }
-  if (lms.value && !newExam.value.startsAt) {
-    emit('toast', 'Pilih jam ujian dari jam pelajaran mapel ini.')
+  if (lms.value && (!newExam.value.startsAt || menitUjian.value < 1)) {
+    emit('toast', 'Isi tanggal, jam mulai, dan jam selesai ujian. Jam selesai harus setelah jam mulai.')
     return
   }
   isSaving.value = true
@@ -856,10 +852,9 @@ const removeSchedule = async (exam: ExamItem) => {
                 </select>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
+                <div v-if="!lms">
                   <label for="exam-durasi" class="block font-bold text-[#344054] mb-1">Durasi (menit)</label>
-                  <input id="exam-durasi" v-model.number="newExam.duration" type="number" min="1" :max="batasMenit ?? undefined" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
-                  <p v-if="lms" class="mt-1 text-[11px] text-[#667085]">Maksimal sepanjang jam pelajaran yang dipilih.</p>
+                  <input id="exam-durasi" v-model.number="newExam.duration" type="number" min="1" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">
                 </div>
                 <div>
                   <label class="block font-bold text-[#344054] mb-1">Pengawas</label>
@@ -874,14 +869,22 @@ const removeSchedule = async (exam: ExamItem) => {
 
             <div v-else class="space-y-3.5">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div v-if="lms">
-                  <label for="exam-slot" class="block font-bold text-[#344054] mb-1">Jam Pelajaran Ujian</label>
-                  <select id="exam-slot" v-model="newExam.startsAt" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] bg-white outline-none focus:border-[#1B5FD9]">
-                    <option value="" disabled>Pilih jam pelajaran</option>
-                    <option v-for="s in slotOpsi" :key="s.startsAt" :value="s.startsAt">{{ labelSlot(s) }}</option>
-                  </select>
-                  <p class="mt-1 text-[11px] text-[#667085]">Jam ujian mengikuti Jadwal Pelajaran {{ ringkasanMapel }} di {{ ringkasanKelas }}.</p>
-                </div>
+                <template v-if="lms">
+                  <div>
+                    <label for="exam-mulai" class="block font-bold text-[#344054] mb-1">Tanggal dan Jam Mulai</label>
+                    <input id="exam-mulai" v-model="newExam.startsAt" type="datetime-local" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]">
+                  </div>
+                  <div>
+                    <label for="exam-selesai" class="block font-bold text-[#344054] mb-1">Jam Selesai</label>
+                    <input id="exam-selesai" v-model="jamSelesai" type="time" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]">
+                    <p class="mt-1 text-[11px]" :class="menitUjian > 0 ? 'text-[#667085]' : 'text-[#B42318]'">{{ menitUjian > 0 ? 'Semua siswa selesai serentak di jam ini.' : 'Jam selesai harus setelah jam mulai.' }}</p>
+                  </div>
+                  <div>
+                    <label for="exam-waktu" class="block font-bold text-[#344054] mb-1">Waktu Ujian (menit)</label>
+                    <input id="exam-waktu" :value="menitUjian > 0 ? menitUjian : ''" type="number" min="1" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]" @input="jamSelesai = jamAkhir(newExam.startsAt, Number(($event.target as HTMLInputElement).value) || 0)">
+                    <p class="mt-1 text-[11px] text-[#667085]">Jam selesai menyesuaikan otomatis.</p>
+                  </div>
+                </template>
                 <div v-else>
                   <label class="block font-bold text-[#344054] mb-1">Tanggal dan Waktu Mulai</label>
                   <input v-model="newExam.startsAt" type="datetime-local" class="w-full border border-[#E7EBF2] rounded-xl p-2.5 text-xs text-[#101828] outline-none">

@@ -43,7 +43,7 @@ export async function muatUjianOrtu(db: any, studentId: string): Promise<UjianOr
     const benar = Number(u.benar) || 0
     const menunggu = Number(u.menunggu) || 0
     hasil.push({
-      id: u.id, jenis, mapelId: u.mapelId ?? null, mapel: u.mapel ?? null, tanggal: u.mulai, selesai: !!u.selesai,
+      id: u.id, jenis, mapelId: u.mapelId ?? null, mapel: u.mapel ?? null, tanggal: u.mulai, selesai: !!u.selesai, tidakIkut: !!u.tidakIkut,
       total, benar, menunggu, salah: Math.max(0, total - benar - menunggu), nilai: u.nilai === null || u.nilai === undefined ? null : Number(u.nilai)
     })
   }

@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { pilihUnitAcak } from '~/utils/cbtCerita'
-import { slotMendatang } from '~/utils/cbtJadwalUjian'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { BankPackage, GradeType } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 import { useKartuUjian, type PeriodeKartu } from '~/composables/useKartuUjian'
 
 // Superadmin: satu ujian per bank soal terpilih (banyak kelas + banyak mapel sekaligus).
-// LMS: jam tiap ujian = jam pelajaran pertama mapel itu di kelasnya, mulai dari tanggal yang dipilih.
-// CBT (PTS/PAS): jadwal sendiri di dalam periode ujian (tab Kartu Ujian); tanggal & jam diatur per mapel.
+// Tanggal & jam diatur per mapel. CBT (PTS/PAS): di dalam periode ujian (tab Kartu Ujian), durasi dari isian.
+// LMS: jam mulai + jam selesai; durasi = selisihnya (ujian berakhir serentak di jam selesai, migrasi 0084).
 const props = defineProps<{ grade: GradeType, source?: AssessmentSource }>()
 const emit = defineEmits<{ (e: 'close'): void, (e: 'toast', msg: string): void }>()
 const cbt = props.source === 'cbt'
@@ -22,13 +21,14 @@ const form = ref({
   jenis: (cbt ? 'akhir' : 'harian') as 'akhir' | 'tengah_semester' | 'harian' | 'pr',
   tanggal: tanggalLokal(new Date(Date.now() + 86_400_000)),
   jam: '07:30',
+  selesai: '08:15',
   periodeId: '',
   durasi: (cbt ? 90 : null) as number | null,
   jumlahSoal: null as number | null
 })
 const pilih = ref<string[]>([])
-// CBT: tanggal + jam per bank terpilih (awal = tanggal mulai periode dan jam bawaan).
-const jadwalCbt = ref<Record<string, { tanggal: string, jam: string }>>({})
+// Tanggal + jam per bank terpilih (awal = tanggal mulai periode CBT / tanggal bawaan, dan jam bawaan).
+const jadwal = ref<Record<string, { tanggal: string, jam: string, selesai: string }>>({})
 const periode = ref<PeriodeKartu[]>([])
 const cari = ref('')
 const memuat = ref(true)
@@ -49,13 +49,18 @@ const periodeAktif = computed(() => periode.value.find(p => p.id === form.value.
 
 const namaKelas = (id?: string) => cbtData.classes.value.find(c => c.id === id)?.name ?? '-'
 const namaMapel = (id?: string) => cbtData.subjects.value.find(s => s.id === id)?.name ?? '-'
-// LMS: jam pelajaran pertama mulai dari tanggal pilihan (cari sampai 7 hari ke depan).
-const slotBank = (b: BankPackage) => {
-  const [y, m, d] = form.value.tanggal.split('-').map(Number)
-  if (!y || !m || !d || !b.classId || !b.subjectId) return undefined
-  return slotMendatang(cbtData.jadwalUjian(b.classId, b.subjectId), new Date(y, m - 1, d), 7)[0]
+const menitDari = (mulai: string, selesai: string) => {
+  const [a = 0, b = 0] = mulai.split(':').map(Number)
+  const [c = 0, d = 0] = (selesai || '').split(':').map(Number)
+  return selesai ? c * 60 + d - (a * 60 + b) : 0
 }
-const labelSlot = (startsAt: string) => new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(startsAt))
+// Isian menit manual: jam selesai = jam mulai + menit (dibatasi 23:59).
+const tambahMenit = (jam: string, menit: number) => {
+  const [h = 0, m = 0] = jam.split(':').map(Number)
+  const t = Math.min(h * 60 + m + Math.max(0, Math.floor(menit)), 23 * 60 + 59)
+  return menit > 0 ? `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}` : ''
+}
+const nilaiMenit = (e: Event) => Number((e.target as HTMLInputElement).value) || 0
 
 const grupKelas = computed(() => {
   const q = cari.value.trim().toLowerCase()
@@ -65,34 +70,33 @@ const grupKelas = computed(() => {
     .map(id => ({ id, nama: namaKelas(id), bank: bank.filter(b => b.classId === id).sort((a, b) => namaMapel(a.subjectId).localeCompare(namaMapel(b.subjectId))) }))
     .sort((a, b) => a.nama.localeCompare(b.nama))
 })
-const bisaDipilih = (b: BankPackage) => b.questions.length > 0 && (cbt || !!slotBank(b))
+const bisaDipilih = (b: BankPackage) => b.questions.length > 0
 
 // Satu kelas+mapel hanya satu bank: memilih bank lain di kelas+mapel yang sama menggantikan pilihan sebelumnya.
 const toggle = (b: BankPackage) => {
   if (pilih.value.includes(b.id)) { pilih.value = pilih.value.filter(id => id !== b.id); return }
   const sama = cbtData.bankPackages.value.filter(x => x.classId === b.classId && x.subjectId === b.subjectId).map(x => x.id)
   pilih.value = [...pilih.value.filter(id => !sama.includes(id)), b.id]
-  if (cbt && !jadwalCbt.value[b.id]) jadwalCbt.value[b.id] = { tanggal: periodeAktif.value?.startsOn ?? form.value.tanggal, jam: form.value.jam }
+  if (!jadwal.value[b.id]) jadwal.value[b.id] = { tanggal: (cbt && periodeAktif.value?.startsOn) || form.value.tanggal, jam: form.value.jam, selesai: form.value.selesai }
 }
 const pilihSemuaKelas = (bank: BankPackage[]) => { for (const b of bank) if (bisaDipilih(b) && !pilih.value.includes(b.id)) toggle(b) }
 
 // Jadwal tiap bank terpilih: { startsAt (datetime-local), durasi } atau pesan kenapa tidak bisa.
 const rencana = (b: BankPackage): { startsAt: string, durasi: number } | string => {
-  const durasiInput = Math.floor(Number(form.value.durasi) || 0)
-  if (!cbt) {
-    const slot = slotBank(b)
-    if (!slot) return 'tidak ada jam pelajaran dalam 7 hari sejak tanggal mulai.'
-    return { startsAt: slot.startsAt, durasi: Math.min(durasiInput || slot.menit, slot.menit) }
-  }
-  const j = jadwalCbt.value[b.id]
-  const p = periodeAktif.value
+  const j = jadwal.value[b.id]
   if (!j?.tanggal || !j.jam) return 'tanggal dan jam ujian wajib diisi.'
+  if (!cbt) {
+    const durasi = menitDari(j.jam, j.selesai)
+    return durasi > 0 ? { startsAt: `${j.tanggal}T${j.jam}`, durasi } : 'jam selesai harus setelah jam mulai.'
+  }
+  const durasiInput = Math.floor(Number(form.value.durasi) || 0)
+  const p = periodeAktif.value
   if (p && (j.tanggal < p.startsOn || j.tanggal > p.endsOn)) return `tanggal di luar periode ${p.periode} (${p.startsOn} s.d. ${p.endsOn}).`
   if (durasiInput < 1) return 'durasi ujian wajib diisi.'
   return { startsAt: `${j.tanggal}T${j.jam}`, durasi: durasiInput }
 }
 
-// CBT: dua ujian di kelas yang sama tidak boleh beririsan jam (termasuk ujian yang sudah ada).
+// Dua ujian di kelas yang sama tidak boleh beririsan jam (termasuk ujian yang sudah ada).
 const bentrok = (b: BankPackage, r: { startsAt: string, durasi: number }, daftar: BankPackage[]) => {
   const mulai = new Date(r.startsAt).getTime()
   const selesai = mulai + r.durasi * 60_000
@@ -110,16 +114,14 @@ const simpan = async () => {
   if (!pilih.value.length) return emit('toast', 'Pilih minimal satu bank soal.')
   const daftar = cbtData.bankPackages.value.filter(b => pilih.value.includes(b.id))
   gagal.value = []
-  // CBT: cek semua jadwal dulu, agar tidak ada ujian yang terlanjur dibuat dengan jadwal bentrok.
-  if (cbt) {
-    for (const b of daftar) {
-      const r = rencana(b)
-      const label = `${namaKelas(b.classId)} · ${namaMapel(b.subjectId)}`
-      if (typeof r === 'string') gagal.value.push(`${label}: ${r}`)
-      else if (bentrok(b, r, daftar)) gagal.value.push(`${label}: jamnya beririsan dengan ujian lain di kelas ini.`)
-    }
-    if (gagal.value.length) return emit('toast', 'Perbaiki jadwal yang ditandai dulu.')
+  // Cek semua jadwal dulu, agar tidak ada ujian yang terlanjur dibuat dengan jadwal bentrok.
+  for (const b of daftar) {
+    const r = rencana(b)
+    const label = `${namaKelas(b.classId)} · ${namaMapel(b.subjectId)}`
+    if (typeof r === 'string') gagal.value.push(`${label}: ${r}`)
+    else if (bentrok(b, r, daftar)) gagal.value.push(`${label}: jamnya beririsan dengan ujian lain di kelas ini.`)
   }
+  if (gagal.value.length) return emit('toast', 'Perbaiki jadwal yang ditandai dulu.')
   menyimpan.value = true
   let berhasil = 0
   try {
@@ -167,7 +169,7 @@ const simpan = async () => {
         <div class="p-5 space-y-3.5 overflow-y-auto">
           <p class="p-3 rounded-xl bg-[#E8F0FE] text-[#0A2A5C] font-semibold">
             <template v-if="cbt">Satu ujian dibuat untuk setiap bank soal yang dicentang. Tanggal dan jam diatur per mapel di dalam periode ujian PTS/PAS, tidak mengikuti jadwal pelajaran.</template>
-            <template v-else>Satu ujian dibuat untuk setiap bank soal yang dicentang. Jam ujian otomatis memakai jam pelajaran mapel itu di kelasnya, pertama kali mulai dari tanggal yang dipilih.</template>
+            <template v-else>Satu ujian dibuat untuk setiap bank soal yang dicentang. Waktu ujian siswa dihitung dari jam mulai sampai jam selesai, dan semua siswa selesai serentak di jam selesai.</template>
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="sm:col-span-2">
@@ -196,16 +198,24 @@ const simpan = async () => {
               <p v-if="!memuat && !periode.length" class="mt-1 text-[11px] text-[#B42318]">Buat dulu periode PTS/PAS di tab Kartu Ujian.</p>
             </div>
             <div v-else>
-              <label for="bulk-tanggal" class="block font-bold text-[#344054] mb-1">Mulai dari tanggal</label>
+              <label for="bulk-tanggal" class="block font-bold text-[#344054] mb-1">Tanggal ujian bawaan</label>
               <input id="bulk-tanggal" v-model="form.tanggal" type="date" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
             </div>
-            <div v-if="cbt">
+            <div>
               <label for="bulk-jam" class="block font-bold text-[#344054] mb-1">Jam mulai bawaan</label>
               <input id="bulk-jam" v-model="form.jam" type="time" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
             </div>
-            <div>
-              <label for="bulk-durasi" class="block font-bold text-[#344054] mb-1">Durasi (menit){{ cbt ? ' *' : '' }}</label>
-              <input id="bulk-durasi" v-model.number="form.durasi" type="number" min="1" :placeholder="cbt ? '90' : 'Kosong = sepanjang jam pelajaran'" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
+            <div v-if="!cbt">
+              <label for="bulk-selesai" class="block font-bold text-[#344054] mb-1">Jam selesai bawaan</label>
+              <input id="bulk-selesai" v-model="form.selesai" type="time" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
+            </div>
+            <div v-if="!cbt">
+              <label for="bulk-waktu" class="block font-bold text-[#344054] mb-1">Waktu ujian bawaan (menit)</label>
+              <input id="bulk-waktu" :value="menitDari(form.jam, form.selesai) > 0 ? menitDari(form.jam, form.selesai) : ''" type="number" min="1" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]" @input="form.selesai = tambahMenit(form.jam, nilaiMenit($event))">
+            </div>
+            <div v-if="cbt">
+              <label for="bulk-durasi" class="block font-bold text-[#344054] mb-1">Durasi (menit) *</label>
+              <input id="bulk-durasi" v-model.number="form.durasi" type="number" min="1" placeholder="90" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
             </div>
             <div>
               <label for="bulk-jumlah" class="block font-bold text-[#344054] mb-1">Jumlah soal per ujian</label>
@@ -213,8 +223,7 @@ const simpan = async () => {
             </div>
           </div>
           <p class="text-[#667085]">
-            <template v-if="cbt">Tanggal dan jam tiap mapel bisa diubah di daftar bawah setelah dicentang. Ujian di kelas yang sama tidak boleh beririsan jam.</template>
-            <template v-else>Durasi lebih dari jam pelajaran otomatis dipotong.</template>
+            Tanggal dan jam tiap mapel bisa diubah di daftar bawah setelah dicentang. Ujian di kelas yang sama tidak boleh beririsan jam.
             Bila jumlah soal diisi, soal diacak dan soal cerita selalu ikut utuh.
           </p>
 
@@ -236,16 +245,19 @@ const simpan = async () => {
                 <span class="min-w-0 flex-1">
                   <b class="block text-[#101828] break-words">{{ namaMapel(b.subjectId) }} · {{ b.name || 'Bank soal' }}</b>
                   <span class="block text-[#667085]">
-                    {{ b.questions.length }} soal<template v-if="!cbt"> ·
-                      <template v-if="slotBank(b)">{{ labelSlot(slotBank(b)!.startsAt) }} ({{ slotBank(b)!.menit }} menit)</template>
-                      <template v-else>Tidak ada di Jadwal Pelajaran dalam 7 hari sejak tanggal mulai</template>
-                    </template>
+                    {{ b.questions.length }} soal
                   </span>
                 </span>
               </label>
-              <div v-if="cbt && pilih.includes(b.id) && jadwalCbt[b.id]" class="flex flex-wrap gap-2 pl-6">
-                <input v-model="jadwalCbt[b.id]!.tanggal" type="date" :min="periodeAktif?.startsOn" :max="periodeAktif?.endsOn" :aria-label="`Tanggal ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
-                <input v-model="jadwalCbt[b.id]!.jam" type="time" :aria-label="`Jam ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
+              <div v-if="pilih.includes(b.id) && jadwal[b.id]" class="flex flex-wrap items-center gap-2 pl-6">
+                <input v-model="jadwal[b.id]!.tanggal" type="date" :min="cbt ? periodeAktif?.startsOn : undefined" :max="cbt ? periodeAktif?.endsOn : undefined" :aria-label="`Tanggal ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
+                <input v-model="jadwal[b.id]!.jam" type="time" :aria-label="`Jam mulai ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
+                <template v-if="!cbt">
+                  <span class="text-[#667085]">s.d.</span>
+                  <input v-model="jadwal[b.id]!.selesai" type="time" :aria-label="`Jam selesai ujian ${k.nama} ${namaMapel(b.subjectId)}`" class="min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]">
+                  <input :value="menitDari(jadwal[b.id]!.jam, jadwal[b.id]!.selesai) > 0 ? menitDari(jadwal[b.id]!.jam, jadwal[b.id]!.selesai) : ''" type="number" min="1" :aria-label="`Waktu ujian (menit) ${k.nama} ${namaMapel(b.subjectId)}`" class="w-20 min-h-11 border border-[#E7EBF2] rounded-xl px-2.5 outline-none focus:border-[#1B5FD9]" @input="jadwal[b.id]!.selesai = tambahMenit(jadwal[b.id]!.jam, nilaiMenit($event))">
+                  <span class="text-[#667085]">menit</span>
+                </template>
               </div>
             </div>
           </section>

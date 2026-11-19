@@ -298,7 +298,7 @@ const simpanBebas = calls.filter(call => call.name === 'save_assessment_bank').a
 assert.equal(simpanBebas.bank_data.subject_id, subjectId)
 assert.equal(simpanBebas.bank_data.teacher_name, 'Pak Penyusun Luar')
 assert.equal(simpanBebas.bank_data.owner_teacher_id, null, 'nama di luar data guru = tanpa pemilik')
-// Ujian LMS: jam mulai wajib tepat di jam pelajaran mapel itu (Senin 07.00-07.40 + 07.40-08.20 = satu blok 80 menit).
+// Ujian LMS: jam bebas (tidak harus di jam pelajaran, migrasi 0084); mapel tetap harus ada di Jadwal Pelajaran kelas itu.
 daily.classSubjects.value = [
   { class_id: classId, subject_id: subjectId, teacher_id: 'teacher', day_of_week: 1, starts_at: '07:00:00', ends_at: '07:40:00' },
   { class_id: classId, subject_id: subjectId, teacher_id: 'teacher', day_of_week: 1, starts_at: '07:40:00', ends_at: '08:20:00' }
@@ -306,14 +306,7 @@ daily.classSubjects.value = [
 daily.classes.value = [{ id: classId, grade: 'SMK' }]
 daily.subjects.value = [{ id: subjectId, grade: 'SMK' }]
 daily.bankPackages.value = [bank]
-const { slotMendatang } = await import('../app/utils/cbtJadwalUjian.ts')
-const senin = slotMendatang(daily.jadwalUjian(classId, subjectId), new Date())[0]
-assert.equal(senin.menit, 80)
-const ujianHarian = { name: 'Ujian harian uji', classId, subjectId, questionBankId: bankId, questionIds: [ids[0]], startsAt: senin.startsAt, duration: 30 }
-const jumlahPanggilan = calls.length
-await assert.rejects(daily.saveExam({ ...ujianHarian, startsAt: senin.startsAt.slice(0, 11) + '09:15' }), /jam pelajaran mapel ini/, 'jam di luar jadwal ditolak')
-await assert.rejects(daily.saveExam({ ...ujianHarian, duration: 81 }), /maksimal 80 menit/, 'durasi tidak boleh melewati jam pelajaran')
-assert.equal(calls.length, jumlahPanggilan, 'ujian yang ditolak tidak dikirim ke server')
+const ujianHarian = { name: 'Ujian harian uji', classId, subjectId, questionBankId: bankId, questionIds: [ids[0]], startsAt: '2026-12-03T09:15', duration: 45 }
 tablesRead.length = 0
 await daily.saveExam(ujianHarian)
 assert.equal(calls.filter(call => call.name === 'save_assessment_exam').at(-1).args.source, 'ujian_harian')
@@ -339,21 +332,45 @@ assert.ok(!tablesRead.includes('exams'))
   b.form.value.name = 'PAS'
   b.toggle(bank)
   b.toggle(bankB)
-  assert.deepEqual({ ...b.jadwalCbt.value[bankId] }, { tanggal: '2026-12-01', jam: '07:30' }, 'awal = tanggal mulai periode + jam bawaan')
+  assert.deepEqual({ ...b.jadwal.value[bankId] }, { tanggal: '2026-12-01', jam: '07:30', selesai: '08:15' }, 'awal = tanggal mulai periode + jam bawaan')
   const sebelum = calls.length
   await b.simpan()
   assert.equal(calls.length, sebelum, 'jadwal bentrok: tidak ada ujian yang disimpan')
   assert.ok(b.gagal.value.every(g => g.includes('beririsan')) && b.gagal.value.length === 2)
-  b.jadwalCbt.value[bankB.id] = { tanggal: '2026-12-11', jam: '07:30' }
+  b.jadwal.value[bankB.id] = { tanggal: '2026-12-11', jam: '07:30', selesai: '' }
   await b.simpan()
   assert.ok(b.gagal.value.some(g => g.includes('di luar periode')))
-  b.jadwalCbt.value[bankB.id] = { tanggal: '2026-12-01', jam: '09:00' }
+  b.jadwal.value[bankB.id] = { tanggal: '2026-12-01', jam: '09:00', selesai: '' }
   await b.simpan()
   assert.deepEqual(b.gagal.value, [])
   const tersimpan = calls.slice(sebelum).filter(c => c.name === 'save_assessment_exam').map(c => c.args)
   assert.equal(tersimpan.length, 2)
   assert.ok(tersimpan.every(a => a.source === 'cbt' && a.exam_data.duration_minutes === 90))
   assert.equal(new Date(tersimpan[1].exam_data.starts_at).getTime(), new Date('2026-12-01T09:00').getTime())
+}
+
+// Buat ujian LMS banyak kelas: jam mulai-selesai per mapel, durasi = selisihnya.
+{
+  const { default: Bulk } = await import('../app/components/adminV2/cbt/CbtV2ExamBulk.vue')
+  daily.exams.value = []
+  daily.bankPackages.value = [bank]
+  daily.classes.value = [{ id: classId, name: 'Kelas uji', grade: 'SMK' }]
+  daily.subjects.value = [{ id: subjectId, name: 'Mapel uji', grade: 'SMK' }]
+  const b = Bulk.setup(reactive({ grade: 'SMK', source: 'ujian_harian' }), { expose() {}, emit() {} })
+  b.form.value.name = 'UH'
+  b.toggle(bank)
+  b.jadwal.value[bankId].selesai = '07:00'
+  const sebelum = calls.length
+  await b.simpan()
+  assert.equal(calls.length, sebelum, 'jam selesai sebelum jam mulai: tidak disimpan')
+  assert.ok(b.gagal.value[0].includes('jam selesai'))
+  b.jadwal.value[bankId] = { tanggal: '2026-12-03', jam: '10:00', selesai: '10:45' }
+  await b.simpan()
+  const a = calls.slice(sebelum).find(c => c.name === 'save_assessment_exam').args
+  assert.equal(a.source, 'ujian_harian')
+  assert.equal(a.exam_data.duration_minutes, 45, '10:00-10:45 = 45 menit')
+  assert.equal(b.tambahMenit('10:00', 45), '10:45', 'isian menit manual mengisi jam selesai')
+  assert.equal(b.tambahMenit('23:30', 90), '23:59', 'jam selesai tidak melewati tengah malam')
 }
 
 let studentSession
