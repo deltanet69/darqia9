@@ -2,15 +2,14 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2SebQuit from './CbtV2SebQuit.vue'
-import { bacaJadwalRuang, eksporJadwalRuang } from '~/utils/cbtExcelJadwalRuang'
+import { eksporJadwalRuang } from '~/utils/cbtExcelJadwalRuang'
 import type { GradeType } from './cbtV2Data'
 import { useAdminCbtData } from '~/composables/useAdminCbtData'
 import {
   useRuangUjian, type RuangUjian, type AnggotaRuang, type SiswaBebas, type AlertRuang, type TautanUjian
 } from '~/composables/useRuangUjian'
 import {
-  barisSiswa, ringkasProgres, komposisiKelas, kelasTanpaBank, bentrokJadwal, labelStatus, labelPelanggaran, persenProgres,
-  cekJadwalMassal, durasiBaris, jadwalBaris, irisan, type ProgresRow, type BarisJadwalRuang
+  barisSiswa, ringkasProgres, komposisiKelas, labelStatus, labelPelanggaran, persenProgres, type ProgresRow
 } from '~/composables/ruangUjianCore'
 
 const props = defineProps<{ room: RuangUjian, grade: GradeType, arsip: boolean }>()
@@ -39,6 +38,8 @@ const anggota = ref<AnggotaRuang[]>([])
 const progres = ref<ProgresRow[]>([])
 const alerts = ref<AlertRuang[]>([])
 const tautan = ref<TautanUjian[]>([])
+// Jadwal dari Daftar Ujian yang ditolak masuk ruang ini (mis. dua mapel berbeda di jam yang sama).
+const ditolak = ref<string[]>([])
 const loading = ref(true)
 const error = ref('')
 let timer: ReturnType<typeof setInterval> | null = null
@@ -51,6 +52,8 @@ const muatRingan = async () => {
 const muatSemua = async () => {
   error.value = ''
   try {
+    // Jadwal ruang = ujian kelas-kelas siswanya dari Daftar Ujian, ditautkan otomatis (migrasi 0091).
+    if (bolehKelola.value && !props.arsip) ditolak.value = await api.sinkronJadwal(props.room.id).catch(e => [e instanceof Error ? e.message : 'Jadwal ruang gagal disinkronkan.'])
     const [m, t] = await Promise.all([api.muatAnggota(props.room.id), api.muatTautanUjian([props.room.id]), muatRingan()])
     anggota.value = m
     tautan.value = t
@@ -61,11 +64,10 @@ const muatSemua = async () => {
 onMounted(async () => {
   void cbtData.load()
   await muatSemua()
-  // Dari tombol Atur Jadwal di daftar ruang (?jadwal=atur): langsung buka form jadwal ruang ini.
+  // Dari tombol Atur Pengawas di daftar ruang (?jadwal=atur): langsung buka menu Jadwal Ujian.
   if (route.query.jadwal === 'atur') {
     sub.value = 'jadwal'
     void router.replace({ query: { ...route.query, jadwal: undefined } })
-    if (!props.arsip && bolehKelola.value) bukaMassal()
   }
   // Progres diperbarui tiap 15 detik selama halaman terbuka dan tab browser terlihat.
   timer = setInterval(() => { if (!document.hidden && !props.arsip) void muatRingan().catch(() => {}) }, 15_000)
@@ -218,197 +220,7 @@ const tambahAcak = async () => {
   catch (e) { emit('toast', e instanceof Error ? e.message : 'Pengisian acak gagal.') } finally { saving.value = false }
 }
 
-// ---- Buat Ujian untuk ruang ----
-const ujianOpen = ref(false)
 const localDateTime = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
-const formUjian = ref({ name: '', subjectId: '', startsAt: '', duration: 90, ruangLain: [] as string[] })
-const ruangLain = ref<RuangUjian[]>([])
-const progresSimpan = ref('')
-const classIdsRuang = computed(() => [...new Set(anggota.value.map(item => item.classId).filter((id): id is string => !!id))])
-const namaKelas = (id: string) => cbtData.classes.value.find(item => item.id === id)?.name ?? id
-const mapelUjian = computed(() => {
-  const ids = new Set(cbtData.bankPackages.value.filter(b => b.grade === props.grade && b.classId && classIdsRuang.value.includes(b.classId) && b.subjectId).map(b => b.subjectId!))
-  return cbtData.subjects.value.filter(item => ids.has(item.id))
-})
-const tanpaBank = computed(() => formUjian.value.subjectId ? kelasTanpaBank(classIdsRuang.value, formUjian.value.subjectId, cbtData.bankPackages.value) : [])
-const bukaUjian = async () => {
-  if (!anggota.value.length) return emit('toast', 'Isi ruang dengan siswa dulu sebelum membuat ujian.')
-  formUjian.value = { name: '', subjectId: '', startsAt: localDateTime(new Date(Date.now() + 86_400_000)), duration: 90, ruangLain: [] }
-  progresSimpan.value = ''
-  ujianOpen.value = true
-  try { ruangLain.value = (await api.muatRuang(props.grade, props.room.periode)).filter(item => item.id !== props.room.id) } catch { ruangLain.value = [] }
-}
-const simpanUjian = async () => {
-  const f = formUjian.value
-  if (!f.name.trim()) return emit('toast', 'Nama ujian wajib diisi.')
-  if (!f.subjectId) return emit('toast', 'Pilih mata pelajaran ujian.')
-  if (!f.startsAt || !Number.isFinite(new Date(f.startsAt).getTime())) return emit('toast', 'Waktu mulai ujian tidak valid.')
-  if (!Number.isInteger(f.duration) || f.duration < 1 || f.duration > 600) return emit('toast', 'Durasi ujian harus 1 sampai 600 menit.')
-  saving.value = true
-  try {
-    // Kelas dari ruang ini + ruang tambahan; bank soal tetap per kelas.
-    const semuaRuang = [props.room.id, ...f.ruangLain]
-    const kelas = new Set(classIdsRuang.value)
-    for (const id of f.ruangLain) for (const a of await api.muatAnggota(id)) if (a.classId) kelas.add(a.classId)
-    const daftarKelas = [...kelas]
-    const kosong = kelasTanpaBank(daftarKelas, f.subjectId, cbtData.bankPackages.value)
-    if (kosong.length) throw new Error(`Kelas ${kosong.map(namaKelas).join(', ')} belum punya bank soal untuk mapel ini. Buat dulu di tab Bank Soal.`)
-    await cbtData.loadQuestions(true)
-    const bankDari = (classId: string) => cbtData.bankPackages.value.find(b => b.classId === classId && b.subjectId === f.subjectId && b.grade === props.grade)!
-    const tanpaSoal = daftarKelas.filter(id => !bankDari(id).questions.length)
-    if (tanpaSoal.length) throw new Error(`Bank soal kelas ${tanpaSoal.map(namaKelas).join(', ')} masih kosong.`)
-
-    const mulai = new Date(f.startsAt).getTime()
-    // Satu ruang = satu jadwal: tolak bila beririsan dengan ujian lain di ruang tujuan (mapel/jam/durasi harus identik).
-    const tautanSemua = await api.muatTautanUjian(semuaRuang)
-    const idTertaut = new Set(tautanSemua.map(item => item.exam_id))
-    const bentrok = bentrokJadwal(
-      cbtData.exams.value.filter(e => idTertaut.has(e.id)).map(e => ({ subjectId: e.subjectId, startsAt: e.startsAt, duration: e.duration })),
-      { subjectId: f.subjectId, startsAt: f.startsAt, duration: f.duration }
-    )
-    if (bentrok) throw new Error('Salah satu ruang sudah punya ujian lain pada jam yang beririsan. Satu ruang hanya boleh satu mata pelajaran pada satu jadwal.')
-    const examIds: string[] = []
-    for (const [i, classId] of daftarKelas.entries()) {
-      progresSimpan.value = `Menyimpan ujian ${i + 1} dari ${daftarKelas.length}…`
-      const cocok = () => cbtData.exams.value.find(e => e.classId === classId && e.subjectId === f.subjectId && new Date(e.startsAt ?? '').getTime() === mulai)
-      const ada = cocok()
-      if (ada && ada.duration !== f.duration) throw new Error(`Ujian ${namaKelas(classId)} pada jam ini sudah ada dengan durasi ${ada.duration} menit. Samakan durasinya atau ubah jamnya.`)
-      if (!ada) {
-        const bank = bankDari(classId)
-        await cbtData.saveExam({
-          name: f.name.trim(), classId, subjectId: f.subjectId, questionBankId: bank.id,
-          questionIds: bank.questions.map(q => q.id),
-          startsAt: f.startsAt, duration: f.duration
-        })
-      }
-      const dibuat = cocok()
-      if (!dibuat) throw new Error('Ujian tersimpan tetapi tidak ditemukan kembali. Muat ulang halaman.')
-      examIds.push(dibuat.id)
-    }
-    await api.tautkanUjian(examIds, semuaRuang)
-    ujianOpen.value = false
-    await muatSemua()
-    emit('changed')
-    emit('toast', `Ujian ${f.name.trim()} ditugaskan ke ${semuaRuang.length} ruang (${daftarKelas.length} kelas). Tugaskan pengawasnya di menu Jadwal Ujian.`)
-  } catch (e) {
-    emit('toast', e instanceof Error ? e.message : 'Ujian gagal dibuat.')
-  } finally { saving.value = false; progresSimpan.value = '' }
-}
-// ---- Atur Jadwal: banyak mapel sekaligus untuk ruang ini, masing-masing dengan pengawasnya ----
-// Alur sama dengan Buat Ujian (ujian per kelas + bank soal kelas, lalu ditautkan ke ruang), tetapi semua baris
-// diperiksa dulu sebelum ada yang disimpan, agar tidak ada jadwal setengah jadi.
-type BarisMassal = BarisJadwalRuang & { mapelImpor?: string, pengawasImpor?: string }
-const massalOpen = ref(false)
-const namaMassal = ref('')
-const barisMassal = ref<BarisMassal[]>([])
-const galatMassal = ref<string[]>([])
-const jenisPeriode = computed(() => props.room.periode.startsWith('PTS') ? 'tengah_semester' as const : 'akhir' as const)
-const tambahJam = (jam: string, menit: number) => {
-  const [h = 0, m = 0] = jam.split(':').map(Number)
-  const t = Math.min(h * 60 + m + menit, 23 * 60 + 59)
-  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
-}
-const barisBaru = (sebelum?: BarisMassal): BarisMassal => sebelum
-  ? { tanggal: sebelum.tanggal, mulai: sebelum.selesai, selesai: tambahJam(sebelum.selesai, durasiBaris(sebelum) || 90), subjectId: '', supervisorId: '' }
-  : { tanggal: localDateTime(new Date(Date.now() + 86_400_000)).slice(0, 10), mulai: '07:30', selesai: '09:00', subjectId: '', supervisorId: '' }
-const bukaMassal = (isi?: BarisMassal[]) => {
-  if (!anggota.value.length) return emit('toast', 'Isi ruang dengan siswa dulu sebelum mengatur jadwal.')
-  namaMassal.value = ujianSemua.value[0]?.name ?? props.room.periode
-  barisMassal.value = isi?.length ? isi : [barisBaru()]
-  galatMassal.value = (isi ?? []).map(b => b.mapelImpor || b.pengawasImpor ? 'Isian dari Excel tidak dikenali. Pilih dari daftar.' : '')
-  progresSimpan.value = ''
-  massalOpen.value = true
-}
-const tambahBaris = () => { barisMassal.value = [...barisMassal.value, barisBaru(barisMassal.value.at(-1))] }
-const hapusBaris = (i: number) => {
-  barisMassal.value = barisMassal.value.filter((_, k) => k !== i)
-  galatMassal.value = galatMassal.value.filter((_, k) => k !== i)
-}
-const namaMapel = (id: string) => cbtData.subjects.value.find(item => item.id === id)?.name ?? '-'
-const bankKelas = (classId: string, subjectId: string) => cbtData.bankPackages.value.find(x => x.classId === classId && x.subjectId === subjectId && x.grade === props.grade)
-const examCocok = (classId: string, b: BarisJadwalRuang) => {
-  const mulai = new Date(`${b.tanggal}T${b.mulai}`).getTime()
-  return cbtData.exams.value.find(e => e.classId === classId && e.subjectId === b.subjectId && new Date(e.startsAt ?? '').getTime() === mulai)
-}
-
-// Pemeriksaan lengkap tanpa menyimpan apa pun. Mengembalikan pesan per baris ('' = aman).
-const periksaMassal = async (): Promise<string[]> => {
-  const daftar = barisMassal.value
-  const pesan = cekJadwalMassal(daftar, ujianSemua.value.map(u => ({ subjectId: u.subjectId, startsAt: u.startsAt, duration: u.duration })))
-  await Promise.all([cbtData.loadQuestions(true), cbtData.load(true)])
-  // Pengawas tidak boleh sedang bertugas di ruang lain pada jam yang beririsan (database juga menolaknya).
-  const ruangPeriode = (await api.muatRuang(props.grade, props.room.periode)).filter(item => item.id !== props.room.id)
-  const tautanLain = await api.muatTautanUjian(ruangPeriode.map(item => item.id))
-  const examById = new Map(cbtData.exams.value.map(e => [e.id, e]))
-  const bertugas = (supervisorId: string, j: { startsAt?: string, duration: number }) => tautanLain.find((t) => {
-    const e = examById.get(t.exam_id)
-    return t.supervisor_id === supervisorId && !!e?.startsAt && irisan(j, { startsAt: e.startsAt, duration: e.duration })
-  })
-  return daftar.map((b, i) => {
-    if (b.mapelImpor && !b.subjectId) return `Mapel "${b.mapelImpor}" dari Excel tidak dikenali atau belum punya bank soal di ruang ini. Pilih dari daftar.`
-    if (b.pengawasImpor && !b.supervisorId) return `Pengawas "${b.pengawasImpor}" dari Excel tidak dikenali. Pilih dari daftar.`
-    if (pesan[i]) return pesan[i]!
-    const kosong = kelasTanpaBank(classIdsRuang.value, b.subjectId, cbtData.bankPackages.value)
-    if (kosong.length) return `Belum ada bank soal ${namaMapel(b.subjectId)} untuk kelas ${kosong.map(namaKelas).join(', ')}.`
-    const tanpaSoal = classIdsRuang.value.filter(id => !bankKelas(id, b.subjectId)?.questions.length)
-    if (tanpaSoal.length) return `Bank soal ${namaMapel(b.subjectId)} kelas ${tanpaSoal.map(namaKelas).join(', ')} masih kosong.`
-    const j = jadwalBaris(b)
-    // Ujian per kelas dipakai bersama semua ruang: kelas yang sama tidak boleh punya ujian lain di jam itu.
-    for (const classId of classIdsRuang.value) {
-      const lain = cbtData.exams.value.find(e => e.classId === classId && !!e.startsAt && irisan(j, { startsAt: e.startsAt, duration: e.duration })
-        && !(e.subjectId === b.subjectId && new Date(e.startsAt).getTime() === new Date(j.startsAt!).getTime() && e.duration === j.duration))
-      if (lain) return `Kelas ${namaKelas(classId)} sudah punya ujian ${lain.subject} (${lain.date} ${lain.time}) yang beririsan.`
-    }
-    const tugas = b.supervisorId ? bertugas(b.supervisorId, j) : undefined
-    if (tugas) return `${namaGuru(b.supervisorId)} sudah mengawasi ${ruangPeriode.find(x => x.id === tugas.room_id)?.name ?? 'ruang lain'} pada jam ini.`
-    return ''
-  })
-}
-
-const simpanMassal = async () => {
-  if (saving.value) return
-  if (!namaMassal.value.trim()) return emit('toast', 'Nama ujian wajib diisi.')
-  if (!barisMassal.value.length) return emit('toast', 'Tambahkan minimal satu jadwal mapel.')
-  saving.value = true
-  progresSimpan.value = 'Memeriksa jadwal…'
-  try {
-    galatMassal.value = await periksaMassal()
-    if (galatMassal.value.some(Boolean)) return emit('toast', 'Perbaiki baris yang ditandai dulu. Belum ada jadwal yang disimpan.')
-    const daftar = barisMassal.value
-    const kelas = classIdsRuang.value
-    let n = 0
-    for (const b of daftar) {
-      for (const classId of kelas) {
-        progresSimpan.value = `Menyimpan ujian ${++n} dari ${daftar.length * kelas.length}…`
-        if (examCocok(classId, b)) continue // ujian kelas ini sudah dibuat ruang lain dengan jadwal sama: dipakai ulang
-        const bank = bankKelas(classId, b.subjectId)!
-        await cbtData.saveExam({
-          name: namaMassal.value.trim(), classId, subjectId: b.subjectId, questionBankId: bank.id,
-          questionIds: bank.questions.map(q => q.id), startsAt: `${b.tanggal}T${b.mulai}`, duration: durasiBaris(b), jenis: jenisPeriode.value
-        }, false)
-      }
-    }
-    progresSimpan.value = 'Menautkan jadwal dan pengawas ke ruang…'
-    await cbtData.load(true)
-    for (const b of daftar) {
-      const examIds = kelas.map(classId => examCocok(classId, b)?.id ?? '')
-      if (examIds.some(id => !id)) throw new Error(`Ujian ${namaMapel(b.subjectId)} tersimpan tetapi tidak ditemukan kembali. Muat ulang halaman lalu periksa menu Jadwal Ujian.`)
-      await api.tautkanUjian(examIds, [props.room.id])
-      if (b.supervisorId) await api.tugaskanPengawas(props.room.id, examIds, b.supervisorId)
-    }
-    massalOpen.value = false
-    emit('changed')
-    emit('toast', `${daftar.length} jadwal mapel tersimpan di ${props.room.name}.`)
-  } catch (e) {
-    emit('toast', e instanceof Error ? e.message : 'Jadwal gagal disimpan.')
-  } finally {
-    await muatSemua()
-    saving.value = false
-    progresSimpan.value = ''
-  }
-}
-
-// ---- Export / Import Excel jadwal ruang ini ----
 const eksporExcel = async () => {
   try {
     const berkas = `jadwal-${props.room.name}-${props.room.periode}`.toLowerCase().replace(/[^a-z0-9]+/g, '-')
@@ -419,39 +231,8 @@ const eksporExcel = async () => {
         selesai: localDateTime(new Date(new Date(u.startsAt).getTime() + u.duration * 60_000)).slice(11, 16),
         mapel: u.subject, pengawas: namaGuru(u.supervisorId)
       }
-    }), mapelUjian.value.map(m => m.name), guruGrade.value.map(g => g.name))
+    }))
   } catch (e) { emit('toast', e instanceof Error ? e.message : 'Export gagal.') }
-}
-const imporExcel = async (ev: Event) => {
-  const input = ev.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  try {
-    const sama = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
-    // Nama dicocokkan persis (tanpa beda huruf besar/kecil); nama ganda/tidak dikenal harus dipilih manual.
-    const hasil = (await bacaJadwalRuang(file)).map((x): BarisMassal => {
-      const mapel = mapelUjian.value.filter(m => sama(m.name, x.mapel))
-      const guru = x.pengawas ? guruGrade.value.filter(g => sama(g.name, x.pengawas)) : []
-      return {
-        tanggal: x.tanggal, mulai: x.mulai, selesai: x.selesai,
-        subjectId: mapel.length === 1 ? mapel[0]!.id : '', supervisorId: guru.length === 1 ? guru[0]!.id : '',
-        mapelImpor: mapel.length === 1 ? undefined : (x.mapel || '(kosong)'),
-        pengawasImpor: x.pengawas && guru.length !== 1 ? x.pengawas : undefined
-      }
-    })
-    bukaMassal(hasil)
-    emit('toast', `${hasil.length} baris jadwal dibaca dari Excel. Periksa lalu klik Simpan Jadwal.`)
-  } catch (e) { emit('toast', e instanceof Error ? e.message : 'Berkas Excel gagal dibaca.') }
-}
-
-const lepasUjian = async (item: { name: string, examIds: string[] }) => {
-  if (!confirm(`Lepas ujian ${item.name} dari ${props.room.name}? Ujian di kelas tidak dihapus.`)) return
-  try {
-    await api.lepasUjian(item.examIds, props.room.id)
-    await muatSemua()
-    emit('toast', 'Ujian dilepas dari ruang.')
-  } catch (e) { emit('toast', e instanceof Error ? e.message : 'Ujian gagal dilepas.') }
 }
 </script>
 
@@ -470,7 +251,6 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
         </div>
         <div v-if="!arsip && bolehKelola" class="flex gap-2">
           <button type="button" class="min-h-11 flex-1 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-bold text-white hover:bg-white/20 sm:flex-none" @click="bukaTambah">Tambah Siswa</button>
-          <button type="button" class="min-h-11 flex-1 rounded-xl bg-white px-4 text-xs font-bold text-[#0A2A5C] hover:bg-[#E8F0FE] sm:flex-none" @click="bukaUjian">Buat Ujian</button>
         </div>
       </div>
     </div>
@@ -519,17 +299,14 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
         <div class="grid gap-4 lg:grid-cols-2">
           <section class="rounded-2xl border border-[#E7EBF2] bg-white p-4 sm:p-5">
             <h3 class="text-sm font-extrabold text-[#101828]">Ujian di ruang ini</h3>
-            <p v-if="!ujianRuang.length" class="mt-2 text-xs text-[#667085]">Belum ada ujian. {{ arsip || !bolehKelola ? '' : 'Klik Buat Ujian untuk menugaskan jadwal ke ruang ini.' }}</p>
+            <p v-if="!ujianRuang.length" class="mt-2 text-xs text-[#667085]">Belum ada ujian. {{ arsip || !bolehKelola ? '' : 'Jadwal muncul otomatis setelah ujian kelas siswa ruang ini dibuat di Daftar Ujian.' }}</p>
             <ul v-else class="mt-3 divide-y divide-[#EFF2F7]">
               <li v-for="u in ujianRuang" :key="u.key" class="flex items-start justify-between gap-3 py-2.5">
                 <div class="min-w-0">
                   <b class="block break-words text-xs font-bold text-[#101828]">{{ u.subject }} · {{ u.name }}</b>
                   <span class="text-[11px] text-[#667085]">{{ u.date }} · {{ u.time }} · {{ u.examIds.length }} kelas</span>
                 </div>
-                <div class="flex shrink-0 items-center gap-2">
-                  <span class="rounded-full px-2 py-0.5 text-[10px] font-extrabold" :class="u.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : u.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ u.status }}</span>
-                  <button v-if="!arsip && bolehKelola" type="button" class="min-h-9 text-[11px] font-bold text-[#B42318]" @click="lepasUjian(u)">Lepas</button>
-                </div>
+                <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold" :class="u.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : u.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ u.status }}</span>
               </li>
             </ul>
           </section>
@@ -551,16 +328,14 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
       <!-- JADWAL UJIAN -->
       <div v-else-if="sub === 'jadwal'" class="space-y-2.5">
         <div class="flex flex-wrap gap-2">
-          <template v-if="!arsip && bolehKelola">
-            <button type="button" class="min-h-11 rounded-xl bg-[#1B5FD9] px-4 text-xs font-bold text-white hover:bg-[#164fb6]" @click="bukaMassal()">Atur Jadwal</button>
-            <label class="inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-[#E7EBF2] bg-white px-4 text-xs font-bold text-[#344054] hover:border-[#1B5FD9] focus-within:outline focus-within:outline-2 focus-within:outline-[#1B5FD9]">
-              Import Excel<input type="file" accept=".xlsx" class="sr-only" @change="imporExcel">
-            </label>
-          </template>
           <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-4 text-xs font-bold text-[#344054] hover:border-[#1B5FD9]" @click="eksporExcel">Export Excel</button>
         </div>
-        <p v-if="!ujianRuang.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Belum ada jadwal ujian di ruang ini.</p>
-        <p v-else-if="!arsip && bolehKelola" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Pilih pengawas untuk tiap jadwal. Pengawas hanya bisa membuka ruang ini, jadwal yang ia awasi, dan kode pembuka kunci siswanya. Satu guru tidak bisa mengawasi dua ruang di jam yang sama.</p>
+        <div v-if="ditolak.length" role="alert" class="rounded-xl border border-[#F5C6C0] bg-[#FFFBFA] px-4 py-3 text-xs text-[#B42318]">
+          <p class="font-bold">Jadwal berikut tidak bisa masuk ruang ini. Perbaiki jamnya di Daftar Ujian:</p>
+          <ul class="mt-1 list-disc pl-4"><li v-for="(g, i) in ditolak" :key="i">{{ g }}</li></ul>
+        </div>
+        <p v-if="!ujianRuang.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Belum ada jadwal ujian di ruang ini. Jadwal muncul otomatis dari Daftar Ujian sesuai kelas siswa di ruang ini.</p>
+        <p v-else-if="!arsip && bolehKelola" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Jam dan mapel diatur di Daftar Ujian. Di sini cukup pilih pengawas untuk tiap jadwal. Pengawas hanya bisa membuka ruang ini, jadwal yang ia awasi, dan kode pembuka kunci siswanya. Satu guru tidak bisa mengawasi dua ruang di jam yang sama.</p>
         <article v-for="u in ujianRuang" :key="u.key" class="rounded-2xl border bg-white p-4" :class="saya && u.supervisorId === saya ? 'border-[#1B5FD9]' : 'border-[#E7EBF2]'">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
@@ -636,7 +411,7 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
         </section>
 
         <p v-if="!barisTampil.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">{{ anggota.length ? 'Tidak ada siswa yang cocok dengan pencarian.' : 'Ruang masih kosong. Klik Tambah Siswa.' }}</p>
-        <p v-if="ujianRuang.length === 0 && anggota.length" class="text-xs text-[#667085]">Progres pengerjaan tampil setelah ujian ditugaskan ke ruang ini lewat Buat Ujian.</p>
+        <p v-if="ujianRuang.length === 0 && anggota.length" class="text-xs text-[#667085]">Progres pengerjaan tampil setelah ujian kelas siswa ruang ini dibuat di Daftar Ujian.</p>
       </div>
 
       <!-- ALERT UJIAN -->
@@ -704,96 +479,5 @@ const lepasUjian = async (item: { name: string, examIds: string[] }) => {
       </div>
     </Teleport>
 
-    <!-- MODAL BUAT UJIAN -->
-    <Teleport to="body">
-      <div v-if="ujianOpen" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Buat ujian untuk ruang" @keydown.esc="!saving && (ujianOpen = false)">
-        <div class="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl border border-[#E7EBF2] bg-white shadow-2xl sm:rounded-2xl">
-          <div class="flex items-center justify-between border-b border-[#E7EBF2] p-5">
-            <div><span class="text-[10px] font-extrabold uppercase tracking-wider text-[#1B5FD9]">{{ room.name }} · {{ room.periode }}</span><h3 class="mt-0.5 text-base font-extrabold text-[#101828]">Buat Ujian</h3></div>
-            <button type="button" class="flex h-9 w-9 items-center justify-center rounded-lg text-[#667085] hover:bg-[#EFF2F7]" aria-label="Tutup" :disabled="saving" @click="ujianOpen = false"><AdminV2Icon name="x" :size="16" /></button>
-          </div>
-          <div class="space-y-3.5 overflow-y-auto p-5 text-xs">
-            <div class="rounded-xl bg-[#E8F0FE] p-3 font-semibold text-[#0A2A5C]">Mapel dan jadwal sama untuk semua siswa di ruang. Tiap kelas memakai bank soalnya sendiri; seluruh soal bank dipasang dan token terbit otomatis.</div>
-            <div><label class="mb-1 block font-bold text-[#344054]" for="uj-nama">Nama ujian *</label><input id="uj-nama" v-model="formUjian.name" type="text" placeholder="Contoh: PAS Ganjil Matematika" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
-            <div>
-              <label class="mb-1 block font-bold text-[#344054]" for="uj-mapel">Mata pelajaran *</label>
-              <select id="uj-mapel" v-model="formUjian.subjectId" class="w-full rounded-xl border border-[#E7EBF2] bg-white p-3 text-sm outline-none focus:border-[#1B5FD9]">
-                <option value="" disabled>Pilih mata pelajaran</option>
-                <option v-for="m in mapelUjian" :key="m.id" :value="m.id">{{ m.name }}</option>
-              </select>
-              <p v-if="!mapelUjian.length" class="mt-1 text-[#B42318]">Belum ada bank soal untuk kelas-kelas di ruang ini.</p>
-              <p v-else-if="tanpaBank.length" class="mt-1 font-semibold text-[#B42318]">Belum ada bank soal untuk: {{ tanpaBank.map(namaKelas).join(', ') }}. Buat dulu di tab Bank Soal.</p>
-              <p v-else-if="formUjian.subjectId" class="mt-1 font-semibold text-[#087C52]">Bank soal tersedia untuk {{ classIdsRuang.length }} kelas di ruang ini.</p>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="col-span-2 sm:col-span-1"><label class="mb-1 block font-bold text-[#344054]" for="uj-mulai">Mulai *</label><input id="uj-mulai" v-model="formUjian.startsAt" type="datetime-local" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
-              <div class="col-span-2 sm:col-span-1"><label class="mb-1 block font-bold text-[#344054]" for="uj-durasi">Durasi (menit) *</label><input id="uj-durasi" v-model.number="formUjian.duration" type="number" min="1" max="600" inputmode="numeric" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
-            </div>
-            <p class="text-[#667085]">Pengawas ditugaskan per ruang setelah ujian dibuat, di menu Jadwal Ujian.</p>
-            <fieldset v-if="ruangLain.length">
-              <legend class="mb-1.5 font-bold text-[#344054]">Tugaskan juga ke ruang lain <span class="font-normal text-[#667085]">(jadwal sama)</span></legend>
-              <div class="flex flex-wrap gap-1.5">
-                <label v-for="r in ruangLain" :key="r.id" class="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-[#E7EBF2] px-3 text-xs font-bold text-[#344054]"><input v-model="formUjian.ruangLain" type="checkbox" :value="r.id" class="h-4 w-4 accent-[#1B5FD9]">{{ r.name }}</label>
-              </div>
-            </fieldset>
-            <p v-if="progresSimpan" class="font-bold text-[#1B5FD9]" role="status">{{ progresSimpan }}</p>
-          </div>
-          <div class="flex gap-2 border-t border-[#E7EBF2] bg-[#F8FAFD] p-4">
-            <button type="button" class="min-h-11 flex-1 rounded-xl border border-[#E7EBF2] bg-white text-xs font-bold text-[#344054]" :disabled="saving" @click="ujianOpen = false">Batal</button>
-            <button type="button" class="min-h-11 flex-1 rounded-xl bg-[#1B5FD9] text-xs font-bold text-white disabled:opacity-60" :disabled="saving || !!tanpaBank.length" @click="simpanUjian">{{ saving ? 'Menyimpan…' : 'Tayangkan Ujian' }}</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-    <!-- MODAL ATUR JADWAL (banyak mapel) -->
-    <Teleport to="body">
-      <div v-if="massalOpen" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Atur jadwal ujian ruang" @keydown.esc="!saving && (massalOpen = false)">
-        <div class="flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl border border-[#E7EBF2] bg-white shadow-2xl sm:rounded-2xl">
-          <div class="flex items-center justify-between border-b border-[#E7EBF2] p-5">
-            <div><span class="text-[10px] font-extrabold uppercase tracking-wider text-[#1B5FD9]">{{ room.name }} · {{ room.periode }}</span><h3 class="mt-0.5 text-base font-extrabold text-[#101828]">Atur Jadwal Ujian</h3></div>
-            <button type="button" class="flex h-9 w-9 items-center justify-center rounded-lg text-[#667085] hover:bg-[#EFF2F7]" aria-label="Tutup" :disabled="saving" @click="massalOpen = false"><AdminV2Icon name="x" :size="16" /></button>
-          </div>
-          <div class="space-y-3.5 overflow-y-auto p-5 text-xs">
-            <div class="rounded-xl bg-[#E8F0FE] p-3 font-semibold text-[#0A2A5C]">Satu baris = satu mapel untuk semua siswa di ruang ini. Tiap kelas memakai bank soalnya sendiri dan token terbit otomatis. Semua baris diperiksa dulu; bila ada yang salah, tidak ada yang disimpan.</div>
-            <div><label class="mb-1 block font-bold text-[#344054]" for="jm-nama">Nama ujian *</label><input id="jm-nama" v-model="namaMassal" type="text" class="w-full rounded-xl border border-[#E7EBF2] p-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
-            <p v-if="!mapelUjian.length" class="font-semibold text-[#B42318]">Belum ada bank soal untuk kelas-kelas di ruang ini. Buat dulu di tab Bank Soal.</p>
-            <ol class="space-y-2.5">
-              <li v-for="(b, i) in barisMassal" :key="i" class="rounded-xl border p-3" :class="galatMassal[i] ? 'border-[#F5C6C0] bg-[#FFFBFA]' : 'border-[#E7EBF2]'">
-                <div class="mb-2 flex items-center justify-between">
-                  <b class="text-[11px] font-extrabold uppercase tracking-wider text-[#667085]">Mapel ke-{{ i + 1 }}</b>
-                  <button v-if="barisMassal.length > 1" type="button" class="min-h-9 px-2 text-[11px] font-bold text-[#B42318]" :disabled="saving" @click="hapusBaris(i)">Hapus</button>
-                </div>
-                <div class="grid grid-cols-2 gap-2 sm:grid-cols-[1.2fr_0.8fr_0.8fr]">
-                  <div class="col-span-2 sm:col-span-1"><label class="mb-1 block font-bold text-[#344054]" :for="`jm-tgl-${i}`">Tanggal</label><input :id="`jm-tgl-${i}`" v-model="b.tanggal" type="date" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] px-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
-                  <div><label class="mb-1 block font-bold text-[#344054]" :for="`jm-mulai-${i}`">Jam mulai</label><input :id="`jm-mulai-${i}`" v-model="b.mulai" type="time" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] px-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
-                  <div><label class="mb-1 block font-bold text-[#344054]" :for="`jm-selesai-${i}`">Jam selesai</label><input :id="`jm-selesai-${i}`" v-model="b.selesai" type="time" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] px-3 text-sm outline-none focus:border-[#1B5FD9]"></div>
-                  <div class="col-span-2 sm:col-span-1">
-                    <label class="mb-1 block font-bold text-[#344054]" :for="`jm-mapel-${i}`">Mata pelajaran</label>
-                    <select :id="`jm-mapel-${i}`" v-model="b.subjectId" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm outline-none focus:border-[#1B5FD9]">
-                      <option value="" disabled>{{ b.mapelImpor ? `Excel: ${b.mapelImpor} (tidak tersedia)` : 'Pilih mapel' }}</option>
-                      <option v-for="m in mapelUjian" :key="m.id" :value="m.id">{{ m.name }}</option>
-                    </select>
-                  </div>
-                  <div class="col-span-2">
-                    <label class="mb-1 block font-bold text-[#344054]" :for="`jm-peng-${i}`">Pengawas</label>
-                    <select :id="`jm-peng-${i}`" v-model="b.supervisorId" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm outline-none focus:border-[#1B5FD9]" @change="b.pengawasImpor = undefined">
-                      <option value="">{{ b.pengawasImpor ? `Excel: ${b.pengawasImpor} (tidak dikenali)` : 'Belum ditentukan' }}</option>
-                      <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
-                    </select>
-                  </div>
-                </div>
-                <p class="mt-2 text-[11px]" :class="galatMassal[i] ? 'font-semibold text-[#B42318]' : 'text-[#667085]'" :role="galatMassal[i] ? 'alert' : undefined">{{ galatMassal[i] || (durasiBaris(b) > 0 ? `Waktu ujian ${durasiBaris(b)} menit.` : 'Jam selesai harus setelah jam mulai.') }}</p>
-              </li>
-            </ol>
-            <button type="button" class="min-h-11 w-full rounded-xl border border-dashed border-[#1B5FD9] text-xs font-bold text-[#1B5FD9] hover:bg-[#E8F0FE] disabled:opacity-60" :disabled="saving || barisMassal.length >= 50" @click="tambahBaris">+ Tambah mapel</button>
-            <p v-if="progresSimpan" class="font-bold text-[#1B5FD9]" role="status">{{ progresSimpan }}</p>
-          </div>
-          <div class="flex gap-2 border-t border-[#E7EBF2] bg-[#F8FAFD] p-4">
-            <button type="button" class="min-h-11 flex-1 rounded-xl border border-[#E7EBF2] bg-white text-xs font-bold text-[#344054]" :disabled="saving" @click="massalOpen = false">Batal</button>
-            <button type="button" class="min-h-11 flex-1 rounded-xl bg-[#1B5FD9] text-xs font-bold text-white disabled:opacity-60" :disabled="saving || !mapelUjian.length" @click="simpanMassal">{{ saving ? 'Menyimpan…' : `Simpan ${barisMassal.length} Jadwal` }}</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>

@@ -204,11 +204,12 @@ export const useRuangUjian = () => {
     galat(error)
   }
 
-  const tautkanUjian = async (examIds: string[], roomIds: string[]) => {
+  // Ujian kelas siswa ruang ini (dari Daftar Ujian) ditautkan otomatis (migrasi 0091). Mengembalikan jadwal yang ditolak.
+  const sinkronJadwal = async (roomId: string): Promise<string[]> => {
     wajib('ubah')
-    const rows = examIds.flatMap(examId => roomIds.map(roomId => ({ exam_id: examId, room_id: roomId })))
-    const { error } = await client.from('exam_room_exams').upsert(rows, { onConflict: 'exam_id,room_id', ignoreDuplicates: true })
+    const { data, error } = await client.rpc('sinkron_jadwal_ruang', { p_room: roomId })
     galat(error)
+    return (data ?? []) as string[]
   }
 
   // Kode quit SEB iOS per ruang CBT (migrasi 0061) atau per kelas LMS (0062). Hak akses & log dijaga fungsi database.
@@ -227,15 +228,9 @@ export const useRuangUjian = () => {
     return data as KodeQuitSeb
   }
 
-  const lepasUjian = async (examIds: string[], roomId: string) => {
-    wajib('ubah')
-    const { error } = await client.from('exam_room_exams').delete().eq('room_id', roomId).in('exam_id', examIds)
-    galat(error)
-  }
-
   return {
     muatPeriodeRiwayat, muatRuang, simpanRuang, hapusRuang, generateRuang, isiAcak, tambahAnggota,
     keluarkanAnggota, muatAnggota, muatSiswaBebas, muatProgres, muatAlert, bukaKunci,
-    muatTautanUjian, tautkanUjian, lepasUjian, tugaskanPengawas, kodeQuitSeb, generateKodeQuitSeb
+    muatTautanUjian, sinkronJadwal, tugaskanPengawas, kodeQuitSeb, generateKodeQuitSeb
   }
 }

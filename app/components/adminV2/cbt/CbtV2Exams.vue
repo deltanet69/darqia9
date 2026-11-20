@@ -27,6 +27,13 @@ const bolehHapus = computed(() => cbtData.bolehKelolaUjian('hapus'))
 const lms = computed(() => props.source === 'ujian_harian')
 const bolehUjianIni = (e: ExamItem) => cbtData.bolehUjianKelas(e.classId, e.subjectId)
 const bulkOpen = ref(false)
+const bulkKelas = ref('')
+// CBT: buat ujian selalu lewat form mapel + banyak kelas (bisa satu kelas). LMS: wizard per kelas.
+const bukaBuat = (kelas?: { id: string, classroom: string } | null) => {
+  if (lms.value) return openCreateSchedule(kelas?.classroom)
+  bulkKelas.value = kelas?.id ?? ''
+  bulkOpen.value = true
+}
 
 const emit = defineEmits<{
   (e: 'switch-tab', tab: CbtTabId): void
@@ -489,10 +496,10 @@ const removeSchedule = async (exam: ExamItem) => {
           </button>
 
           <button
-            v-if="bolehBuat && cbtData.adalahSuperadmin.value"
+            v-if="lms && bolehBuat && cbtData.adalahSuperadmin.value"
             type="button"
             class="px-4 py-2.5 rounded-xl bg-white border border-[#E7EBF2] hover:border-blue-400 text-[#1B5FD9] text-xs font-bold transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
-            @click="bulkOpen = true"
+            @click="bulkKelas = ''; bulkOpen = true"
           >
             <AdminV2Icon name="grid" :size="13" />
             <span>Buat Ujian Banyak Kelas</span>
@@ -502,7 +509,7 @@ const removeSchedule = async (exam: ExamItem) => {
             v-if="bolehBuat"
             type="button"
             class="px-5 py-2.5 rounded-xl bg-[#101828] hover:bg-black text-white text-xs font-bold transition-all shadow-sm inline-flex items-center gap-2 cursor-pointer active:scale-95"
-            @click="openCreateSchedule(rombelDetail?.classroom)"
+            @click="bukaBuat(rombelDetail)"
           >
             <AdminV2Icon name="plus" :size="14" />
             <span>{{ rombelDetail ? 'Tambah Ujian' : 'Buat Ujian' }}</span>
@@ -700,7 +707,7 @@ const removeSchedule = async (exam: ExamItem) => {
             v-if="bolehBuat"
             type="button"
             class="px-5 py-2.5 rounded-xl bg-[#101828] hover:bg-black text-white text-xs font-bold transition-all cursor-pointer"
-            @click="openCreateSchedule()"
+            @click="bukaBuat()"
           >
             + Buat Ujian Baru
           </button>
@@ -1002,7 +1009,7 @@ const removeSchedule = async (exam: ExamItem) => {
       </div>
     </Teleport>
 
-    <CbtV2ExamBulk v-if="bulkOpen" :grade="grade" :source="source ?? 'cbt'" @close="bulkOpen = false" @toast="emit('toast', $event)" />
+    <CbtV2ExamBulk v-if="bulkOpen" :grade="grade" :source="source ?? 'cbt'" :class-id="bulkKelas" @close="bulkOpen = false" @toast="emit('toast', $event)" />
 
     <CbtV2RombelViolations
       v-if="kueri('pelanggaran') && rombelDetail"

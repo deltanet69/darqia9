@@ -359,10 +359,10 @@ const persenIsi = (item: RuangUjian) => Math.min(100, Math.round((item.jumlahSis
               <button v-if="bolehUbah"
                 type="button"
                 class="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100 text-xs font-bold text-[#1B5FD9] transition-colors cursor-pointer shadow-2xs active:scale-95"
-                title="Atur jadwal mapel & pengawas ruang ini"
+                title="Atur pengawas tiap jadwal ruang ini"
                 @click.stop="bukaRuang(item.id, 'atur')"
               >
-                Atur Jadwal
+                Atur Pengawas
               </button>
               <button v-if="bolehUbah"
                 type="button"

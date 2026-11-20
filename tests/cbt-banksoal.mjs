@@ -207,7 +207,7 @@ globalThis.useSupabaseClient = () => ({
   from(table) {
     tablesRead.push(table)
     const result = { data: table.endsWith('questions') ? rows : table === 'teachers' ? [{ id: 'teacher', name: 'Guru uji', grade: 'SMK' }] : [], error: null }
-    const chain = { select: () => chain, eq: () => chain, order: () => chain, range: () => chain, update: () => chain, in: () => chain, single: () => chain, maybeSingle: () => chain, then: (resolve) => Promise.resolve(result).then(resolve) }
+    const chain = { select: () => chain, eq: () => chain, order: () => chain, range: () => chain, update: () => chain, in: () => chain, is: () => chain, single: () => chain, maybeSingle: () => chain, then: (resolve) => Promise.resolve(result).then(resolve) }
     return chain
   },
   async rpc(name, args) { calls.push({ name, args }); return { data: bankId, error: null } }
@@ -317,39 +317,47 @@ assert.ok(tablesRead.includes('ujian_harian'))
 assert.ok(!tablesRead.includes('question_banks'))
 assert.ok(!tablesRead.includes('exams'))
 
-// Buat ujian CBT banyak kelas: jadwal per mapel di dalam periode PTS/PAS, bentrok jam di kelas yang sama ditolak sebelum ada yang disimpan.
+// Buat ujian CBT: satu mapel + satu jadwal untuk banyak kelas, bank soal per kelas. Bentrok jam di kelas ditolak sebelum ada yang disimpan.
 {
   const { default: Bulk } = await import('../app/components/adminV2/cbt/CbtV2ExamBulk.vue')
-  const bankB = { ...bank, id: '00000000-0000-4000-8000-000000000020', subjectId: '00000000-0000-4000-8000-000000000021' }
-  states.get('cbt-bank-packages').value = [bank, bankB]
+  const classB = '00000000-0000-4000-8000-000000000030'
+  const bankB = { ...bank, id: '00000000-0000-4000-8000-000000000020', classId: classB }
+  const bankLain = { ...bank, id: '00000000-0000-4000-8000-000000000022', subjectId: '00000000-0000-4000-8000-000000000021' }
+  states.get('cbt-bank-packages').value = [bank, bankB, bankLain]
   states.get('cbt-exams').value = []
-  states.get('cbt-master-classes').value = [{ id: classId, name: 'Kelas uji', grade: 'SMK' }]
-  states.get('cbt-master-subjects').value = [{ id: subjectId, name: 'Mapel uji', grade: 'SMK' }, { id: bankB.subjectId, name: 'Mapel B', grade: 'SMK' }]
+  states.get('cbt-master-classes').value = [{ id: classId, name: 'Kelas uji', grade: 'SMK' }, { id: classB, name: 'Kelas B', grade: 'SMK' }]
+  states.get('cbt-master-subjects').value = [{ id: subjectId, name: 'Mapel uji', grade: 'SMK' }, { id: bankLain.subjectId, name: 'Mapel B', grade: 'SMK' }]
   const toasts = []
-  const b = Bulk.setup(reactive({ grade: 'SMK', source: 'cbt' }), { expose() {}, emit: (e, v) => e === 'toast' && toasts.push(v) })
+  const b = Bulk.setup(reactive({ grade: 'SMK', source: 'cbt', classId }), { expose() {}, emit: (e, v) => e === 'toast' && toasts.push(v) })
   b.periode.value = [{ id: 'p1', periode: 'PAS Ganjil', startsOn: '2026-12-01', endsOn: '2026-12-10' }]
   b.form.value.periodeId = 'p1'
   b.form.value.name = 'PAS'
-  b.toggle(bank)
-  b.toggle(bankB)
-  assert.deepEqual({ ...b.jadwal.value[bankId] }, { tanggal: '2026-12-01', jam: '07:30', selesai: '08:15' }, 'awal = tanggal mulai periode + jam bawaan')
+  b.form.value.tanggal = '2026-12-01'
+  b.form.value.subjectId = subjectId
+  await nextTick()
+  assert.deepEqual({ ...b.pilih.value }, { [classId]: bankId }, 'kelas asal tombol langsung dipilih dengan bank mapelnya')
+  b.pilihSemua()
+  assert.deepEqual({ ...b.pilih.value }, { [classId]: bankId, [classB]: bankB.id }, 'pilih semua: hanya bank mapel terpilih')
+  states.get('cbt-exams').value = [{ id: 'lama', classId: classB, startsAt: '2026-12-01T08:00', duration: 60 }]
   const sebelum = calls.length
   await b.simpan()
   assert.equal(calls.length, sebelum, 'jadwal bentrok: tidak ada ujian yang disimpan')
-  assert.ok(b.gagal.value.every(g => g.includes('beririsan')) && b.gagal.value.length === 2)
-  b.jadwal.value[bankB.id] = { tanggal: '2026-12-11', jam: '07:30', selesai: '' }
+  assert.ok(b.gagal.value.length === 1 && b.gagal.value[0].startsWith('Kelas B') && b.gagal.value[0].includes('beririsan'))
+  states.get('cbt-exams').value = []
+  b.form.value.tanggal = '2026-12-11'
   await b.simpan()
-  assert.ok(b.gagal.value.some(g => g.includes('di luar periode')))
-  b.jadwal.value[bankB.id] = { tanggal: '2026-12-01', jam: '09:00', selesai: '' }
+  assert.match(toasts.at(-1), /di luar periode/)
+  b.form.value.tanggal = '2026-12-01'
   await b.simpan()
   assert.deepEqual(b.gagal.value, [])
   const tersimpan = calls.slice(sebelum).filter(c => c.name === 'save_assessment_exam').map(c => c.args)
   assert.equal(tersimpan.length, 2)
-  assert.ok(tersimpan.every(a => a.source === 'cbt' && a.exam_data.duration_minutes === 90))
-  assert.equal(new Date(tersimpan[1].exam_data.starts_at).getTime(), new Date('2026-12-01T09:00').getTime())
+  assert.ok(tersimpan.every(a => a.source === 'cbt' && a.exam_data.duration_minutes === 90 && a.exam_data.subject_id === subjectId))
+  assert.deepEqual(tersimpan.map(a => a.exam_data.question_bank_id).sort(), [bankId, bankB.id].sort())
+  assert.equal(new Date(tersimpan[0].exam_data.starts_at).getTime(), new Date('2026-12-01T07:30').getTime())
 }
 
-// Buat ujian LMS banyak kelas: jam mulai-selesai per mapel, durasi = selisihnya.
+// Buat ujian LMS: jam mulai-selesai, durasi = selisihnya.
 {
   const { default: Bulk } = await import('../app/components/adminV2/cbt/CbtV2ExamBulk.vue')
   daily.exams.value = []
@@ -358,13 +366,14 @@ assert.ok(!tablesRead.includes('exams'))
   daily.subjects.value = [{ id: subjectId, name: 'Mapel uji', grade: 'SMK' }]
   const b = Bulk.setup(reactive({ grade: 'SMK', source: 'ujian_harian' }), { expose() {}, emit() {} })
   b.form.value.name = 'UH'
-  b.toggle(bank)
-  b.jadwal.value[bankId].selesai = '07:00'
+  b.form.value.subjectId = subjectId
+  await nextTick()
+  b.pilihSemua()
+  b.form.value.selesai = '07:00'
   const sebelum = calls.length
   await b.simpan()
   assert.equal(calls.length, sebelum, 'jam selesai sebelum jam mulai: tidak disimpan')
-  assert.ok(b.gagal.value[0].includes('jam selesai'))
-  b.jadwal.value[bankId] = { tanggal: '2026-12-03', jam: '10:00', selesai: '10:45' }
+  Object.assign(b.form.value, { tanggal: '2026-12-03', jam: '10:00', selesai: '10:45' })
   await b.simpan()
   const a = calls.slice(sebelum).find(c => c.name === 'save_assessment_exam').args
   assert.equal(a.source, 'ujian_harian')
@@ -433,7 +442,7 @@ let failingTable = ''
 globalThis.useSupabaseClient = () => ({ from(table) {
   const filters = []
   const query = {
-    select: () => query, order: () => query, range: () => query,
+    select: () => query, order: () => query, range: () => query, not: () => query,
     eq: (key, value) => { filters.push(row => row[key] === value); return query },
     in: (key, values) => { filters.push(row => values.includes(row[key])); return query },
     then: resolve => Promise.resolve({ data: (monitoringDb[table] || []).filter(row => filters.every(filter => filter(row))), error: table === failingTable ? { message: 'Koneksi uji gagal' } : null }).then(resolve)
