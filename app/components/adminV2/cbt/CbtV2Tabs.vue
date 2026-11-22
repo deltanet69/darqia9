@@ -12,10 +12,12 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-// Ruang Ujian hanya untuk CBT PTS/PAS; LMS ujian harian memakai tab Kode SEB per kelas sebagai gantinya.
+// Ruang Ujian & Jadwal Pengawas hanya untuk CBT PTS/PAS; LMS ujian harian memakai tab Kode SEB per kelas sebagai gantinya.
+// Jadwal Pengawas memakai izin sub Ruang Ujian (satu paket pengelolaan ruang + pengawas per sesi).
 const rbac = useRbac()
 const tabs = computed(() => CBT_TABS.filter(tab => tab.id !== (props.hideRooms ? 'rooms' : 'seb')
-  && rbac.bisaSub(props.hideRooms ? 'LMS' : 'Manajemen CBT', tab.id, 'lihat')))
+  && !(props.hideRooms && tab.id === 'pengawas')
+  && rbac.bisaSub(props.hideRooms ? 'LMS' : 'Manajemen CBT', tab.id === 'pengawas' ? 'rooms' : tab.id, 'lihat')))
 
 const emit = defineEmits<{
   (e: 'update:activeTab', val: CbtTabId): void

@@ -414,6 +414,16 @@ const saveSchedule = async () => {
     emit('toast', `Nilai Tugas ke-${newExam.value.tugasKe} untuk kelas dan mapel ini sudah dipakai ujian "${bentrok}" di semester yang sama.`)
     return
   }
+  // Satu kelas tidak boleh punya dua ujian yang jamnya beririsan — penjaga yang sama seperti
+  // Buat Massal (di sana kelas yang bentrok dilewati; di form satuan ini simpan ditolak).
+  const mulaiBaru = new Date(newExam.value.startsAt).getTime()
+  const selesaiBaru = mulaiBaru + menitUjian.value * 60_000
+  const tabrakan = cbtData.exams.value.find(e => e.id !== newExam.value.id && e.classId === newExam.value.classId && e.startsAt
+    && new Date(e.startsAt).getTime() < selesaiBaru && mulaiBaru < new Date(e.startsAt).getTime() + e.duration * 60_000)
+  if (tabrakan) {
+    emit('toast', `Jadwal bentrok: kelas ini sudah punya ujian "${tabrakan.name}" di jam yang beririsan (${tabrakan.time}). Geser jamnya atau pilih kelas lain.`)
+    return
+  }
   isSaving.value = true
   try {
     await cbtData.saveExam({

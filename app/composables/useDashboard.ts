@@ -160,7 +160,7 @@ export const useDashboard = () => {
       tertaut: true,
       absensi: absensi.status === 'fulfilled' ? absensi.value : rekapAbsensi([]) as RekapAbsensi,
       jadwal,
-      ujian: ujian.status === 'fulfilled' ? kelompokkanUjian(ujianMilikGuru(ujian.value, guruId, daftarAjar)) : kosongUjian(),
+      ujian: ujian.status === 'fulfilled' ? kelompokkanUjian(ujianMilikGuru(ujian.value, guruId)) : kosongUjian(),
       pengumuman: pengumuman.status === 'fulfilled' ? pengumuman.value : [],
       galat
     }

@@ -90,6 +90,8 @@ const ujianSemua = computed(() => {
 const saya = computed(() => rbac.state.value.subjekSaya ?? '')
 // Kelola isi ruang (tambah/keluarkan siswa, tugaskan ujian & pengawas) = izin Ubah sub-modul Ruang Ujian (RBAC).
 const bolehKelola = computed(() => rbac.bolehAksi('Manajemen CBT', 'rooms', 'ubah', rbac.adalahSuperadmin.value))
+// Peran RBAC dimuat async: bila izin kelola baru terbaca setelah ruang dibuka, muat ulang agar jadwal ikut disinkronkan.
+watch(bolehKelola, ok => { if (ok) void muatSemua() })
 // Selain pengelola, akun hanya melihat jadwal yang ia awasi di ruang ini.
 const ujianRuang = computed(() => bolehKelola.value ? ujianSemua.value : ujianSemua.value.filter(u => !!saya.value && u.supervisorId === saya.value))
 const ujianPilihan = ref('')
@@ -331,7 +333,7 @@ const eksporExcel = async () => {
           <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-4 text-xs font-bold text-[#344054] hover:border-[#1B5FD9]" @click="eksporExcel">Export Excel</button>
         </div>
         <div v-if="ditolak.length" role="alert" class="rounded-xl border border-[#F5C6C0] bg-[#FFFBFA] px-4 py-3 text-xs text-[#B42318]">
-          <p class="font-bold">Jadwal berikut tidak bisa masuk ruang ini. Perbaiki jamnya di Daftar Ujian:</p>
+          <p class="font-bold">Sebagian jadwal dari Daftar Ujian belum bisa masuk ruang ini:</p>
           <ul class="mt-1 list-disc pl-4"><li v-for="(g, i) in ditolak" :key="i">{{ g }}</li></ul>
         </div>
         <p v-if="!ujianRuang.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Belum ada jadwal ujian di ruang ini. Jadwal muncul otomatis dari Daftar Ujian sesuai kelas siswa di ruang ini.</p>

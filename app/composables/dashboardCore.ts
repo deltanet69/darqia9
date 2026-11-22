@@ -60,10 +60,10 @@ export function kelompokkanUjian(daftar: UjianMentah[], batas = 3): Record<TabUj
   return hasil
 }
 
-// Ujian milik guru: ia pengawasnya (ujian atau salah satu ruangnya), atau kelas+mapel ujian ada di jadwal mengajarnya.
-export function ujianMilikGuru(daftar: UjianMentah[], guruId: string, ajar: Array<{ class_id: string, subject_id: string }>): UjianMentah[] {
-  const pasangan = new Set(ajar.map(a => `${a.class_id}|${a.subject_id}`))
-  return daftar.filter(u => u.supervisor_id === guruId || !!u.pengawas_ruang?.includes(guruId) || pasangan.has(`${u.class_id}|${u.subject_id}`))
+// Ujian yang diawasi guru (ujian atau salah satu ruangnya). Kelas+mapel yang hanya ia ajar tidak ikut:
+// guru mapel yang sama di kelas lain akan terlihat seperti jadwal mengawas yang salah.
+export function ujianMilikGuru(daftar: UjianMentah[], guruId: string): UjianMentah[] {
+  return daftar.filter(u => u.supervisor_id === guruId || !!u.pengawas_ruang?.includes(guruId))
 }
 
 export const tanggalWib = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(d)

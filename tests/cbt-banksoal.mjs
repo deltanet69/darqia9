@@ -329,8 +329,6 @@ assert.ok(!tablesRead.includes('exams'))
   states.get('cbt-master-subjects').value = [{ id: subjectId, name: 'Mapel uji', grade: 'SMK' }, { id: bankLain.subjectId, name: 'Mapel B', grade: 'SMK' }]
   const toasts = []
   const b = Bulk.setup(reactive({ grade: 'SMK', source: 'cbt', classId }), { expose() {}, emit: (e, v) => e === 'toast' && toasts.push(v) })
-  b.periode.value = [{ id: 'p1', periode: 'PAS Ganjil', startsOn: '2026-12-01', endsOn: '2026-12-10' }]
-  b.form.value.periodeId = 'p1'
   b.form.value.name = 'PAS'
   b.form.value.tanggal = '2026-12-01'
   b.form.value.subjectId = subjectId
@@ -344,10 +342,7 @@ assert.ok(!tablesRead.includes('exams'))
   assert.equal(calls.length, sebelum, 'jadwal bentrok: tidak ada ujian yang disimpan')
   assert.ok(b.gagal.value.length === 1 && b.gagal.value[0].startsWith('Kelas B') && b.gagal.value[0].includes('beririsan'))
   states.get('cbt-exams').value = []
-  b.form.value.tanggal = '2026-12-11'
-  await b.simpan()
-  assert.match(toasts.at(-1), /di luar periode/)
-  b.form.value.tanggal = '2026-12-01'
+  assert.equal(b.periodeRuang.value, 'PAS Ganjil 2026/2027', 'ruang tujuan dari jenis + tanggal, tanpa Kartu Ujian')
   await b.simpan()
   assert.deepEqual(b.gagal.value, [])
   const tersimpan = calls.slice(sebelum).filter(c => c.name === 'save_assessment_exam').map(c => c.args)

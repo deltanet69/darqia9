@@ -319,7 +319,7 @@ const mulaiMengajar = async (j: JadwalHariIni) => {
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch mt-3.5">
       <div class="h-full lg:col-span-6">
-        <AdminV2ExamSchedule :jenjang="jenjang" :exams="ujian" judul="Jadwal CBT & LMS Terdekat" :sub="`Ujian yang Anda ajar atau awasi · TA ${tahunAjaran}`" />
+        <AdminV2ExamSchedule :jenjang="jenjang" :exams="ujian" judul="Jadwal CBT & LMS Terdekat" :sub="`Ujian yang Anda awasi · TA ${tahunAjaran}`" />
       </div>
       <div class="h-full lg:col-span-6">
         <AdminV2Announcements :announcements="pengumuman" :jenjang="jenjang" />

@@ -29,14 +29,14 @@ cek('maksimal 3 baris per tab, urut paling dekat', () => {
   assert.deepEqual(h.pts.map(r => r[0]), ['1', '2', '3'])
 })
 
-cek('ujian milik guru = ia pengawas atau kelas+mapel ada di jadwal mengajarnya', () => {
+cek('ujian milik guru = hanya yang ia awasi, kelas yang sekadar ia ajar tidak ikut', () => {
   const daftar = [u({ id: 'a' }), u({ id: 'b', class_id: 'k9' }), u({ id: 'c', class_id: 'k9', supervisor_id: 'g1' })]
-  assert.deepEqual(ujianMilikGuru(daftar, 'g1', [{ class_id: 'k1', subject_id: 'm1' }]).map(x => x.id), ['a', 'c'])
+  assert.deepEqual(ujianMilikGuru(daftar, 'g1').map(x => x.id), ['c'])
 })
 
 cek('ujian milik guru = ia pengawas salah satu ruang ujian itu (0088)', () => {
   const daftar = [u({ id: 'a', class_id: 'k9', pengawas_ruang: ['g2', 'g1'] }), u({ id: 'b', class_id: 'k9', pengawas_ruang: ['g2'] })]
-  assert.deepEqual(ujianMilikGuru(daftar, 'g1', []).map(x => x.id), ['a'])
+  assert.deepEqual(ujianMilikGuru(daftar, 'g1').map(x => x.id), ['a'])
 })
 
 cek('rekap absensi: hadir = tepat waktu + terlambat', () => {

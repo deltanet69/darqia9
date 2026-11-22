@@ -5,25 +5,23 @@ import { tugasTerpakai } from '~/utils/cbtNilai'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import type { GradeType } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
-import { useKartuUjian, type PeriodeKartu } from '~/composables/useKartuUjian'
 import { useRuangUjian } from '~/composables/useRuangUjian'
+import { periodeUjian } from '~/composables/ruangUjianCore'
 
 // Buat ujian: satu mapel + satu jadwal untuk satu atau banyak kelas, bank soal dipilih per kelas.
 // Satu mapel satu jadwal karena siswa diacak lintas kelas ke ruang ujian (satu ruang = satu mapel pada satu jam).
-// CBT (PTS/PAS): tanggal di dalam periode ujian (tab Kartu Ujian), lalu jadwal otomatis masuk ke ruang ujian yang
-// berisi siswa kelas itu (migrasi 0091). LMS: ujian berakhir serentak di jam selesai (migrasi 0084).
+// CBT (PTS/PAS): jadwal otomatis masuk ke ruang ujian periode itu (jenis + semester dari tanggal) yang berisi siswa
+// kelas tersebut (migrasi 0091). LMS: ujian berakhir serentak di jam selesai (migrasi 0084).
 const props = defineProps<{ grade: GradeType, source?: AssessmentSource, classId?: string }>()
 const emit = defineEmits<{ (e: 'close'): void, (e: 'toast', msg: string): void }>()
 const cbt = props.source === 'cbt'
 const cbtData = useAdminCbtData(props.source ?? 'ujian_harian')
-const kartu = useKartuUjian('cbt')
 const ruangApi = useRuangUjian()
 
 const tanggalLokal = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
 const form = ref({
   name: '',
   jenis: (cbt ? 'akhir' : 'harian') as 'akhir' | 'tengah_semester' | 'harian' | 'pr',
-  periodeId: '',
   subjectId: '',
   tanggal: tanggalLokal(new Date(Date.now() + 86_400_000)),
   jam: '07:30',
@@ -34,23 +32,15 @@ const form = ref({
 })
 // Kelas terpilih → bank soal kelas itu untuk mapel terpilih.
 const pilih = ref<Record<string, string>>({})
-const periode = ref<PeriodeKartu[]>([])
 const memuat = ref(true)
 const menyimpan = ref(false)
 const progres = ref('')
 const gagal = ref<string[]>([])
 
 onMounted(async () => {
-  try {
-    await cbtData.loadQuestions()
-    if (cbt) {
-      periode.value = (await kartu.muatPeriode(props.grade, 'cbt')).sort((a, b) => b.startsOn.localeCompare(a.startsOn))
-      form.value.periodeId = periode.value.find(p => p.endsOn >= tanggalLokal(new Date()))?.id ?? periode.value[0]?.id ?? ''
-      form.value.tanggal = periodeAktif.value?.startsOn ?? form.value.tanggal
-    }
-  } catch (e) { emit('toast', e instanceof Error ? e.message : 'Data gagal dimuat.') } finally { memuat.value = false }
+  try { await cbtData.loadQuestions() } catch (e) { emit('toast', e instanceof Error ? e.message : 'Data gagal dimuat.') } finally { memuat.value = false }
 })
-const periodeAktif = computed(() => periode.value.find(p => p.id === form.value.periodeId))
+const periodeRuang = computed(() => form.value.tanggal ? periodeUjian(form.value.jenis, form.value.tanggal) : '')
 
 const menitDari = (mulai: string, selesai: string) => {
   const [a = 0, b = 0] = mulai.split(':').map(Number)
@@ -100,13 +90,10 @@ const bentrok = (classId: string, startsAt: string) => {
 const simpan = async () => {
   if (menyimpan.value) return
   const f = form.value
-  const p = cbt ? periodeAktif.value : undefined
   if (!f.name.trim()) return emit('toast', 'Nama ujian wajib diisi.')
-  if (cbt && !p) return emit('toast', 'Pilih periode ujian. Buat dulu periodenya di tab Kartu Ujian.')
   if (!f.subjectId) return emit('toast', 'Pilih mata pelajaran.')
   if (!jumlahKelas.value) return emit('toast', 'Pilih minimal satu kelas.')
   if (!f.tanggal || !f.jam) return emit('toast', 'Tanggal dan jam ujian wajib diisi.')
-  if (p && (f.tanggal < p.startsOn || f.tanggal > p.endsOn)) return emit('toast', `Tanggal di luar periode ${p.periode} (${p.startsOn} s.d. ${p.endsOn}).`)
   if (durasi.value < 1) return emit('toast', 'Jam selesai harus setelah jam mulai.')
   const startsAt = `${f.tanggal}T${f.jam}`
   const kelas = Object.keys(pilih.value)
@@ -141,10 +128,10 @@ const simpan = async () => {
       } catch (e) { gagal.value.push(`${namaKelas(classId)}: ${e instanceof Error ? e.message : 'gagal disimpan.'}`) }
     }
     // Jadwal langsung masuk ke ruang ujian periode ini; yang bentrok di ruang tampil di menu Jadwal Ujian ruangnya.
-    if (cbt && p && berhasil) {
+    if (cbt && berhasil) {
       progres.value = 'Memasukkan jadwal ke ruang ujian…'
       try {
-        for (const r of await ruangApi.muatRuang(props.grade, p.periode)) ditolakRuang += (await ruangApi.sinkronJadwal(r.id)).length
+        for (const r of await ruangApi.muatRuang(props.grade, periodeRuang.value)) ditolakRuang += (await ruangApi.sinkronJadwal(r.id)).length
       } catch { ditolakRuang = -1 }
     }
   } finally {
@@ -153,7 +140,7 @@ const simpan = async () => {
     menyimpan.value = false
     progres.value = ''
   }
-  const ruang = ditolakRuang > 0 ? ` ${ditolakRuang} jadwal belum bisa masuk ruang ujian karena bentrok, lihat menu Jadwal Ujian di ruangnya.`
+  const ruang = ditolakRuang > 0 ? ` ${ditolakRuang} jadwal belum bisa masuk ruang ujian, lihat alasannya di menu Jadwal Ujian ruangnya.`
     : ditolakRuang < 0 ? ' Jadwal masuk ke ruang ujian saat ruangnya dibuka.' : ''
   emit('toast', gagal.value.length ? `${berhasil} ujian dibuat, ${gagal.value.length} gagal. Lihat rinciannya.${ruang}` : `${berhasil} ujian berhasil dibuat dan ditayangkan.${ruang}`)
   if (!gagal.value.length) emit('close')
@@ -198,12 +185,8 @@ const simpan = async () => {
               </select>
             </div>
             <div v-if="cbt">
-              <label for="bulk-periode" class="block font-bold text-[#344054] mb-1">Periode Ujian *</label>
-              <select id="bulk-periode" v-model="form.periodeId" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 bg-white outline-none">
-                <option value="" disabled>{{ periode.length ? 'Pilih periode' : 'Belum ada periode' }}</option>
-                <option v-for="p in periode" :key="p.id" :value="p.id">{{ p.periode }} ({{ p.startsOn }} s.d. {{ p.endsOn }})</option>
-              </select>
-              <p v-if="!memuat && !periode.length" class="mt-1 text-[11px] text-[#B42318]">Buat dulu periode PTS/PAS di tab Kartu Ujian.</p>
+              <span class="block font-bold text-[#344054] mb-1">Masuk ke ruang ujian periode</span>
+              <p class="min-h-11 flex items-center rounded-xl bg-[#F6F8FC] px-2.5 font-bold text-[#0A2A5C]" aria-live="polite">{{ periodeRuang || '-' }}</p>
             </div>
             <div v-else>
               <label for="bulk-tugas" class="block font-bold text-[#344054] mb-1">Masuk Nilai Tugas (Agenda Mengajar)</label>
@@ -221,7 +204,7 @@ const simpan = async () => {
             </div>
             <div>
               <label for="bulk-tanggal" class="block font-bold text-[#344054] mb-1">Tanggal *</label>
-              <input id="bulk-tanggal" v-model="form.tanggal" type="date" :min="periodeAktif?.startsOn" :max="periodeAktif?.endsOn" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
+              <input id="bulk-tanggal" v-model="form.tanggal" type="date" class="w-full min-h-11 border border-[#E7EBF2] rounded-xl p-2.5 outline-none focus:border-[#1B5FD9]">
             </div>
             <div>
               <label for="bulk-jam" class="block font-bold text-[#344054] mb-1">Jam mulai *</label>

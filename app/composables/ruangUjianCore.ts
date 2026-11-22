@@ -28,7 +28,14 @@ export function periodeOpsi(tahunAjaran: string, riwayat: string[]): string[] {
   return [...baru, ...arsip]
 }
 
-export const persenProgres = (answered: number, total: number): number =>
+// Periode ruang untuk ujian CBT (sama dengan sinkron_jadwal_ruang 0091): Juli-Desember = Ganjil, Januari-Juni = Genap.
+export function periodeUjian(jenis: string, tanggal: string): string {
+  const [y = 0, m = 0] = tanggal.split('-').map(Number)
+  const tahun = m >= 7 ? `${y}/${y + 1}` : `${y - 1}/${y}`
+  return `${jenis === 'tengah_semester' ? 'PTS' : 'PAS'} ${m >= 7 ? 'Ganjil' : 'Genap'} ${tahun}`
+}
+
+export const persenProgres =(answered: number, total: number): number =>
   total > 0 ? Math.min(100, Math.round((answered / total) * 100)) : 0
 
 export function labelStatus(status: string): string {

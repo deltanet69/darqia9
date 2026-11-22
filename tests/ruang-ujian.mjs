@@ -2,7 +2,7 @@
 import assert from 'node:assert'
 import {
   periodeOpsi, persenProgres, labelStatus, labelPelanggaran, validasiRuang,
-  barisSiswa, ringkasProgres, komposisiKelas
+  barisSiswa, ringkasProgres, komposisiKelas, periodeUjian
 } from '../app/composables/ruangUjianCore.ts'
 
 let lulus = 0
@@ -68,6 +68,13 @@ cek('komposisiKelas urut jumlah terbanyak', () => {
   assert.deepEqual(komposisiKelas(['X AK', 'X AP', 'X AK', null]), [
     { kelas: 'X AK', jumlah: 2 }, { kelas: 'Tanpa kelas', jumlah: 1 }, { kelas: 'X AP', jumlah: 1 }
   ])
+})
+
+cek('periodeUjian: Juli-Desember = Ganjil, Januari-Juni = Genap tahun ajaran sebelumnya', () => {
+  assert.equal(periodeUjian('akhir', '2026-12-01'), 'PAS Ganjil 2026/2027')
+  assert.equal(periodeUjian('tengah_semester', '2026-07-01'), 'PTS Ganjil 2026/2027')
+  assert.equal(periodeUjian('akhir', '2027-06-30'), 'PAS Genap 2026/2027')
+  assert.equal(periodeUjian('tengah_semester', '2027-03-10'), 'PTS Genap 2026/2027')
 })
 
 console.log(`\n${lulus} tes lulus`)

@@ -13,6 +13,7 @@ import CbtV2Monitoring from '~/components/adminV2/cbt/CbtV2Monitoring.vue'
 import CbtV2Bank from '~/components/adminV2/cbt/CbtV2Bank.vue'
 import CbtV2Exams from '~/components/adminV2/cbt/CbtV2Exams.vue'
 import CbtV2Rooms from '~/components/adminV2/cbt/CbtV2Rooms.vue'
+import CbtV2Pengawas from '~/components/adminV2/cbt/CbtV2Pengawas.vue'
 import CbtV2SebKelas from '~/components/adminV2/cbt/CbtV2SebKelas.vue'
 import CbtV2Cards from '~/components/adminV2/cbt/CbtV2Cards.vue'
 import CbtV2Results from '~/components/adminV2/cbt/CbtV2Results.vue'
@@ -498,6 +499,14 @@ const handleDocumentClick = (e: MouseEvent) => {
         :grade="grade"
         @toast="triggerToast"
         @detail="roomDetail = $event"
+      />
+
+      <!-- TAB: JADWAL PENGAWAS per sesi (hanya CBT PTS/PAS) -->
+      <CbtV2Pengawas
+        v-else-if="activeTab === 'pengawas' && !isDailyAssessment"
+        :key="`pengawas-${grade}`"
+        :grade="grade"
+        @toast="triggerToast"
       />
 
       <!-- TAB: KODE SEB per kelas (hanya LMS ujian harian) -->
