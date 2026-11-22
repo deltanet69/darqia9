@@ -78,12 +78,12 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 // tautan ruang + jadwal (migrasi 0088), jadi pengawas ruang ini tidak ikut menjadi pengawas ruang lain.
 const ujianSemua = computed(() => {
   const pengawasExam = new Map(tautan.value.map(item => [item.exam_id, item.supervisor_id ?? '']))
-  const grup = new Map<string, { key: string, name: string, subject: string, subjectId: string, startsAt: string, duration: number, date: string, time: string, status: string, supervisorId: string, examIds: string[] }>()
+  const grup = new Map<string, { key: string, name: string, subject: string, subjectId: string, startsAt: string, duration: number, date: string, time: string, status: string, supervisorId: string, examIds: string[], kelas: string[] }>()
   for (const exam of cbtData.exams.value.filter(item => pengawasExam.has(item.id))) {
     const key = `${exam.subjectId}|${exam.startsAt}|${exam.name}`
     const ada = grup.get(key)
-    if (ada) { ada.examIds.push(exam.id); ada.supervisorId ||= pengawasExam.get(exam.id)! }
-    else grup.set(key, { key, name: exam.name, subject: exam.subject, subjectId: exam.subjectId ?? '', startsAt: exam.startsAt ?? '', duration: exam.duration, date: exam.date, time: exam.time, status: exam.status, supervisorId: pengawasExam.get(exam.id)!, examIds: [exam.id] })
+    if (ada) { ada.examIds.push(exam.id); ada.supervisorId ||= pengawasExam.get(exam.id)!; if (exam.classroom && !ada.kelas.includes(exam.classroom)) ada.kelas.push(exam.classroom) }
+    else grup.set(key, { key, name: exam.name, subject: exam.subject, subjectId: exam.subjectId ?? '', startsAt: exam.startsAt ?? '', duration: exam.duration, date: exam.date, time: exam.time, status: exam.status, supervisorId: pengawasExam.get(exam.id)!, examIds: [exam.id], kelas: exam.classroom ? [exam.classroom] : [] })
   }
   return [...grup.values()].sort((a, b) => a.startsAt.localeCompare(b.startsAt))
 })
@@ -134,6 +134,30 @@ const ubahPengawas = async (u: { key: string, examIds: string[], supervisorId: s
   } finally { pengawasSimpan.value = '' }
 }
 const ringkasJadwal = (u: { examIds: string[] }) => ringkasProgres(barisSiswa(progres.value, u.examIds))
+
+// Nomor sesi per tanggal: urutan jam mulai yang berbeda pada tanggal yang sama (Sesi 1, Sesi 2, ...).
+const sesiDari = computed(() => {
+  const perTanggal = new Map<string, Map<string, number>>()
+  for (const u of ujianRuang.value) {
+    const m = perTanggal.get(u.date) ?? new Map<string, number>()
+    if (!m.has(u.startsAt)) m.set(u.startsAt, m.size + 1)
+    perTanggal.set(u.date, m)
+  }
+  return perTanggal
+})
+const nomorSesi = (u: { date: string, startsAt: string }) => sesiDari.value.get(u.date)?.get(u.startsAt) ?? 1
+const jumlahSesi = computed(() => [...sesiDari.value.values()].reduce((n, m) => n + m.size, 0))
+const jumlahJadwalKelas = computed(() => ujianRuang.value.reduce((n, u) => n + u.examIds.length, 0))
+const belumAdaPengawas = computed(() => ujianRuang.value.filter(u => !u.supervisorId).length)
+const jamU = (u: { time: string }, akhir = false) => u.time.split(' - ')[akhir ? 1 : 0] ?? ''
+const hariU = (u: { startsAt: string }) => u.startsAt ? new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(new Date(u.startsAt)) : ''
+const inisial = (nama: string) => nama.trim().split(/\s+/).slice(0, 2).map(k => k[0]).join('').toUpperCase() || '?'
+// Lebar segmen bar progres dari jumlah siswa per status (bukan rata-rata persen jawaban).
+const lebarBar = (u: { examIds: string[] }) => {
+  const r = ringkasJadwal(u)
+  const total = Math.max(1, r.selesai + r.mengerjakan + r.belumMulai + r.terkunci)
+  return { selesai: (r.selesai / total) * 100, mengerjakan: (r.mengerjakan / total) * 100 }
+}
 
 const cari = ref('')
 const barisTampil = computed(() => {
@@ -328,36 +352,66 @@ const eksporExcel = async () => {
       </div>
 
       <!-- JADWAL UJIAN -->
-      <div v-else-if="sub === 'jadwal'" class="space-y-2.5">
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="min-h-11 rounded-xl border border-[#E7EBF2] bg-white px-4 text-xs font-bold text-[#344054] hover:border-[#1B5FD9]" @click="eksporExcel">Export Excel</button>
+      <div v-else-if="sub === 'jadwal'" class="space-y-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <p class="text-xs font-medium text-[#667085]"><b class="font-semibold text-[#0A2A5C]">{{ jumlahSesi }} sesi</b> · {{ jumlahJadwalKelas }} jadwal kelas · <b class="font-semibold text-[#0A2A5C]">{{ belumAdaPengawas }}</b> belum ada pengawas</p>
+          <button type="button" class="ml-auto inline-flex min-h-10 items-center rounded-xl border border-[#E5EAF1] bg-white px-4 text-xs font-semibold text-[#475467] hover:border-[#1B5FD9] hover:text-[#1B5FD9]" @click="eksporExcel">Export Excel</button>
         </div>
         <div v-if="ditolak.length" role="alert" class="rounded-xl border border-[#F5C6C0] bg-[#FFFBFA] px-4 py-3 text-xs text-[#B42318]">
           <p class="font-bold">Sebagian jadwal dari Daftar Ujian belum bisa masuk ruang ini:</p>
           <ul class="mt-1 list-disc pl-4"><li v-for="(g, i) in ditolak" :key="i">{{ g }}</li></ul>
         </div>
         <p v-if="!ujianRuang.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Belum ada jadwal ujian di ruang ini. Jadwal muncul otomatis dari Daftar Ujian sesuai kelas siswa di ruang ini.</p>
-        <p v-else-if="!arsip && bolehKelola" class="rounded-xl border border-[#E7EBF2] bg-[#F8FAFD] px-4 py-3 text-xs text-[#475467]">Jam dan mapel diatur di Daftar Ujian. Di sini cukup pilih pengawas untuk tiap jadwal. Pengawas hanya bisa membuka ruang ini, jadwal yang ia awasi, dan kode pembuka kunci siswanya. Satu guru tidak bisa mengawasi dua ruang di jam yang sama.</p>
-        <article v-for="u in ujianRuang" :key="u.key" class="rounded-2xl border bg-white p-4" :class="saya && u.supervisorId === saya ? 'border-[#1B5FD9]' : 'border-[#E7EBF2]'">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <b class="block break-words text-sm font-bold text-[#101828]">{{ u.subject }} · {{ u.name }}</b>
-              <span class="text-xs text-[#667085]">{{ u.date }} · {{ u.time }} · {{ u.examIds.length }} kelas</span>
+        <p v-else-if="!arsip && bolehKelola" class="flex gap-2.5 rounded-xl border border-[#E5EAF1] bg-[#F8FAFD] px-4 py-3 text-xs leading-relaxed text-[#5B6B82]"><span class="font-bold text-[#1B5FD9]">i</span><span>Jam dan mapel diatur di <b class="font-semibold text-[#344054]">Daftar Ujian</b>. Di sini cukup pilih pengawas untuk tiap jadwal — satu guru tidak bisa mengawasi dua ruang di jam yang sama, dan pengawas hanya bisa membuka ruang serta jadwal yang ia awasi.</span></p>
+        <article v-for="u in ujianRuang" :key="u.key" class="flex flex-col gap-3 rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:flex-row sm:gap-5 sm:p-5" :class="[saya && u.supervisorId === saya ? 'border-[#B9D2F7]' : 'border-[#E5EAF1]', u.status === 'Selesai' ? 'opacity-75' : '']">
+          <div class="flex flex-row flex-wrap items-baseline gap-x-2.5 gap-y-1 border-b border-[#EEF1F6] pb-3 sm:w-[122px] sm:flex-none sm:flex-col sm:items-start sm:border-b-0 sm:border-r sm:pb-0 sm:pr-[18px]">
+            <span class="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#1B5FD9]">Sesi {{ nomorSesi(u) }}</span>
+            <span class="text-[11.5px] font-medium leading-snug text-[#8A94A6]">{{ hariU(u) }}, {{ u.date }}</span>
+            <span class="text-xl font-semibold tabular-nums tracking-tight text-[#0A2A5C] sm:mt-1 sm:text-2xl">{{ jamU(u) }}<small class="block text-sm font-medium text-[#98A2B3]">– {{ jamU(u, true) }}</small></span>
+            <span class="ml-auto text-[11.5px] font-medium text-[#8A94A6] sm:ml-0 sm:mt-auto sm:pt-3">{{ u.duration }} menit</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-start gap-2.5">
+              <h3 class="text-[15.5px] font-semibold leading-snug tracking-tight text-[#101828]">{{ u.subject }} <span class="font-normal text-[#7A8699]">· {{ u.name }}</span></h3>
+              <span class="ml-auto flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="u.status === 'Berlangsung' ? 'bg-[#E6F7EE] text-[#0B7A4B]' : u.status === 'Selesai' ? 'bg-[#EEF1F6] text-[#5B6B82]' : 'bg-[#FBF3E0] text-[#9A6A14]'">{{ u.status === 'Berlangsung' ? '● ' : '' }}{{ u.status }}</span>
             </div>
-            <span class="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold" :class="u.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : u.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ u.status }}</span>
-          </div>
-          <div v-if="!arsip && bolehKelola" class="mt-3 max-w-sm">
-            <label class="mb-1 block text-[11px] font-bold text-[#344054]" :for="`peng-${u.key}`">Pengawas jadwal ini</label>
-            <select :id="`peng-${u.key}`" :value="u.supervisorId" :disabled="!!pengawasSimpan" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm outline-none focus:border-[#1B5FD9] disabled:opacity-60" @change="ubahPengawas(u, $event.target as HTMLSelectElement)">
-              <option value="">Belum ditentukan</option>
-              <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
-            </select>
-            <p v-if="pengawasSimpan === u.key" class="mt-1 text-[11px] font-bold text-[#1B5FD9]" role="status">Menyimpan…</p>
-          </div>
-          <p v-else class="mt-2 text-xs text-[#344054]">Pengawas: <b>{{ namaGuru(u.supervisorId) || 'Belum ditentukan' }}</b><span v-if="saya && u.supervisorId === saya" class="ml-2 rounded-full bg-[#E8F0FE] px-2 py-0.5 text-[10px] font-extrabold text-[#1B5FD9]">Tugas Anda</span></p>
-          <div class="mt-3">
-            <div class="flex justify-between gap-3 text-[11px] font-semibold text-[#344054]"><span>{{ ringkasJadwal(u).selesai }} selesai · {{ ringkasJadwal(u).mengerjakan }} mengerjakan · {{ ringkasJadwal(u).belumMulai }} belum mulai<template v-if="ringkasJadwal(u).terkunci"> · {{ ringkasJadwal(u).terkunci }} terkunci</template></span><span>{{ ringkasJadwal(u).rataProgres }}%</span></div>
-            <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-[#EFF2F7]"><div class="h-full rounded-full bg-[#1B5FD9]" :style="{ width: `${ringkasJadwal(u).rataProgres}%` }" /></div>
+            <div class="mt-2.5 flex flex-wrap gap-1.5">
+              <span v-for="k in u.kelas" :key="k" class="rounded-lg bg-[#F7F9FC] px-2.5 py-1 text-[11.5px] font-medium text-[#475467]">{{ k }}</span>
+              <span v-if="!u.kelas.length" class="rounded-lg bg-[#F7F9FC] px-2.5 py-1 text-[11.5px] font-medium text-[#475467]">{{ u.examIds.length }} kelas</span>
+            </div>
+            <div class="mt-[18px] flex flex-wrap gap-x-[22px] gap-y-4 border-t border-[#EEF1F6] pt-4">
+              <div class="min-w-0 flex-[1_1_300px]">
+                <template v-if="!arsip && bolehKelola">
+                  <label class="mb-2 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]" :for="`peng-${u.key}`">Pengawas <span v-if="!u.supervisorId" class="font-semibold normal-case tracking-normal text-[#B07E1E]">— belum ditentukan</span></label>
+                  <div class="relative">
+                    <span class="pointer-events-none absolute left-[11px] top-1/2 flex h-[23px] w-[23px] -translate-y-1/2 items-center justify-center rounded-full text-[10.5px] font-semibold" :class="u.supervisorId ? 'bg-[#EEF3FB] text-[#5B84C4]' : 'bg-[#FBF3E0] text-[#B07E1E]'">{{ u.supervisorId ? inisial(namaGuru(u.supervisorId)) : '?' }}</span>
+                    <select :id="`peng-${u.key}`" :value="u.supervisorId" :disabled="!!pengawasSimpan" class="min-h-11 w-full appearance-none rounded-xl border pl-10 pr-9 text-sm font-medium outline-none focus:border-[#1B5FD9] disabled:opacity-60" :class="u.supervisorId ? 'border-[#DFE5EE] bg-white text-[#101828]' : 'border-[#EBCB8B] bg-[#FFFDF6] text-[#8A6D1F]'" @change="ubahPengawas(u, $event.target as HTMLSelectElement)">
+                      <option value="">Belum ditentukan</option>
+                      <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
+                    </select>
+                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#B0B9C8]">▼</span>
+                  </div>
+                  <p v-if="pengawasSimpan === u.key" class="mt-1 text-[11px] font-semibold text-[#1B5FD9]" role="status">Menyimpan…</p>
+                </template>
+                <template v-else>
+                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]">Pengawas</p>
+                  <p class="pt-1.5 text-sm font-medium text-[#101828]">{{ namaGuru(u.supervisorId) || 'Belum ditentukan' }}<span v-if="saya && u.supervisorId === saya" class="ml-2 rounded-full bg-[#E8F0FE] px-2 py-0.5 text-[10px] font-semibold text-[#1B5FD9]">Tugas Anda</span></p>
+                </template>
+              </div>
+              <div class="min-w-0 flex-[1_1_260px]">
+                <p class="mb-2 flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]">Progres siswa <b class="text-xs font-semibold normal-case tracking-normal text-[#0A2A5C]">{{ ringkasJadwal(u).rataProgres }}%</b></p>
+                <div class="flex gap-2">
+                  <div class="flex-1 rounded-[10px] bg-[#F8FAFC] px-1.5 py-2 text-center"><b class="block text-base font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).selesai }}</b><span class="text-[10.5px] font-medium text-[#8A94A6]">Selesai</span></div>
+                  <div class="flex-1 rounded-[10px] bg-[#F8FAFC] px-1.5 py-2 text-center"><b class="block text-base font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).mengerjakan }}</b><span class="text-[10.5px] font-medium text-[#8A94A6]">Mengerjakan</span></div>
+                  <div v-if="ringkasJadwal(u).terkunci" class="flex-1 rounded-[10px] bg-[#F8FAFC] px-1.5 py-2 text-center"><b class="block text-base font-semibold tabular-nums text-[#D92D20]">{{ ringkasJadwal(u).terkunci }}</b><span class="text-[10.5px] font-medium text-[#8A94A6]">Terkunci</span></div>
+                  <div class="flex-1 rounded-[10px] bg-[#F8FAFC] px-1.5 py-2 text-center"><b class="block text-base font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).belumMulai }}</b><span class="text-[10.5px] font-medium text-[#8A94A6]">Belum mulai</span></div>
+                </div>
+                <div class="mt-[11px] flex h-[5px] overflow-hidden rounded-full bg-[#EEF1F6]">
+                  <div class="h-full bg-[#34C77B]" :style="{ width: `${lebarBar(u).selesai}%` }" />
+                  <div class="h-full bg-[#4A90D9]" :style="{ width: `${lebarBar(u).mengerjakan}%` }" />
+                </div>
+              </div>
+            </div>
           </div>
         </article>
       </div>
