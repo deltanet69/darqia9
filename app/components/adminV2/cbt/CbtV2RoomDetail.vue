@@ -136,6 +136,32 @@ const ubahPengawas = async (u: { key: string, examIds: string[], supervisorId: s
 }
 const ringkasJadwal = (u: { examIds: string[] }) => ringkasProgres(barisSiswa(progres.value, u.examIds))
 
+// Jadwal ruang dikelompokkan per hari; yang tampil hanya hari terpilih (chip hari), gaya timetable Daftar Ujian.
+const hariRuangPilihan = ref('')
+const jadwalPerHariRuang = computed(() => {
+  const grup = new Map<string, { key: string, items: typeof ujianRuang.value }>()
+  for (const u of ujianRuang.value) {
+    const key = u.startsAt ? localDateTime(new Date(u.startsAt)).slice(0, 10) : u.date
+    const ada = grup.get(key)
+    if (ada) ada.items.push(u)
+    else grup.set(key, { key, items: [u] })
+  }
+  return [...grup.values()].map(g => {
+    const d = new Date(g.items[0]!.startsAt)
+    return {
+      ...g,
+      nama: new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(d).replace('.', ''),
+      namaPanjang: new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d),
+      tgl: String(d.getDate()),
+      bln: new Intl.DateTimeFormat('id-ID', { month: 'short' }).format(d).replace('.', ''),
+      tahun: String(d.getFullYear()),
+      rentang: `${jamU(g.items[0]!)}–${jamU(g.items[g.items.length - 1]!, true)}`
+    }
+  })
+})
+const hariRuangAktif = computed(() => jadwalPerHariRuang.value.find(h => h.key === hariRuangPilihan.value) ?? jadwalPerHariRuang.value[0] ?? null)
+const jedaRuang = (prev: { startsAt: string, duration: number }, u: { startsAt: string }) => Math.max(0, Math.round((new Date(u.startsAt).getTime() - (new Date(prev.startsAt).getTime() + prev.duration * 60_000)) / 60_000))
+
 // Nomor sesi per tanggal: urutan jam mulai yang berbeda pada tanggal yang sama (Sesi 1, Sesi 2, ...).
 const sesiDari = computed(() => {
   const perTanggal = new Map<string, Map<string, number>>()
@@ -420,57 +446,103 @@ const eksporExcel = async () => {
         </div>
         <p v-if="!ujianRuang.length" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Belum ada jadwal ujian di ruang ini. Jadwal muncul otomatis dari Daftar Ujian sesuai kelas siswa di ruang ini.</p>
         <p v-else-if="!arsip && bolehKelola" class="flex gap-2.5 rounded-xl border border-[#E5EAF1] bg-[#F8FAFD] px-4 py-3 text-xs leading-relaxed text-[#5B6B82]"><span class="font-bold text-[#1B5FD9]">i</span><span>Jam dan mapel diatur di <b class="font-semibold text-[#344054]">Daftar Ujian</b>. Di sini cukup pilih pengawas untuk tiap jadwal — satu guru tidak bisa mengawasi dua ruang di jam yang sama, dan pengawas hanya bisa membuka ruang serta jadwal yang ia awasi.</span></p>
-        <article v-for="u in ujianRuang" :key="u.key" class="flex flex-col gap-3 rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:flex-row sm:gap-5 sm:p-5" :class="[saya && u.supervisorId === saya ? 'border-[#B9D2F7]' : 'border-[#E5EAF1]', u.status === 'Selesai' ? 'opacity-75' : '']">
-          <div class="flex flex-row flex-wrap items-baseline gap-x-2.5 gap-y-1 border-b border-[#EEF1F6] pb-3 sm:w-[122px] sm:flex-none sm:flex-col sm:items-start sm:border-b-0 sm:border-r sm:pb-0 sm:pr-[18px]">
-            <span class="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#1B5FD9]">Sesi {{ nomorSesi(u) }}</span>
-            <span class="text-[11.5px] font-medium leading-snug text-[#8A94A6]">{{ hariU(u) }}, {{ u.date }}</span>
-            <span class="text-xl font-semibold tabular-nums tracking-tight text-[#0A2A5C] sm:mt-1 sm:text-2xl">{{ jamU(u) }}<small class="block text-sm font-medium text-[#98A2B3]">– {{ jamU(u, true) }}</small></span>
-            <span class="ml-auto text-[11.5px] font-medium text-[#8A94A6] sm:ml-0 sm:mt-auto sm:pt-3">{{ u.duration }} menit</span>
+        <template v-if="hariRuangAktif">
+          <div class="flex flex-wrap gap-2.5" role="group" aria-label="Pilih hari">
+            <button
+              v-for="h in jadwalPerHariRuang"
+              :key="h.key"
+              type="button"
+              class="min-w-[138px] rounded-[14px] border-[1.5px] bg-white px-3.5 py-2.5 text-left transition-colors"
+              :class="h.key === hariRuangAktif.key ? 'border-[#1B5FD9] bg-[#F5F9FF]' : 'border-[#E5EAF1] hover:border-[#C9D5E8]'"
+              :aria-pressed="h.key === hariRuangAktif.key"
+              @click="hariRuangPilihan = h.key"
+            >
+              <span class="block text-[10px] font-semibold uppercase tracking-[0.06em]" :class="h.key === hariRuangAktif.key ? 'text-[#1B5FD9]' : 'text-[#98A2B3]'">{{ h.nama }}</span>
+              <span class="mt-0.5 block text-[13.5px] font-semibold text-[#101828]">{{ h.tgl }} {{ h.bln }} {{ h.tahun }}</span>
+              <span class="mt-0.5 block text-[11px] text-[#98A2B3] tabular-nums">{{ h.items.length }} sesi · {{ h.rentang }}</span>
+            </button>
           </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-start gap-2.5">
-              <h3 class="text-[15.5px] font-semibold leading-snug tracking-tight text-[#101828]">{{ u.subject }} <span class="font-normal text-[#7A8699]">· {{ u.name }}</span></h3>
-              <span class="ml-auto flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="u.status === 'Berlangsung' ? 'bg-[#E6F7EE] text-[#0B7A4B]' : u.status === 'Selesai' ? 'bg-[#EEF1F6] text-[#5B6B82]' : 'bg-[#FBF3E0] text-[#9A6A14]'">{{ u.status === 'Berlangsung' ? '● ' : '' }}{{ u.status }}</span>
+
+          <section class="overflow-hidden rounded-[20px] border border-[#E5EAF1] bg-white shadow-[0_1px_3px_rgba(16,24,40,0.05),0_12px_32px_-12px_rgba(16,24,40,0.08)]">
+            <div class="flex flex-wrap items-center gap-3 border-b border-[#EEF1F6] px-5 py-3.5">
+              <div class="flex h-11 w-11 flex-none flex-col items-center justify-center rounded-xl bg-[#0A2A5C] leading-none text-white">
+                <b class="text-base">{{ hariRuangAktif.tgl }}</b>
+                <span class="mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#BCD3F5]">{{ hariRuangAktif.bln }}</span>
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-sm font-semibold text-[#101828]">{{ hariRuangAktif.namaPanjang }}</h3>
+                <p class="text-xs text-[#98A2B3] tabular-nums">Sesi pertama {{ jamU(hariRuangAktif.items[0]!) }} · sesi terakhir selesai {{ jamU(hariRuangAktif.items[hariRuangAktif.items.length - 1]!, true) }}</p>
+              </div>
+              <span class="ml-auto rounded-full bg-[#F7F9FC] px-2.5 py-1 text-xs font-semibold text-[#344054] tabular-nums">{{ hariRuangAktif.items.length }} sesi terjadwal</span>
             </div>
-            <div class="mt-2.5 flex flex-wrap gap-1.5">
-              <span v-for="k in u.kelas" :key="k" class="rounded-lg bg-[#F7F9FC] px-2.5 py-1 text-[11.5px] font-medium text-[#475467]">{{ k }}</span>
-              <span v-if="!u.kelas.length" class="rounded-lg bg-[#F7F9FC] px-2.5 py-1 text-[11.5px] font-medium text-[#475467]">{{ u.examIds.length }} kelas</span>
-            </div>
-            <div class="mt-[18px] flex flex-wrap gap-x-[22px] gap-y-4 border-t border-[#EEF1F6] pt-4">
-              <div class="min-w-0 flex-[1_1_300px]">
-                <template v-if="!arsip && bolehKelola">
-                  <label class="mb-2 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]" :for="`peng-${u.key}`">Pengawas <span v-if="!u.supervisorId" class="font-semibold normal-case tracking-normal text-[#B07E1E]">— belum ditentukan</span></label>
-                  <div class="relative">
-                    <span class="pointer-events-none absolute left-[11px] top-1/2 flex h-[23px] w-[23px] -translate-y-1/2 items-center justify-center rounded-full text-[10.5px] font-semibold" :class="u.supervisorId ? 'bg-[#EEF3FB] text-[#5B84C4]' : 'bg-[#FBF3E0] text-[#B07E1E]'">{{ u.supervisorId ? inisial(namaGuru(u.supervisorId)) : '?' }}</span>
-                    <select :id="`peng-${u.key}`" :value="u.supervisorId" :disabled="!!pengawasSimpan" class="min-h-11 w-full appearance-none rounded-xl border pl-10 pr-9 text-sm font-medium outline-none focus:border-[#1B5FD9] disabled:opacity-60" :class="u.supervisorId ? 'border-[#DFE5EE] bg-white text-[#101828]' : 'border-[#EBCB8B] bg-[#FFFDF6] text-[#8A6D1F]'" @change="ubahPengawas(u, $event.target as HTMLSelectElement)">
-                      <option value="">Belum ditentukan</option>
-                      <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
-                    </select>
-                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#B0B9C8]">▼</span>
+
+            <div class="px-4 pb-3.5 pt-2 sm:px-5">
+              <template v-for="(u, idx) in hariRuangAktif.items" :key="u.key">
+                <div v-if="idx > 0" class="flex gap-3.5" aria-hidden="true">
+                  <div class="w-[52px] flex-none sm:w-[62px]" />
+                  <div class="flex w-3.5 flex-none justify-center"><span class="w-0.5 bg-[#E5EAF1]" /></div>
+                  <div class="flex-1 pb-1 pt-0.5 text-[11px] font-medium text-[#B0B9C8]">Jeda {{ jedaRuang(hariRuangAktif.items[idx - 1]!, u) }} menit</div>
+                </div>
+                <div class="flex gap-3.5">
+                  <div class="w-[52px] flex-none pt-3 text-right sm:w-[62px]">
+                    <b class="block text-[15px] font-semibold tabular-nums text-[#0A2A5C]">{{ jamU(u) }}</b>
+                    <span class="text-[11px] text-[#98A2B3] tabular-nums">– {{ jamU(u, true) }}</span>
                   </div>
-                  <p v-if="pengawasSimpan === u.key" class="mt-1 text-[11px] font-semibold text-[#1B5FD9]" role="status">Menyimpan…</p>
-                </template>
-                <template v-else>
-                  <p class="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]">Pengawas</p>
-                  <p class="pt-1.5 text-sm font-medium text-[#101828]">{{ namaGuru(u.supervisorId) || 'Belum ditentukan' }}<span v-if="saya && u.supervisorId === saya" class="ml-2 rounded-full bg-[#E8F0FE] px-2 py-0.5 text-[10px] font-semibold text-[#1B5FD9]">Tugas Anda</span></p>
-                </template>
-              </div>
-              <div class="min-w-0 flex-[1_1_260px]">
-                <p class="mb-2 flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]">Progres siswa <b class="text-xs font-semibold normal-case tracking-normal text-[#0A2A5C]">{{ ringkasJadwal(u).rataProgres }}%</b></p>
-                <div class="flex gap-2">
-                  <div class="flex-1 rounded-[10px] bg-[#F8FAFC] px-1.5 py-2 text-center"><b class="block text-base font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).selesai }}</b><span class="text-[10.5px] font-medium text-[#8A94A6]">Selesai</span></div>
-                  <div class="flex-1 rounded-[10px] bg-[#F8FAFC] px-1.5 py-2 text-center"><b class="block text-base font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).mengerjakan }}</b><span class="text-[10.5px] font-medium text-[#8A94A6]">Mengerjakan</span></div>
-                  <div v-if="ringkasJadwal(u).terkunci" class="flex-1 rounded-[10px] bg-[#F8FAFC] px-1.5 py-2 text-center"><b class="block text-base font-semibold tabular-nums text-[#D92D20]">{{ ringkasJadwal(u).terkunci }}</b><span class="text-[10.5px] font-medium text-[#8A94A6]">Terkunci</span></div>
-                  <div class="flex-1 rounded-[10px] bg-[#F8FAFC] px-1.5 py-2 text-center"><b class="block text-base font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).belumMulai }}</b><span class="text-[10.5px] font-medium text-[#8A94A6]">Belum mulai</span></div>
+                  <div class="flex w-3.5 flex-none flex-col items-center">
+                    <span class="mt-[17px] h-[9px] w-[9px] flex-none rounded-full bg-[#1B5FD9] shadow-[0_0_0_3px_#EAF1FE]" />
+                    <span v-if="idx < hariRuangAktif.items.length - 1" class="mt-[5px] w-0.5 flex-1 bg-[#E5EAF1]" />
+                  </div>
+                  <div class="min-w-0 flex-1 py-2">
+                    <div class="rounded-[15px] border bg-white p-3.5 sm:p-4" :class="[saya && u.supervisorId === saya ? 'border-[#B9D2F7]' : 'border-[#E5EAF1]', u.status === 'Selesai' ? 'opacity-75' : '']">
+                      <div class="flex flex-wrap items-start gap-2.5">
+                        <span class="mt-0.5 flex-none rounded-md bg-[#EAF1FE] px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.05em] text-[#1B5FD9]">Sesi {{ nomorSesi(u) }}</span>
+                        <h4 class="text-[14.5px] font-semibold leading-snug tracking-tight text-[#101828]">{{ u.subject }} <span class="font-normal text-[#7A8699]">· {{ u.name }}</span></h4>
+                        <span class="ml-auto flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="u.status === 'Berlangsung' ? 'bg-[#E6F7EE] text-[#0B7A4B]' : u.status === 'Selesai' ? 'bg-[#EEF1F6] text-[#5B6B82]' : 'bg-[#FBF3E0] text-[#9A6A14]'">{{ u.status === 'Berlangsung' ? '● ' : '' }}{{ u.status }}</span>
+                      </div>
+                      <div class="mt-2.5 flex flex-wrap gap-1.5">
+                        <span v-for="k in u.kelas" :key="k" class="rounded-lg bg-[#F7F9FC] px-2.5 py-1 text-[11.5px] font-medium text-[#475467]">{{ k }}</span>
+                        <span v-if="!u.kelas.length" class="rounded-lg bg-[#F7F9FC] px-2.5 py-1 text-[11.5px] font-medium text-[#475467]">{{ u.examIds.length }} kelas</span>
+                      </div>
+                      <div class="mt-3.5 flex flex-wrap gap-x-[22px] gap-y-4 border-t border-[#EEF1F6] pt-3.5">
+                        <div class="min-w-0 flex-[1_1_300px]">
+                          <template v-if="!arsip && bolehKelola">
+                            <label class="mb-2 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]" :for="`peng-${u.key}`">Pengawas <span v-if="!u.supervisorId" class="font-semibold normal-case tracking-normal text-[#B07E1E]">— belum ditentukan</span></label>
+                            <div class="relative">
+                              <span class="pointer-events-none absolute left-[11px] top-1/2 flex h-[23px] w-[23px] -translate-y-1/2 items-center justify-center rounded-full text-[10.5px] font-semibold" :class="u.supervisorId ? 'bg-[#EEF3FB] text-[#5B84C4]' : 'bg-[#FBF3E0] text-[#B07E1E]'">{{ u.supervisorId ? inisial(namaGuru(u.supervisorId)) : '?' }}</span>
+                              <select :id="`peng-${u.key}`" :value="u.supervisorId" :disabled="!!pengawasSimpan" class="min-h-11 w-full appearance-none rounded-xl border pl-10 pr-9 text-sm font-medium outline-none focus:border-[#1B5FD9] disabled:opacity-60" :class="u.supervisorId ? 'border-[#DFE5EE] bg-white text-[#101828]' : 'border-[#EBCB8B] bg-[#FFFDF6] text-[#8A6D1F]'" @change="ubahPengawas(u, $event.target as HTMLSelectElement)">
+                                <option value="">Belum ditentukan</option>
+                                <option v-for="g in guruGrade" :key="g.id" :value="g.id">{{ g.name }}</option>
+                              </select>
+                              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#B0B9C8]">▼</span>
+                            </div>
+                            <p v-if="pengawasSimpan === u.key" class="mt-1 text-[11px] font-semibold text-[#1B5FD9]" role="status">Menyimpan…</p>
+                          </template>
+                          <template v-else>
+                            <p class="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]">Pengawas</p>
+                            <p class="pt-1.5 text-sm font-medium text-[#101828]">{{ namaGuru(u.supervisorId) || 'Belum ditentukan' }}<span v-if="saya && u.supervisorId === saya" class="ml-2 rounded-full bg-[#E8F0FE] px-2 py-0.5 text-[10px] font-semibold text-[#1B5FD9]">Tugas Anda</span></p>
+                          </template>
+                        </div>
+                        <div class="min-w-0 flex-[1_1_260px]">
+                          <p class="mb-2 flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[#8A94A6]">Progres siswa <b class="text-xs font-semibold normal-case tracking-normal text-[#0A2A5C]">{{ ringkasJadwal(u).rataProgres }}%</b></p>
+                          <p class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[#667085]">
+                            <span><b class="font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).selesai }}</b> selesai</span>
+                            <span><b class="font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).mengerjakan }}</b> mengerjakan</span>
+                            <span v-if="ringkasJadwal(u).terkunci"><b class="font-semibold tabular-nums text-[#D92D20]">{{ ringkasJadwal(u).terkunci }}</b> terkunci</span>
+                            <span><b class="font-semibold tabular-nums text-[#101828]">{{ ringkasJadwal(u).belumMulai }}</b> belum mulai</span>
+                          </p>
+                          <div class="mt-1 flex h-[5px] overflow-hidden rounded-full bg-[#EEF1F6]">
+                            <div class="h-full bg-[#34C77B]" :style="{ width: `${lebarBar(u).selesai}%` }" />
+                            <div class="h-full bg-[#4A90D9]" :style="{ width: `${lebarBar(u).mengerjakan}%` }" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="mt-[11px] flex h-[5px] overflow-hidden rounded-full bg-[#EEF1F6]">
-                  <div class="h-full bg-[#34C77B]" :style="{ width: `${lebarBar(u).selesai}%` }" />
-                  <div class="h-full bg-[#4A90D9]" :style="{ width: `${lebarBar(u).mengerjakan}%` }" />
-                </div>
-              </div>
+              </template>
             </div>
-          </div>
-        </article>
+          </section>
+        </template>
       </div>
 
       <!-- DAFTAR SISWA -->

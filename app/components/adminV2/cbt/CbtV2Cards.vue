@@ -72,6 +72,26 @@ const STATUS: Record<StatusKartu, { label: string, kelas: string }> = {
   nonaktif: { label: 'Siswa nonaktif', kelas: 'bg-[#F2F4F7] text-[#475467]' }
 }
 
+// Label opsi dropdown kelas: jumlah kartu + tanda masalah kelas itu (susulan / administrasi).
+const jumlahStatusKelas = (nama: string, st: StatusKartu) => siswa.value.filter(s => s.classroom === nama && statusKartu(s) === st).length
+const labelKelas = (k: { nama: string, siswa: number, kartu: number, belumBeres: number }) => {
+  let label = `${k.nama} — ${k.kartu}/${k.siswa} kartu`
+  const susulan = jumlahStatusKelas(k.nama, 'susulan')
+  if (susulan) label += ` · ${susulan} perlu kartu susulan`
+  if (k.belumBeres) label += ` · ${k.belumBeres} administrasi belum beres`
+  return label
+}
+// Ringkasan ringkas di samping dropdown: kelas terpilih, atau semua kelas bila belum memilih.
+const ringkasPilihan = computed(() => {
+  const isi = kelas.value ? siswa.value.filter(s => s.classroom === kelas.value) : siswa.value
+  return {
+    kartu: isi.filter(s => s.token).length,
+    total: isi.length,
+    susulan: isi.filter(s => statusKartu(s) === 'susulan').length,
+    belumBeres: isi.filter(s => !s.eligible).length
+  }
+})
+
 // Filter: kelas, status, dan pencarian nama/NIS.
 const filterStatus = ref<'' | StatusKartu>('')
 const cari = ref('')
@@ -367,33 +387,25 @@ const exportExcel = async () => {
       </div>
     </div>
 
-    <!-- Daftar kartu: filter kelas (satu baris geser), cari, status, lalu listing per kelas -->
+    <!-- Daftar kartu: pilih kelas via dropdown sederhana, cari, status, lalu listing per kelas -->
     <div v-if="aktif" class="overflow-hidden rounded-2xl border border-[#E7EBF2] bg-white">
       <div class="space-y-2 border-b border-[#E7EBF2] p-3 sm:p-4">
-        <div class="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" role="group" aria-label="Filter kelas">
-          <button
-            type="button"
-            class="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold"
-            :class="!kelas ? 'border-[#1B5FD9] bg-[#EEF4FF] text-[#0A2A5C]' : 'border-[#E7EBF2] text-[#344054] hover:border-[#C9D5E8]'"
-            :aria-pressed="!kelas"
-            @click="kelas = ''"
-          >
-            Semua <span class="font-semibold text-[#667085] tabular-nums">{{ ringkas.kartu }}/{{ siswa.length }}</span>
-          </button>
-          <button
-            v-for="k in rekapKelas"
-            :key="k.nama"
-            type="button"
-            class="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold"
-            :class="kelas === k.nama ? 'border-[#1B5FD9] bg-[#EEF4FF] text-[#0A2A5C]' : 'border-[#E7EBF2] text-[#344054] hover:border-[#C9D5E8]'"
-            :aria-pressed="kelas === k.nama"
-            :title="k.belumBeres ? `${k.belumBeres} administrasi belum beres` : undefined"
-            @click="kelas = k.nama"
-          >
-            {{ k.nama }}
-            <span class="font-semibold tabular-nums" :class="k.kartu < k.siswa ? 'text-[#B54708]' : 'text-[#667085]'">{{ k.kartu }}/{{ k.siswa }}</span>
-            <span v-if="k.belumBeres" class="h-1.5 w-1.5 rounded-full bg-[#D92D20]" aria-hidden="true" />
-          </button>
+        <div class="flex flex-wrap items-end gap-x-4 gap-y-2">
+          <div>
+            <label class="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[#98A2B3]" for="kartu-kelas">Kelas</label>
+            <select id="kartu-kelas" v-model="kelas" class="min-h-10 w-full rounded-[10px] border border-[#DFE5EE] bg-white px-3 text-[13px] font-semibold text-[#101828] shadow-[0_1px_2px_rgba(16,24,40,0.04)] outline-none focus:border-[#1B5FD9] sm:w-[340px]">
+              <option value="">Semua kelas — {{ ringkas.kartu }}/{{ siswa.length }} kartu</option>
+              <option v-for="k in rekapKelas" :key="k.nama" :value="k.nama">{{ labelKelas(k) }}</option>
+            </select>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5 pb-1 text-xs text-[#667085]">
+            <span><b class="text-[#101828]">{{ ringkasPilihan.kartu }}/{{ ringkasPilihan.total }}</b> kartu terbit</span>
+            <span class="h-[5px] w-[90px] overflow-hidden rounded-full bg-[#EEF1F6]"><span class="block h-full rounded-full bg-[#34C77B]" :style="{ width: `${ringkasPilihan.total ? (ringkasPilihan.kartu / ringkasPilihan.total) * 100 : 0}%` }" /></span>
+            <span v-if="ringkasPilihan.belumBeres" class="font-semibold text-[#B42318]">{{ ringkasPilihan.belumBeres }} administrasi belum beres</span>
+            <span v-else-if="ringkasPilihan.susulan" class="font-semibold text-[#B54708]">{{ ringkasPilihan.susulan }} perlu kartu susulan</span>
+            <span v-else-if="ringkasPilihan.total && ringkasPilihan.kartu === ringkasPilihan.total" class="font-semibold text-[#087C52]">Semua kartu terbit</span>
+            <span v-else-if="ringkasPilihan.total" class="font-semibold text-[#475467]">{{ ringkasPilihan.total - ringkasPilihan.kartu }} belum punya kartu</span>
+          </div>
         </div>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
