@@ -104,6 +104,7 @@ const ujianAktif = computed(() => ujianRuang.value.find(item => item.key === uji
 
 const baris = computed(() => barisSiswa(progres.value, ujianAktif.value ? ujianAktif.value.examIds : null))
 const ringkas = computed(() => ringkasProgres(baris.value))
+const donatOffset = computed(() => (194.8 * (100 - Math.min(100, Math.max(0, ringkas.value.rataProgres)))) / 100)
 const komposisi = computed(() => komposisiKelas(anggota.value.map(item => item.kelas)))
 const examTampil = computed(() => new Set(ujianRuang.value.flatMap(u => u.examIds)))
 const alertRuang = computed(() => bolehKelola.value ? alerts.value : alerts.value.filter(item => examTampil.value.has(item.exam_id)))
@@ -301,8 +302,8 @@ const eksporExcel = async () => {
     <div v-else-if="loading" class="rounded-2xl border border-[#E7EBF2] bg-white p-8 text-center text-xs text-[#667085]">Memuat data ruang…</div>
 
     <template v-else>
-      <!-- Pilih ujian (Overview & Daftar Siswa) -->
-      <div v-if="(sub === 'overview' || sub === 'siswa') && ujianRuang.length" class="flex flex-col gap-1.5">
+      <!-- Pilih ujian (Daftar Siswa; di Overview pemilih menyatu di panel ringkasan) -->
+      <div v-if="sub === 'siswa' && ujianRuang.length" class="flex flex-col gap-1.5">
         <label class="text-xs font-bold text-[#344054]" for="ujian-ruang">Ujian di ruang ini</label>
         <select id="ujian-ruang" v-model="ujianPilihan" class="min-h-11 w-full rounded-xl border border-[#E7EBF2] bg-white px-3 text-sm sm:max-w-xl">
           <option v-for="u in ujianRuang" :key="u.key" :value="u.key">{{ u.subject }} · {{ u.name }} · {{ u.date }} {{ u.time }}</option>
@@ -311,43 +312,99 @@ const eksporExcel = async () => {
 
       <!-- OVERVIEW -->
       <div v-if="sub === 'overview'" class="space-y-4">
-        <CbtV2SebQuit v-if="bolehPunishment" :target-id="room.id" @toast="emit('toast', $event)" />
+        <!-- Panel ringkasan: pemilih ujian + donut progres + angka kunci dalam satu permukaan terang -->
+        <section class="rounded-[20px] border border-[#E5EAF1] bg-white shadow-[0_1px_3px_rgba(16,24,40,0.05),0_12px_32px_-12px_rgba(16,24,40,0.08)] p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-4">
+            <div v-if="ujianRuang.length" class="w-full sm:w-[min(430px,100%)]">
+              <label class="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#98A2B3]" for="ujian-ruang-ov">Ujian yang ditampilkan</label>
+              <select id="ujian-ruang-ov" v-model="ujianPilihan" class="min-h-[42px] w-full rounded-[11px] border border-[#DFE5EE] bg-white px-3 text-[13px] font-medium text-[#101828] shadow-[0_1px_2px_rgba(16,24,40,0.04)] outline-none focus:border-[#1B5FD9]">
+                <option v-for="u in ujianRuang" :key="u.key" :value="u.key">{{ u.subject }} · {{ u.name }} · {{ u.date }} {{ u.time }}</option>
+              </select>
+            </div>
+            <div class="min-w-0">
+              <template v-if="ujianAktif">
+                <h3 class="text-base font-semibold tracking-tight text-[#101828] sm:text-[17px]">{{ ujianAktif.subject }} <span class="font-normal text-[#7A8699]">· {{ ujianAktif.name }}</span></h3>
+                <p class="mt-0.5 text-xs text-[#98A2B3]">{{ hariU(ujianAktif) }}, {{ ujianAktif.date }} · {{ ujianAktif.time }} · {{ ujianAktif.examIds.length }} kelas · <b class="font-semibold" :class="ujianAktif.status === 'Berlangsung' ? 'text-[#0B7A4B]' : ujianAktif.status === 'Selesai' ? 'text-[#667085]' : 'text-[#9A6A14]'">{{ ujianAktif.status }}</b></p>
+              </template>
+              <template v-else>
+                <h3 class="text-base font-semibold tracking-tight text-[#101828]">Belum ada ujian di ruang ini</h3>
+                <p class="mt-0.5 text-xs text-[#98A2B3]">Jadwal muncul otomatis setelah ujian kelas siswa ruang ini dibuat di Daftar Ujian.</p>
+              </template>
+            </div>
+            <div class="ml-auto flex-none text-center">
+              <div class="relative h-[76px] w-[76px]">
+                <svg width="76" height="76" viewBox="0 0 76 76" class="-rotate-90" aria-hidden="true">
+                  <circle cx="38" cy="38" r="31" fill="none" stroke="#EEF1F6" stroke-width="7" />
+                  <circle cx="38" cy="38" r="31" fill="none" stroke="#34C77B" stroke-width="7" stroke-linecap="round" stroke-dasharray="194.8" :stroke-dashoffset="donatOffset" />
+                </svg>
+                <span class="absolute inset-0 flex items-center justify-center text-[15px] font-bold tabular-nums text-[#0A2A5C]">{{ ringkas.rataProgres }}%</span>
+              </div>
+              <p class="mt-1 text-[10.5px] font-medium text-[#98A2B3]">Progres pengerjaan</p>
+            </div>
+          </div>
+          <div class="mt-5 grid grid-cols-3 gap-x-3 gap-y-5 border-t border-[#EEF1F6] pt-5 lg:grid-cols-6">
+            <div>
+              <span class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#EAF1FE] text-[#1B5FD9]"><AdminV2Icon name="users" :size="17" /></span>
+              <b class="mt-2.5 block text-[25px] font-semibold leading-none tabular-nums text-[#101828]">{{ ringkas.siswa }}</b>
+              <span class="mt-1 block text-xs font-medium text-[#667085]">Siswa</span>
+            </div>
+            <div>
+              <span class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#F0EBFA] text-[#6941C6]"><AdminV2Icon name="pencil" :size="17" /></span>
+              <b class="mt-2.5 block text-[25px] font-semibold leading-none tabular-nums text-[#101828]">{{ ringkas.mengerjakan }}</b>
+              <span class="mt-1 block text-xs font-medium text-[#667085]">Mengerjakan</span>
+            </div>
+            <div>
+              <span class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#E6F7EE] text-[#0B7A4B]"><AdminV2Icon name="check" :size="17" /></span>
+              <b class="mt-2.5 block text-[25px] font-semibold leading-none tabular-nums text-[#101828]">{{ ringkas.selesai }}</b>
+              <span class="mt-1 block text-xs font-medium text-[#667085]">Selesai</span>
+            </div>
+            <div>
+              <span class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#EEF1F6] text-[#667085]"><AdminV2Icon name="clock" :size="17" /></span>
+              <b class="mt-2.5 block text-[25px] font-semibold leading-none tabular-nums text-[#101828]">{{ ringkas.belumMulai }}</b>
+              <span class="mt-1 block text-xs font-medium text-[#667085]">Belum mulai</span>
+            </div>
+            <div>
+              <span class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#FBF3E0] text-[#B07E1E]"><AdminV2Icon name="shield" :size="17" /></span>
+              <b class="mt-2.5 block text-[25px] font-semibold leading-none tabular-nums" :class="ringkas.terkunci ? 'text-[#D92D20]' : 'text-[#101828]'">{{ ringkas.terkunci }}</b>
+              <span class="mt-1 block text-xs font-medium text-[#667085]">Terkunci</span>
+            </div>
+            <div>
+              <span class="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#FDECEA] text-[#D92D20]"><AdminV2Icon name="alert" :size="17" /></span>
+              <b class="mt-2.5 block text-[25px] font-semibold leading-none tabular-nums text-[#101828]">{{ ringkas.pelanggaran }}</b>
+              <span class="mt-1 block text-xs font-medium text-[#667085]">Pelanggaran</span>
+            </div>
+          </div>
+        </section>
 
-        <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-          <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#101828]">{{ ringkas.siswa }}</b><span class="text-[11px] text-[#667085]">Siswa</span></div>
-          <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#1B5FD9]">{{ ringkas.mengerjakan }}</b><span class="text-[11px] text-[#667085]">Mengerjakan</span></div>
-          <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#087C52]">{{ ringkas.selesai }}</b><span class="text-[11px] text-[#667085]">Selesai</span></div>
-          <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#101828]">{{ ringkas.belumMulai }}</b><span class="text-[11px] text-[#667085]">Belum mulai</span></div>
-          <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold" :class="ringkas.terkunci ? 'text-[#B42318]' : 'text-[#101828]'">{{ ringkas.terkunci }}</b><span class="text-[11px] text-[#667085]">Terkunci</span></div>
-          <div class="rounded-2xl border border-[#E7EBF2] bg-white p-3.5"><b class="block text-xl font-extrabold text-[#101828]">{{ ringkas.pelanggaran }}</b><span class="text-[11px] text-[#667085]">Pelanggaran</span></div>
-        </div>
+        <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div class="min-w-0 space-y-4">
+            <section class="rounded-[20px] border border-[#E5EAF1] bg-white shadow-[0_1px_3px_rgba(16,24,40,0.05),0_12px_32px_-12px_rgba(16,24,40,0.08)] p-5">
+              <h3 class="flex items-center gap-2.5 text-[13px] font-semibold text-[#101828]"><span class="inline-flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-[#EAF1FE] text-[#1B5FD9]"><AdminV2Icon name="cal" :size="14" /></span>Ujian di ruang ini</h3>
+              <p v-if="!ujianRuang.length" class="mt-2.5 text-xs text-[#667085]">Belum ada ujian. {{ arsip || !bolehKelola ? '' : 'Jadwal muncul otomatis setelah ujian kelas siswa ruang ini dibuat di Daftar Ujian.' }}</p>
+              <ul v-else class="mt-2 divide-y divide-[#EFF2F7]">
+                <li v-for="u in ujianRuang" :key="u.key" class="flex items-start justify-between gap-3 py-2.5">
+                  <div class="min-w-0">
+                    <b class="block break-words text-xs font-bold text-[#101828]">{{ u.subject }} · {{ u.name }}</b>
+                    <span class="text-[11px] text-[#667085]">{{ u.date }} · {{ u.time }} · {{ u.examIds.length }} kelas</span>
+                  </div>
+                  <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold" :class="u.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : u.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ u.status }}</span>
+                </li>
+              </ul>
+            </section>
 
-        <div class="grid gap-4 lg:grid-cols-2">
-          <section class="rounded-2xl border border-[#E7EBF2] bg-white p-4 sm:p-5">
-            <h3 class="text-sm font-extrabold text-[#101828]">Ujian di ruang ini</h3>
-            <p v-if="!ujianRuang.length" class="mt-2 text-xs text-[#667085]">Belum ada ujian. {{ arsip || !bolehKelola ? '' : 'Jadwal muncul otomatis setelah ujian kelas siswa ruang ini dibuat di Daftar Ujian.' }}</p>
-            <ul v-else class="mt-3 divide-y divide-[#EFF2F7]">
-              <li v-for="u in ujianRuang" :key="u.key" class="flex items-start justify-between gap-3 py-2.5">
-                <div class="min-w-0">
-                  <b class="block break-words text-xs font-bold text-[#101828]">{{ u.subject }} · {{ u.name }}</b>
-                  <span class="text-[11px] text-[#667085]">{{ u.date }} · {{ u.time }} · {{ u.examIds.length }} kelas</span>
+            <section class="rounded-[20px] border border-[#E5EAF1] bg-white shadow-[0_1px_3px_rgba(16,24,40,0.05),0_12px_32px_-12px_rgba(16,24,40,0.08)] p-5">
+              <h3 class="flex items-center gap-2.5 text-[13px] font-semibold text-[#101828]"><span class="inline-flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-[#F0EBFA] text-[#6941C6]"><AdminV2Icon name="layers" :size="14" /></span>Asal kelas siswa</h3>
+              <p v-if="!komposisi.length" class="mt-2.5 text-xs text-[#667085]">Ruang masih kosong.</p>
+              <template v-else>
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                  <span v-for="k in komposisi" :key="k.kelas" class="inline-flex items-baseline gap-1.5 rounded-lg bg-[#F7F9FC] px-2.5 py-[5px] text-xs font-semibold text-[#344054]">{{ k.kelas }} <b class="font-semibold tabular-nums text-[#0A2A5C]">{{ k.jumlah }}</b> <small class="text-[10.5px] font-medium text-[#98A2B3]">siswa</small></span>
                 </div>
-                <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold" :class="u.status === 'Berlangsung' ? 'bg-[#E7F8F0] text-[#087C52]' : u.status === 'Selesai' ? 'bg-[#EFF2F7] text-[#344054]' : 'bg-[#FEF4E5] text-[#AD6504]'">{{ u.status }}</span>
-              </li>
-            </ul>
-          </section>
+                <p class="mt-3 border-t border-[#EEF1F6] pt-2.5 text-xs text-[#98A2B3]">Total <b class="font-semibold text-[#344054]">{{ anggota.length }} siswa</b> dari <b class="font-semibold text-[#344054]">{{ komposisi.length }} kelas</b></p>
+              </template>
+            </section>
+          </div>
 
-          <section class="rounded-2xl border border-[#E7EBF2] bg-white p-4 sm:p-5">
-            <h3 class="text-sm font-extrabold text-[#101828]">Asal kelas siswa</h3>
-            <p v-if="!komposisi.length" class="mt-2 text-xs text-[#667085]">Ruang masih kosong.</p>
-            <ul v-else class="mt-3 space-y-2.5">
-              <li v-for="k in komposisi" :key="k.kelas">
-                <div class="flex items-center justify-between text-xs"><span class="font-semibold text-[#344054]">{{ k.kelas }}</span><b class="text-[#101828]">{{ k.jumlah }}</b></div>
-                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-[#EFF2F7]"><div class="h-full rounded-full bg-[#1B5FD9]" :style="{ width: `${Math.round((k.jumlah / Math.max(1, anggota.length)) * 100)}%` }" /></div>
-              </li>
-            </ul>
-            <p v-if="ujianAktif" class="mt-4 border-t border-[#EFF2F7] pt-3 text-xs text-[#667085]">Rata-rata progres pengerjaan: <b class="text-[#101828]">{{ ringkas.rataProgres }}%</b></p>
-          </section>
+          <CbtV2SebQuit v-if="bolehPunishment" :target-id="room.id" class="min-w-0" @toast="emit('toast', $event)" />
         </div>
       </div>
 
