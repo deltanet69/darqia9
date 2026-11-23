@@ -78,10 +78,10 @@ export const useKartuUjian = (sumber: SumberKartu = 'cbt') => {
   // Sumber utama = tabel kartu (kartu tidak hilang walau siswa pindah kelas/nonaktif), ditambah siswa aktif yang belum punya kartu.
   // shortcut: satu permintaan 1000 baris per jenjang, cukup untuk sekolah ini; paginasi bila melebihi.
   const muatSiswa = async (periode: PeriodeKartu): Promise<SiswaKartu[]> => {
-    // Ruang hanya ada di CBT PTS/PAS; LMS ujian harian tidak punya ruang.
-    const ruangQuery = periode.source === 'cbt'
-      ? client.from('exam_room_members').select('student_id, exam_rooms!inner(name)').eq('periode', periode.periode).is('deleted_at', null).is('exam_rooms.deleted_at', null).range(0, 999)
-      : Promise.resolve({ data: [], error: null })
+    // Penugasan ruang di database unik per (ruang, siswa) aktif: satu siswa hanya punya SATU ruang aktif
+    // lintas periode. Karena itu muat semua penugasan aktif, lalu utamakan yang nama periodenya sama persis;
+    // bila tidak ada, pakai penugasan aktif lainnya (susunan ruang sekolah berlaku untuk semua periode berjalan).
+    const ruangQuery = client.from('exam_room_members').select('student_id, periode, exam_rooms!inner(name)').is('deleted_at', null).is('exam_rooms.deleted_at', null).range(0, 1999)
     const [kartu, siswa, ruang] = await Promise.all([
       client.from('exam_cards').select('id, student_id, token, class_id, classroom, students(name, nis, nisn, birth_place, birth_date, exam_eligible, active), classes(major)').eq('period_id', periode.id).range(0, 999),
       client.from('students').select('id, nis, nisn, birth_place, birth_date, name, class_id, exam_eligible, classes(name, major)').eq('grade', periode.grade).eq('active', true).range(0, 999),
@@ -90,7 +90,12 @@ export const useKartuUjian = (sumber: SumberKartu = 'cbt') => {
     galat(kartu.error)
     galat(siswa.error)
     // Gagal memuat ruang tidak menggagalkan daftar: kolom ruang kosong saja.
-    const ruangByStudent = new Map((ruang.error ? [] : ruang.data ?? []).map((row: any) => [row.student_id, row.exam_rooms?.name ?? '']))
+    const ruangByStudent = new Map<string, string>()
+    for (const row of (ruang.error ? [] : ruang.data ?? []) as any[]) {
+      const nama = row.exam_rooms?.name ?? ''
+      if (!nama) continue
+      if (!ruangByStudent.has(row.student_id) || row.periode === periode.periode) ruangByStudent.set(row.student_id, nama)
+    }
     const punyaKartu = new Set<string>()
     const rows: SiswaKartu[] = (kartu.data ?? []).map((row: any) => {
       punyaKartu.add(row.student_id)

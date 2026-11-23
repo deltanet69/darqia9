@@ -119,7 +119,7 @@
 <script setup lang="ts">
 import { inisialNama } from '~/composables/keuanganCore'
 import QRCode from 'qrcode'
-import { cetakKartu, buatNoPeserta, URL_UNDUH_APK } from '~/utils/cbtKartuCetak'
+import { cetakKartu, buatNoPeserta, URL_UNDUH_APK, muatFotoKartu } from '~/utils/cbtKartuCetak'
 import type { KartuOrtu, KontakOrtu, ProfilOrtu } from '~/types/ortu'
 
 type KartuDipilih = { jenis: 'pelajar' } | { jenis: 'ujian', periodeId: string, periode: string }
@@ -177,6 +177,7 @@ const judulLembar = computed(() => lembar.value === 'sandi' ? 'Ganti kata sandi'
 
 const token = ref('')
 const kelasKartu = ref('')
+const ruangKartu = ref('')
 const tampilToken = ref(false)
 const tokenSibuk = ref(false)
 const galatKartu = ref('')
@@ -203,9 +204,10 @@ const ambilToken = async () => {
   tokenSibuk.value = true
   galatKartu.value = ''
   try {
-    const r = await api<{ token: string, kelas: string }>('/api/ortu/kartu-token', { method: 'POST', body: { periodeId: c.periodeId } })
+    const r = await api<{ token: string, kelas: string, ruang: string }>('/api/ortu/kartu-token', { method: 'POST', body: { periodeId: c.periodeId } })
     token.value = r.token
     kelasKartu.value = r.kelas
+    ruangKartu.value = r.ruang
     return true
   } catch (e) {
     galatKartu.value = pesanGalat(e)
@@ -274,7 +276,7 @@ const unduhKartu = async () => {
       const s = p.value!.siswa
       const qr = await QRCode.toDataURL(URL_UNDUH_APK, { margin: 0, width: 240, errorCorrectionLevel: 'M' })
       const pesan = cetakKartu({
-        kartu: [{ name: s.nama, nis: s.nis, nisn: s.nisn, ttl: s.ttl, classroom: kelasKartu.value || s.kelas, major: s.jurusan, token: token.value, noPeserta: buatNoPeserta(s.tahunAjaran, c.periode, s.nis) }],
+        kartu: [{ name: s.nama, nis: s.nis, nisn: s.nisn, ttl: s.ttl, classroom: kelasKartu.value || s.kelas, major: s.jurusan, room: ruangKartu.value, token: token.value, noPeserta: buatNoPeserta(s.tahunAjaran, c.periode, s.nis), foto: await muatFotoKartu(s.nis, 'ortu') }],
         grade: sesi.value?.jenjang ?? 'SMK', jenis: c.periode, judul: `${c.periode} · ${s.nama}`, tahunAjaran: s.tahunAjaran, qr
       })
       if (pesan) { galatKartu.value = pesan; unduh.value = 'siap'; return }

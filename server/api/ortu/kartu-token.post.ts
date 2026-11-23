@@ -22,6 +22,14 @@ export default defineEventHandler(async (event) => {
   if (!p) throw createError({ statusCode: 404, statusMessage: 'Kartu ujian periode ini belum dirilis.' })
   const { data: k } = await db.from('exam_cards').select('token, classroom').eq('period_id', p.id).eq('student_id', sesi.studentId).maybeSingle()
   if (!k?.token) throw createError({ statusCode: 404, statusMessage: 'Kartu ujian ananda belum diterbitkan. Hubungi Tata Usaha.' })
+  // Ruang ujian: satu siswa hanya punya satu penugasan ruang aktif lintas periode (unik per ruang+siswa);
+  // utamakan penugasan yang nama periodenya sama persis dengan periode kartu ini.
+  const { data: rm } = await db.from('exam_room_members').select('periode, exam_rooms!inner(name)').eq('student_id', sesi.studentId).is('deleted_at', null).is('exam_rooms.deleted_at', null)
+  let ruang = ''
+  for (const row of (rm ?? []) as any[]) {
+    const nama = row.exam_rooms?.name ?? ''
+    if (nama && (!ruang || row.periode === p.periode)) ruang = nama
+  }
   await catatLogOrtu(db, sesi, 'buka token kartu ujian', p.periode)
-  return { token: k.token as string, kelas: (k.classroom as string) || '' }
+  return { token: k.token as string, kelas: (k.classroom as string) || '', ruang }
 })
