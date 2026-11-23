@@ -447,6 +447,60 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     return (data as { sisaDetik?: number })?.sisaDetik ?? 0
   }
 
+  // Panel Manajemen Ujian (semua rombel, satu jenjang): muat RINGAN tanpa load() penuh.
+  // Hanya mengambil: daftar ujian (kolom kecil) + pelanggaran terbaru (dibatasi) + semua pelanggaran
+  // yang masih terkunci (berapa pun tanggalnya, supaya tidak ada kunci yang terlewat dari panel).
+  const loadPelanggaranPanel = async (grade: GradeType, batas = 250): Promise<{
+    baris: PelanggaranRombel[]
+    ujian: Map<string, { nama: string, mapel: string, kelas: string }>
+  }> => {
+    const t = tables.assignments
+    const [kelasRes, mapelRes, ujianRes] = await Promise.all([
+      client.from('classes').select('id, name'),
+      client.from('subjects').select('id, name'),
+      client.from(tables.exams).select('id, name, class_id, subject_id').eq('grade', grade)
+    ])
+    if (kelasRes.error || mapelRes.error || ujianRes.error) {
+      throw new Error((kelasRes.error || mapelRes.error || ujianRes.error)!.message)
+    }
+    const kelasById = new Map((kelasRes.data ?? []).map((k: any) => [k.id, k.name as string]))
+    const mapelById = new Map((mapelRes.data ?? []).map((m: any) => [m.id, m.name as string]))
+    const ujian = new Map<string, { nama: string, mapel: string, kelas: string }>()
+    for (const u of (ujianRes.data ?? []) as any[]) {
+      ujian.set(u.id, { nama: u.name, mapel: mapelById.get(u.subject_id) ?? '-', kelas: kelasById.get(u.class_id) ?? '-' })
+    }
+    const examIds = [...ujian.keys()]
+    if (!examIds.length) return { baris: [], ujian }
+    const kolom = `id, assignment_id, violation_type, occurred_at, occurrence, locked${kolomKode}, dipulihkan, ${t}!inner(exam_id, student_id, status)`
+    const [terbaru, terkunciRes] = await Promise.all([
+      client.from(tables.violations).select(kolom).in(`${t}.exam_id`, examIds)
+        .order('occurred_at', { ascending: false }).limit(batas),
+      client.from(tables.violations).select(kolom).in(`${t}.exam_id`, examIds)
+        .eq('locked', true).order('occurred_at', { ascending: false }).limit(500)
+    ])
+    if (terbaru.error || terkunciRes.error) throw new Error((terbaru.error || terkunciRes.error)!.message)
+    const gabung = new Map<string, any>()
+    for (const v of [...(terkunciRes.data ?? []), ...(terbaru.data ?? [])]) gabung.set(v.id, v)
+    const barisMentah = [...gabung.values()].sort((a, b) => String(b.occurred_at).localeCompare(String(a.occurred_at)))
+    await isiKodeCbt(barisMentah)
+    const belumAda = [...new Set(barisMentah.map(v => v[t]?.student_id).filter((id: string) => id && !cacheMurid.has(id)))]
+    if (belumAda.length) {
+      const { data: murid, error: e2 } = await client.from('students').select('id, name, nis').in('id', belumAda)
+      if (e2) throw new Error(e2.message)
+      for (const m of murid ?? []) cacheMurid.set(m.id, { name: m.name, nis: m.nis ?? '' })
+    }
+    const baris = barisMentah.map(v => {
+      const a = v[t] ?? {}
+      const m = cacheMurid.get(a.student_id)
+      return {
+        id: v.id, examId: a.exam_id ?? '', studentId: a.student_id ?? '', nama: m?.name ?? '-', nis: m?.nis ?? '',
+        jenis: v.violation_type, waktu: v.occurred_at, ke: v.occurrence, terkunci: !!v.locked, kode: v.unlock_code ?? '',
+        selesai: a.status === 'selesai', assignmentId: v.assignment_id, dipulihkan: !!v.dipulihkan
+      }
+    })
+    return { baris, ujian }
+  }
+
   // Panel Manajemen Ujian: admin membuka kunci langsung dari panel (tanpa siswa mengetik kode).
   // Gerbang hak di database: Superadmin atau pengawas yang bertugas di ruang siswa itu (migrasi 0092).
   const adminBukaKunci = async (assignmentId: string): Promise<number> => {
@@ -905,6 +959,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     pulihkanUjian,
     adminBukaKunci,
     adminResetPelanggaran,
+    loadPelanggaranPanel,
     load,
     saveBankPackage,
     deleteBankPackage,

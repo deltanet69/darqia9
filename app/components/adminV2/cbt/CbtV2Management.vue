@@ -68,20 +68,18 @@ const ujianKey = (source: AssessmentSource, examId: string) => `${source}:${exam
 const kunciPenugasan = (p: BarisPelanggaran) => `${p.source}:${p.assignmentId}`
 
 const muatPelanggaran = async () => {
+  if (memuatV.value) return
   memuatV.value = true
   try {
-    await Promise.all([cbt.load(), lms.load()])
+    // Loader ringan khusus panel: tanpa load() penuh, pelanggaran dibatasi + semua yang masih terkunci.
     const hasil: BarisPelanggaran[] = []
     for (const [api, source] of [[cbt, 'cbt'], [lms, 'ujian_harian']] as const) {
-      const ujianGrade = api.exams.value.filter(e => e.grade === props.grade)
-      if (!ujianGrade.length) continue
-      const byId = new Map(ujianGrade.map(e => [e.id, e]))
-      const rows = await api.loadPelanggaranRombel(ujianGrade.map(e => e.id))
-      for (const r of rows) {
-        const u = byId.get(r.examId)
+      const { baris, ujian } = await api.loadPelanggaranPanel(props.grade)
+      for (const r of baris) {
+        const u = ujian.get(r.examId)
         hasil.push({
           ...r, source,
-          ujianNama: u?.name ?? '-', mapel: u?.subject ?? '-', kelasRombel: u?.classroom ?? '-'
+          ujianNama: u?.nama ?? '-', mapel: u?.mapel ?? '-', kelasRombel: u?.kelas ?? '-'
         })
       }
     }
@@ -246,8 +244,11 @@ interface BarisTugas {
   kelas: number
 }
 
+// Daftar ujian ringan khusus tab Pengawas (kolom kecil saja, tanpa load() penuh).
+const ujianPengawas = ref<{ id: string, subjectId: string, subject: string, name: string, startsAt?: string, duration: number, grade: GradeType }[]>([])
+
 const barisTugas = computed<BarisTugas[]>(() => {
-  const examById = new Map(cbt.exams.value.map(item => [item.id, item]))
+  const examById = new Map(ujianPengawas.value.map(item => [item.id, item]))
   const grup = new Map<string, BarisTugas>()
   for (const t of tautanList.value) {
     const exam = examById.get(t.exam_id)
@@ -327,7 +328,18 @@ const muatPengawas = async () => {
   memuatP.value = true
   galatP.value = ''
   try {
-    await cbt.load()
+    if (!ujianPengawas.value.length) {
+      const [uRes, sRes] = await Promise.all([
+        client.from('exams').select('id, name, subject_id, starts_at, duration_minutes, grade'),
+        client.from('subjects').select('id, name')
+      ])
+      if (uRes.error) throw new Error(uRes.error.message)
+      const mapelById = new Map((sRes.data ?? []).map((m: any) => [m.id, m.name as string]))
+      ujianPengawas.value = ((uRes.data ?? []) as any[]).map(e => ({
+        id: e.id, subjectId: e.subject_id, subject: mapelById.get(e.subject_id) ?? '-',
+        name: e.name, startsAt: e.starts_at ?? undefined, duration: e.duration_minutes, grade: e.grade
+      }))
+    }
     if (!namaGuru.value.size) {
       const { data } = await client.from('teachers').select('id, name').order('name')
       namaGuru.value = new Map((data ?? []).map((t: any) => [t.id as string, t.name as string]))
