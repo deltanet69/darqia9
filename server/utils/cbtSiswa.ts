@@ -97,12 +97,32 @@ export async function rpcSiswa(event: H3Event, fungsi: string, args: Record<stri
 // dimatikan (NUXT_CBT_GERBANG_APLIKASI=false), NIS ada di daftar pengecualian, atau sesi login milik guru/admin.
 // shortcut: User-Agent & penanda aplikasi bisa dipalsukan; naikkan ke Config Key SEB / tanda tangan aplikasi bila perlu.
 export const PESAN_GERBANG = 'Ujian wajib lewat aplikasi.'
+
+// Daftar bebas gerbang dari tab Kebijakan Ujian (tabel cbt_bebas_gerbang, migrasi 0092), dicache 60 detik
+// supaya jalur login ujian tidak menambah query per siswa. Tabel belum ada (migrasi belum dijalankan)
+// atau query gagal = tidak ada pengecualian dari panel; daftar env tetap berlaku seperti biasa.
+const bebasPanelCache = { at: 0, nis: new Set<string>() }
+async function nisBebasDariPanel(event: H3Event, nis: string): Promise<boolean> {
+  if (Date.now() - bebasPanelCache.at > 60_000) {
+    try {
+      const hariIni = new Date().toISOString().slice(0, 10)
+      const { data, error } = await klienService(event).from('cbt_bebas_gerbang')
+        .select('nis').eq('aktif', true).or(`berlaku_sampai.is.null,berlaku_sampai.gte.${hariIni}`)
+      if (!error && data) {
+        bebasPanelCache.nis = new Set(data.map((r: any) => String(r.nis).trim()))
+        bebasPanelCache.at = Date.now()
+      }
+    } catch { /* abaikan: gerbang tetap berlaku */ }
+  }
+  return bebasPanelCache.nis.has(nis)
+}
 export async function bebasGerbang(event: H3Event, b: BodySiswa): Promise<boolean> {
   const cfg = useRuntimeConfig(event)
   if (String(cfg.cbtGerbangAplikasi) === 'false') return true
   const ua = getRequestHeader(event, 'user-agent') || ''
   if (b.aplikasi || ua.includes('DarqiaCBT/') || (/\bSEB\//.test(ua) && /iPhone|iPad|iPod|Macintosh/.test(ua))) return true
   if (String(cfg.cbtGerbangNisBebas).split(',').map(s => s.trim()).includes(b.nis)) return true
+  if (await nisBebasDariPanel(event, b.nis)) return true
   try {
     if (!(await serverSupabaseUser(event))?.sub) return false
     const { data } = await (await serverSupabaseClient(event) as any).rpc('is_staff')

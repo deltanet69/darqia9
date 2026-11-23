@@ -447,6 +447,21 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     return (data as { sisaDetik?: number })?.sisaDetik ?? 0
   }
 
+  // Panel Manajemen Ujian: admin membuka kunci langsung dari panel (tanpa siswa mengetik kode).
+  // Gerbang hak di database: Superadmin atau pengawas yang bertugas di ruang siswa itu (migrasi 0092).
+  const adminBukaKunci = async (assignmentId: string): Promise<number> => {
+    const { data, error: e } = await client.rpc('cbt_admin_buka_kunci', { p_source: source, p_assignment_id: assignmentId })
+    if (e) throw new Error(/cbt_admin_buka_kunci/.test(e.message) ? 'Jalankan migrasi 0092_manajemen_ujian_kebijakan.sql di Supabase SQL Editor.' : e.message)
+    return (data as { dibuka?: number })?.dibuka ?? 0
+  }
+
+  // Panel Manajemen Ujian (Superadmin): reset kunci siswa. resetHitung = true mengembalikan
+  // hitungan pelanggaran penugasan ini ke nol (semua pelanggaran jadi riwayat/dipulihkan).
+  const adminResetPelanggaran = async (assignmentId: string, resetHitung: boolean): Promise<void> => {
+    const { error: e } = await client.rpc('cbt_admin_reset_pelanggaran', { p_source: source, p_assignment_id: assignmentId, p_reset_hitung: resetHitung })
+    if (e) throw new Error(/cbt_admin_reset_pelanggaran/.test(e.message) ? 'Jalankan migrasi 0092_manajemen_ujian_kebijakan.sql di Supabase SQL Editor.' : e.message)
+  }
+
   // Nilai Siswa: nilai asli per penugasan (rumus sama dengan hasil di aplikasi siswa, migrasi 0089).
   const loadNilai = async (examIds: string[]): Promise<NilaiPenugasan[]> => {
     if (!examIds.length) return []
@@ -888,6 +903,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     loadEsai,
     koreksiEsai,
     pulihkanUjian,
+    adminBukaKunci,
+    adminResetPelanggaran,
     load,
     saveBankPackage,
     deleteBankPackage,
