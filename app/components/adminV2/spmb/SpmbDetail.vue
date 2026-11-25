@@ -25,6 +25,8 @@ const langkahAktif = computed(() => {
   return 2
 })
 const waHref = computed(() => `https://wa.me/62${(x.value.o_hp || '').replace(/\D/g, '').replace(/^0/, '')}`)
+// Bukti pembayaran tampil lewat endpoint staf (bucket privat, URL bertanda tangan).
+const urlBukti = (path: string, unduh = false) => `/api/admin/spmb/bukti?path=${encodeURIComponent(path)}${unduh ? '&unduh=1' : ''}`
 </script>
 
 <template>
@@ -107,9 +109,18 @@ const waHref = computed(() => `https://wa.me/62${(x.value.o_hp || '').replace(/\
             <div class="flex justify-between"><span class="text-[#667085]">Metode</span><span>{{ x.metode || '-' }}</span></div>
             <div>
               <span class="text-[#667085]">Bukti pembayaran</span>
-              <div v-if="x.bukti && x.bukti !== '—'" class="mt-1.5 flex h-24 items-center justify-center rounded-lg border border-dashed border-[#D0D5DD] bg-[#F9FAFB] px-3 text-center text-xs text-[#667085]">{{ x.bukti }}</div>
+              <template v-if="x.bukti_path">
+                <a :href="urlBukti(x.bukti_path)" target="_blank" rel="noopener" class="mt-1.5 block overflow-hidden rounded-lg border border-[#D0D5DD] bg-[#F9FAFB]">
+                  <img :src="urlBukti(x.bukti_path)" :alt="x.bukti" class="max-h-72 w-full object-contain" loading="lazy">
+                </a>
+                <p class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span class="text-[#667085]">{{ x.bukti }}</span>
+                  <a :href="urlBukti(x.bukti_path)" target="_blank" rel="noopener" class="font-medium text-[#175CD3]">Buka ukuran penuh</a>
+                  <a :href="urlBukti(x.bukti_path, true)" class="font-medium text-[#175CD3]">Unduh berkas</a>
+                </p>
+              </template>
               <p v-else-if="x.via === 'Manual'" class="mt-1 text-[#475467]">Dibayar tunai di sekolah — kwitansi diterbitkan panitia.</p>
-              <p v-else class="mt-1 text-[#475467]">Bukti diunggah orang tua saat pendaftaran; berkas tersimpan penuh mulai fase database.</p>
+              <p v-else class="mt-1 text-[#475467]">Tidak ada berkas bukti terlampir pada pendaftaran ini.</p>
             </div>
             <p class="text-xs text-[#667085]">Cocokkan bukti dengan mutasi rekening sekolah sebelum verifikasi.</p>
           </div>
