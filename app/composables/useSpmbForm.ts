@@ -263,6 +263,7 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     // pendaftaran langsung terbaca di Manajemen SPMB admin dari perangkat
     // mana pun. Bila jaringan/database gagal, data tetap tersimpan lokal
     // di perangkat ini sebagai cadangan (perilaku lama).
+    let tersimpanDb = false
     try {
       let buktiPath: string | null = null
       if (fileObj.value) {
@@ -307,6 +308,7 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
         }
         console.warn('SPMB: gagal menyimpan ke database, memakai simpanan lokal.', errIns.message)
       }
+      if (!errIns) tersimpanDb = true
     } catch (e) {
       console.warn('SPMB: database tidak terjangkau, memakai simpanan lokal.', e)
     }
@@ -319,6 +321,13 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       } catch (e) {
         console.error('Gagal menyimpan pendaftaran ke localStorage:', e)
       }
+    }
+
+    // Notifikasi resmi ke orang tua/wali lewat endpoint server: antrean
+    // WhatsApp (OpenWA) + email (Brevo). Kegagalan notifikasi tidak
+    // mengganggu keberhasilan pendaftaran.
+    if (tersimpanDb) {
+      void $fetch('/api/spmb/notifikasi', { method: 'POST', body: { id: reg.id } }).catch(() => {})
     }
 
     submittedReg.value = reg

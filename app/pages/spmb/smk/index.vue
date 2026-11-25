@@ -124,7 +124,64 @@
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
                     Pilihan Konsentrasi Keahlian / Jurusan <span class="text-red-500">*</span>
                   </label>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div class="space-y-5">
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 mb-2">1. Bisnis &amp; Manajemen</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <label
+                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
+                      :class="form.jurusan === 'Akuntansi dan Keuangan Lembaga' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                    >
+                      <input type="radio" v-model="form.jurusan" value="Akuntansi dan Keuangan Lembaga" class="sr-only">
+                      <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/></svg>
+                      </div>
+                      <b class="text-base font-extrabold text-slate-900 leading-tight">AKL</b>
+                      <small class="text-xs text-slate-500 mt-1">Akuntansi dan Keuangan Lembaga</small>
+                    </label>
+                    <label
+                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
+                      :class="form.jurusan === 'Otomatisasi & Tata Kelola Perkantoran' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                    >
+                      <input type="radio" v-model="form.jurusan" value="Otomatisasi & Tata Kelola Perkantoran" class="sr-only">
+                      <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                      </div>
+                      <b class="text-base font-extrabold text-slate-900 leading-tight">OTKP</b>
+                      <small class="text-xs text-slate-500 mt-1">Otomatisasi &amp; Tata Kelola Perkantoran</small>
+                    </label>
+                    </div>
+                  </div>
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 mb-2">2. Teknik Otomotif</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <label
+                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
+                      :class="form.jurusan === 'Teknik dan Bisnis Sepeda Motor' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                    >
+                      <input type="radio" v-model="form.jurusan" value="Teknik dan Bisnis Sepeda Motor" class="sr-only">
+                      <div class="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/></svg>
+                      </div>
+                      <b class="text-base font-extrabold text-slate-900 leading-tight">TBSM</b>
+                      <small class="text-xs text-slate-500 mt-1">Teknik dan Bisnis Sepeda Motor</small>
+                    </label>
+                    <label
+                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
+                      :class="form.jurusan === 'Teknik Kendaraan Ringan' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
+                    >
+                      <input type="radio" v-model="form.jurusan" value="Teknik Kendaraan Ringan" class="sr-only">
+                      <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.7-4.2A2 2 0 0 1 8.6 5.5h6.8a2 2 0 0 1 1.9 1.3L19 11"/><rect x="3" y="11" width="18" height="6" rx="1.5"/><circle cx="7.5" cy="18.5" r="1.7"/><circle cx="16.5" cy="18.5" r="1.7"/></svg>
+                      </div>
+                      <b class="text-base font-extrabold text-slate-900 leading-tight">TKR</b>
+                      <small class="text-xs text-slate-500 mt-1">Teknik Kendaraan Ringan</small>
+                    </label>
+                    </div>
+                  </div>
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 mb-2">3. Teknologi Informasi &amp; Komunikasi</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <label
                       class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
                       :class="form.jurusan === 'Teknik Komputer & Jaringan' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
@@ -136,19 +193,6 @@
                       <b class="text-base font-extrabold text-slate-900 leading-tight">TKJ</b>
                       <small class="text-xs text-slate-500 mt-1">Teknik Komputer &amp; Jaringan</small>
                     </label>
-
-                    <label
-                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
-                      :class="form.jurusan === 'Pengembangan Perangkat Lunak & Gim' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
-                    >
-                      <input type="radio" v-model="form.jurusan" value="Pengembangan Perangkat Lunak & Gim" class="sr-only">
-                      <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                      </div>
-                      <b class="text-base font-extrabold text-slate-900 leading-tight">PPLG / RPL</b>
-                      <small class="text-xs text-slate-500 mt-1">Rekayasa Perangkat Lunak</small>
-                    </label>
-
                     <label
                       class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
                       :class="form.jurusan === 'Desain Komunikasi Visual' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
@@ -160,6 +204,8 @@
                       <b class="text-base font-extrabold text-slate-900 leading-tight">DKV</b>
                       <small class="text-xs text-slate-500 mt-1">Desain Komunikasi Visual</small>
                     </label>
+                    </div>
+                  </div>
                   </div>
                 </div>
 
@@ -701,7 +747,7 @@ definePageMeta({ layout: 'default' })
 useHead({
   title: 'SPMB 2027/2028 — SMK IT Attaqwa 9',
   meta: [
-    { name: 'description', content: 'Penerimaan Murid Baru SMK IT Attaqwa 9 Babelan Tahun Ajaran 2027/2028. Jurusan TKJ, RPL/PPLG, dan DKV.' }
+    { name: 'description', content: 'Penerimaan Murid Baru SMK IT Attaqwa 9 Babelan Tahun Ajaran 2027/2028. Jurusan AKL, OTKP, TBSM, TKR, TKJ, dan DKV.' }
   ]
 })
 

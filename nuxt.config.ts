@@ -66,6 +66,8 @@ export default defineNuxtConfig({
     perpusDir: process.env.PERPUS_DIR || '/srv/darqia/perpus',
     instagramAppSecret: process.env.INSTAGRAM_APP_SECRET || '',
     instagramAccessToken: process.env.INSTAGRAM_ACCESS_TOKEN || '',
+    // Email transaksional SPMB via Brevo (akun yang sama dengan MI Attaqwa 15).
+    brevoApiKey: process.env.BREVO_API_KEY || '',
     // OCR bank soal: dua pembaca independen (utama + pemeriksa), keduanya API kompatibel OpenAI (/chat/completions).
     // Pemeriksa memakai URL/kunci yang sama dengan utama bila tidak diisi sendiri (mis. dua model GLM dari satu akun).
     ocrUtamaUrl: process.env.OCR_UTAMA_URL || 'https://api.pecutmarket.my.id/v1',
