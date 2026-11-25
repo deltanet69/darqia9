@@ -80,6 +80,11 @@ export default defineNuxtConfig({
     // NUXT_CBT_GERBANG_NIS_BEBAS: daftar NIS (pisah koma) yang boleh ujian dari browser biasa.
     cbtGerbangAplikasi: true,
     cbtGerbangNisBebas: '120194',
+    // Gateway WhatsApp OpenWA untuk notifikasi SPMB (server-only).
+    // Override tanpa build ulang: NUXT_OPENWA_URL / NUXT_OPENWA_API_KEY / NUXT_OPENWA_SESSION.
+    openwaUrl: process.env.OPENWA_URL || 'http://127.0.0.1:2786',
+    openwaApiKey: process.env.OPENWA_API_KEY || '',
+    openwaSession: process.env.OPENWA_SESSION || 'spmb',
     public: {
       // Kredensial public (bisa diakses di client jika dibutuhkan)
       instagramAppId: process.env.NUXT_PUBLIC_INSTAGRAM_APP_ID || '',

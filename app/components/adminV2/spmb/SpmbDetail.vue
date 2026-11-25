@@ -8,6 +8,7 @@ const emit = defineEmits<{
   status: [id: string, status: SpmbStatus]
   hapus: [id: string]
   ubah: [id: string]
+  wa: [id: string]
 }>()
 
 const x = computed(() => props.record)
@@ -124,6 +125,8 @@ const waHref = computed(() => `https://wa.me/62${(x.value.o_hp || '').replace(/\
             </template>
             <p v-if="x.status === 'Diterima'" class="rounded-lg bg-[#ECFDF3] px-3 py-2.5 text-sm text-[#027A48]">Pendaftaran diterima. Penempatan kelas dilakukan di tab Penempatan Kelas.</p>
             <p v-if="x.status === 'Ditolak'" class="rounded-lg bg-[#FEF3F2] px-3 py-2.5 text-sm text-[#B42318]">Pendaftaran ditolak.</p>
+            <button type="button" class="min-h-11 w-full rounded-lg bg-[#027A48] text-sm font-medium text-white" @click="emit('wa', x.id)">Kirim Notifikasi WA ke Wali</button>
+            <p class="text-xs text-[#667085]">Mengirim status terakhir ({{ x.status }}) ke nomor WA wali {{ x.o_hp }} melalui nomor WhatsApp sekolah. Setiap perubahan status di atas juga mengirim notifikasi ini otomatis.</p>
             <button v-if="x.via === 'Manual'" type="button" class="min-h-11 w-full rounded-lg border border-[#D0D5DD] text-sm font-medium text-[#344054]" @click="emit('ubah', x.id)">Ubah Data</button>
             <button type="button" class="min-h-11 w-full rounded-lg border border-[#D0D5DD] text-sm font-medium text-[#B42318]" @click="emit('hapus', x.id)">Hapus (soft delete)</button>
           </div>

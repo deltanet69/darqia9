@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import SpmbDetail from '~/components/adminV2/spmb/SpmbDetail.vue'
 import SpmbForm from '~/components/adminV2/spmb/SpmbForm.vue'
 import SpmbPlacement from '~/components/adminV2/spmb/SpmbPlacement.vue'
+import SpmbWaPanel from '~/components/adminV2/spmb/SpmbWaPanel.vue'
 import {
   SPMB_JURUSAN_SMK, SPMB_TAHUN_AJARAN, csvSpmb, fmtWaktuSpmb, jenjangKeyDari, useSpmbAdmin,
   type SpmbAdminRecord, type SpmbJenjangKey, type SpmbStatus
@@ -114,7 +115,25 @@ async function simpanFormulir(record: SpmbAdminRecord, asli?: File | null) {
   tampilan.value = 'daftar'
 }
 
-function ubahStatus(id: string, status: SpmbStatus) {
+const waMengirim = ref(false)
+async function kirimWa(r: SpmbAdminRecord) {
+  if (waMengirim.value) return
+  waMengirim.value = true
+  try {
+    const hasil = await $fetch<{ ok: boolean; pesan: string }>('/api/admin/spmb/wa-kirim', { method: 'POST', body: { id: r.id } })
+    toast(hasil.ok ? `WhatsApp terkirim ke wali ${r.s_nama}.` : `WhatsApp tidak terkirim — ${hasil.pesan}`)
+  } catch (e: any) {
+    toast(`WhatsApp tidak terkirim — ${e?.data?.statusMessage || 'gateway WhatsApp bermasalah.'}`)
+  } finally {
+    waMengirim.value = false
+  }
+}
+function kirimWaId(id: string) {
+  const r = admin.records.value.find(x => x.id === id)
+  if (r) void kirimWa(r)
+}
+
+async function ubahStatus(id: string, status: SpmbStatus) {
   const r = admin.records.value.find(x => x.id === id)
   if (!r) return
   if (status === 'Diterima' && r.status !== 'Diterima' && kuotaPenuh.value) {
@@ -125,6 +144,8 @@ function ubahStatus(id: string, status: SpmbStatus) {
   admin.simpan()
   void admin.simpanRecordDb(r)
   toast(`Status ${r.s_nama} sekarang: ${status}.`)
+  // Notifikasi WhatsApp ke wali mengikuti setiap perubahan status.
+  await kirimWa(r)
 }
 
 function hapus(id: string) {
@@ -175,6 +196,7 @@ function eksporCsv() {
       @status="ubahStatus"
       @hapus="hapus"
       @ubah="bukaFormulir"
+      @wa="kirimWaId"
     />
     <SpmbForm
       v-else-if="tampilan === 'formulir'"
@@ -197,6 +219,8 @@ function eksporCsv() {
           <button type="button" class="inline-flex min-h-11 items-center rounded-[10px] bg-[#1B5FD9] px-4 text-sm font-medium text-white" @click="bukaFormulir()">+ Tambah Manual</button>
         </div>
       </div>
+
+      <SpmbWaPanel />
 
       <div class="mt-5 flex flex-wrap gap-2">
         <button type="button" class="min-h-10 rounded-lg px-4 text-sm font-medium" :class="tabAktif === 'pendaftar' ? 'bg-[#1B5FD9] text-white' : 'border border-[#D0D5DD] bg-white text-[#344054]'" @click="tabAktif = 'pendaftar'">Pendaftar</button>
@@ -263,6 +287,7 @@ function eksporCsv() {
                     </template>
                     <template v-else>
                       <button type="button" class="font-medium text-[#175CD3]" @click="bukaDetail(r.id)">Detail</button>
+                      <button type="button" class="ml-3 font-medium text-[#027A48]" @click="kirimWa(r)">Kirim WA</button>
                       <button type="button" class="ml-3 font-medium text-[#B42318]" @click="hapus(r.id)">Hapus</button>
                     </template>
                   </td>
