@@ -28,11 +28,20 @@ export interface SpmbRegistration {
   via?: string
   oleh?: string
   metode?: string
+  dokumen?: Record<string, string>
   bukti?: string
   kelas?: string
   nis?: string
   deleted?: boolean
 }
+
+export const SPMB_DOKUMEN_JENIS = [
+  { kunci: 'kk', label: 'Kartu Keluarga (KK)', wajib: true },
+  { kunci: 'akta', label: 'Akta Kelahiran Siswa', wajib: true },
+  { kunci: 'ktp', label: 'KTP Orang Tua / Wali', wajib: true },
+  { kunci: 'ijazah', label: 'Ijazah / SKL Terakhir', wajib: false },
+  { kunci: 'foto', label: 'Pas Foto Siswa', wajib: false }
+] as const
 
 export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
   const step = ref(1)
@@ -127,6 +136,9 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       if (!form.o_tempat.trim()) { errs.o_tempat = true; ok = false }
       if (!form.o_tgl) { errs.o_tgl = true; ok = false }
       if (!form.o_alamat.trim()) { errs.o_alamat = true; ok = false }
+      for (const d of SPMB_DOKUMEN_JENIS) {
+        if (d.wajib && !dokumenFiles[d.kunci]) { dokumenErr[d.kunci] = true; ok = false }
+      }
     } else if (n === 3) {
       if (!fileObj.value) { errs.bukti = true; ok = false }
       if (!form.agree) { errs.agree = true; ok = false }
@@ -163,6 +175,32 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       fileIsImg.value = false
       filePreview.value = 'pdf'
     }
+  }
+
+  // Dokumen pendukung (Step 2): satu berkas per jenis dokumen.
+  const dokumenFiles = reactive<Record<string, File | null>>({})
+  const dokumenNama = reactive<Record<string, string>>({})
+  const dokumenErr = reactive<Record<string, boolean>>({})
+
+  const onDokumenChange = (jenis: string, e: Event) => {
+    const target = e.target as HTMLInputElement
+    const f = target.files && target.files[0]
+    dokumenErr[jenis] = false
+    if (!f) {
+      dokumenFiles[jenis] = null
+      dokumenNama[jenis] = ''
+      return
+    }
+    const okType = /^image\//.test(f.type) || f.type === 'application/pdf'
+    if (!okType || f.size > 5 * 1024 * 1024) {
+      dokumenErr[jenis] = true
+      target.value = ''
+      dokumenFiles[jenis] = null
+      dokumenNama[jenis] = ''
+      return
+    }
+    dokumenFiles[jenis] = f
+    dokumenNama[jenis] = `${f.name} (${Math.round(f.size / 1024)} KB)`
   }
 
   const scrollToTop = () => {
@@ -272,7 +310,19 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
         const { error: errUp } = await supabase.storage.from('spmb-bukti').upload(`${id}/${namaBerkas}`, berkas)
         if (!errUp) buktiPath = `${id}/${namaBerkas}`
       }
-      const { error: errIns } = await supabase.from('spmb_registrations').insert({
+      // Dokumen pendukung: terkompresi, satu folder per pendaftaran.
+      const petaDokumen: Record<string, string> = {}
+      for (const d of SPMB_DOKUMEN_JENIS) {
+        const mentah = dokumenFiles[d.kunci]
+        if (!mentah) continue
+        const berkasDok = await kompresGambar(mentah)
+        const namaDok = berkasDok.name.replace(/[^\w.\-]+/g, '_')
+        const pathDok = `${id}/dokumen/${d.kunci}-${namaDok}`
+        const { error: errDok } = await supabase.storage.from('spmb-bukti').upload(pathDok, berkasDok)
+        if (!errDok) petaDokumen[d.kunci] = pathDok
+      }
+      reg.dokumen = petaDokumen
+      const muatan: Record<string, unknown> = {
         id: reg.id,
         jenjang: reg.jenjang,
         jurusan: reg.jurusan ?? null,
@@ -296,8 +346,17 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
         via: 'Online',
         metode: null,
         bukti_path: buktiPath,
+        dokumen: petaDokumen,
         status: 'Menunggu verifikasi'
-      })
+      }
+      let { error: errIns } = await supabase.from('spmb_registrations').insert(muatan)
+      if (errIns && (errIns as { code?: string }).code === 'PGRST204') {
+        // Kolom dokumen belum ada (migrasi 0094 belum dijalankan):
+        // pendaftaran tetap disimpan; dokumen tersimpan di storage dan
+        // tinggal dihubungkan setelah migrasi berjalan.
+        const { dokumen: _dok, ...muatanTanpaDokumen } = muatan
+        ;({ error: errIns } = await supabase.from('spmb_registrations').insert(muatanTanpaDokumen))
+      }
       if (errIns) {
         if ((errIns as { code?: string }).code === '23505') {
           // Dijaga unik oleh database: NISN sudah terdaftar di jenjang ini.
@@ -434,6 +493,9 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     numericOnly,
     phoneOnly,
     onFileChange,
+    dokumenNama,
+    dokumenErr,
+    onDokumenChange,
     nextStep,
     prevStep,
     scrollToTop,

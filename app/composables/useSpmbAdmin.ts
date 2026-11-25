@@ -51,6 +51,15 @@ export const SPMB_JURUSAN_GRUP_SMK = [
   }
 ] as const
 
+export const SPMB_DOKUMEN_LABEL: Record<string, string> = {
+  kk: 'Kartu Keluarga (KK)',
+  akta: 'Akta Kelahiran Siswa',
+  ktp: 'KTP Orang Tua / Wali',
+  ijazah: 'Ijazah / SKL Terakhir',
+  foto: 'Pas Foto Siswa'
+}
+export const SPMB_DOKUMEN_URUTAN = ['kk', 'akta', 'ktp', 'ijazah', 'foto'] as const
+
 export const SPMB_STATUS = [
   'Menunggu verifikasi',
   'Pembayaran terverifikasi',
@@ -100,6 +109,7 @@ export interface SpmbAdminRecord {
   nis: string
   deleted: boolean
   bukti_path?: string
+  dokumen?: Record<string, string>
 }
 
 const BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -203,8 +213,18 @@ export function normalizeRecord(raw: Record<string, unknown>): SpmbAdminRecord {
     kelas: str('kelas'),
     nis: str('nis'),
     deleted: raw.deleted === true,
-    bukti_path: str('bukti_path')
+    bukti_path: str('bukti_path'),
+    dokumen: dokumenDariRaw(raw.dokumen)
   }
+}
+
+function dokumenDariRaw(v: unknown): Record<string, string> {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {}
+  const hasil: Record<string, string> = {}
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof val === 'string' && val) hasil[k] = val
+  }
+  return hasil
 }
 
 const strKolom = (row: Record<string, unknown>, k: string) => (typeof row[k] === 'string' ? (row[k] as string) : '')

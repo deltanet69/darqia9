@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { SPMB_BIAYA, fmtTanggalPanjang, fmtWaktuSpmb, samarNik, type SpmbAdminRecord, type SpmbStatus } from '~/composables/useSpmbAdmin'
+import { SPMB_BIAYA, SPMB_DOKUMEN_LABEL, SPMB_DOKUMEN_URUTAN, fmtTanggalPanjang, fmtWaktuSpmb, samarNik, type SpmbAdminRecord, type SpmbStatus } from '~/composables/useSpmbAdmin'
 
 const props = defineProps<{ record: SpmbAdminRecord }>()
 const emit = defineEmits<{
@@ -24,6 +24,7 @@ const langkahAktif = computed(() => {
   if (x.value.status === 'Pembayaran terverifikasi') return 1
   return 2
 })
+const dokumenSaya = computed(() => x.value.dokumen || {})
 const waHref = computed(() => `https://wa.me/62${(x.value.o_hp || '').replace(/\D/g, '').replace(/^0/, '')}`)
 // Bukti pembayaran tampil lewat endpoint staf (bucket privat, URL bertanda tangan).
 const urlBukti = (path: string, unduh = false) => `/api/admin/spmb/bukti?path=${encodeURIComponent(path)}${unduh ? '&unduh=1' : ''}`
@@ -123,6 +124,29 @@ const urlBukti = (path: string, unduh = false) => `/api/admin/spmb/bukti?path=${
               <p v-else class="mt-1 text-[#475467]">Tidak ada berkas bukti terlampir pada pendaftaran ini.</p>
             </div>
             <p class="text-xs text-[#667085]">Cocokkan bukti dengan mutasi rekening sekolah sebelum verifikasi.</p>
+          </div>
+        </section>
+
+        <section class="rounded-2xl border border-[#E7EBF2] bg-white">
+          <div class="border-b border-[#EFF2F7] px-5 py-3.5"><h3 class="font-semibold">Dokumen Pendukung</h3></div>
+          <div class="space-y-3.5 p-5 text-sm">
+            <template v-if="x.via !== 'Manual'">
+              <div v-for="kunci in SPMB_DOKUMEN_URUTAN" :key="kunci">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[#667085]">{{ SPMB_DOKUMEN_LABEL[kunci] }}</span>
+                  <span v-if="dokumenSaya[kunci]" class="flex gap-2.5 text-xs font-medium shrink-0">
+                    <a :href="urlBukti(dokumenSaya[kunci])" target="_blank" rel="noopener" class="text-[#175CD3]">Buka</a>
+                    <a :href="urlBukti(dokumenSaya[kunci], true)" class="text-[#175CD3]">Unduh</a>
+                  </span>
+                  <span v-else class="text-xs font-medium text-[#B54708]">Belum diunggah</span>
+                </div>
+                <a v-if="dokumenSaya[kunci] && /\.(jpe?g|png|webp)$/i.test(dokumenSaya[kunci])" :href="urlBukti(dokumenSaya[kunci])" target="_blank" rel="noopener" class="mt-1.5 block overflow-hidden rounded-lg border border-[#D0D5DD] bg-[#F9FAFB]">
+                  <img :src="urlBukti(dokumenSaya[kunci])" :alt="SPMB_DOKUMEN_LABEL[kunci]" class="max-h-52 w-full object-contain" loading="lazy">
+                </a>
+              </div>
+              <p class="text-xs text-[#667085]">Dokumen diunggah orang tua saat pendaftaran, tersimpan terkompresi di penyimpanan privat sekolah.</p>
+            </template>
+            <p v-else class="text-[#475467]">Pendaftaran manual — dokumen fisik diserahkan langsung ke panitia.</p>
           </div>
         </section>
 

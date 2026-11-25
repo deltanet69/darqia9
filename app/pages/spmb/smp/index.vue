@@ -416,6 +416,27 @@
                   <span v-if="errs.o_alamat" class="block text-xs font-semibold text-red-600 mt-1">Alamat tempat tinggal wajib diisi.</span>
                 </div>
               </div>
+            
+              <!-- Dokumen Pendukung -->
+              <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+                <h3 class="text-sm font-extrabold text-slate-900">Dokumen Pendukung</h3>
+                <p class="text-xs text-slate-500 mt-1 mb-4">Unggah foto/pindai dokumen yang jelas dan terbaca. Format gambar atau PDF, maks 5 MB per berkas — gambar otomatis dikompres tanpa mengurangi kejelasan.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div v-for="d in SPMB_DOKUMEN_JENIS" :key="d.kunci" class="rounded-xl border bg-white p-3.5" :class="dokumenErr[d.kunci] ? 'border-red-400' : 'border-slate-200'">
+                    <div class="flex items-center justify-between gap-2">
+                      <b class="text-[13px] font-bold text-slate-800">{{ d.label }}</b>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0" :class="d.wajib ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'">{{ d.wajib ? 'WAJIB' : 'OPSIONAL' }}</span>
+                    </div>
+                    <label class="mt-2.5 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-600 cursor-pointer hover:border-blue-400 hover:text-blue-600 transition-all">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      {{ dokumenNama[d.kunci] ? 'Ganti berkas' : 'Pilih berkas' }}
+                      <input type="file" accept="image/*,.pdf" class="sr-only" @change="onDokumenChange(d.kunci, $event)">
+                    </label>
+                    <p v-if="dokumenNama[d.kunci]" class="mt-1.5 text-[11px] text-emerald-600 font-medium truncate">{{ dokumenNama[d.kunci] }}</p>
+                    <p v-if="dokumenErr[d.kunci]" class="mt-1.5 text-[11px] text-red-600 font-semibold">Berkas ini wajib diunggah (gambar/PDF, maks 5 MB).</p>
+                  </div>
+                </div>
+              </div>
             </fieldset>
 
             <!-- STEP 3: PEMBAYARAN -->
@@ -648,7 +669,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useSpmbForm } from '~/composables/useSpmbForm'
+import { useSpmbForm, SPMB_DOKUMEN_JENIS } from '~/composables/useSpmbForm'
 
 definePageMeta({ layout: 'default' })
 
@@ -682,6 +703,9 @@ const {
   numericOnly,
   phoneOnly,
   onFileChange,
+  dokumenNama,
+  dokumenErr,
+  onDokumenChange,
   nextStep,
   prevStep,
   modalSuccess,
