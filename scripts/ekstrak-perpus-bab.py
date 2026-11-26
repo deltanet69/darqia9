@@ -32,6 +32,7 @@ DRY = '--dry-run' in sys.argv
 HANYA = None
 if '--hanya' in sys.argv:
     HANYA = sys.argv[sys.argv.index('--hanya') + 1]
+HANYA_BELUM = '--hanya-belum' in sys.argv
 
 
 def baca_env():
@@ -208,13 +209,76 @@ def bab_dari_toc_lengkap(buku):
     return bab
 
 
+# ---------------- strategi 3: pindai pembuka bab di badan buku ----------------
+POLA_PEMBUKA = re.compile(r'^(bab|chapter)\s+([0-9]+|[ivxIVX]+)[\s.:–—-]*(.*)$', re.I)
+KATA_BUKAN_BAB = ('daftar isi', 'glosarium', 'indeks', 'daftar pustaka', 'lampiran', 'kunci jawaban', 'tujuan pembelajaran')
+
+
+def bersih_judul_badan(j):
+    # Buang sisa pola daftar isi yang bocor: titik-titik penuntun + nomor halaman cetak di ujung.
+    j = re.sub(r'[\.…]{2,}\s*\d*\s*$', '', j)
+    j = re.sub(r'\s+\d{1,3}\s*$', '', j) if '…' in j or '...' in j else j
+    return bersih_judul(j)
+
+
+def bab_dari_badan(buku):
+    kandidat = []
+    for hal in range(4, buku.total + 1):
+        teks = buku.teks(hal)
+        baris = [b.strip() for b in teks.split('\n') if b.strip()]
+        # Halaman daftar isi / halaman yang menyebut banyak bab sekaligus bukan pembuka bab.
+        if 'daftar isi' in teks.lower()[:1000]:
+            continue
+        if sum(1 for b in baris if POLA_PEMBUKA.match(b)) >= 3:
+            continue
+        for idx, b in enumerate(baris[:5]):
+            m = POLA_PEMBUKA.match(b)
+            if not m:
+                continue
+            nomor = int(m.group(2)) if m.group(2).isdigit() else romawi_ke_int(m.group(2))
+            judul = bersih_judul_badan(m.group(3))
+            if (not judul or len(judul) < 4) and idx + 1 < len(baris):
+                judul = bersih_judul_badan(baris[idx + 1])
+            if not judul or len(judul) < 4:
+                continue
+            if any(k in judul.lower() for k in KATA_BUKAN_BAB):
+                continue
+            kandidat.append({'nomor': nomor, 'judul': judul[:80], 'mulai': hal, 'subbab': []})
+            break
+    # Mulai urutan dari Bab 1 bila ada (kandidat sebelum itu rawan rujukan kata pengantar).
+    awal = next((i for i, k in enumerate(kandidat) if k['nomor'] == 1), 0)
+    hasil = []
+    for k in kandidat[awal:]:
+        if hasil and k['nomor'] <= hasil[-1]['nomor']:
+            continue
+        if hasil and k['mulai'] - hasil[-1]['mulai'] < 3:
+            continue
+        hasil.append(k)
+    # Gerbang mutu: urutan harus mulai dari Bab 1, nyaris utuh (lompatan maks 2), minimal 3 bab,
+    # dan tidak ada satu bab pun yang menelan lebih dari separuh buku. Di luar itu: tolak —
+    # lebih baik jujur belum terindeks daripada menyimpan bab karangan.
+    if len(hasil) < 3 or hasil[0]['nomor'] != 1:
+        return []
+    if any(hasil[i]['nomor'] - hasil[i - 1]['nomor'] > 2 for i in range(1, len(hasil))):
+        return []
+    for i, b in enumerate(hasil):
+        akhir = hasil[i + 1]['mulai'] if i + 1 < len(hasil) else buku.total
+        if (akhir - b['mulai']) > buku.total * 0.5:
+            return []
+    return hasil
+
+
 def ekstrak_bab(buku):
     bab = bab_dari_outline(buku)
     if bab:
         strategi = 'outline'
     else:
         bab = bab_dari_toc_lengkap(buku)
-        strategi = 'daftar-isi' if bab else 'tidak-terindeks'
+        if bab:
+            strategi = 'daftar-isi'
+        else:
+            bab = bab_dari_badan(buku)
+            strategi = 'badan-teks' if bab else 'tidak-terindeks'
     bab = [b for b in bab if b.get('mulai')]
     bab.sort(key=lambda b: b['mulai'])
     for i, b in enumerate(bab):
@@ -240,9 +304,22 @@ def main():
         offset += 500
     if HANYA:
         buku = [b for b in buku if HANYA in b['id']]
+    if HANYA_BELUM:
+        sudah = set()
+        dari = 0
+        while True:
+            batch = sb('GET', f'perpus_bab?select=buku_id&order=buku_id&limit=1000&offset={dari}')
+            if not batch:
+                break
+            sudah.update(r['buku_id'] for r in batch)
+            if len(batch) < 1000:
+                break
+            dari += 1000
+        buku = [b for b in buku if b['id'] not in sudah]
+        print(f'Buku sudah terindeks dilewati: {len(sudah)}', flush=True)
     print(f'Total buku aktif: {len(buku)}', flush=True)
 
-    ringkas = {'terindeks': 0, 'outline': 0, 'daftar-isi': 0, 'tidak-terindeks': 0, 'berkas-hilang': 0, 'gagal': 0, 'bukan-pdf': 0, 'total-bab': 0}
+    ringkas = {'terindeks': 0, 'outline': 0, 'daftar-isi': 0, 'badan-teks': 0, 'tidak-terindeks': 0, 'berkas-hilang': 0, 'gagal': 0, 'bukan-pdf': 0, 'total-bab': 0}
     for b in buku:
         path_pdf = (b.get('path_pdf') or '').strip()
         if not path_pdf.lower().endswith('.pdf'):
