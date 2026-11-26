@@ -2,10 +2,12 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminV2Icon from '../AdminV2Icon.vue'
 import CbtV2BankForm from './CbtV2BankForm.vue'
+import CbtV2BankKisi from './CbtV2BankKisi.vue'
 import type { GradeType, BankPackage, BankQuestionItem } from './cbtV2Data'
 import { useAdminCbtData, type AssessmentSource } from '~/composables/useAdminCbtData'
 import { isArabicText, renderKaTeXHtml } from '~/utils/cbtFormula'
 import { readWordBankTemplate, type WordBankPreview } from '~/utils/cbtWordBank'
+import type { ButirKisi } from '~/utils/kisiBloom'
 import { cocokKelas } from '~/utils/cbtKelas'
 import { readExcelBankTemplate, buildBankExcel } from '~/utils/cbtExcelBank'
 import { buildBankCsv } from '~/utils/cbtCsvBank'
@@ -280,35 +282,19 @@ const startEditPackage = (pkg: BankPackage) => {
 }
 
 // Kisi-kisi AI: dibuat otomatis setelah bank disimpan (hanya bila masih kosong), atau dibuat ulang lewat tombol.
+const detailTab = ref<'soal' | 'kisi'>('soal')
 const kisiStatus = ref<Record<string, 'memuat' | string>>({})
-const kisiDraf = ref<string | null>(null)
-const kisiMenyimpan = ref(false)
 const muatKisiKisi = async (bankId: string, mode: 'otomatis' | 'ulang') => {
   if (kisiStatus.value[bankId] === 'memuat') return
   kisiStatus.value = { ...kisiStatus.value, [bankId]: 'memuat' }
   try {
-    const hasil = await $fetch<{ kisiKisi: string }>('/api/cbt/kisi-kisi', { method: 'POST', body: { source: props.source ?? 'cbt', bankId, mode } })
-    cbtData.bankPackages.value = cbtData.bankPackages.value.map(item => item.id === bankId ? { ...item, kisiKisi: hasil.kisiKisi } : item)
+    const hasil = await $fetch<{ kisiKisi: string, butir: ButirKisi[] }>('/api/cbt/kisi-kisi', { method: 'POST', body: { source: props.source ?? 'cbt', bankId, mode } })
+    cbtData.bankPackages.value = cbtData.bankPackages.value.map(item => item.id === bankId ? { ...item, kisiKisi: hasil.kisiKisi, kisiButir: hasil.butir } : item)
     const { [bankId]: _, ...sisa } = kisiStatus.value
     kisiStatus.value = sisa
   } catch (error: any) {
     kisiStatus.value = { ...kisiStatus.value, [bankId]: error?.data?.statusMessage || error?.statusMessage || 'Kisi-kisi gagal dibuat.' }
   }
-}
-const buatUlangKisiKisi = (pkg: BankPackage) => {
-  if (pkg.kisiKisi && !confirm('Kisi-kisi yang sekarang akan diganti hasil AI yang baru. Lanjutkan?')) return
-  void muatKisiKisi(pkg.id, 'ulang')
-}
-const simpanKisiKisi = async (pkg: BankPackage) => {
-  if (kisiDraf.value === null || kisiMenyimpan.value) return
-  kisiMenyimpan.value = true
-  try {
-    await cbtData.simpanKisiKisi(pkg.id, kisiDraf.value)
-    kisiDraf.value = null
-    emit('toast', 'Kisi-kisi disimpan.')
-  } catch (error) {
-    emit('toast', error instanceof Error ? error.message : 'Kisi-kisi gagal disimpan.')
-  } finally { kisiMenyimpan.value = false }
 }
 // Teks cerita ditampilkan sekali, di atas pertanyaan pertama dari cerita itu.
 const awalCerita = (q: BankQuestionItem, idx: number) => !!q.storyGroup && displayedQuestions.value.findIndex(item => item.storyGroup === q.storyGroup) === idx
@@ -325,7 +311,6 @@ const handleSavePackage = async (updatedPkg: BankPackage) => {
     bankMode.value = 'detail'
     formDraft.value = null
     clearFormDraft()
-    kisiDraf.value = null
     emit('toast', `Bank soal ${updatedPkg.name} berhasil disimpan.`)
     // Tidak ditunggu: detail langsung tampil dengan status "Kisi-kisi sedang dibuat…".
     if (!cbtData.bankPackages.value.find(item => item.id === savedId)?.kisiKisi) void muatKisiKisi(savedId, 'otomatis')
@@ -762,37 +747,16 @@ const confirmImport = async () => {
         </div>
       </div>
 
-      <!-- Kisi-kisi (media belajar) hasil AI, nantinya tampil di aplikasi Perpus siswa -->
-      <section class="bg-white border border-[#E7EBF2] rounded-2xl p-4 space-y-3" aria-labelledby="judul-kisi-kisi">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 id="judul-kisi-kisi" class="text-sm font-semibold text-[#101828]">Kisi-kisi</h3>
-            <p class="text-xs text-[#667085]">Dibuat otomatis oleh AI dari soal di bank ini. Periksa dan ubah bila perlu.</p>
-          </div>
-          <div v-if="kisiDraf === null && kisiStatus[selectedPackage.id] !== 'memuat'" class="flex flex-wrap gap-2">
-            <button v-if="selectedPackage.kisiKisi" type="button" class="min-h-11 px-3 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054] hover:bg-[#F3F5F9]" @click="kisiDraf = selectedPackage.kisiKisi || ''">Ubah</button>
-            <button type="button" class="min-h-11 px-3 rounded-xl border border-[#B9D1F9] text-xs font-bold text-[#1B5FD9] hover:bg-[#E8F0FE]" @click="buatUlangKisiKisi(selectedPackage)">{{ selectedPackage.kisiKisi ? 'Buat ulang dengan AI' : 'Buat dengan AI' }}</button>
-          </div>
-        </div>
-        <p v-if="kisiStatus[selectedPackage.id] === 'memuat'" role="status" class="text-xs font-semibold text-[#1B5FD9]">Kisi-kisi sedang dibuat…</p>
-        <div v-else-if="kisiStatus[selectedPackage.id]" role="alert" class="flex flex-wrap items-center gap-2 rounded-xl bg-[#FDECEA] p-3 text-xs font-semibold text-[#B42318]">
-          <span>{{ kisiStatus[selectedPackage.id] }}</span>
-          <button type="button" class="min-h-11 px-3 underline" @click="muatKisiKisi(selectedPackage.id, 'ulang')">Coba lagi</button>
-        </div>
-        <div v-if="kisiDraf !== null" class="space-y-2">
-          <label for="kisi-kisi-teks" class="sr-only">Teks kisi-kisi</label>
-          <textarea id="kisi-kisi-teks" v-model="kisiDraf" rows="10" class="w-full border border-[#E7EBF2] rounded-xl p-3 text-xs text-[#101828] outline-none focus:border-[#1B5FD9]" />
-          <div class="flex justify-end gap-2">
-            <button type="button" class="min-h-11 px-4 rounded-xl border border-[#E7EBF2] text-xs font-bold text-[#344054]" @click="kisiDraf = null">Batal</button>
-            <button type="button" class="min-h-11 px-4 rounded-xl bg-[#1B5FD9] text-xs font-bold text-white disabled:opacity-60" :disabled="kisiMenyimpan" @click="simpanKisiKisi(selectedPackage)">{{ kisiMenyimpan ? 'Menyimpan…' : 'Simpan' }}</button>
-          </div>
-        </div>
-        <p v-else-if="selectedPackage.kisiKisi" class="whitespace-pre-line text-xs leading-relaxed text-[#344054]">{{ selectedPackage.kisiKisi }}</p>
-        <p v-else-if="kisiStatus[selectedPackage.id] !== 'memuat' && !kisiStatus[selectedPackage.id]" class="text-xs text-[#667085]">Belum ada kisi-kisi.</p>
-      </section>
+      <!-- Tab separasi: CRUD bank & soal | Kisi-Kisi Bloom -->
+      <div class="flex gap-1 rounded-xl bg-[#EDF1F7] p-1" role="tablist" aria-label="Bagian bank soal">
+        <button type="button" role="tab" :aria-selected="detailTab === 'soal'" class="flex-1 min-h-11 px-3 rounded-[10px] text-xs font-bold transition" :class="detailTab === 'soal' ? 'bg-white text-[#0A2A5C] shadow-sm' : 'text-[#667085]'" @click="detailTab = 'soal'">Bank Soal &amp; Soal <span class="font-semibold" :class="detailTab === 'soal' ? 'text-[#1B5FD9]' : 'text-[#98A2B3]'">{{ selectedPackage.questions.length }} soal</span></button>
+        <button type="button" role="tab" :aria-selected="detailTab === 'kisi'" class="flex-1 min-h-11 px-3 rounded-[10px] text-xs font-bold transition" :class="detailTab === 'kisi' ? 'bg-white text-[#0A2A5C] shadow-sm' : 'text-[#667085]'" @click="detailTab = 'kisi'">Kisi-Kisi Bloom <span class="font-semibold" :class="detailTab === 'kisi' ? 'text-[#1B5FD9]' : 'text-[#98A2B3]'">{{ (selectedPackage.kisiButir ?? []).length }} butir</span></button>
+      </div>
+
+      <CbtV2BankKisi v-if="detailTab === 'kisi'" :key="selectedPackage.id" :pkg="selectedPackage" :source="props.source ?? 'cbt'" :status="kisiStatus[selectedPackage.id]" @generate="muatKisiKisi(selectedPackage.id, $event)" @toast="emit('toast', $event)" />
 
       <!-- Format Filter Bar -->
-      <div class="bg-white border border-[#E7EBF2] rounded-xl p-2.5 shadow-xs overflow-x-auto">
+      <div v-show="detailTab === 'soal'" class="bg-white border border-[#E7EBF2] rounded-xl p-2.5 shadow-xs overflow-x-auto">
         <div class="flex items-center gap-1 text-xs font-bold min-w-max">
           <button
             v-for="fmt in (['all', 'PG', 'Isian', 'Esai', 'Interaktif'] as const).filter(f => f !== 'Isian' || selectedPackage.questions.some(q => q.type === 'Isian'))"
@@ -808,7 +772,7 @@ const confirmImport = async () => {
       </div>
 
       <!-- Questions List -->
-      <div v-if="displayedQuestions.length" class="space-y-2">
+      <div v-if="detailTab === 'soal' && displayedQuestions.length" class="space-y-2">
         <article
           v-for="(q, qIdx) in displayedQuestions"
           :key="q.id"

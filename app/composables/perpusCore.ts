@@ -280,6 +280,34 @@ export function cocokkanBuku(topik: TopikKisi, mapelUjian: string, buku: Buku[],
   }).filter(x => x.skor >= 30).sort((a, b) => b.skor - a.skor).slice(0, maks)
 }
 
+// ---------- indeks bab & rekomendasi bab (migrasi 0095) ----------
+export interface BabBuku { bukuId: string, nomor: number, judul: string, mulai: number, selesai: number, subbab: string[] }
+export interface RekoBab { bukuId: string, nomor: number, bab: string, mulai: number, selesai: number, subbab: string[], skor: number }
+
+// Cocokkan topik kisi-kisi ke BAB spesifik dari indeks perpus_bab: kata kunci topik dicocokkan ke judul bab
+// + daftar subbabnya, dengan bonus bila mapel bukunya sama dengan mapel ujian. null = tidak ada bab yang
+// cukup cocok (penelepon menampilkan rekomendasi tingkat buku + label jujur, bukan mengarang bab).
+export function cocokkanBab(topik: TopikKisi, mapelUjian: string, buku: Buku[], bab: BabBuku[]): RekoBab | null {
+  const kk = kataKunci(`${topik.t} ${topik.i}`)
+  if (!kk.length) return null
+  const mapelKk = kataKunci(mapelUjian)
+  const petaBuku = new Map(buku.map(b => [b.id, b]))
+  let terbaik: RekoBab | null = null
+  for (const bb of bab) {
+    const b = petaBuku.get(bb.bukuId)
+    if (!b) continue
+    const teks = `${bb.judul} ${bb.subbab.join(' ')}`.toLowerCase()
+    const kena = kk.filter(w => teks.includes(w.slice(0, 5))).length
+    if (!kena) continue
+    const mapelCocok = mapelKk.length > 0 && mapelKk.some(w => `${b.judul} ${b.mapel}`.toLowerCase().includes(w.slice(0, 5)))
+    const skor = Math.min(98, Math.round(kena / kk.length * 70) + (mapelCocok ? 28 : 0))
+    if (skor >= 45 && (!terbaik || skor > terbaik.skor)) {
+      terbaik = { bukuId: bb.bukuId, nomor: bb.nomor, bab: bb.judul, mulai: bb.mulai, selesai: bb.selesai, subbab: bb.subbab, skor }
+    }
+  }
+  return terbaik
+}
+
 // ---------- data per siswa ----------
 export interface DataSiswa {
   fav: string[]

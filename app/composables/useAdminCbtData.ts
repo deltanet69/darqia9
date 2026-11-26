@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import type { BankPackage, BankQuestionItem, ExamItem, GradeType, LiveStudent } from '~/components/adminV2/cbt/cbtV2Data'
+import { parseButirKisi, teksDariButir, type ButirKisi } from '~/utils/kisiBloom'
 import type { AksiRbac } from './rbacCore'
 import { bolehAksesBank, type AksesBankAkun } from '~/utils/cbtAksesBank'
 import { blokJadwal, type BarisJadwal } from '~/utils/cbtJadwalUjian'
@@ -155,6 +156,7 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     name: row.name || row.subject,
     description: row.description ?? undefined,
     kisiKisi: row.kisi_kisi ?? undefined,
+    kisiButir: parseButirKisi(row.kisi_butir),
     ownerTeacherId: row.owner_teacher_id ?? null,
     classId: row.class_id,
     subjectId: row.subject_id,
@@ -780,6 +782,25 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     bankPackages.value = bankPackages.value.map(item => item.id === bankId ? { ...item, kisiKisi: teks.trim() || undefined } : item)
   }
 
+
+  const pesanMigrasiKisi = 'Kolom kisi_butir belum ada. Jalankan migrasi 0095_kisi_bloom.sql di Supabase terlebih dahulu.'
+  // Butir kisi-kisi Bloom dimuat terpisah dari BANK_KOLOM agar daftar bank tetap jalan sebelum migrasi 0095.
+  const muatKisiButir = async (bankId: string) => {
+    const { data, error: e } = await client.from(tables.banks).select('kisi_butir').eq('id', bankId).maybeSingle()
+    if (e) throw new Error(/kisi_butir/i.test(e.message) ? pesanMigrasiKisi : e.message)
+    const butir = parseButirKisi(data?.kisi_butir)
+    bankPackages.value = bankPackages.value.map(item => item.id === bankId ? { ...item, kisiButir: butir } : item)
+    return butir
+  }
+
+  const simpanKisiButir = async (bankId: string, butirMentah: ButirKisi[]) => {
+    const butir = parseButirKisi(butirMentah)
+    const teks = teksDariButir(butir)
+    const { error: e } = await client.from(tables.banks).update({ kisi_butir: butir, kisi_kisi: teks || null }).eq('id', bankId).select('id').single()
+    if (e) throw new Error(/kisi_butir/i.test(e.message) ? pesanMigrasiKisi : e.message)
+    bankPackages.value = bankPackages.value.map(item => item.id === bankId ? { ...item, kisiButir: butir, kisiKisi: teks || undefined } : item)
+  }
+
   const deleteBankPackage = async (id: string, grade?: GradeType) => {
     const bank = bankPackages.value.find(item => item.id === id)
     if (!bank || (grade && bank.grade !== grade)) throw new Error('Bank soal tidak tersedia pada jenjang yang dipilih.')
@@ -934,6 +955,8 @@ export const useAdminCbtData = (source: AssessmentSource = 'cbt') => {
     adalahSuperadmin,
     bolehKelolaBank,
     simpanKisiKisi,
+    muatKisiButir,
+    simpanKisiButir,
     bolehKelolaUjian,
     bolehUjianKelas,
     jadwalUjian,

@@ -17,6 +17,8 @@ watch(() => sh.value?.jenis, (j) => {
   P.simpan()
 }, { immediate: true })
 const lihatKisi = async (id: string) => {
+  const kx = P.kisi.value.find(x => x.id === id)
+  if (kx) P.mapelBelajar.value = kx.mapel
   tutup(); P.ke('belajar')
   await nextTick()
   const el = document.getElementById('k-' + id)

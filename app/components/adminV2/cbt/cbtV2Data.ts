@@ -1,3 +1,4 @@
+import type { ButirKisi } from '~/utils/kisiBloom'
 export type GradeType = 'SMK' | 'SMP'
 export type CbtTabId = 'summary' | 'monitoring' | 'bank' | 'exams' | 'rooms' | 'pengawas' | 'seb' | 'cards' | 'results' | 'management'
 
@@ -90,6 +91,7 @@ export interface BankPackage {
   // Keterangan / bab — hanya dipakai LMS.
   description?: string
   kisiKisi?: string
+  kisiButir?: ButirKisi[]
   ownerTeacherId?: string | null
   // Hanya untuk form: disalin ke minKata tiap soal Esai saat disimpan.
   minKata?: number

@@ -6,7 +6,8 @@ import { useSupabaseClient } from '#imports'
 import { jenjangHost } from '~/composables/domainCore'
 import { dataBaru, gabungBaca, kapan, type Buku, type DataSiswa, type SesiPerpus } from '~/composables/perpusCore'
 
-export interface TopikKisiBuku { t: string, i: string, buku: Array<{ id: string, skor: number }> }
+export interface RekoBabSiswa { bukuId: string, nomor: number, bab: string, mulai: number, selesai: number, subbab: string[], skor: number }
+export interface TopikKisiBuku { t: string, i: string, buku: Array<{ id: string, skor: number }>, level?: string, kko?: string, soal?: number[], rek?: RekoBabSiswa | null, babTerindeks?: boolean }
 export interface Kisi { id: string, judul: string, mapel: string, hari: number, topik: TopikKisiBuku[] }
 type Tahap = 'memuat' | 'awal' | 'verifikasi' | 'masuk'
 type Tab = 'beranda' | 'katalog' | 'belajar' | 'koleksi' | 'profil'
@@ -30,6 +31,7 @@ export function usePerpus() {
   const W = useState<DataSiswa>('perpus-w', dataBaru)
   const dataSiap = useState('perpus-data-siap', () => false)
   const kisi = useState<Kisi[]>('perpus-kisi', () => [])
+  const mapelBelajar = useState('perpus-mapel-belajar', () => '')
   const galat = useState('perpus-galat', () => '')
   const V = useState('perpus-v', () => ({ tab: 'beranda' as Tab, detail: '' as string, q: '', mapel: '', kur: '', kol: 'riwayat' }))
   const sheet = useState<{ jenis: 'filter' | 'notif' | 'materi' | 'catatan', kunci?: string, awal?: string } | null>('perpus-sheet', () => null)
@@ -198,6 +200,6 @@ export function usePerpus() {
   return {
     tahap, email, siswa, buku, W, kisi, galat, V, sheet, toastTeks, reader, jenjangTampil,
     toast, simpan, mulai, masukGoogle, verifikasi, keluar, gantiAkun, token,
-    bukuSaya, cariBuku, bukuTersedia, catatBaca, notif, belumDibaca, bukaReader, catatBuka, formCatatan, simpanCatatan, ke
+    bukuSaya, cariBuku, bukuTersedia, catatBaca, notif, belumDibaca, bukaReader, catatBuka, formCatatan, simpanCatatan, ke, mapelBelajar
   }
 }
