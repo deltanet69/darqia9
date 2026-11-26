@@ -6,6 +6,7 @@ import { useKartuUjian, type PeriodeKartu, type SiswaKartu } from '~/composables
 import { periodeOpsi } from '~/composables/ruangUjianCore'
 import QRCode from 'qrcode'
 import { cetakKartu, buatNoPeserta, formatTtl, muatFotoKartu } from '~/utils/cbtKartuCetak'
+import { cetakKartuLms } from '~/utils/lmsKartuCetak'
 import { URL_UNDUH_APK } from '~/utils/cbtKartuCetak'
 
 const props = withDefaults(defineProps<{ grade: GradeType, source?: 'cbt' | 'ujian_harian' }>(), { source: 'cbt' })
@@ -286,10 +287,12 @@ const cetak = async (daftar: SiswaKartu[], judul: string) => {
     name: s.name, nis: s.nis, nisn: s.nisn, ttl: formatTtl(s.birthPlace, s.birthDate), classroom: s.classroom, major: s.major,
     room: s.room, token: s.token!, noPeserta: buatNoPeserta(tahun.value, periode, s.nis), foto: ''
   }))
-  await Promise.all(kartu.map(async k => { k.foto = await muatFotoKartu(k.nis, 'staf') }))
+  // Kartu LMS memakai format landscape lama (tanpa foto); foto hanya dimuat untuk kartu CBT.
+  if (props.source !== 'ujian_harian') await Promise.all(kartu.map(async k => { k.foto = await muatFotoKartu(k.nis, 'staf') }))
   try {
     const qr = await QRCode.toDataURL(URL_UNDUH_APK, { margin: 0, width: 240, errorCorrectionLevel: 'M' })
-    const galat = cetakKartu({ kartu, grade: props.grade, jenis: periode.split(' ').slice(0, 2).join(' '), judul, tahunAjaran: tahun.value, qr })
+    const opsiCetak = { kartu, grade: props.grade, jenis: periode.split(' ').slice(0, 2).join(' '), judul, tahunAjaran: tahun.value, qr }
+    const galat = props.source === 'ujian_harian' ? cetakKartuLms(opsiCetak) : cetakKartu(opsiCetak)
     if (galat) emit('toast', galat)
   } catch { emit('toast', 'QR kartu gagal dibuat.') }
 }
