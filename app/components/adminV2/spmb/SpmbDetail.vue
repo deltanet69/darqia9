@@ -172,6 +172,27 @@ const urlBukti = (path: string, unduh = false) => `/api/admin/spmb/bukti?path=${
             </a>
           </div>
         </section>
+
+        <!-- ORANG TUA KANDUNG -->
+        <section v-if="x.ot_nama || x.ot_nik || x.ot_hp || x.ot_alamat" class="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05),0_16px_40px_-24px_rgba(16,24,40,0.25)]">
+          <div class="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+              <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
+            </span>
+            <h3 class="text-[15px] font-bold text-slate-900">Informasi Orang Tua Kandung</h3>
+            <span class="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">OPSIONAL</span>
+          </div>
+          <dl class="grid gap-x-8 gap-y-5 p-6 text-sm sm:grid-cols-2">
+            <div><dt class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Nama lengkap orang tua</dt><dd class="mt-1 text-[15px] font-semibold text-slate-800">{{ x.ot_nama || '-' }}</dd></div>
+            <div><dt class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Hubungan dengan siswa</dt><dd class="mt-1 text-[15px] font-semibold text-slate-800">{{ x.ot_hub || '-' }}</dd></div>
+            <div><dt class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">NIK</dt><dd class="mt-1 font-mono text-sm font-semibold text-slate-800">{{ samarNik(x.ot_nik) }}</dd></div>
+            <div><dt class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">No. HP/WA orang tua</dt><dd class="mt-1 text-[15px] font-semibold text-slate-800">{{ x.ot_hp || '-' }}</dd></div>
+            <div><dt class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Email aktif orang tua</dt><dd class="mt-1 break-words text-[15px] font-semibold text-slate-800">{{ x.ot_email || '-' }}</dd></div>
+            <div><dt class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Tempat lahir orang tua</dt><dd class="mt-1 text-[15px] font-semibold text-slate-800">{{ x.ot_tempat || '-' }}</dd></div>
+            <div><dt class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Tanggal lahir orang tua</dt><dd class="mt-1 text-[15px] font-semibold text-slate-800">{{ fmtTanggalPanjang(x.ot_tgl) }}</dd></div>
+            <div class="sm:col-span-2"><dt class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Alamat tinggal orang tua</dt><dd class="mt-1 text-[15px] font-semibold text-slate-800">{{ x.ot_alamat || '-' }}</dd></div>
+          </dl>
+        </section>
       </div>
 
       <div class="space-y-5 xl:sticky xl:top-6">

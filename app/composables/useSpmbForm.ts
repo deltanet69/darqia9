@@ -19,6 +19,15 @@ export interface SpmbRegistration {
   o_email: string
   o_ttl: string
   o_alamat: string
+  ot_nama?: string
+  ot_hub?: string
+  ot_nik?: string
+  ot_hp?: string
+  ot_email?: string
+  ot_ttl?: string
+  ot_tempat?: string
+  ot_tgl?: string
+  ot_alamat?: string
   waktu: string
   status: string
   s_tempat?: string
@@ -39,7 +48,7 @@ export const SPMB_DOKUMEN_JENIS = [
   { kunci: 'kk', label: 'Kartu Keluarga (KK)', wajib: true },
   { kunci: 'akta', label: 'Akta Kelahiran Siswa', wajib: true },
   { kunci: 'ktp', label: 'KTP Orang Tua / Wali', wajib: true },
-  { kunci: 'ijazah', label: 'Ijazah / SKL Terakhir', wajib: false },
+  { kunci: 'ijazah', label: 'Ijazah / SKL Terakhir', wajib: true },
   { kunci: 'foto', label: 'Pas Foto Siswa', wajib: false }
 ] as const
 
@@ -68,6 +77,14 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     o_tempat: '',
     o_tgl: '',
     o_alamat: '',
+    ot_nama: '',
+    ot_hub: '',
+    ot_nik: '',
+    ot_hp: '',
+    ot_email: '',
+    ot_tempat: '',
+    ot_tgl: '',
+    ot_alamat: '',
     agree: false
   })
 
@@ -94,6 +111,9 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     o_tempat: false,
     o_tgl: false,
     o_alamat: false,
+    ot_nik: false,
+    ot_hp: false,
+    ot_email: false,
     bukti: false,
     agree: false
   })
@@ -102,15 +122,28 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     errs[key] = false
   }
 
-  const numericOnly = (key: 's_nisn' | 'o_nik') => {
+  const numericOnly = (key: 's_nisn' | 'o_nik' | 'ot_nik') => {
     const v = (form[key] || '').replace(/\D/g, '')
     form[key] = v
   }
 
-  const phoneOnly = (key: 's_hp' | 'o_hp') => {
+  const phoneOnly = (key: 's_hp' | 'o_hp' | 'ot_hp') => {
     let v = (form[key] || '').replace(/\D/g, '')
     if (v.startsWith('62')) v = '0' + v.substring(2)
     form[key] = v
+  }
+
+  // Blok Orang Tua Kandung (opsional): saklar tampil + salin cepat dari data wali.
+  const isiOrtu = ref(false)
+  const salinWaliKeOrtu = () => {
+    form.ot_nama = form.o_nama
+    form.ot_hub = form.o_hub === 'Ayah' || form.o_hub === 'Ibu' ? form.o_hub : ''
+    form.ot_nik = form.o_nik
+    form.ot_hp = form.o_hp
+    form.ot_email = form.o_email
+    form.ot_tempat = form.o_tempat
+    form.ot_tgl = form.o_tgl
+    form.ot_alamat = form.o_alamat
   }
 
   const isEmail = (v: string) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)
@@ -136,6 +169,11 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       if (!form.o_tempat.trim()) { errs.o_tempat = true; ok = false }
       if (!form.o_tgl) { errs.o_tgl = true; ok = false }
       if (!form.o_alamat.trim()) { errs.o_alamat = true; ok = false }
+      if (isiOrtu.value) {
+        if (form.ot_nik && !/^\d{16}$/.test(form.ot_nik)) { errs.ot_nik = true; ok = false }
+        if (form.ot_hp && !/^08\d{7,12}$/.test(form.ot_hp)) { errs.ot_hp = true; ok = false }
+        if (form.ot_email && !isEmail(form.ot_email)) { errs.ot_email = true; ok = false }
+      }
       for (const d of SPMB_DOKUMEN_JENIS) {
         if (d.wajib && !dokumenFiles[d.kunci]) { dokumenErr[d.kunci] = true; ok = false }
       }
@@ -293,6 +331,19 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
       o_tempat: form.o_tempat.trim(),
       o_tgl: form.o_tgl,
       o_alamat: form.o_alamat.trim(),
+      ...(isiOrtu.value
+        ? {
+            ot_nama: form.ot_nama.trim(),
+            ot_hub: form.ot_hub,
+            ot_nik: form.ot_nik,
+            ot_hp: form.ot_hp,
+            ot_email: form.ot_email,
+            ot_ttl: form.ot_tempat.trim() && form.ot_tgl ? `${form.ot_tempat.trim()}, ${fmtDate(form.ot_tgl)}` : (form.ot_tempat.trim() || (form.ot_tgl ? fmtDate(form.ot_tgl) : '')),
+            ot_tempat: form.ot_tempat.trim(),
+            ot_tgl: form.ot_tgl,
+            ot_alamat: form.ot_alamat.trim()
+          }
+        : {}),
       waktu: new Date().toISOString(),
       status: 'Menunggu verifikasi'
     }
@@ -343,6 +394,14 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
         o_tempat: form.o_tempat.trim(),
         o_tgl: form.o_tgl || null,
         o_alamat: reg.o_alamat,
+        ot_nama: reg.ot_nama || null,
+        ot_hub: reg.ot_hub || null,
+        ot_nik: reg.ot_nik || null,
+        ot_hp: reg.ot_hp || null,
+        ot_email: reg.ot_email || null,
+        ot_tempat: reg.ot_tempat || null,
+        ot_tgl: reg.ot_tgl || null,
+        ot_alamat: reg.ot_alamat || null,
         via: 'Online',
         metode: null,
         bukti_path: buktiPath,
@@ -356,6 +415,12 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
         // tinggal dihubungkan setelah migrasi berjalan.
         const { dokumen: _dok, ...muatanTanpaDokumen } = muatan
         ;({ error: errIns } = await supabase.from('spmb_registrations').insert(muatanTanpaDokumen))
+        if (errIns && (errIns as { code?: string }).code === 'PGRST204') {
+          // Kolom orang tua kandung belum ada (migrasi 0097 belum dijalankan):
+          // pendaftaran tetap disimpan tanpa blok opsional itu.
+          const { ot_nama: _a, ot_hub: _b, ot_nik: _c, ot_hp: _d, ot_email: _e, ot_tempat: _f, ot_tgl: _g, ot_alamat: _h, ...muatanTanpaOrtu } = muatanTanpaDokumen
+          ;({ error: errIns } = await supabase.from('spmb_registrations').insert(muatanTanpaOrtu))
+        }
       }
       if (errIns) {
         if ((errIns as { code?: string }).code === '23505') {
@@ -496,6 +561,8 @@ export function useSpmbForm(initialJenjang: 'smp' | 'smk' = 'smk') {
     dokumenNama,
     dokumenErr,
     onDokumenChange,
+    isiOrtu,
+    salinWaliKeOrtu,
     nextStep,
     prevStep,
     scrollToTop,

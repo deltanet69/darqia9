@@ -34,6 +34,14 @@ const f = reactive<SpmbInputManual & { bayar: 'sudah' | 'belum' }>({
   o_tempat: props.record?.o_tempat || '',
   o_tgl: props.record?.o_tgl || '',
   o_alamat: props.record?.o_alamat || '',
+  ot_nama: props.record?.ot_nama || '',
+  ot_hub: props.record?.ot_hub || '',
+  ot_nik: props.record?.ot_nik || '',
+  ot_hp: props.record?.ot_hp || '',
+  ot_email: props.record?.ot_email === '-' ? '' : (props.record?.ot_email || ''),
+  ot_tempat: props.record?.ot_tempat || '',
+  ot_tgl: props.record?.ot_tgl || '',
+  ot_alamat: props.record?.ot_alamat || '',
   metode: props.record?.metode || 'Tunai di sekolah',
   bukti: props.record?.bukti && props.record.bukti !== '—' ? props.record.bukti : '',
   bayar: props.record?.status === 'Menunggu verifikasi' ? 'belum' : 'sudah'
@@ -52,10 +60,10 @@ function onBukti(e: Event) {
   }
 }
 
-function angkaSaja(field: 's_nisn' | 'o_nik') {
+function angkaSaja(field: 's_nisn' | 'o_nik' | 'ot_nik') {
   f[field] = f[field].replace(/\D/g, '')
 }
-function hpSaja(field: 's_hp' | 'o_hp') {
+function hpSaja(field: 's_hp' | 'o_hp' | 'ot_hp') {
   let v = f[field].replace(/\D/g, '')
   if (v.startsWith('62')) v = `0${v.substring(2)}`
   f[field] = v
@@ -75,6 +83,7 @@ function simpan() {
         jurusan: '', s_nama: '', s_nisn: '', s_jk: '', s_ttl: '', s_tempat: '', s_tgl: '',
         s_hp: '', s_email: '', s_sekolah: '', s_alsekolah: '',
         o_nama: '', o_hub: '', o_nik: '', o_hp: '', o_email: '', o_ttl: '', o_tempat: '', o_tgl: '', o_alamat: '',
+        ot_nama: '', ot_hub: '', ot_nik: '', ot_hp: '', ot_email: '', ot_ttl: '', ot_tempat: '', ot_tgl: '', ot_alamat: '',
         waktu: new Date().toISOString(), status: 'Menunggu verifikasi',
         via: 'Manual', oleh: 'Admin TU', metode: '', bukti: '', kelas: '', nis: '', deleted: false
       }
@@ -98,6 +107,15 @@ function simpan() {
   dasar.o_tgl = f.o_tgl
   dasar.o_ttl = gabungTtl(dasar.o_tempat, dasar.o_tgl)
   dasar.o_alamat = f.o_alamat.trim()
+  dasar.ot_nama = f.ot_nama.trim()
+  dasar.ot_hub = f.ot_hub
+  dasar.ot_nik = f.ot_nik
+  dasar.ot_hp = f.ot_hp
+  dasar.ot_email = f.ot_email
+  dasar.ot_tempat = f.ot_tempat.trim()
+  dasar.ot_tgl = f.ot_tgl
+  dasar.ot_ttl = gabungTtl(dasar.ot_tempat, dasar.ot_tgl)
+  dasar.ot_alamat = f.ot_alamat.trim()
   dasar.metode = f.metode
   dasar.bukti = f.metode === 'Tunai di sekolah' ? '—' : f.bukti
   if (!props.record) dasar.status = f.bayar === 'sudah' ? 'Pembayaran terverifikasi' : 'Menunggu verifikasi'
@@ -147,6 +165,23 @@ const inputKelas = 'min-h-11 w-full rounded-lg border border-[#D0D5DD] bg-white 
           <label class="block"><span :class="labelKelas">Tanggal lahir <span class="text-[#B42318]">*</span></span><input v-model="f.o_tgl" :class="inputKelas" type="date"></label>
           <label class="block"><span :class="labelKelas">Email aktif wali</span><input v-model="f.o_email" :class="inputKelas" type="email"></label>
           <label class="block"><span :class="labelKelas">Alamat tinggal wali <span class="text-[#B42318]">*</span></span><textarea v-model="f.o_alamat" :class="`${inputKelas} py-2.5`" rows="2" /></label>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-dashed border-[#D0D5DD] bg-white">
+        <div class="border-b border-[#EFF2F7] px-5 py-3.5">
+          <h3 class="font-semibold">Informasi Orang Tua Kandung <span class="ml-1 rounded-full bg-[#F2F4F7] px-2 py-0.5 text-[10px] font-bold text-[#667085]">OPSIONAL</span></h3>
+          <p class="mt-0.5 text-xs text-[#667085]">Boleh dikosongkan bila sama dengan wali atau tidak tersedia.</p>
+        </div>
+        <div class="grid gap-4 p-5 sm:grid-cols-2">
+          <label class="block"><span :class="labelKelas">Nama lengkap orang tua</span><input v-model="f.ot_nama" :class="inputKelas" type="text"></label>
+          <label class="block"><span :class="labelKelas">Hubungan dengan siswa</span><select v-model="f.ot_hub" :class="inputKelas"><option value="">— Pilih —</option><option>Ayah</option><option>Ibu</option></select></label>
+          <label class="block"><span :class="labelKelas">NIK (16 digit)</span><input v-model="f.ot_nik" :class="inputKelas" type="text" inputmode="numeric" @input="angkaSaja('ot_nik')"></label>
+          <label class="block"><span :class="labelKelas">No. HP/WA orang tua</span><input v-model="f.ot_hp" :class="inputKelas" type="text" inputmode="numeric" @input="hpSaja('ot_hp')"></label>
+          <label class="block"><span :class="labelKelas">Tempat lahir</span><input v-model="f.ot_tempat" :class="inputKelas" type="text"></label>
+          <label class="block"><span :class="labelKelas">Tanggal lahir</span><input v-model="f.ot_tgl" :class="inputKelas" type="date"></label>
+          <label class="block"><span :class="labelKelas">Email aktif orang tua</span><input v-model="f.ot_email" :class="inputKelas" type="email"></label>
+          <label class="block"><span :class="labelKelas">Alamat tinggal orang tua</span><textarea v-model="f.ot_alamat" :class="`${inputKelas} py-2.5`" rows="2" /></label>
         </div>
       </section>
 

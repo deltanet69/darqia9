@@ -99,6 +99,15 @@ export interface SpmbAdminRecord {
   o_tempat: string
   o_tgl: string
   o_alamat: string
+  ot_nama: string
+  ot_hub: string
+  ot_nik: string
+  ot_hp: string
+  ot_email: string
+  ot_ttl: string
+  ot_tempat: string
+  ot_tgl: string
+  ot_alamat: string
   waktu: string
   status: SpmbStatus
   via: 'Online' | 'Manual'
@@ -181,6 +190,8 @@ export function normalizeRecord(raw: Record<string, unknown>): SpmbAdminRecord {
   const oTtl = str('o_ttl')
   const sPisah = str('s_tempat') && str('s_tgl') ? { tempat: str('s_tempat'), tgl: str('s_tgl') } : parseTtl(sTtl)
   const oPisah = str('o_tempat') && str('o_tgl') ? { tempat: str('o_tempat'), tgl: str('o_tgl') } : parseTtl(oTtl)
+  const otTtl = str('ot_ttl')
+  const otPisah = str('ot_tempat') && str('ot_tgl') ? { tempat: str('ot_tempat'), tgl: str('ot_tgl') } : parseTtl(otTtl)
   return {
     id: str('id'),
     jenjang: str('jenjang'),
@@ -204,6 +215,15 @@ export function normalizeRecord(raw: Record<string, unknown>): SpmbAdminRecord {
     o_tempat: oPisah.tempat,
     o_tgl: oPisah.tgl,
     o_alamat: str('o_alamat'),
+    ot_nama: str('ot_nama'),
+    ot_hub: str('ot_hub'),
+    ot_nik: str('ot_nik'),
+    ot_hp: str('ot_hp'),
+    ot_email: str('ot_email'),
+    ot_ttl: otTtl || gabungTtl(otPisah.tempat, otPisah.tgl),
+    ot_tempat: otPisah.tempat,
+    ot_tgl: otPisah.tgl,
+    ot_alamat: str('ot_alamat'),
     waktu: str('waktu'),
     status: kanonStatus(str('status')),
     via: str('via') === 'Manual' ? 'Manual' : 'Online',
@@ -264,6 +284,18 @@ export function recordKeRow(r: SpmbAdminRecord): Record<string, unknown> {
     o_tempat: r.o_tempat || null,
     o_tgl: r.o_tgl || null,
     o_alamat: r.o_alamat || null,
+    ...(r.ot_nama || r.ot_hub || r.ot_nik || r.ot_hp || r.ot_email || r.ot_tempat || r.ot_tgl || r.ot_alamat
+      ? {
+          ot_nama: r.ot_nama || null,
+          ot_hub: r.ot_hub || null,
+          ot_nik: r.ot_nik || null,
+          ot_hp: r.ot_hp || null,
+          ot_email: r.ot_email || null,
+          ot_tempat: r.ot_tempat || null,
+          ot_tgl: r.ot_tgl || null,
+          ot_alamat: r.ot_alamat || null
+        }
+      : {}),
     via: r.via,
     oleh: r.oleh || null,
     metode: r.metode || null,
@@ -322,6 +354,14 @@ export interface SpmbInputManual {
   o_tempat: string
   o_tgl: string
   o_alamat: string
+  ot_nama: string
+  ot_hub: string
+  ot_nik: string
+  ot_hp: string
+  ot_email: string
+  ot_tempat: string
+  ot_tgl: string
+  ot_alamat: string
   metode: string
   bukti: string
 }
@@ -348,6 +388,9 @@ export function validasiManual(input: SpmbInputManual, key: SpmbJenjangKey, reco
   if (!emailOk(input.o_email)) return 'Email aktif wali tidak valid.'
   if (!input.o_tempat.trim() || !input.o_tgl) return 'Tempat dan tanggal lahir wali wajib diisi.'
   if (!input.o_alamat.trim()) return 'Alamat tinggal wali wajib diisi.'
+  if (input.ot_nik && !/^\d{16}$/.test(input.ot_nik)) return 'NIK orang tua kandung harus tepat 16 digit angka bila diisi.'
+  if (input.ot_hp && !/^08\d{7,12}$/.test(input.ot_hp)) return 'No. HP/WA orang tua kandung tidak valid bila diisi.'
+  if (!emailOk(input.ot_email)) return 'Email orang tua kandung tidak valid.'
   if (input.metode !== 'Tunai di sekolah' && !input.bukti) return 'Bukti pembayaran wajib diupload untuk metode Transfer BSI / QRIS.'
   return ''
 }
@@ -393,8 +436,8 @@ export function bagiRataPenempatan(
 }
 
 export function csvSpmb(records: SpmbAdminRecord[]): string {
-  const head = ['ID', 'Sumber', 'Diinput Oleh', 'Nama Siswa', 'NISN', 'Jenis Kelamin', 'Tempat Lahir Siswa', 'Tanggal Lahir Siswa', 'HP Siswa', 'Email Siswa', 'Asal Sekolah', 'Alamat Sekolah', 'Jurusan', 'Nama Orang Tua', 'Hubungan', 'NIK Orang Tua', 'HP Orang Tua', 'Email Orang Tua', 'Tempat Lahir Wali', 'Tanggal Lahir Wali', 'Alamat Tinggal Wali', 'Metode Bayar', 'Waktu Daftar', 'Status', 'Kelas Penempatan', 'NIS']
-  const rows = records.map(x => [x.id, x.via, x.oleh || '—', x.s_nama, x.s_nisn, x.s_jk, x.s_tempat, fmtTanggalPanjang(x.s_tgl), x.s_hp, x.s_email, x.s_sekolah, x.s_alsekolah, x.jurusan || '-', x.o_nama, x.o_hub, x.o_nik, x.o_hp, x.o_email, x.o_tempat, fmtTanggalPanjang(x.o_tgl), x.o_alamat, x.metode || '-', x.waktu, x.status, x.kelas || '-', x.nis || '-'])
+  const head = ['ID', 'Sumber', 'Diinput Oleh', 'Nama Siswa', 'NISN', 'Jenis Kelamin', 'Tempat Lahir Siswa', 'Tanggal Lahir Siswa', 'HP Siswa', 'Email Siswa', 'Asal Sekolah', 'Alamat Sekolah', 'Jurusan', 'Nama Orang Tua', 'Hubungan', 'NIK Orang Tua', 'HP Orang Tua', 'Email Orang Tua', 'Tempat Lahir Wali', 'Tanggal Lahir Wali', 'Alamat Tinggal Wali', 'Nama Orang Tua Kandung', 'Hubungan Ortu', 'NIK Ortu', 'HP Ortu', 'Email Ortu', 'Tempat Lahir Ortu', 'Tanggal Lahir Ortu', 'Alamat Ortu', 'Metode Bayar', 'Waktu Daftar', 'Status', 'Kelas Penempatan', 'NIS']
+  const rows = records.map(x => [x.id, x.via, x.oleh || '—', x.s_nama, x.s_nisn, x.s_jk, x.s_tempat, fmtTanggalPanjang(x.s_tgl), x.s_hp, x.s_email, x.s_sekolah, x.s_alsekolah, x.jurusan || '-', x.o_nama, x.o_hub, x.o_nik, x.o_hp, x.o_email, x.o_tempat, fmtTanggalPanjang(x.o_tgl), x.o_alamat, x.ot_nama, x.ot_hub, x.ot_nik, x.ot_hp, x.ot_email, x.ot_tempat, fmtTanggalPanjang(x.ot_tgl), x.ot_alamat, x.metode || '-', x.waktu, x.status, x.kelas || '-', x.nis || '-'])
   return [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n')
 }
 

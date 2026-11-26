@@ -280,16 +280,16 @@
               <div>
                 <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5 mb-1.5">
                   <svg class="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.4 4-5 6.5-5s5.3 1.6 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 15.2c2.3.3 4.3 1.7 5.5 4.3"/></svg>
-                  Informasi Orang Tua / Wali
+                  Informasi Wali <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600">WAJIB</span>
                 </h2>
-                <p class="text-xs sm:text-sm text-slate-500">Data orang tua/wali untuk keperluan administrasi dan komunikasi resmi sekolah.</p>
+                <p class="text-xs sm:text-sm text-slate-500">Data wali siswa untuk keperluan administrasi dan komunikasi resmi sekolah. Nomor WhatsApp &amp; email wali menjadi tujuan notifikasi status pendaftaran.</p>
               </div>
 
               <div class="space-y-5">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Nama Lengkap Orang Tua / Wali <span class="text-red-500">*</span>
+                      Nama Lengkap Wali <span class="text-red-500">*</span>
                     </label>
                     <input
                       v-model="form.o_nama"
@@ -358,7 +358,7 @@
 
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Email Aktif Orang Tua <span class="text-slate-400 font-normal">(Opsional)</span>
+                    Email Aktif Wali <span class="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <input
                     v-model="form.o_email"
@@ -373,7 +373,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Tempat Lahir Orang Tua <span class="text-red-500">*</span>
+                      Tempat Lahir Wali <span class="text-red-500">*</span>
                     </label>
                     <input
                       v-model="form.o_tempat"
@@ -388,7 +388,7 @@
 
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Tanggal Lahir Orang Tua <span class="text-red-500">*</span>
+                      Tanggal Lahir Wali <span class="text-red-500">*</span>
                     </label>
                     <input
                       v-model="form.o_tgl"
@@ -417,6 +417,70 @@
                 </div>
               </div>
             
+              <!-- ORANG TUA KANDUNG (OPSIONAL) -->
+              <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-4 sm:p-5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="text-sm font-extrabold text-slate-900">Informasi Orang Tua Kandung</h3>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">OPSIONAL</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Isi bila data orang tua kandung berbeda dengan wali, atau untuk melengkapi arsip sekolah. Boleh dikosongkan — pendaftaran tetap dapat dilanjutkan.</p>
+                <div class="mt-3.5 flex flex-wrap items-center justify-between gap-3">
+                  <label class="inline-flex items-center gap-2.5 cursor-pointer select-none">
+                    <input type="checkbox" v-model="isiOrtu" class="peer sr-only">
+                    <span class="relative block w-11 h-6 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+                    <span class="text-[13px] font-semibold text-slate-700">Isi data orang tua kandung</span>
+                  </label>
+                  <button v-if="isiOrtu" type="button" @click="salinWaliKeOrtu" class="px-3 py-1.5 rounded-full border border-violet-200 bg-violet-50 text-violet-700 text-xs font-bold hover:bg-violet-100 transition-all">Salin dari data wali</button>
+                </div>
+                <div v-if="isiOrtu" class="mt-4 space-y-5">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nama Lengkap Orang Tua</label>
+                      <input v-model="form.ot_nama" type="text" placeholder="Sesuai KTP/KK" class="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Hubungan dengan Siswa</label>
+                      <select v-model="form.ot_hub" class="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all">
+                        <option value="">— Pilih Hubungan —</option>
+                        <option>Ayah</option>
+                        <option>Ibu</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">NIK (Nomor Induk Kependudukan)</label>
+                      <input v-model="form.ot_nik" @input="clearErr('ot_nik'); numericOnly('ot_nik')" type="text" inputmode="numeric" maxlength="16" placeholder="16 digit NIK" class="w-full px-4 py-3 text-sm font-mono bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all" :class="errs.ot_nik ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'">
+                      <span v-if="errs.ot_nik" class="block text-xs font-semibold text-red-600 mt-1">NIK harus 16 digit angka bila diisi.</span>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">No. HP / WhatsApp</label>
+                      <input v-model="form.ot_hp" @input="clearErr('ot_hp'); phoneOnly('ot_hp')" type="tel" inputmode="tel" placeholder="cth: 0812xxxxxxx" class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all" :class="errs.ot_hp ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'">
+                      <span v-if="errs.ot_hp" class="block text-xs font-semibold text-red-600 mt-1">Nomor HP/WA tidak valid bila diisi.</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email Aktif Orang Tua</label>
+                    <input v-model="form.ot_email" @input="clearErr('ot_email')" type="email" inputmode="email" placeholder="cth: orangtua@email.com" class="w-full px-4 py-3 text-sm bg-slate-50 border-2 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all" :class="errs.ot_email ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'">
+                    <span v-if="errs.ot_email" class="block text-xs font-semibold text-red-600 mt-1">Format email tidak valid bila diisi.</span>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tempat Lahir Orang Tua</label>
+                      <input v-model="form.ot_tempat" type="text" placeholder="cth: Bekasi" class="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Lahir Orang Tua</label>
+                      <input v-model="form.ot_tgl" type="date" class="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all">
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Alamat Tempat Tinggal</label>
+                    <textarea v-model="form.ot_alamat" rows="3" placeholder="Jalan, RT/RW, kelurahan, kecamatan, kabupaten/kota, kode pos" class="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all"></textarea>
+                  </div>
+                </div>
+              </div>
+
               <!-- Dokumen Pendukung -->
               <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-4 sm:p-5">
                 <h3 class="text-sm font-extrabold text-slate-900">Dokumen Pendukung</h3>
@@ -706,6 +770,8 @@ const {
   dokumenNama,
   dokumenErr,
   onDokumenChange,
+  isiOrtu,
+  salinWaliKeOrtu,
   nextStep,
   prevStep,
   modalSuccess,
