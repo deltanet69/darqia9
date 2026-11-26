@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useGsapReveal } from "~/composables/useGsapReveal";
+import { petakanArtikelPublik, type ArtikelPublik } from "~/composables/useBeritaPublik";
 useGsapReveal();
 definePageMeta({ layout: 'smk' })
 
@@ -7,6 +8,19 @@ definePageMeta({ layout: 'smk' })
 const { data: feedResponse, pending: feedPending } = await useFetch('/api/instagram/feed')
 const instagramPosts = computed(() => feedResponse.value?.data || [])
 const isLiveFeed = computed(() => Boolean(feedResponse.value?.isLive))
+
+// Berita & Artikel Terkini: dari endpoint konten (Admin Portal -> DB -> website).
+// Bila endpoint kosong (migrasi 0096 belum jalan) tampilkan 3 artikel bawaan.
+const beritaCadanganSmk: ArtikelPublik[] = [
+  { id: 'spmb-2027-2028-dibuka-7-rombel', slug: 'spmb-2027-2028-dibuka-7-rombel', title: 'SPMB 2027/2028 Dibuka: 7 Rombel, 3 Gelombang Pendaftaran', category: 'Pengumuman', categoryLabel: 'Pengumuman', badgeBg: 'bg-[#FEF3C7]/95', badgeText: 'text-[#92400E]', date: '4 Oktober 2026', isoDate: '2026-10-04', author: 'Panitia SPMB', authorRole: 'Sekretariat SPMB 2027', readTime: '3 mnt baca', views: 1420, image: '/asset/SMK/news-spmb.webp', featured: true, tags: ['SPMB', 'Pendaftaran'], summary: 'Penerimaan murid baru resmi dibuka dengan biaya registrasi terjangkau Rp50.000. Tersedia kuota 7 rombel dengan beasiswa tahfidz & prestasi.', content: [], isiHtml: '' },
+  { id: 'mengenal-deep-learning-kurikulum-merdeka', slug: 'mengenal-deep-learning-kurikulum-merdeka', title: 'Mengenal Deep Learning: Cara Baru Belajar di Kurikulum Merdeka', category: 'Akademik', categoryLabel: 'Artikel Edukasi', badgeBg: 'bg-[#EEF2FF]/95', badgeText: 'text-[#4338CA]', date: '28 September 2026', isoDate: '2026-09-28', author: 'Tim Kurikulum', authorRole: 'Pengembang Kurikulum Vokasi', readTime: '4 mnt baca', views: 890, image: '/asset/SMK/news-deeplearning.webp', featured: false, tags: ['Kurikulum'], summary: 'Bukan sekadar menghafal materi. Pendekatan Deep Learning mengasah penalaran kritis, kolaborasi digital, dan studi kasus riil industri.', content: [], isiHtml: '' },
+  { id: 'blk-komunitas-jembatan-sekolah-ke-dunia-industri', slug: 'blk-komunitas-jembatan-sekolah-ke-dunia-industri', title: 'BLK Komunitas: Jembatan Sekolah Menuju Dunia Industri', category: 'Kegiatan', categoryLabel: 'Berita Kejuruan', badgeBg: 'bg-[#DBEAFE]/95', badgeText: 'text-[#1D4ED8]', date: '20 September 2026', isoDate: '2026-09-20', author: 'Humas & DUDIKA', authorRole: 'Humas & DUDIKA', readTime: '3 mnt baca', views: 960, image: '/asset/SMK/news-blk.webp', featured: false, tags: ['BLK', 'Industri'], summary: 'Gedung BLK Komunitas Kemnaker RI di Attaqwa 9 menjadi pusat uji kompetensi kejuruan dengan mesin modern dan instruktur tersertifikasi.', content: [], isiHtml: '' }
+]
+const { data: beritaResponse } = await useFetch('/api/konten/berita', { query: { jenjang: 'smk' }, default: () => ({ berita: [] as any[] }) })
+const beritaBeranda = computed<ArtikelPublik[]>(() => {
+  const dariApi = (beritaResponse.value?.berita || []).map((b: any) => petakanArtikelPublik(b, 'smk')).slice(0, 3)
+  return dariApi.length ? dariApi : beritaCadanganSmk
+})
 </script>
 
 <template>
@@ -545,151 +559,43 @@ const isLiveFeed = computed(() => Boolean(feedResponse.value?.isLive))
         <!-- News 3 Cards Grid with Images & Rich Informative Details -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          <!-- Card 1: SPMB -->
-          <div 
-            @click="$router.push('/smk/berita')"
-            class="rv group bg-white border border-[#E2ECF8] rounded-[22px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_22px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 hover:border-[#1B5FD9]/30 transition-all duration-300 cursor-pointer flex flex-col"
-          >
-            <!-- Image Frame -->
-            <div class="relative h-[210px] overflow-hidden bg-[#0A2A5C]">
-              <img 
-                src="/asset/SMK/news-spmb.webp" 
-                alt="Pendaftaran SPMB SMK IT Attaqwa 9" 
-                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
-                loading="lazy"
-              />
-              <!-- Subtle Gradient Overlay -->
-              <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
-              
-              <!-- Floating Category Pill -->
-              <div class="absolute top-4 left-4">
-                <span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#FEF3C7]/95 text-[#92400E] backdrop-blur-md shadow-sm">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#D97706] animate-pulse"></span>
-                  Pengumuman
-                </span>
-              </div>
-
-              <!-- Read Time Pill -->
-              <div class="absolute bottom-3 right-4 text-[11.5px] font-bold text-white/90 bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-md">
-                3 mnt baca
-              </div>
-            </div>
-
-            <!-- Content Area -->
-            <div class="p-6 flex-1 flex flex-col justify-between">
-              <div>
-                <div class="flex items-center gap-2 text-[12.5px] text-[#8FA6CC] font-semibold mb-2.5">
-                  <span>4 Oktober 2026</span>
-                  <span>·</span>
-                  <span class="text-[#1B5FD9] font-bold">Panitia SPMB</span>
-                </div>
-                <h3 class="text-[17.5px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
-                  SPMB 2027/2028 Dibuka: 7 Rombel, 3 Gelombang Pendaftaran
-                </h3>
-                <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
-                  Penerimaan murid baru resmi dibuka dengan biaya registrasi terjangkau Rp50.000. Tersedia kuota 7 rombel dengan beasiswa tahfidz &amp; prestasi.
-                </p>
-              </div>
-
-              <!-- Card Action Link -->
-              <div class="pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[13px] font-bold text-[#1B5FD9]">
-                <span>Baca Pengumuman Lengkap</span>
-                <svg class="w-4 h-4 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card 2: Deep Learning -->
-          <div 
-            @click="$router.push('/smk/berita')"
+          <!-- Kartu berita: data dari endpoint konten, klik membuka artikelnya -->
+          <div
+            v-for="a in beritaBeranda"
+            :key="a.slug"
+            @click="$router.push(`/smk/berita?slug=${a.slug}`)"
             class="rv group bg-white border border-[#E2ECF8] rounded-[22px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_22px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 hover:border-[#1B5FD9]/30 transition-all duration-300 cursor-pointer flex flex-col"
           >
             <div class="relative h-[210px] overflow-hidden bg-[#0A2A5C]">
-              <img 
-                src="/asset/SMK/news-deeplearning.webp" 
-                alt="Pembelajaran Deep Learning SMK IT Attaqwa 9" 
-                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
-                loading="lazy"
-              />
+              <img v-if="a.image" :src="a.image" :alt="a.title" class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500" loading="lazy" />
+              <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0A2A5C] to-[#1B5FD9] text-white/50 text-[15px] font-extrabold tracking-wider uppercase px-6 text-center">{{ a.category }}</div>
               <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
-              
               <div class="absolute top-4 left-4">
-                <span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#EEF2FF]/95 text-[#4338CA] backdrop-blur-md shadow-sm">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#4F46E5]"></span>
-                  Artikel Edukasi
+                <span :class="['inline-flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full backdrop-blur-md shadow-sm', a.badgeBg, a.badgeText]">
+                  <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                  {{ a.categoryLabel }}
                 </span>
               </div>
-
               <div class="absolute bottom-3 right-4 text-[11.5px] font-bold text-white/90 bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-md">
-                4 mnt baca
+                {{ a.readTime }}
               </div>
             </div>
-
             <div class="p-6 flex-1 flex flex-col justify-between">
               <div>
                 <div class="flex items-center gap-2 text-[12.5px] text-[#8FA6CC] font-semibold mb-2.5">
-                  <span>28 September 2026</span>
+                  <span>{{ a.date }}</span>
                   <span>·</span>
-                  <span class="text-[#1B5FD9] font-bold">Tim Kurikulum</span>
+                  <span class="text-[#1B5FD9] font-bold">{{ a.author }}</span>
                 </div>
                 <h3 class="text-[17.5px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
-                  Mengenal Deep Learning: Cara Baru Belajar di Kurikulum Merdeka
+                  {{ a.title }}
                 </h3>
                 <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
-                  Bukan sekadar menghafal materi. Pendekatan Deep Learning mengasah penalaran kritis, kolaborasi digital, dan studi kasus riil industri.
+                  {{ a.summary }}
                 </p>
               </div>
-
               <div class="pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[13px] font-bold text-[#1B5FD9]">
-                <span>Baca Artikel Lengkap</span>
-                <svg class="w-4 h-4 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card 3: BLK Komunitas -->
-          <div 
-            @click="$router.push('/smk/berita')"
-            class="rv group bg-white border border-[#E2ECF8] rounded-[22px] overflow-hidden shadow-[0_6px_25px_rgba(10,42,92,0.06)] hover:shadow-[0_22px_45px_rgba(10,42,92,0.14)] hover:-translate-y-2 hover:border-[#1B5FD9]/30 transition-all duration-300 cursor-pointer flex flex-col"
-          >
-            <div class="relative h-[210px] overflow-hidden bg-[#0A2A5C]">
-              <img 
-                src="/asset/SMK/news-blk.webp" 
-                alt="BLK Komunitas SMK IT Attaqwa 9" 
-                class="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
-                loading="lazy"
-              />
-              <div class="absolute inset-0 bg-gradient-to-t from-[#061A3E]/80 via-transparent to-black/20"></div>
-              
-              <div class="absolute top-4 left-4">
-                <span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider uppercase py-1.5 px-3 rounded-full bg-[#DBEAFE]/95 text-[#1D4ED8] backdrop-blur-md shadow-sm">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#2563EB]"></span>
-                  Berita Kejuruan
-                </span>
-              </div>
-
-              <div class="absolute bottom-3 right-4 text-[11.5px] font-bold text-white/90 bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-md">
-                3 mnt baca
-              </div>
-            </div>
-
-            <div class="p-6 flex-1 flex flex-col justify-between">
-              <div>
-                <div class="flex items-center gap-2 text-[12.5px] text-[#8FA6CC] font-semibold mb-2.5">
-                  <span>20 September 2026</span>
-                  <span>·</span>
-                  <span class="text-[#1B5FD9] font-bold">Humas &amp; DUDIKA</span>
-                </div>
-                <h3 class="text-[17.5px] font-black text-[#061A3E] leading-snug mb-2.5 group-hover:text-[#1B5FD9] transition-colors">
-                  BLK Komunitas: Jembatan Sekolah Menuju Dunia Industri
-                </h3>
-                <p class="text-[14px] text-[#5A6B8C] leading-relaxed mb-4">
-                  Gedung BLK Komunitas Kemnaker RI di Attaqwa 9 menjadi pusat uji kompetensi kejuruan dengan mesin modern dan instruktur tersertifikasi.
-                </p>
-              </div>
-
-              <div class="pt-4 border-t border-[#F1F5F9] flex items-center justify-between text-[13px] font-bold text-[#1B5FD9]">
-                <span>Baca Berita Lengkap</span>
+                <span>Baca Selengkapnya</span>
                 <svg class="w-4 h-4 stroke-current stroke-[2] fill-none group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
               </div>
             </div>

@@ -1,8 +1,22 @@
 <script setup lang="ts">
 import { useGsapReveal } from '~/composables/useGsapReveal'
+import { petakanArtikelPublik, type ArtikelPublik } from '~/composables/useBeritaPublik'
 
 useGsapReveal()
 definePageMeta({ layout: 'smp' })
+
+// Berita & Artikel Terkini: dari endpoint konten (Admin Portal -> DB -> website).
+// Bila endpoint kosong (migrasi 0096 belum jalan) tampilkan 3 artikel bawaan.
+const beritaCadanganSmp: ArtikelPublik[] = [
+  { id: 'spmb-2027-2028-smp-it-bca-dibuka', slug: 'spmb-2027-2028-smp-it-bca-dibuka', title: 'SPMB 2027/2028 Dibuka: 7 Rombel, 3 Gelombang Pendaftaran', category: 'Pengumuman', categoryLabel: 'Pengumuman Resmi', badgeBg: 'bg-[#FEF3C7]', badgeText: 'text-[#92400E]', date: '4 Oktober 2026', isoDate: '2026-10-04', author: 'Panitia SPMB', authorRole: 'Sekretariat SPMB BCA', readTime: '3 mnt baca', views: 1280, image: '', featured: true, tags: ['SPMB', 'Pendaftaran'], summary: 'Penerimaan murid baru tahun ajaran 2027/2028 resmi dibuka dengan biaya registrasi hanya Rp50.000.', content: [], isiHtml: '' },
+  { id: 'milad-ke-6-enam-tahun-smp-it-bina-cendekia-assalam', slug: 'milad-ke-6-enam-tahun-smp-it-bina-cendekia-assalam', title: 'Milad ke-6: Enam Tahun SMP IT Bina Cendekia Assalam', category: 'Kegiatan', categoryLabel: 'Berita Sekolah', badgeBg: 'bg-[#D9F2E3]', badgeText: 'text-[#0B6B45]', date: '16 April 2026', isoDate: '2026-04-16', author: 'Humas Sekolah', authorRole: 'Humas', readTime: '3 mnt baca', views: 940, image: '', featured: false, tags: ['Milad'], summary: 'Perayaan enam tahun berdirinya sekolah — dari angkatan pertama hingga mendidik lebih dari 1000 santri alumni.', content: [], isiHtml: '' },
+  { id: 'mengenal-sekolah-berbasis-kelas-gender', slug: 'mengenal-sekolah-berbasis-kelas-gender', title: 'Mengenal Sekolah Berbasis Kelas Gender', category: 'Akademik', categoryLabel: 'Artikel Edukasi', badgeBg: 'bg-[#E0E7FF]', badgeText: 'text-[#4338CA]', date: '28 September 2026', isoDate: '2026-09-28', author: 'Tim Akademik', authorRole: 'Tim Akademik', readTime: '3 mnt baca', views: 860, image: '', featured: false, tags: ['Kelas Gender'], summary: 'Putra belajar dengan putra, putri dengan putri — bagaimana konsep kelas gender membuat proses KBM lebih optimal.', content: [], isiHtml: '' }
+]
+const { data: beritaResponse } = await useFetch('/api/konten/berita', { query: { jenjang: 'smp' }, default: () => ({ berita: [] as any[] }) })
+const beritaBeranda = computed<ArtikelPublik[]>(() => {
+  const dariApi = (beritaResponse.value?.berita || []).map((b: any) => petakanArtikelPublik(b, 'smp')).slice(0, 3)
+  return dariApi.length ? dariApi : beritaCadanganSmp
+})
 </script>
 
 <template>
@@ -498,54 +512,20 @@ definePageMeta({ layout: 'smp' })
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          <NuxtLink to="/smp/berita" class="rv group bg-[#F2F9F5] border border-[#D1E7DD] rounded-[20px] p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between">
+          <NuxtLink v-for="a in beritaBeranda" :key="a.slug" :to="`/smp/berita?slug=${a.slug}`" class="rv group bg-[#F2F9F5] border border-[#D1E7DD] rounded-[20px] p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between">
             <div>
-              <span class="text-[11px] font-extrabold tracking-wider uppercase text-[#92400E] bg-[#FEF3C7] py-1 px-3 rounded-full mb-3 inline-block">
-                Pengumuman Resmi
+              <span :class="['text-[11px] font-extrabold tracking-wider uppercase py-1 px-3 rounded-full mb-3 inline-block', a.badgeBg, a.badgeText]">
+                {{ a.categoryLabel }}
               </span>
               <h3 class="text-[17px] font-black text-[#063826] group-hover:text-[#0E7A4E] transition-colors mb-2">
-                SPMB 2027/2028 Dibuka: 7 Rombel, 3 Gelombang Pendaftaran
+                {{ a.title }}
               </h3>
               <p class="text-[13.5px] text-[#55705F] leading-relaxed mb-4">
-                Penerimaan murid baru tahun ajaran 2027/2028 resmi dibuka dengan biaya registrasi hanya Rp50.000.
+                {{ a.summary }}
               </p>
             </div>
             <span class="text-[12px] font-bold text-[#55705F] border-t border-[#D1E7DD] pt-3 block">
-              4 Oktober 2026 · Panitia SPMB
-            </span>
-          </NuxtLink>
-
-          <NuxtLink to="/smp/berita" class="rv group bg-[#F2F9F5] border border-[#D1E7DD] rounded-[20px] p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between">
-            <div>
-              <span class="text-[11px] font-extrabold tracking-wider uppercase text-[#0B6B45] bg-[#D9F2E3] py-1 px-3 rounded-full mb-3 inline-block">
-                Berita Sekolah
-              </span>
-              <h3 class="text-[17px] font-black text-[#063826] group-hover:text-[#0E7A4E] transition-colors mb-2">
-                Milad ke-6: Enam Tahun SMP IT Bina Cendekia Assalam
-              </h3>
-              <p class="text-[13.5px] text-[#55705F] leading-relaxed mb-4">
-                Perayaan enam tahun berdirinya sekolah — dari angkatan pertama hingga mendidik lebih dari 1000 santri alumni.
-              </p>
-            </div>
-            <span class="text-[12px] font-bold text-[#55705F] border-t border-[#D1E7DD] pt-3 block">
-              16 April 2026 · Humas Sekolah
-            </span>
-          </NuxtLink>
-
-          <NuxtLink to="/smp/berita" class="rv group bg-[#F2F9F5] border border-[#D1E7DD] rounded-[20px] p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between">
-            <div>
-              <span class="text-[11px] font-extrabold tracking-wider uppercase text-[#4338CA] bg-[#E0E7FF] py-1 px-3 rounded-full mb-3 inline-block">
-                Artikel Edukasi
-              </span>
-              <h3 class="text-[17px] font-black text-[#063826] group-hover:text-[#0E7A4E] transition-colors mb-2">
-                Mengenal Sekolah Berbasis Kelas Gender
-              </h3>
-              <p class="text-[13.5px] text-[#55705F] leading-relaxed mb-4">
-                Putra belajar dengan putra, putri dengan putri — bagaimana konsep kelas gender membuat proses KBM lebih optimal.
-              </p>
-            </div>
-            <span class="text-[12px] font-bold text-[#55705F] border-t border-[#D1E7DD] pt-3 block">
-              28 September 2026 · Tim Akademik
+              {{ a.date }} · {{ a.author }}
             </span>
           </NuxtLink>
 

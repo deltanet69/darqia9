@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { reactive, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useGsapReveal } from '~/composables/useGsapReveal'
 
 useGsapReveal()
@@ -9,10 +9,10 @@ definePageMeta({ layout: 'smk' })
 // DATA BERITA & ARTIKEL RESMI SMK IT ATTAQWA 9
 // =========================================================================
 interface Article {
-  id: number
+  id: string | number
   slug: string
   title: string
-  category: 'berita' | 'artikel' | 'pengumuman' | 'prestasi' | 'karya'
+  category: string
   categoryLabel: string
   badgeBg: string
   badgeText: string
@@ -27,13 +27,14 @@ interface Article {
   tags: string[]
   summary: string
   content: string[]
+  isiHtml?: string
   quote?: {
     text: string
     author: string
   }
 }
 
-const articlesData: Article[] = [
+const articlesData = reactive<Article[]>([
   {
     id: 1,
     slug: 'spmb-2027-2028-dibuka-7-rombel',
@@ -260,7 +261,9 @@ const articlesData: Article[] = [
       'Manajemen sekolah berkomitmen untuk terus meningkatkan investasi fasilitas dan pelatihan guru agar standar mutu lulusan semakin relevan dengan tuntutan revolusi industri.'
     ]
   }
-]
+])
+
+const petaIdLama = new Map<number, string>(articlesData.map(a => [Number(a.id), a.slug]))
 
 // =========================================================================
 // STATE: SEARCH, FILTER, SORT & PAGINATION
@@ -272,14 +275,10 @@ const currentPage = ref(1)
 const itemsPerPage = 6
 
 // Kategori Tabs
-const categories = [
-  { id: 'semua', label: 'Semua Artikel' },
-  { id: 'berita', label: 'Berita Kejuruan' },
-  { id: 'artikel', label: 'Artikel Edukasi' },
-  { id: 'pengumuman', label: 'Pengumuman' },
-  { id: 'prestasi', label: 'Prestasi Siswa' },
-  { id: 'karya', label: 'Karya Santri' }
-]
+const categories = computed(() => {
+  const unik = [...new Set(articlesData.map(a => a.category).filter(Boolean))]
+  return [{ id: 'semua', label: 'Semua Artikel' }, ...unik.map(k => ({ id: k, label: k }))]
+})
 
 // Hitung jumlah per kategori
 const getCategoryCount = (catId: string) => {
@@ -322,7 +321,7 @@ const filteredArticles = computed(() => {
 // Artikel Headline (Pertama yang relevan atau featured)
 const featuredHeadline = computed(() => {
   if (searchQuery.value.trim()) return null
-  if (activeCategory.value === 'semua' || activeCategory.value === 'pengumuman') {
+  if (activeCategory.value === 'semua' || activeCategory.value === 'Pengumuman') {
     return articlesData.find(a => a.featured) || articlesData[0]
   }
   return null
@@ -369,6 +368,7 @@ const isModalOpen = ref(false)
 const copiedToast = ref(false)
 
 const openArticle = (article: Article) => {
+  if (article.slug) { catatTayanganArtikel('smk', article.slug); article.views = Number(article.views || 0) + 1 }
   selectedArticle.value = article
   isModalOpen.value = true
   if (typeof document !== 'undefined') {
@@ -396,7 +396,7 @@ const relatedArticles = computed(() => {
 
 const copyArticleLink = () => {
   if (typeof window !== 'undefined' && selectedArticle.value) {
-    const url = `${window.location.origin}/smk/berita?id=${selectedArticle.value.id}`
+    const url = `${window.location.origin}/smk/berita?slug=${selectedArticle.value.slug}`
     navigator.clipboard.writeText(url).then(() => {
       copiedToast.value = true
       setTimeout(() => {
@@ -413,18 +413,20 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (typeof window !== 'undefined') {
     window.addEventListener('keydown', handleKeydown)
+    const segar = await ambilArtikelPublik('smk')
+    if (segar.length) articlesData.splice(0, articlesData.length, ...(segar as unknown as Article[]))
     
     // Cek query param ?id=
     const urlParams = new URLSearchParams(window.location.search)
-    const articleId = urlParams.get('id')
-    if (articleId) {
-      const match = articlesData.find(a => a.id === Number(articleId))
-      if (match) {
-        openArticle(match)
-      }
+    const slugParam = urlParams.get('slug')
+    const idParam = urlParams.get('id')
+    const slugTarget = slugParam || (idParam ? petaIdLama.get(Number(idParam)) : undefined)
+    if (slugTarget) {
+      const match = articlesData.find(a => a.slug === slugTarget)
+      if (match) openArticle(match)
     }
   }
 })
@@ -920,14 +922,9 @@ onUnmounted(() => {
               </div>
 
               <!-- Article Content Paragraphs -->
-              <div class="prose max-w-none text-[#334155] text-[15.5px] sm:text-[16.5px] leading-relaxed space-y-4">
-                <p 
-                  v-for="(para, idx) in selectedArticle.content" 
-                  :key="idx"
-                  class="leading-[1.8]"
-                >
-                  {{ para }}
-                </p>
+              <div v-if="selectedArticle.isiHtml" class="prose max-w-none text-[#334155] text-[15.5px] sm:text-[16.5px] leading-relaxed konten-isi" v-html="selectedArticle.isiHtml"></div>
+              <div v-else class="prose max-w-none text-[#334155] text-[15.5px] sm:text-[16.5px] leading-relaxed space-y-4">
+                <p v-for="(para, idx) in selectedArticle.content" :key="idx" class="leading-[1.8]">{{ para }}</p>
               </div>
 
               <!-- Tags -->
@@ -1095,4 +1092,11 @@ onUnmounted(() => {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+/* Isi artikel dari editor kaya admin (HTML) di modal pembaca */
+.konten-isi p { line-height: 1.8; margin-bottom: 1rem; }
+.konten-isi h2 { font-size: 1.3em; font-weight: 800; margin: 1.2em 0 .5em; line-height: 1.35; }
+.konten-isi ul { list-style: disc; padding-left: 1.5em; margin-bottom: 1rem; }
+.konten-isi a { color: #1B5FD9; text-decoration: underline; }
+.konten-isi img { max-width: 100%; border-radius: 12px; }
+.konten-isi pre { overflow: auto; border-radius: .75rem; background: #101828; padding: 1rem; color: #f8fafc; }
 </style>

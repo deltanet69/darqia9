@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import AdminV2Header from '~/components/adminV2/AdminV2Header.vue'
 import AdminV2MegaPanel from '~/components/adminV2/AdminV2MegaPanel.vue'
 import AdminV2MobileMenu from '~/components/adminV2/AdminV2MobileMenu.vue'
@@ -31,12 +31,12 @@ const formError = ref('')
 const thumbnailBusy = ref(false)
 const thumbnailSize = ref(0)
 
-const articles = useState<any[]>('konten-berita', () => [])
 const banners = useState<any[]>('konten-banner', () => [])
 const infos = useState<any[]>('konten-informasi', () => [])
 const categories = useState<Kategori[]>('konten-kategori', () => (['SMP','SMK'] as Jenjang[]).flatMap(jenjang => ['Akademik','Prestasi','Kegiatan','Keagamaan','Olahraga','Pengumuman'].map(nama => ({ id:`K-${jenjang}-${nama.toLowerCase()}`, jenjang, nama }))))
-const source = computed(() => jenis.value === 'berita' ? articles.value : jenis.value === 'banner' ? banners.value : infos.value)
-const item = computed(() => source.value.find(entry => entry.id === id.value))
+const beritaItem = ref<any | null>(null)
+const memuatKonten = ref(false)
+const item = computed(() => jenis.value === 'berita' ? beritaItem.value : (jenis.value === 'banner' ? banners.value : infos.value).find(entry => entry.id === id.value))
 const activeCategories = computed(() => categories.value.filter(entry => entry.jenjang === grade.value).sort((a, b) => a.nama.localeCompare(b.nama, 'id')))
 const form = reactive({
   judul: '', subjudul: '', kategori: '', status: 'Draft', tanggal: '', tanggalJadwal: '', penulis: '',
@@ -45,15 +45,40 @@ const form = reactive({
   target: 'Keduanya', audiens: 'Semua', disematkan: false
 })
 
-if (item.value) {
-  Object.assign(form, item.value, {
-    tags: Array.isArray(item.value.tags) ? item.value.tags.join(', ') : item.value.tags || '',
-    tanggalJadwal: item.value.status === 'Terjadwal' ? item.value.tanggal : item.value.tanggalJadwal || ''
-  })
-  thumbnailSize.value = item.value.gambarUkuran || 0
-} else {
-  form.kategori = activeCategories.value[0]?.nama || ''
+const keLokalInput = (iso: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 16)
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }
+const isiFormDariItem = () => {
+  const it = item.value
+  if (!it) {
+    form.kategori = activeCategories.value[0]?.nama || ''
+    return
+  }
+  Object.assign(form, it, {
+    tags: Array.isArray(it.tags) ? it.tags.join(', ') : it.tags || '',
+    tanggal: keLokalInput(it.tanggal || ''),
+    tanggalJadwal: it.status === 'Terjadwal' ? keLokalInput(it.tanggal || '') : (it.tanggalJadwal ? keLokalInput(it.tanggalJadwal) : '')
+  })
+  thumbnailSize.value = it.gambarUkuran || 0
+}
+isiFormDariItem()
+
+onMounted(async () => {
+  if (jenis.value !== 'berita' || isNew.value) return
+  memuatKonten.value = true
+  try {
+    const hasil = await $fetch<{ berita: any }>(`/api/admin/konten/berita/${id.value}`)
+    beritaItem.value = hasil.berita
+    isiFormDariItem()
+  } catch {
+    beritaItem.value = null
+  } finally {
+    memuatKonten.value = false
+  }
+})
 
 const label = computed(() => jenis.value === 'banner' ? 'Popup Banner' : jenis.value === 'informasi' ? 'Berita & Informasi' : 'Berita & Artikel')
 const summaryWords = computed(() => form.ringkasan.trim() ? form.ringkasan.trim().split(/\s+/).length : 0)
@@ -152,7 +177,7 @@ const removeThumbnail = () => {
   thumbnailSize.value = 0
 }
 
-const save = () => {
+const save = async () => {
   formError.value = ''
   if (!form.judul.trim()) return formError.value = 'Judul konten wajib diisi.'
   if (jenis.value === 'berita') {
@@ -169,7 +194,26 @@ const save = () => {
     if (form.status === 'Terbit') data.tanggal = form.tanggal || localDateTime()
     if (form.status === 'Terjadwal') data.tanggal = form.tanggalJadwal
   }
-  const list = jenis.value === 'berita' ? articles : jenis.value === 'banner' ? banners : infos
+  if (jenis.value === 'berita') {
+    // Tanggal dinding (datetime-local) diubah ke ISO berzona dari peramban admin
+    // agar server menyimpan momen yang tepat.
+    if (data.tanggal) data.tanggal = new Date(data.tanggal).toISOString()
+    try {
+      if (isNew.value) {
+        const hasil = await $fetch<{ berita: any }>('/api/admin/konten/berita', { method: 'POST', body: data })
+        await router.replace(`/adminV2/konten/${hasil.berita.id}?jenis=berita`)
+      } else {
+        const hasil = await $fetch<{ berita: any }>(`/api/admin/konten/berita/${id.value}`, { method: 'PUT', body: data })
+        beritaItem.value = hasil.berita
+        isiFormDariItem()
+      }
+      isEditing.value = false
+    } catch (e: any) {
+      formError.value = e?.data?.statusMessage || e?.statusMessage || 'Berita gagal disimpan.'
+    }
+    return
+  }
+  const list = jenis.value === 'banner' ? banners : infos
   if (isNew.value) {
     data.id = `${jenis.value === 'berita' ? 'B' : jenis.value === 'banner' ? 'PB' : 'I'}-${Date.now()}`
     data.views = 0
@@ -180,9 +224,19 @@ const save = () => {
   }
   isEditing.value = false
 }
-const remove = () => {
+const remove = async () => {
   if (!confirm('Hapus konten ini?')) return
-  const list = jenis.value === 'berita' ? articles : jenis.value === 'banner' ? banners : infos
+  if (jenis.value === 'berita') {
+    try {
+      await $fetch(`/api/admin/konten/berita/${id.value}`, { method: 'DELETE' })
+    } catch (e: any) {
+      formError.value = e?.data?.statusMessage || e?.statusMessage || 'Berita gagal dihapus.'
+      return
+    }
+    await router.push('/adminV2/konten')
+    return
+  }
+  const list = jenis.value === 'banner' ? banners : infos
   list.value = list.value.filter(entry => entry.id !== id.value)
   router.push('/adminV2/konten')
 }
@@ -211,7 +265,11 @@ const formatDate = (value: string) => value ? new Intl.DateTimeFormat('id-ID', {
         </div>
       </div>
 
-      <section v-if="!isNew&&!item" class="panel p-10 text-center">
+      <section v-if="memuatKonten" class="panel p-10 text-center">
+        <h2 class="font-bold">Memuat konten…</h2>
+      </section>
+
+      <section v-if="!isNew&&!item&&!memuatKonten" class="panel p-10 text-center">
         <h2 class="font-bold">Konten tidak ditemukan</h2>
         <button class="mt-4 text-sm font-bold text-[#1B5FD9]" @click="router.push('/adminV2/konten')">Kembali ke daftar</button>
       </section>
