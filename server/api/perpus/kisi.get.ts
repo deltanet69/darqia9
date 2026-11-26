@@ -1,7 +1,12 @@
-// GET /api/perpus/kisi — kisi-kisi bank soal CBT untuk kelas siswa.
-// Butir terstruktur Bloom (kisi_butir, migrasi 0095) menjadi topik berlevel C1-C6; bank lama tanpa butir
-// memakai jalur teks (parseKisi). Tiap topik dicocokkan ke rekomendasi BAB spesifik dari indeks
-// perpus_bab (judul bab + subbab + halaman), dengan cadangan rekomendasi tingkat buku (cocokkanBuku).
+// GET /api/perpus/kisi — kisi-kisi untuk kelas siswa di Media Pembelajaran.
+// Sumber utama: bank soal yang ditugaskan ke KELAS siswa sendiri (CBT `question_banks` +
+// LMS `ujian_harian_banks`) dan sudah disusun kisi-kisinya oleh guru — tampil walau ujiannya
+// belum dijadwalkan. Ujian kelas (exams / ujian_harian) yang memakai bank yang sama memberi
+// judul tampilan, dan bisa menarik bank tambahan di luar penugasan kelas.
+// Butir terstruktur Bloom (kisi_butir, migrasi 0095) menjadi topik berlevel C1-C6; bank lama
+// tanpa butir memakai jalur teks (parseKisi). Tiap topik dicocokkan ke rekomendasi BAB spesifik
+// dari indeks perpus_bab (judul bab + subbab + halaman), dengan cadangan rekomendasi tingkat
+// buku (cocokkanBuku).
 import { cocokkanBab, cocokkanBuku, parseKisi, type BabBuku } from '../../../app/composables/perpusCore'
 import { indikatorLengkap, parseButirKisi } from '../../../app/utils/kisiBloom'
 import { bukuSiswa, wajibSiswa } from '../../utils/perpus'
@@ -11,17 +16,52 @@ export default defineEventHandler(async (event) => {
   const { data: s } = await db.from('students').select('class_id').eq('id', siswa.id).maybeSingle()
   if (!s?.class_id) return { kisi: [] }
 
-  const kolom = 'id, name, created_at, subjects(name), question_banks(kisi_kisi, kisi_butir)'
-  const ambilUjian = (kol: string) => db.from('exams')
-    .select(kol)
-    .eq('class_id', s.class_id).eq('grade', siswa.jenjang).in('status', ['draf', 'terjadwal', 'berlangsung', 'dibekukan'])
-    .not('question_bank_id', 'is', null).order('created_at', { ascending: false }).limit(20)
-  let { data, error } = await ambilUjian(kolom)
-  if (error && /kisi_butir/i.test(String(error.message || ''))) {
-    // Migrasi 0095 belum jalan: mundur ke kolom teks saja agar kisi-kisi lama tetap tampil.
-    ({ data, error } = await ambilUjian('id, name, created_at, subjects(name), question_banks(kisi_kisi)'))
+  type BankMentah = {
+    id: string, name: string, subject: string | null,
+    kisi_kisi: string | null, kisi_butir?: unknown,
+    created_at: string | null, updated_at: string | null
   }
-  if (error) throw createError({ statusCode: 502, statusMessage: 'Kisi-kisi gagal dimuat.' })
+  const bankMap = new Map<string, BankMentah>()
+  const tambahBank = (b: BankMentah) => { if (b?.id && !bankMap.has(b.id)) bankMap.set(b.id, b) }
+
+  const ambilBank = async (tabel: string, bangun: (q: any) => any) => {
+    let r = await bangun(db.from(tabel).select('id, name, subject, kisi_kisi, kisi_butir, created_at, updated_at'))
+    if (r.error && /kisi_butir/i.test(String(r.error.message || ''))) {
+      // Migrasi 0095 belum jalan: mundur ke kolom teks saja agar kisi-kisi lama tetap tampil.
+      r = await bangun(db.from(tabel).select('id, name, subject, kisi_kisi, created_at, updated_at'))
+    }
+    if (r.error) throw createError({ statusCode: 502, statusMessage: 'Kisi-kisi gagal dimuat.' })
+    return (r.data || []) as BankMentah[]
+  }
+
+  // 1) Bank yang ditugaskan ke kelas siswa (CBT + LMS).
+  for (const tabel of ['question_banks', 'ujian_harian_banks']) {
+    const baris = await ambilBank(tabel, q => q
+      .eq('class_id', s.class_id).eq('grade', siswa.jenjang)
+      .order('updated_at', { ascending: false }).limit(30))
+    for (const b of baris) tambahBank(b)
+  }
+
+  // 2) Ujian kelas: nama ujian menjadi judul tampilan; bank di luar penugasan kelas ikut ditarik.
+  const judulUjian = new Map<string, string>()
+  for (const tabel of ['exams', 'ujian_harian']) {
+    const { data: uj } = await db.from(tabel)
+      .select('name, question_bank_id, created_at')
+      .eq('class_id', s.class_id).eq('grade', siswa.jenjang)
+      .in('status', ['draf', 'terjadwal', 'berlangsung', 'dibekukan'])
+      .not('question_bank_id', 'is', null)
+      .order('created_at', { ascending: false }).limit(20)
+    for (const e of (uj || []) as any[]) {
+      if (e.question_bank_id && !judulUjian.has(e.question_bank_id)) judulUjian.set(e.question_bank_id, e.name)
+    }
+  }
+  const bankKurang = [...judulUjian.keys()].filter(id => !bankMap.has(id))
+  if (bankKurang.length) {
+    for (const tabel of ['question_banks', 'ujian_harian_banks']) {
+      const baris = await ambilBank(tabel, q => q.in('id', bankKurang))
+      for (const b of baris) tambahBank(b)
+    }
+  }
 
   const buku = (await bukuSiswa(db, siswa)).filter(b => !b.akhirPekan)
 
@@ -44,31 +84,34 @@ export default defineEventHandler(async (event) => {
   const babPerBuku = new Map<string, number>()
   for (const b of bab) babPerBuku.set(b.bukuId, (babPerBuku.get(b.bukuId) ?? 0) + 1)
 
-  const kisi = (data || []).flatMap((e: any) => {
-    const mapel = e.subjects?.name || ''
-    const hari = Math.max(0, Math.floor((Date.now() - new Date(e.created_at).getTime()) / 864e5))
-    const lengkapi = (t: { t: string, i: string }) => {
-      const bukuCocok = cocokkanBuku(t, mapel, buku)
-      return {
-        buku: bukuCocok,
-        rek: cocokkanBab(t, mapel, buku, bab),
-        // Jujur untuk label siswa: buku rujukan utama sudah punya indeks bab atau belum.
-        babTerindeks: bukuCocok.length ? (babPerBuku.get(bukuCocok[0]!.id) ?? 0) > 0 : false
-      }
+  const lengkapi = (t: { t: string, i: string }, mapel: string) => {
+    const bukuCocok = cocokkanBuku(t, mapel, buku)
+    return {
+      buku: bukuCocok,
+      rek: cocokkanBab(t, mapel, buku, bab),
+      // Jujur untuk label siswa: buku rujukan utama sudah punya indeks bab atau belum.
+      babTerindeks: bukuCocok.length ? (babPerBuku.get(bukuCocok[0]!.id) ?? 0) > 0 : false
     }
-    const butir = parseButirKisi(e.question_banks?.kisi_butir)
+  }
+
+  const kisi = [...bankMap.values()].flatMap((b) => {
+    const mapel = b.subject || ''
+    const acuan = b.updated_at || b.created_at
+    const hari = acuan ? Math.max(0, Math.floor((Date.now() - new Date(acuan).getTime()) / 864e5)) : 0
+    const judul = judulUjian.get(b.id) || b.name
+    const butir = parseButirKisi(b.kisi_butir)
     if (butir.length) {
       return [{
-        id: e.id, judul: e.name, mapel, hari,
-        topik: butir.map(b => {
-          const t = { t: b.materi, i: indikatorLengkap(b) }
-          return { ...t, level: b.level, kko: b.kko, soal: b.soal, ...lengkapi(t) }
+        id: b.id, judul, mapel, hari,
+        topik: butir.map(x => {
+          const t = { t: x.materi, i: indikatorLengkap(x) }
+          return { ...t, level: x.level, kko: x.kko, soal: x.soal, ...lengkapi(t, mapel) }
         })
       }]
     }
-    const topik = parseKisi(String(e.question_banks?.kisi_kisi || ''))
+    const topik = parseKisi(String(b.kisi_kisi || ''))
     if (!topik.length) return []
-    return [{ id: e.id, judul: e.name, mapel, hari, topik: topik.map(t => ({ ...t, ...lengkapi(t) })) }]
-  })
+    return [{ id: b.id, judul, mapel, hari, topik: topik.map(t => ({ ...t, ...lengkapi(t, mapel) })) }]
+  }).slice(0, 20)
   return { kisi }
 })
