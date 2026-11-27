@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import SpmbDetail from '~/components/adminV2/spmb/SpmbDetail.vue'
 import SpmbForm from '~/components/adminV2/spmb/SpmbForm.vue'
 import SpmbPlacement from '~/components/adminV2/spmb/SpmbPlacement.vue'
@@ -37,6 +37,20 @@ watch(() => props.jenjang, () => {
   filterSumber.value = 'Semua sumber'
   cari.value = ''
 })
+
+const tabelEl = ref<HTMLElement | null>(null)
+function toggleSampah() {
+  tampilSampah.value = !tampilSampah.value
+  if (tampilSampah.value) {
+    // Masuk mode sampah: longgarkan semua filter agar data terhapus
+    // tidak tersembunyi filter lama, lalu gulir tabel ke pandangan.
+    filterStatus.value = 'Semua'
+    filterJurusan.value = 'Semua jurusan'
+    filterSumber.value = 'Semua sumber'
+    cari.value = ''
+    void nextTick(() => tabelEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
+}
 
 function toast(pesan: string) {
   toastPesan.value = pesan
@@ -224,7 +238,7 @@ function eksporCsv() {
           <p class="mt-1 text-sm text-slate-500">Pendaftar online &amp; manual · Tahun Ajaran {{ SPMB_TAHUN_AJARAN }} · {{ jenjang === 'SMK' ? 'SMK IT Attaqwa 9' : 'SMP IT Bina Cendekia Assalam' }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <button type="button" class="inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800" @click="tampilSampah = !tampilSampah">Sampah <span class="ml-1.5 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-red-600 ring-1 ring-red-100">{{ sampah.length }}</span></button>
+          <button type="button" class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold shadow-sm transition" :class="tampilSampah ? 'border-red-300 bg-red-50 text-red-700 ring-4 ring-red-100' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'" @click="toggleSampah">{{ tampilSampah ? '← Daftar Pendaftar' : 'Sampah' }} <span class="ml-1.5 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-red-600 ring-1 ring-red-100">{{ sampah.length }}</span></button>
           <button type="button" class="inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800" @click="eksporCsv">Ekspor CSV</button>
           <button type="button" class="inline-flex min-h-11 items-center rounded-full bg-gradient-to-r from-[#1B5FD9] to-[#175CD3] px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:brightness-110 active:scale-[0.99]" @click="bukaFormulir()">+ Tambah Manual</button>
         </div>
@@ -267,7 +281,12 @@ function eksporCsv() {
           </button>
         </div>
 
-        <div class="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05),0_16px_40px_-24px_rgba(16,24,40,0.25)]">
+        <div v-if="tampilSampah" class="flex flex-wrap items-center justify-between gap-2 rounded-3xl border border-red-200 bg-red-50 px-5 py-3.5">
+          <p class="text-sm font-semibold text-red-700">Mode Sampah — menampilkan {{ sampah.length }} data yang dihapus (soft delete). Data di sini tidak terhitung dalam kuota &amp; statistik.</p>
+          <button type="button" class="rounded-full bg-white px-3.5 py-1.5 text-[13px] font-bold text-red-700 ring-1 ring-red-200 transition hover:bg-red-100" @click="toggleSampah">Kembali ke daftar pendaftar</button>
+        </div>
+
+        <div ref="tabelEl" class="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05),0_16px_40px_-24px_rgba(16,24,40,0.25)]">
           <div class="flex flex-col gap-3 border-b border-slate-100 p-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex flex-wrap gap-1.5">
               <button v-for="c in chips" :key="c.label" type="button" class="rounded-full px-3 py-1.5 text-[13px] font-semibold transition" :class="filterStatus === c.label ? 'bg-slate-900 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" @click="filterStatus = c.label">{{ c.label }} <span class="opacity-60">{{ c.jumlah }}</span></button>
@@ -315,7 +334,8 @@ function eksporCsv() {
                   <td class="px-4 py-3"><span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" :class="chipStatusKelas[r.status]"><span class="h-1.5 w-1.5 rounded-full" :class="titikStatusKelas[r.status]" />{{ r.status }}</span></td>
                   <td class="whitespace-nowrap px-4 py-3 text-right">
                     <template v-if="tampilSampah">
-                      <button type="button" class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100" @click="pulihkan(r.id)">Pulihkan</button>
+                      <button type="button" class="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100" @click="bukaDetail(r.id)">Detail</button>
+                      <button type="button" class="ml-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100" @click="pulihkan(r.id)">Pulihkan</button>
                     </template>
                     <template v-else>
                       <button type="button" class="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100" @click="bukaDetail(r.id)">Detail</button>
