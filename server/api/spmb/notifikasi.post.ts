@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
       status: r.status,
       tujuan: nomor,
       isi: renderWaSpmb(r),
-      dedupe_key: `${r.id}:${r.status}`
+      dedupe_key: `${r.id}:${r.status.replace(/\s+/g, '-')}`
     })
     if (!errWa) wa = 'antre'
     else if ((errWa as { code?: string }).code === '23505') wa = 'sudah_antre'

@@ -139,17 +139,6 @@
                       <b class="text-base font-extrabold text-slate-900 leading-tight">AKL</b>
                       <small class="text-xs text-slate-500 mt-1">Akuntansi dan Keuangan Lembaga</small>
                     </label>
-                    <label
-                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
-                      :class="form.jurusan === 'Otomatisasi & Tata Kelola Perkantoran' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
-                    >
-                      <input type="radio" v-model="form.jurusan" value="Otomatisasi & Tata Kelola Perkantoran" class="sr-only">
-                      <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                      </div>
-                      <b class="text-base font-extrabold text-slate-900 leading-tight">OTKP</b>
-                      <small class="text-xs text-slate-500 mt-1">Otomatisasi &amp; Tata Kelola Perkantoran</small>
-                    </label>
                     </div>
                   </div>
                   <div>
@@ -166,17 +155,6 @@
                       <b class="text-base font-extrabold text-slate-900 leading-tight">TBSM</b>
                       <small class="text-xs text-slate-500 mt-1">Teknik dan Bisnis Sepeda Motor</small>
                     </label>
-                    <label
-                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
-                      :class="form.jurusan === 'Teknik Kendaraan Ringan' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
-                    >
-                      <input type="radio" v-model="form.jurusan" value="Teknik Kendaraan Ringan" class="sr-only">
-                      <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mb-3">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.7-4.2A2 2 0 0 1 8.6 5.5h6.8a2 2 0 0 1 1.9 1.3L19 11"/><rect x="3" y="11" width="18" height="6" rx="1.5"/><circle cx="7.5" cy="18.5" r="1.7"/><circle cx="16.5" cy="18.5" r="1.7"/></svg>
-                      </div>
-                      <b class="text-base font-extrabold text-slate-900 leading-tight">TKR</b>
-                      <small class="text-xs text-slate-500 mt-1">Teknik Kendaraan Ringan</small>
-                    </label>
                     </div>
                   </div>
                   <div>
@@ -192,17 +170,6 @@
                       </div>
                       <b class="text-base font-extrabold text-slate-900 leading-tight">TKJ</b>
                       <small class="text-xs text-slate-500 mt-1">Teknik Komputer &amp; Jaringan</small>
-                    </label>
-                    <label
-                      class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200"
-                      :class="form.jurusan === 'Desain Komunikasi Visual' ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
-                    >
-                      <input type="radio" v-model="form.jurusan" value="Desain Komunikasi Visual" class="sr-only">
-                      <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-3">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="12 8 8 12 12 16 16 12 12 8"/></svg>
-                      </div>
-                      <b class="text-base font-extrabold text-slate-900 leading-tight">DKV</b>
-                      <small class="text-xs text-slate-500 mt-1">Desain Komunikasi Visual</small>
                     </label>
                     </div>
                   </div>

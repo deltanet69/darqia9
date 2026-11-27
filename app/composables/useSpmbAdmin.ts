@@ -19,11 +19,8 @@ export const SPMB_TAHUN_AJARAN = '2027/2028'
 
 export const SPMB_JURUSAN_SMK = [
   'Akuntansi dan Keuangan Lembaga',
-  'Otomatisasi & Tata Kelola Perkantoran',
   'Teknik dan Bisnis Sepeda Motor',
-  'Teknik Kendaraan Ringan',
-  'Teknik Komputer & Jaringan',
-  'Desain Komunikasi Visual'
+  'Teknik Komputer & Jaringan'
 ] as const
 
 // Pengelompokan jurusan SMK per bidang keahlian (untuk tampilan formulir).
@@ -31,22 +28,19 @@ export const SPMB_JURUSAN_GRUP_SMK = [
   {
     grup: 'Bisnis & Manajemen',
     jurusan: [
-      { singkat: 'AKL', nama: 'Akuntansi dan Keuangan Lembaga' },
-      { singkat: 'OTKP', nama: 'Otomatisasi & Tata Kelola Perkantoran' }
+      { singkat: 'AKL', nama: 'Akuntansi dan Keuangan Lembaga' }
     ]
   },
   {
     grup: 'Teknik Otomotif',
     jurusan: [
-      { singkat: 'TBSM', nama: 'Teknik dan Bisnis Sepeda Motor' },
-      { singkat: 'TKR', nama: 'Teknik Kendaraan Ringan' }
+      { singkat: 'TBSM', nama: 'Teknik dan Bisnis Sepeda Motor' }
     ]
   },
   {
     grup: 'Teknologi Informasi & Komunikasi',
     jurusan: [
-      { singkat: 'TKJ', nama: 'Teknik Komputer & Jaringan' },
-      { singkat: 'DKV', nama: 'Desain Komunikasi Visual' }
+      { singkat: 'TKJ', nama: 'Teknik Komputer & Jaringan' }
     ]
   }
 ] as const
@@ -445,12 +439,9 @@ export function rombelBawaan(): Record<SpmbJenjangKey, SpmbRombel[]> {
   return {
     SMK: [
       { nama: 'X AKL 1', jurusan: 'Akuntansi dan Keuangan Lembaga', kap: 36 },
-      { nama: 'X OTKP 1', jurusan: 'Otomatisasi & Tata Kelola Perkantoran', kap: 36 },
       { nama: 'X TBSM 1', jurusan: 'Teknik dan Bisnis Sepeda Motor', kap: 36 },
-      { nama: 'X TKR 1', jurusan: 'Teknik Kendaraan Ringan', kap: 36 },
       { nama: 'X TKJ 1', jurusan: 'Teknik Komputer & Jaringan', kap: 36 },
-      { nama: 'X TKJ 2', jurusan: 'Teknik Komputer & Jaringan', kap: 36 },
-      { nama: 'X DKV 1', jurusan: 'Desain Komunikasi Visual', kap: 36 }
+      { nama: 'X TKJ 2', jurusan: 'Teknik Komputer & Jaringan', kap: 36 }
     ],
     SMP: [
       { nama: 'VII A', kap: 32 },

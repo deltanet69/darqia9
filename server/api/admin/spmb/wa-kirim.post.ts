@@ -23,6 +23,6 @@ export default defineEventHandler(async (event) => {
   if (!nomor) {
     return { ok: false, keadaan: 'nomor_tidak_valid', pesan: `Nomor WA wali (${r.o_hp || 'kosong'}) tidak valid.` }
   }
-  const hasil = await kirimWaOpenwa(event, nomor, renderWaSpmb(r), `${r.id}:${r.status}`)
+  const hasil = await kirimWaOpenwa(event, nomor, renderWaSpmb(r), `${r.id}:${r.status.replace(/\s+/g, '-')}`)
   return { ...hasil, tujuan: nomor }
 })

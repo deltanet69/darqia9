@@ -6,6 +6,8 @@
 //    harian bertahap menurut umur sesi, jatah percakapan baru, dan rem
 //    gagal beruntun. Penolakan governor = HTTP 429 SEND_PACING_LIMITED.
 // 2. Di sini: setiap kiriman memakai Idempotency-Key "<regId>:<status>"
+//    yang DISANITASI ke karakter ASCII tampak saja (spasi -> "-"):
+//    OpenWA menolak kunci berisi spasi ("visible ASCII characters").
 //    sehingga pengiriman ulang untuk status yang sama tidak dobel.
 //
 // Kredensial dari runtime config (env server NUXT_OPENWA_URL /
@@ -111,7 +113,7 @@ export async function kirimWaOpenwa(event: any, nomor62: string, isi: string, id
   try {
     await ow(event, `/sessions/${s.id}/messages/send-text`, {
       method: 'POST',
-      headers: { 'Idempotency-Key': idemKey },
+      headers: { 'Idempotency-Key': idemKey.replace(/[^\x21-\x7E]/g, '-').slice(0, 255) },
       body: JSON.stringify({ chatId: `${nomor62}@c.us`, text: isi })
     })
     return { ok: true, keadaan: 'terkirim', pesan: 'Notifikasi WhatsApp terkirim ke wali.' }

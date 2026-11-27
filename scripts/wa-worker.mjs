@@ -75,7 +75,9 @@ async function putaran() {
   try {
     await ow(`/sessions/${sesi.id}/messages/send-text`, {
       method: 'POST',
-      headers: { 'Idempotency-Key': p.dedupe_key },
+      // Kunci lama bisa berisi spasi (dari status) — OpenWA menolaknya;
+      // sanitasi ke ASCII tampak sebelum kirim.
+      headers: { 'Idempotency-Key': String(p.dedupe_key || '').replace(/[^\x21-\x7E]/g, '-').slice(0, 255) },
       body: JSON.stringify({ chatId: `${p.tujuan}@c.us`, text: p.isi })
     })
     await supabase.from('wa_outbox').update({ keadaan: 'terkirim', terkirim_at: new Date().toISOString() }).eq('id', p.id)
