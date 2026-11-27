@@ -667,7 +667,7 @@ const beritaBeranda = computed<ArtikelPublik[]>(() => {
         <!-- 4 Grid Instagram Post Cards (Dynamic dari Meta API / Fallback) -->
         <div v-if="feedPending" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div v-for="i in 4" :key="i" class="bg-[#F8FAFC] border border-[#E2ECF8] rounded-[20px] overflow-hidden animate-pulse">
-            <div class="aspect-square bg-slate-200"></div>
+            <div class="aspect-[4/5] bg-slate-200"></div>
             <div class="p-4 space-y-3">
               <div class="h-4 bg-slate-200 rounded w-3/4"></div>
               <div class="h-3 bg-slate-200 rounded w-1/2"></div>
@@ -686,7 +686,7 @@ const beritaBeranda = computed<ArtikelPublik[]>(() => {
             class="rv group relative bg-[#F8FAFC] border border-[#E2ECF8] rounded-[20px] overflow-hidden shadow-[0_4px_20px_rgba(10,42,92,0.04)] hover:shadow-[0_16px_36px_rgba(10,42,92,0.12)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col block text-decoration-none"
           >
             <!-- Media Image Container -->
-            <div class="relative aspect-square overflow-hidden bg-[#0A2A5C]">
+            <div class="relative aspect-[4/5] overflow-hidden bg-[#0A2A5C]">
               <img 
                 :src="post.imageUrl" 
                 :alt="post.caption" 

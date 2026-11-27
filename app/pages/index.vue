@@ -47,6 +47,9 @@ useGsapReveal()
       <!-- Kultur Pembinaan Kampus Assalam (White) -->
       <YayasanCampusCulture />
 
+      <!-- Feed Instagram Sekolah (Live Meta Graph API) -->
+      <IgFeed jenjang="yayasan" />
+
       <!-- Informasi PMB 2027/2028 (Dark Navy Gradient) -->
       <YayasanPmb />
 
