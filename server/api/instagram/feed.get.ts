@@ -95,7 +95,7 @@ const FALLBACK_POSTS: FormattedFeedItem[] = [
 ]
 
 // Cache per jenjang di memori server (cegah rate limit Meta)
-const cacheFeed = new Map<string, { data: FormattedFeedItem[]; username: string; timestamp: number }>()
+const cacheFeed = new Map<string, { data: FormattedFeedItem[]; username: string; profilePic: string | null; timestamp: number }>()
 const CACHE_TTL_MS = 60 * 60 * 1000 // 1 jam
 
 function formatTimeAgo(isoString: string): string {
@@ -128,10 +128,10 @@ function parseHashtagsAndCaption(rawCaption: string = '') {
   }
 }
 
-async function ambilFeedAkun(pageId: string, accessToken: string): Promise<{ username: string; items: FormattedFeedItem[] }> {
+async function ambilFeedAkun(pageId: string, accessToken: string): Promise<{ username: string; profilePic: string | null; items: FormattedFeedItem[] }> {
   const base = 'https://graph.facebook.com/v21.0'
-  const page = await $fetch<{ instagram_business_account?: { id: string; username: string } }>(
-    `${base}/${pageId}?fields=instagram_business_account{id,username}&access_token=${accessToken}`,
+  const page = await $fetch<{ instagram_business_account?: { id: string; username: string; profile_picture_url?: string } }>(
+    `${base}/${pageId}?fields=instagram_business_account{id,username,profile_picture_url}&access_token=${accessToken}`,
     { timeout: 6000 }
   )
   const ig = page?.instagram_business_account
@@ -169,7 +169,7 @@ async function ambilFeedAkun(pageId: string, accessToken: string): Promise<{ use
     }
   })
 
-  return { username: ig.username, items }
+  return { username: ig.username, profilePic: ig.profile_picture_url || null, items }
 }
 
 export default defineEventHandler(async (event) => {
@@ -191,6 +191,7 @@ export default defineEventHandler(async (event) => {
       appIdConfigured: Boolean(appId),
       jenjang,
       username: jenjang === 'smk' ? 'smkit.attaqwa9' : jenjang === 'smp' ? 'smpitbca_official' : null,
+      profilePic: null,
       data: jenjang === 'smk' ? FALLBACK_POSTS : []
     }
   }
@@ -204,6 +205,7 @@ export default defineEventHandler(async (event) => {
       appIdConfigured: Boolean(appId),
       jenjang,
       username: tersimpan.username,
+      profilePic: tersimpan.profilePic,
       data: tersimpan.data
     }
   }
@@ -219,7 +221,7 @@ export default defineEventHandler(async (event) => {
         .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))
         .slice(0, 8)
       if (!gabung.length) throw new Error('Kedua akun IG gagal dibaca')
-      cacheFeed.set(jenjang, { data: gabung, username: '', timestamp: Date.now() })
+      cacheFeed.set(jenjang, { data: gabung, username: '', profilePic: null, timestamp: Date.now() })
       return {
         status: 'success',
         isLive: true,
@@ -227,13 +229,14 @@ export default defineEventHandler(async (event) => {
         appIdConfigured: Boolean(appId),
         jenjang,
         username: null,
+        profilePic: null,
         data: gabung
       }
     }
 
     const peta = PETA_JENJANG[jenjang]
-    const { username, items } = await ambilFeedAkun(peta.pageId, accessToken)
-    cacheFeed.set(jenjang, { data: items, username, timestamp: Date.now() })
+    const { username, profilePic, items } = await ambilFeedAkun(peta.pageId, accessToken)
+    cacheFeed.set(jenjang, { data: items, username, profilePic, timestamp: Date.now() })
     return {
       status: 'success',
       isLive: true,
@@ -241,6 +244,7 @@ export default defineEventHandler(async (event) => {
       appIdConfigured: Boolean(appId),
       jenjang,
       username,
+      profilePic,
       data: items
     }
   } catch (err: any) {
@@ -255,6 +259,7 @@ export default defineEventHandler(async (event) => {
     appIdConfigured: Boolean(appId),
     jenjang,
     username: jenjang === 'smk' ? 'smkit.attaqwa9' : jenjang === 'smp' ? 'smpitbca_official' : null,
+    profilePic: null,
     data: jenjang === 'smk' ? FALLBACK_POSTS : []
   }
 })
